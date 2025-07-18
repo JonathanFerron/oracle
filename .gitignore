@@ -1,0 +1,10 @@
+*.lnk
+*.geany
+*.zip
+*.exe
+*.o
+*.xls
+*.xlsx
+*.xlsm
+*.xlsb
+ORACLEGeanyProj.tags
