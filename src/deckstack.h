@@ -1,7 +1,7 @@
 #ifndef __DECKSTACK_H
 #define __DECKSTACK_H
 
-#define MAX_DECK_STACK_SIZE 39
+#define MAX_DECK_STACK_SIZE 40
 
 struct deck_stack {
   uint8_t card_indices[MAX_DECK_STACK_SIZE];

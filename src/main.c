@@ -1,62 +1,135 @@
-/* License: GNU GPL 3.0, see gnu-gpl-v3.0.md file in this project */
+/* License: GNU GPL 3.0, see LICENSE file in this project */
 
 /* 
 To Do:
-  1. Implement 'discard to 7 cards' rule. 
-     Test first player advantage again.
-     Implement mulligan and test if that resolves any first player advantage.
   
-  2. Make small 'improvement' to 'random' strategy to make it play a champion card in the defense phase only x% of the time. x% should be based on information available at the
-       decision time on hand size, cash left and opponent energy.
+  - Integrate the 'Cash Card' into the model.
   
-  3. Bundle some functionalities into 'begin_of_turn()' and 'end_of_turn()' helper functions, and move turn++ from the playgame() function to the playturn() function.   
-   
-  4. Further delegate work done in the playturn() function to helper functions to reduce number of lines of codes to about 30    
-  
-  5. Implement a ncurses based text user interface to allow two human players to interactively play against each other or a human to play against the 'AI': first screen should ask what mode
-       the program should run in: simulation vs interactive, and then for interactive present the table on the left and a console on the right, for simulation present a console
-       on the right, output on the left and parameters at the bottom left, with ability to export results to txt files.
+  - Implement the bonus points concept (2 or 3 of the same color, rank, species)
 
-  6. enhance decision rules to mimic what a smart player would do, and find what could be more optimal 
+  in 'calculate total attack / defense' funnction, called by 'resolve combat', called by 'play_turn':
+
+s1, s2, s3: species combat cards 1, 2, 3
+c1, c2, c3: colours combat cards 1, 2, 3
+r1, r2, r3: ranks combat cards 1, 2, 3
+
+switch deck_drawing_approach
+
+case RANDOM:
+
+  if 2 cards in combat zone:
+    if s2=s1 then +10
+    else if r2=r1 then +7
+    else if c2=c1 then +5
+
+  if 3 cards in combat zone:
+    if s2=s1 then
+      if s3=s1 then +16
+      else if r3=r1 then +14
+      else if c3=c1 then +13
+      else +10
+    else if s3=s1 then
+      if r3=r2 then +14
+      else if c3=c2 then +13
+      else +10
+    else if r2=r1 then
+      if r3=r1 then +11
+      else if c3=c2 then +9
+      else +7
+    else if r3=r1 then
+      if c2=c1 then +9
+      else +7
+    else if c2=c1 then
+      if c3=c1 then +8
+      else +5
+    else if c3=c1 then = 5
+    endif
+
+case MONOCHROME:
+  if 2 cards in combat zone:
+    if r2=r1 then +7
+
+  if 3 cards in combat zone:
+    if r2=r1 then
+      if r3=r1 then +12
+      else +7
+    endif
+
+case CUSTOM:
+  if 2 cards in combat zone:
+    if s2=s1 then +7
+    else if r2=r1 then +4
+    
+  if 3 cards in combat zone:
+    if s2=s1 then
+      if s3=s1 then +12
+      else if r3=r1 then +9
+      else +7
+    else if s3=s1 then
+      if r3=r2 then +9
+      else +7
+    else if r2=r1 then
+      if r3=r1 then +6
+      else +4
+    else if r3=r1 then +4
+    endif
+  
+  - Bundle some functionalities into 'begin_of_turn()' and 'end_of_turn()' helper functions, and move turn++ from the playgame() function to the playturn() function.   
+   
+  - Further delegate work done in the playturn() function to helper functions to reduce number of lines of codes to about 30
+   
+  - integrate cards visibility indicators inside the gamestate struct: ai agent should only be provided visible (or 'known to be somewhere') portion of gamestate
+   
+  - clearly delineate and delegate (to a separate function (of the server ?)) the code that creates the 'list of possible moves' when faced with a decision, and then call 
+    the 'select_action' code using that and the (visible portion of) gamestate
+  
+  - Move 'strategy' code to a 'strat' file and call that instead of hard-coding the strategy in the main.c file.
+      make use of the 'action' structure: build (encode) it in decision porstion of the code, and then perform an action by decoding the action struct
+      at the end of the day, the strat code (client side) should be building the action struct (using visible gamestate info passed from main code (server)), 
+      and the main code (server side) should be executing it (applying it to the gamestate)
+  
+  - Work on implementing a correct 'power' for non-champion cards to allow better 'power heuristic'-based choices. Model multiple simulations with varying power from 2 to 15
+    for the non-champion cards for player A, and keep the same card's power to a fixed value for player B. Which of the values between 2, 3, 4, ..., 15 yield the best
+    win percentage for player A? Say that's 5.00. Use 5.00 as the new default 'power' value for the card, and do the simulation again, keeping the default value of 5.00
+    for player B's decisions but iterating from 2 to 15 for player A to confirm that it now yields a better win percentage for player B for all of A's values except when
+    A also uses the 'optimal' value 5.00. When the 'cash card' is implemented, use the same approach to calculate a 'power heuristic' for it: calibrate the heuristic
+    parameter to maximize the chances of winning.
+  
+  - Implement a ncurses based text user interface to allow two human players to interactively play against each other or a human to play against the 'AI': 
+     start immediately in 'interactive' mode unless user provided the -sim command line option.
+       for interactive present the table on the left and a console on the right: console will allow a 'simmode' command to switch to simulation mode.
+       for simulation present a console on the right, output on the left and parameters at the bottom left, with ability to export results to txt files (name of which
+         on the bottom left as well). console in sim mode may allow an 'intermode' command to switch back to interactive mode.
+  
+  oracle -m option
+    m(ode) options: a(utomated), s(imulation), t(ext user interface), g(raphical user interface)
+
+    use automated mode by default with a default of 1000 simulations and default console output that only takes 25 rows max
+
+    interactive play code should call tui or gui draw functions depending on context (mode)
+
+  - enhance decision rules to mimic what a smart player would do, and find what could be more optimal 
        decision rules, probably using heuristics to keep things simple. See notes in balanced rules strategy source file: strat_balancedrules1.c
 
-  7. Monte Carlo Single Stage Analysis:
-      manually create 100 distinct 'attack' phase game states at various stages of the game.
-        for each game state, use the MonteCarloSingleStageAnalysis strategy in the 'applyAttackStragegy' function, which will:
-        make a list of all possible moves by player A (Nm, maximum of 93 moves): getAvailableMoves(). need to create a structure that will be able to represent a 'move'      
-        perform 100 simulations with all of the possible candidate moves: for each simulation
-          make a clone of the root gamestate and randomize in this clone the information not seen by player A at this stage: clone_and_randomize_gamestate() (which can use the clone_gamestate() function)
-          for each possible move
-            make a clone of the randomized copy from last step above, to test this move
-            assume that first move is made (apply it to the new clone) and then 
-            randomly make moves 2+ (among legal moves) for each player alternately until 
-            player A wins (1 point), loses (0), or there is a draw (0.5 points). 
-           
-        discard worst candidates, keeping Nm ^ (¾) moves (max 30). 
-        perform 200 more sim with the remaining candidate moves (same approach as above)
-        
-        then prune to Nm ^ (½) moves (max 10), 
-        perform 400 more sim, 
-        
-        then prune to Nm  ^ (¼) best moves (max 4). 
-        perform 800 more sims (cumulative total of 1500 sims) 
-        
-        display results for 4 best moves to the console. 
-        return the best move
-      using a separate tool, analyse 4 best moves for each of the 100 game states to develop rules / decision tree / heuristics that would have generated the same best moves.
+  order of implementation of tree search methods for AI agent:
+    pruning in 4 episodes (montre carlo single stage), gradual progressive pruning, ucb1, pucb1, mcts (uct, or info set MCTS), mcts with prior predictor, 
+    mcts with neural network based (eg dqn) prior predictor
+  
+  - Implement Monte Carlo Single Stage Analysis (strat_simplemc1)
 
-  8. Info Set Monte Carlo Tree Search:
-        define this strategy as a call to the ISMCTS() function, from the applyAttDefStrat() function
-        make a clone of the root gamestate as provided by the call from applyAttDefStrat(): clone_gamestate()
-        apply ISMCTS to the clone gamestate, and return the best move: 
-          - clone gamestate will provide the 'playerToMove' data field
-          - implement a new Clone_And_Randomize_gamestate(observer) function : Create a copy of the state, then determinize the hidden information from observer's point of view.
-          - implement a new GetResult(player) function: If the state is terminal, return 1 if the given player has won, 0 if not, 0.5 for a draw. If the state is not 
-              terminal, the result is undefined. This should be trivial given the gamestate structure.
-          - make use of the 'getAvailableMoves()' function:  Get a list of the legal moves from this state, or return an empty list if the state is terminal.
-          - implement a new DoMove(move) function: Apply the given move to the state, and update playerToMove to specify whose turn is next and turn_phase to specify what the
-              new phase is (attack or defense). Controlable by the AI with one call to DoMove() for the attacker followed by another call to DoMove() for the defender (if there is combat), etc.
+  - combined the 'balanced' and 'heuristic' strategies into a 3rd hybrid strategy that is better than those 2
 
+  - Implement Info Set Monte Carlo Tree Search  
+  
+  - implement a GUI version of the game: may need to figure out how to make sure the program does not 'freeze' PC when calculating AI strategy. e.g. may want button / menu
+      to let GUI user stop the calc or terminate the program in a 'clean' way. One option is to span the calculation intensive task to a 'worker thread'.
+       
+  - client / server approach for 2 players game:
+      - server handles game mechanics (including throwing the dices) and is only one knowing the full game state
+      - server will provide clients also with opponent's last play for drawing the screen
+      - client can be human or AI
+      - AI client takes a visible game state and returns an action
+      - human client takes a visible game state, present game state on screen, take action (input) from user, and then return an action to the server
 */
 
 // includes
@@ -77,9 +150,15 @@ To Do:
 
 // pre-compiler constants
 #define MAX_NUMBER_OF_TURNS 500
-#define MAX_NUMBER_OF_SIM 1000
+#define MAX_NUMBER_OF_SIM 1000  // consider doing around 40,000 simulations to get a precise estimate of whether there is a first player advantage or not
+#define DEBUG_NUMBER_OF_SIM 1  // number of simulations to do when 'debug_enabled = true'
 
-#define FULL_DECK_SIZE 117 // update to 120 once 3 cash cards have been added
+#define FULL_DECK_SIZE 120
+
+#define AVERAGE_POWER_FOR_MULLIGAN 4.98  // this should be moved to the 'strat random' strategy as that's where it's being used, and it may be superceded for other strategies
+
+// global variables (keep to a minimum)
+bool debug_enabled = false;
 
 // macros
 #define max(a,b) \
@@ -102,6 +181,7 @@ enum PlayerID {
 
 const char *const PLAYER_NAMES[] = {"PLAYER A", "PLAYER B"};
 
+// TODO: split this enum in two separate enums: GamePhase = Active or Ended, and GameEndResult = PlayerAWins, PlayerBWins,Draw
 enum GameState {
   PLAYER_A_WINS=0, 
   PLAYER_B_WINS=1,
@@ -171,16 +251,17 @@ struct card {
   uint8_t draw_num; // how many cards to draw from the deck (default to 0 for champion cards)
   uint8_t choose_num; // how many cards to choose from the discard
   
-  // expected attack
-  // expected defense
-  // attack efficiency: use an arbitrary 'cost' number for cards with 0 cost, such as 0.1
-  // defense efficiency
-  // power
+  float expected_attack;
+  float expected_defense;
   
-  // specs for 'exchange champion for lunas' cards
+  float attack_efficiency;
+  float defense_efficiency;
+  float power;    
+  
+  // applicable to Cash Cards
+  uint8_t exchange_cash; // for 'exchange champion for lunas' cards
 };
 
-// consider storing this statically as string in the 'fullDeck' array
 void print_card_details(struct card c)
 {
 	// CHAM 0Luna d4+0
@@ -193,130 +274,136 @@ void print_card_details(struct card c)
   
   //c.draw_num;
   //c.choose_num;
+  
+  // exchange_cash;
 }
 
-// define 117 cards here: add 3 'cash' cards at the end
-// deck including all of the 117 cards, e.ge fullDeck[0] will give the first card struct
+// define 120 cards here
+// deck including all of the 120 cards, e.g. fullDeck[0] will give the first card struct
 struct card fullDeck[FULL_DECK_SIZE] = {
-  {CHAMPION_CARD, 0, 1, 4, 0, COLOR_ORANGE, SPECIES_HUMAN, 0, 0},  // fullDeck[0]
-  {CHAMPION_CARD, 0, 2, 6, 0, COLOR_ORANGE, SPECIES_HOBBIT, 0, 0},
-  {CHAMPION_CARD, 0, 3, 4, 1, COLOR_ORANGE, SPECIES_ORC, 0, 0},
-  {CHAMPION_CARD, 1, 4, 8, 0, COLOR_ORANGE, SPECIES_HUMAN, 0, 0},
-  {CHAMPION_CARD, 1, 5, 6, 1, COLOR_ORANGE, SPECIES_DRAGON, 0, 0},
-  {CHAMPION_CARD, 1, 6, 4, 2, COLOR_ORANGE, SPECIES_AVEN, 0, 0},
-  {CHAMPION_CARD, 1, 7, 8, 1, COLOR_ORANGE, SPECIES_HOBBIT, 0, 0},
-  {CHAMPION_CARD, 1, 8, 6, 2, COLOR_ORANGE, SPECIES_HOBBIT, 0, 0},
-  {CHAMPION_CARD, 1, 9, 4, 3, COLOR_ORANGE, SPECIES_ORC, 0, 0},
-  {CHAMPION_CARD, 1, 10, 12, 0, COLOR_ORANGE, SPECIES_DRAGON, 0, 0},
-  {CHAMPION_CARD, 1, 11, 4, 4, COLOR_ORANGE, SPECIES_AVEN, 0, 0},
-  {CHAMPION_CARD, 1, 12, 8, 2, COLOR_ORANGE, SPECIES_HUMAN, 0, 0},
-  {CHAMPION_CARD, 1, 13, 6, 3, COLOR_ORANGE, SPECIES_HUMAN, 0, 0},
-  {CHAMPION_CARD, 1, 14, 6, 4, COLOR_ORANGE, SPECIES_ORC, 0, 0},
-  {CHAMPION_CARD, 1, 15, 12, 1, COLOR_ORANGE, SPECIES_DRAGON, 0, 0},
-  {CHAMPION_CARD, 1, 16, 4, 5, COLOR_ORANGE, SPECIES_AVEN, 0, 0},
-  {CHAMPION_CARD, 1, 17, 8, 3, COLOR_ORANGE, SPECIES_DRAGON, 0, 0},  // fullDeck[16]
-  {CHAMPION_CARD, 2, 18, 8, 4, COLOR_ORANGE, SPECIES_ORC, 0, 0},
-  {CHAMPION_CARD, 2, 19, 6, 5, COLOR_ORANGE, SPECIES_HOBBIT, 0, 0},
-  {CHAMPION_CARD, 2, 20, 12, 2, COLOR_ORANGE, SPECIES_DRAGON, 0, 0},
-  {CHAMPION_CARD, 2, 21, 4, 6, COLOR_ORANGE, SPECIES_ORC, 0, 0},
-  {CHAMPION_CARD, 2, 22, 8, 5, COLOR_ORANGE, SPECIES_HOBBIT, 0, 0},
-  {CHAMPION_CARD, 2, 23, 6, 6, COLOR_ORANGE, SPECIES_HUMAN, 0, 0},
-  {CHAMPION_CARD, 2, 24, 12, 3, COLOR_ORANGE, SPECIES_AVEN, 0, 0},
-  {CHAMPION_CARD, 2, 25, 20, 0, COLOR_ORANGE, SPECIES_DRAGON, 0, 0},
-  {CHAMPION_CARD, 2, 26, 12, 4, COLOR_ORANGE, SPECIES_ORC, 0, 0},
-  {CHAMPION_CARD, 2, 27, 8, 6, COLOR_ORANGE, SPECIES_HOBBIT, 0, 0},
-  {CHAMPION_CARD, 3, 28, 20, 1, COLOR_ORANGE, SPECIES_HUMAN, 0, 0},
-  {CHAMPION_CARD, 3, 29, 12, 5, COLOR_ORANGE, SPECIES_DRAGON, 0, 0},
-  {CHAMPION_CARD, 3, 30, 20, 2, COLOR_ORANGE, SPECIES_AVEN, 0, 0},
-  {CHAMPION_CARD, 3, 31, 12, 6, COLOR_ORANGE, SPECIES_ORC, 0, 0},
-  {CHAMPION_CARD, 3, 32, 20, 3, COLOR_ORANGE, SPECIES_HOBBIT, 0, 0},
-  {CHAMPION_CARD, 3, 33, 20, 4, COLOR_ORANGE, SPECIES_HUMAN, 0, 0},
-  {CHAMPION_CARD, 3, 34, 20, 5, COLOR_ORANGE, SPECIES_AVEN, 0, 0},    // fullDeck[33]
-  {CHAMPION_CARD, 0, 35, 4, 0, COLOR_RED, SPECIES_ELF, 0, 0},
-  {CHAMPION_CARD, 0, 36, 6, 0, COLOR_RED, SPECIES_FAUN, 0, 0},
-  {CHAMPION_CARD, 0, 37, 4, 1, COLOR_RED, SPECIES_GOBLIN, 0, 0},
-  {CHAMPION_CARD, 1, 38, 8, 0, COLOR_RED, SPECIES_ELF, 0, 0},
-  {CHAMPION_CARD, 1, 39, 6, 1, COLOR_RED, SPECIES_CYCLOPS, 0, 0},
-  {CHAMPION_CARD, 1, 40, 4, 2, COLOR_RED, SPECIES_KOATL, 0, 0},
-  {CHAMPION_CARD, 1, 41, 8, 1, COLOR_RED, SPECIES_FAUN, 0, 0},
-  {CHAMPION_CARD, 1, 42, 6, 2, COLOR_RED, SPECIES_FAUN, 0, 0},
-  {CHAMPION_CARD, 1, 43, 4, 3, COLOR_RED, SPECIES_GOBLIN, 0, 0},
-  {CHAMPION_CARD, 1, 44, 12, 0, COLOR_RED, SPECIES_CYCLOPS, 0, 0},
-  {CHAMPION_CARD, 1, 45, 4, 4, COLOR_RED, SPECIES_KOATL, 0, 0},
-  {CHAMPION_CARD, 1, 46, 8, 2, COLOR_RED, SPECIES_ELF, 0, 0},
-  {CHAMPION_CARD, 1, 47, 6, 3, COLOR_RED, SPECIES_ELF, 0, 0},
-  {CHAMPION_CARD, 1, 48, 6, 4, COLOR_RED, SPECIES_GOBLIN, 0, 0},
-  {CHAMPION_CARD, 1, 49, 12, 1, COLOR_RED, SPECIES_CYCLOPS, 0, 0},
-  {CHAMPION_CARD, 1, 50, 4, 5, COLOR_RED, SPECIES_KOATL, 0, 0},
-  {CHAMPION_CARD, 1, 51, 8, 3, COLOR_RED, SPECIES_CYCLOPS, 0, 0},
-  {CHAMPION_CARD, 2, 52, 8, 4, COLOR_RED, SPECIES_GOBLIN, 0, 0},
-  {CHAMPION_CARD, 2, 53, 6, 5, COLOR_RED, SPECIES_FAUN, 0, 0},
-  {CHAMPION_CARD, 2, 54, 12, 2, COLOR_RED, SPECIES_CYCLOPS, 0, 0},
-  {CHAMPION_CARD, 2, 55, 4, 6, COLOR_RED, SPECIES_GOBLIN, 0, 0},
-  {CHAMPION_CARD, 2, 56, 8, 5, COLOR_RED, SPECIES_FAUN, 0, 0},
-  {CHAMPION_CARD, 2, 57, 6, 6, COLOR_RED, SPECIES_ELF, 0, 0},
-  {CHAMPION_CARD, 2, 58, 12, 3, COLOR_RED, SPECIES_KOATL, 0, 0},
-  {CHAMPION_CARD, 2, 59, 20, 0, COLOR_RED, SPECIES_CYCLOPS, 0, 0},
-  {CHAMPION_CARD, 2, 60, 12, 4, COLOR_RED, SPECIES_GOBLIN, 0, 0},
-  {CHAMPION_CARD, 2, 61, 8, 6, COLOR_RED, SPECIES_FAUN, 0, 0},
-  {CHAMPION_CARD, 3, 62, 20, 1, COLOR_RED, SPECIES_ELF, 0, 0},
-  {CHAMPION_CARD, 3, 63, 12, 5, COLOR_RED, SPECIES_CYCLOPS, 0, 0},
-  {CHAMPION_CARD, 3, 64, 20, 2, COLOR_RED, SPECIES_KOATL, 0, 0},
-  {CHAMPION_CARD, 3, 65, 12, 6, COLOR_RED, SPECIES_GOBLIN, 0, 0},
-  {CHAMPION_CARD, 3, 66, 20, 3, COLOR_RED, SPECIES_FAUN, 0, 0},
-  {CHAMPION_CARD, 3, 67, 20, 4, COLOR_RED, SPECIES_ELF, 0, 0},
-  {CHAMPION_CARD, 3, 68, 20, 5, COLOR_RED, SPECIES_KOATL, 0, 0},    // fullDeck[67]
-  {CHAMPION_CARD, 0, 69, 4, 0, COLOR_INDIGO, SPECIES_DWARF, 0, 0},
-  {CHAMPION_CARD, 0, 70, 6, 0, COLOR_INDIGO, SPECIES_CENTAUR, 0, 0},
-  {CHAMPION_CARD, 0, 71, 4, 1, COLOR_INDIGO, SPECIES_MINOTAUR, 0, 0},
-  {CHAMPION_CARD, 1, 72, 8, 0, COLOR_INDIGO, SPECIES_DWARF, 0, 0},
-  {CHAMPION_CARD, 1, 73, 6, 1, COLOR_INDIGO, SPECIES_FAIRY, 0, 0},
-  {CHAMPION_CARD, 1, 74, 4, 2, COLOR_INDIGO, SPECIES_LYCAN, 0, 0},
-  {CHAMPION_CARD, 1, 75, 8, 1, COLOR_INDIGO, SPECIES_CENTAUR, 0, 0},
-  {CHAMPION_CARD, 1, 76, 6, 2, COLOR_INDIGO, SPECIES_CENTAUR, 0, 0},
-  {CHAMPION_CARD, 1, 77, 4, 3, COLOR_INDIGO, SPECIES_MINOTAUR, 0, 0},
-  {CHAMPION_CARD, 1, 78, 12, 0, COLOR_INDIGO, SPECIES_FAIRY, 0, 0},
-  {CHAMPION_CARD, 1, 79, 4, 4, COLOR_INDIGO, SPECIES_LYCAN, 0, 0},
-  {CHAMPION_CARD, 1, 80, 8, 2, COLOR_INDIGO, SPECIES_DWARF, 0, 0},
-  {CHAMPION_CARD, 1, 81, 6, 3, COLOR_INDIGO, SPECIES_DWARF, 0, 0},
-  {CHAMPION_CARD, 1, 82, 6, 4, COLOR_INDIGO, SPECIES_MINOTAUR, 0, 0},
-  {CHAMPION_CARD, 1, 83, 12, 1, COLOR_INDIGO, SPECIES_FAIRY, 0, 0},
-  {CHAMPION_CARD, 1, 84, 4, 5, COLOR_INDIGO, SPECIES_LYCAN, 0, 0},
-  {CHAMPION_CARD, 1, 85, 8, 3, COLOR_INDIGO, SPECIES_FAIRY, 0, 0},
-  {CHAMPION_CARD, 2, 86, 8, 4, COLOR_INDIGO, SPECIES_MINOTAUR, 0, 0},
-  {CHAMPION_CARD, 2, 87, 6, 5, COLOR_INDIGO, SPECIES_CENTAUR, 0, 0},
-  {CHAMPION_CARD, 2, 88, 12, 2, COLOR_INDIGO, SPECIES_FAIRY, 0, 0},
-  {CHAMPION_CARD, 2, 89, 4, 6, COLOR_INDIGO, SPECIES_MINOTAUR, 0, 0},
-  {CHAMPION_CARD, 2, 90, 8, 5, COLOR_INDIGO, SPECIES_CENTAUR, 0, 0},
-  {CHAMPION_CARD, 2, 91, 6, 6, COLOR_INDIGO, SPECIES_DWARF, 0, 0},
-  {CHAMPION_CARD, 2, 92, 12, 3, COLOR_INDIGO, SPECIES_LYCAN, 0, 0},
-  {CHAMPION_CARD, 2, 93, 20, 0, COLOR_INDIGO, SPECIES_FAIRY, 0, 0},
-  {CHAMPION_CARD, 2, 94, 12, 4, COLOR_INDIGO, SPECIES_MINOTAUR, 0, 0},
-  {CHAMPION_CARD, 2, 95, 8, 6, COLOR_INDIGO, SPECIES_CENTAUR, 0, 0},
-  {CHAMPION_CARD, 3, 96, 20, 1, COLOR_INDIGO, SPECIES_DWARF, 0, 0},
-  {CHAMPION_CARD, 3, 97, 12, 5, COLOR_INDIGO, SPECIES_FAIRY, 0, 0},
-  {CHAMPION_CARD, 3, 98, 20, 2, COLOR_INDIGO, SPECIES_LYCAN, 0, 0},
-  {CHAMPION_CARD, 3, 99, 12, 6, COLOR_INDIGO, SPECIES_MINOTAUR, 0, 0},
-  {CHAMPION_CARD, 3, 100, 20, 3, COLOR_INDIGO, SPECIES_CENTAUR, 0, 0},
-  {CHAMPION_CARD, 3, 101, 20, 4, COLOR_INDIGO, SPECIES_DWARF, 0, 0},
-  {CHAMPION_CARD, 3, 102, 20, 5, COLOR_INDIGO, SPECIES_LYCAN, 0, 0},    // fullDeck[101]
+  {CHAMPION_CARD, 0, 1, 4, 0, COLOR_ORANGE, SPECIES_HUMAN, 0, 0, 2.5, 2.5, 10, 10, 10, 0},  // fullDeck[0]
+  {CHAMPION_CARD, 0, 2, 6, 0, COLOR_ORANGE, SPECIES_HOBBIT, 0, 0, 3.5, 3.5, 14, 14, 14, 0},
+  {CHAMPION_CARD, 0, 3, 4, 1, COLOR_ORANGE, SPECIES_ORC, 0, 0, 3.5, 2.5, 14, 10, 12, 0},
+  {CHAMPION_CARD, 1, 4, 8, 0, COLOR_ORANGE, SPECIES_HUMAN, 0, 0, 4.5, 4.5, 4.5, 4.5, 4.5, 0},
+  {CHAMPION_CARD, 1, 5, 6, 1, COLOR_ORANGE, SPECIES_DRAGON, 0, 0, 4.5, 3.5, 4.5, 3.5, 4, 0},
+  {CHAMPION_CARD, 1, 6, 4, 2, COLOR_ORANGE, SPECIES_AVEN, 0, 0, 4.5, 2.5, 4.5, 2.5, 3.5, 0},
+  {CHAMPION_CARD, 1, 7, 8, 1, COLOR_ORANGE, SPECIES_HOBBIT, 0, 0, 5.5, 4.5, 5.5, 4.5, 5, 0},
+  {CHAMPION_CARD, 1, 8, 6, 2, COLOR_ORANGE, SPECIES_HOBBIT, 0, 0, 5.5, 3.5, 5.5, 3.5, 4.5, 0},
+  {CHAMPION_CARD, 1, 9, 4, 3, COLOR_ORANGE, SPECIES_ORC, 0, 0, 5.5, 2.5, 5.5, 2.5, 4, 0},
+  {CHAMPION_CARD, 1, 10, 12, 0, COLOR_ORANGE, SPECIES_DRAGON, 0, 0, 6.5, 6.5, 6.5, 6.5, 6.5, 0},
+  {CHAMPION_CARD, 1, 11, 4, 4, COLOR_ORANGE, SPECIES_AVEN, 0, 0, 6.5, 2.5, 6.5, 2.5, 4.5, 0},
+  {CHAMPION_CARD, 1, 12, 8, 2, COLOR_ORANGE, SPECIES_HUMAN, 0, 0, 6.5, 4.5, 6.5, 4.5, 5.5, 0},
+  {CHAMPION_CARD, 1, 13, 6, 3, COLOR_ORANGE, SPECIES_HUMAN, 0, 0, 6.5, 3.5, 6.5, 3.5, 5, 0},
+  {CHAMPION_CARD, 1, 14, 6, 4, COLOR_ORANGE, SPECIES_ORC, 0, 0, 7.5, 3.5, 7.5, 3.5, 5.5, 0},
+  {CHAMPION_CARD, 1, 15, 12, 1, COLOR_ORANGE, SPECIES_DRAGON, 0, 0, 7.5, 6.5, 7.5, 6.5, 7, 0},
+  {CHAMPION_CARD, 1, 16, 4, 5, COLOR_ORANGE, SPECIES_AVEN, 0, 0, 7.5, 2.5, 7.5, 2.5, 5, 0},
+  {CHAMPION_CARD, 1, 17, 8, 3, COLOR_ORANGE, SPECIES_DRAGON, 0, 0, 7.5, 4.5, 7.5, 4.5, 6, 0},
+  {CHAMPION_CARD, 2, 18, 8, 4, COLOR_ORANGE, SPECIES_ORC, 0, 0, 8.5, 4.5, 4.25, 2.25, 3.25, 0},
+  {CHAMPION_CARD, 2, 19, 6, 5, COLOR_ORANGE, SPECIES_HOBBIT, 0, 0, 8.5, 3.5, 4.25, 1.75, 3, 0},
+  {CHAMPION_CARD, 2, 20, 12, 2, COLOR_ORANGE, SPECIES_DRAGON, 0, 0, 8.5, 6.5, 4.25, 3.25, 3.75, 0},
+  {CHAMPION_CARD, 2, 21, 4, 6, COLOR_ORANGE, SPECIES_ORC, 0, 0, 8.5, 2.5, 4.25, 1.25, 2.75, 0},
+  {CHAMPION_CARD, 2, 22, 8, 5, COLOR_ORANGE, SPECIES_HOBBIT, 0, 0, 9.5, 4.5, 4.75, 2.25, 3.5, 0},
+  {CHAMPION_CARD, 2, 23, 6, 6, COLOR_ORANGE, SPECIES_HUMAN, 0, 0, 9.5, 3.5, 4.75, 1.75, 3.25, 0},
+  {CHAMPION_CARD, 2, 24, 12, 3, COLOR_ORANGE, SPECIES_AVEN, 0, 0, 9.5, 6.5, 4.75, 3.25, 4, 0},
+  {CHAMPION_CARD, 2, 25, 20, 0, COLOR_ORANGE, SPECIES_DRAGON, 0, 0, 10.5, 10.5, 5.25, 5.25, 5.25, 0},
+  {CHAMPION_CARD, 2, 26, 12, 4, COLOR_ORANGE, SPECIES_ORC, 0, 0, 10.5, 6.5, 5.25, 3.25, 4.25, 0},
+  {CHAMPION_CARD, 2, 27, 8, 6, COLOR_ORANGE, SPECIES_HOBBIT, 0, 0, 10.5, 4.5, 5.25, 2.25, 3.75, 0},
+  {CHAMPION_CARD, 3, 28, 20, 1, COLOR_ORANGE, SPECIES_HUMAN, 0, 0, 11.5, 10.5, 3.83, 3.5, 3.67, 0},
+  {CHAMPION_CARD, 3, 29, 12, 5, COLOR_ORANGE, SPECIES_DRAGON, 0, 0, 11.5, 6.5, 3.83, 2.17, 3, 0},
+  {CHAMPION_CARD, 3, 30, 20, 2, COLOR_ORANGE, SPECIES_AVEN, 0, 0, 12.5, 10.5, 4.17, 3.5, 3.83, 0},
+  {CHAMPION_CARD, 3, 31, 12, 6, COLOR_ORANGE, SPECIES_ORC, 0, 0, 12.5, 6.5, 4.17, 2.17, 3.17, 0},
+  {CHAMPION_CARD, 3, 32, 20, 3, COLOR_ORANGE, SPECIES_HOBBIT, 0, 0, 13.5, 10.5, 4.5, 3.5, 4, 0},
+  {CHAMPION_CARD, 3, 33, 20, 4, COLOR_ORANGE, SPECIES_HUMAN, 0, 0, 14.5, 10.5, 4.83, 3.5, 4.17, 0},
+  {CHAMPION_CARD, 3, 34, 20, 5, COLOR_ORANGE, SPECIES_AVEN, 0, 0, 15.5, 10.5, 5.17, 3.5, 4.33, 0},
+  {CHAMPION_CARD, 0, 35, 4, 0, COLOR_RED, SPECIES_ELF, 0, 0, 2.5, 2.5, 10, 10, 10, 0},
+  {CHAMPION_CARD, 0, 36, 6, 0, COLOR_RED, SPECIES_FAUN, 0, 0, 3.5, 3.5, 14, 14, 14, 0},
+  {CHAMPION_CARD, 0, 37, 4, 1, COLOR_RED, SPECIES_GOBLIN, 0, 0, 3.5, 2.5, 14, 10, 12, 0},
+  {CHAMPION_CARD, 1, 38, 8, 0, COLOR_RED, SPECIES_ELF, 0, 0, 4.5, 4.5, 4.5, 4.5, 4.5, 0},
+  {CHAMPION_CARD, 1, 39, 6, 1, COLOR_RED, SPECIES_CYCLOPS, 0, 0, 4.5, 3.5, 4.5, 3.5, 4, 0},
+  {CHAMPION_CARD, 1, 40, 4, 2, COLOR_RED, SPECIES_KOATL, 0, 0, 4.5, 2.5, 4.5, 2.5, 3.5, 0},
+  {CHAMPION_CARD, 1, 41, 8, 1, COLOR_RED, SPECIES_FAUN, 0, 0, 5.5, 4.5, 5.5, 4.5, 5, 0},
+  {CHAMPION_CARD, 1, 42, 6, 2, COLOR_RED, SPECIES_FAUN, 0, 0, 5.5, 3.5, 5.5, 3.5, 4.5, 0},
+  {CHAMPION_CARD, 1, 43, 4, 3, COLOR_RED, SPECIES_GOBLIN, 0, 0, 5.5, 2.5, 5.5, 2.5, 4, 0},
+  {CHAMPION_CARD, 1, 44, 12, 0, COLOR_RED, SPECIES_CYCLOPS, 0, 0, 6.5, 6.5, 6.5, 6.5, 6.5, 0},
+  {CHAMPION_CARD, 1, 45, 4, 4, COLOR_RED, SPECIES_KOATL, 0, 0, 6.5, 2.5, 6.5, 2.5, 4.5, 0},
+  {CHAMPION_CARD, 1, 46, 8, 2, COLOR_RED, SPECIES_ELF, 0, 0, 6.5, 4.5, 6.5, 4.5, 5.5, 0},
+  {CHAMPION_CARD, 1, 47, 6, 3, COLOR_RED, SPECIES_ELF, 0, 0, 6.5, 3.5, 6.5, 3.5, 5, 0},
+  {CHAMPION_CARD, 1, 48, 6, 4, COLOR_RED, SPECIES_GOBLIN, 0, 0, 7.5, 3.5, 7.5, 3.5, 5.5, 0},
+  {CHAMPION_CARD, 1, 49, 12, 1, COLOR_RED, SPECIES_CYCLOPS, 0, 0, 7.5, 6.5, 7.5, 6.5, 7, 0},
+  {CHAMPION_CARD, 1, 50, 4, 5, COLOR_RED, SPECIES_KOATL, 0, 0, 7.5, 2.5, 7.5, 2.5, 5, 0},
+  {CHAMPION_CARD, 1, 51, 8, 3, COLOR_RED, SPECIES_CYCLOPS, 0, 0, 7.5, 4.5, 7.5, 4.5, 6, 0},
+  {CHAMPION_CARD, 2, 52, 8, 4, COLOR_RED, SPECIES_GOBLIN, 0, 0, 8.5, 4.5, 4.25, 2.25, 3.25, 0},
+  {CHAMPION_CARD, 2, 53, 6, 5, COLOR_RED, SPECIES_FAUN, 0, 0, 8.5, 3.5, 4.25, 1.75, 3, 0},
+  {CHAMPION_CARD, 2, 54, 12, 2, COLOR_RED, SPECIES_CYCLOPS, 0, 0, 8.5, 6.5, 4.25, 3.25, 3.75, 0},
+  {CHAMPION_CARD, 2, 55, 4, 6, COLOR_RED, SPECIES_GOBLIN, 0, 0, 8.5, 2.5, 4.25, 1.25, 2.75, 0},
+  {CHAMPION_CARD, 2, 56, 8, 5, COLOR_RED, SPECIES_FAUN, 0, 0, 9.5, 4.5, 4.75, 2.25, 3.5, 0},
+  {CHAMPION_CARD, 2, 57, 6, 6, COLOR_RED, SPECIES_ELF, 0, 0, 9.5, 3.5, 4.75, 1.75, 3.25, 0},
+  {CHAMPION_CARD, 2, 58, 12, 3, COLOR_RED, SPECIES_KOATL, 0, 0, 9.5, 6.5, 4.75, 3.25, 4, 0},
+  {CHAMPION_CARD, 2, 59, 20, 0, COLOR_RED, SPECIES_CYCLOPS, 0, 0, 10.5, 10.5, 5.25, 5.25, 5.25, 0},
+  {CHAMPION_CARD, 2, 60, 12, 4, COLOR_RED, SPECIES_GOBLIN, 0, 0, 10.5, 6.5, 5.25, 3.25, 4.25, 0},
+  {CHAMPION_CARD, 2, 61, 8, 6, COLOR_RED, SPECIES_FAUN, 0, 0, 10.5, 4.5, 5.25, 2.25, 3.75, 0},
+  {CHAMPION_CARD, 3, 62, 20, 1, COLOR_RED, SPECIES_ELF, 0, 0, 11.5, 10.5, 3.83, 3.5, 3.67, 0},
+  {CHAMPION_CARD, 3, 63, 12, 5, COLOR_RED, SPECIES_CYCLOPS, 0, 0, 11.5, 6.5, 3.83, 2.17, 3, 0},
+  {CHAMPION_CARD, 3, 64, 20, 2, COLOR_RED, SPECIES_KOATL, 0, 0, 12.5, 10.5, 4.17, 3.5, 3.83, 0},
+  {CHAMPION_CARD, 3, 65, 12, 6, COLOR_RED, SPECIES_GOBLIN, 0, 0, 12.5, 6.5, 4.17, 2.17, 3.17, 0},
+  {CHAMPION_CARD, 3, 66, 20, 3, COLOR_RED, SPECIES_FAUN, 0, 0, 13.5, 10.5, 4.5, 3.5, 4, 0},
+  {CHAMPION_CARD, 3, 67, 20, 4, COLOR_RED, SPECIES_ELF, 0, 0, 14.5, 10.5, 4.83, 3.5, 4.17, 0},
+  {CHAMPION_CARD, 3, 68, 20, 5, COLOR_RED, SPECIES_KOATL, 0, 0, 15.5, 10.5, 5.17, 3.5, 4.33, 0},
+  {CHAMPION_CARD, 0, 69, 4, 0, COLOR_INDIGO, SPECIES_DWARF, 0, 0, 2.5, 2.5, 10, 10, 10, 0},
+  {CHAMPION_CARD, 0, 70, 6, 0, COLOR_INDIGO, SPECIES_CENTAUR, 0, 0, 3.5, 3.5, 14, 14, 14, 0},
+  {CHAMPION_CARD, 0, 71, 4, 1, COLOR_INDIGO, SPECIES_MINOTAUR, 0, 0, 3.5, 2.5, 14, 10, 12, 0},
+  {CHAMPION_CARD, 1, 72, 8, 0, COLOR_INDIGO, SPECIES_DWARF, 0, 0, 4.5, 4.5, 4.5, 4.5, 4.5, 0},
+  {CHAMPION_CARD, 1, 73, 6, 1, COLOR_INDIGO, SPECIES_FAIRY, 0, 0, 4.5, 3.5, 4.5, 3.5, 4, 0},
+  {CHAMPION_CARD, 1, 74, 4, 2, COLOR_INDIGO, SPECIES_LYCAN, 0, 0, 4.5, 2.5, 4.5, 2.5, 3.5, 0},
+  {CHAMPION_CARD, 1, 75, 8, 1, COLOR_INDIGO, SPECIES_CENTAUR, 0, 0, 5.5, 4.5, 5.5, 4.5, 5, 0},
+  {CHAMPION_CARD, 1, 76, 6, 2, COLOR_INDIGO, SPECIES_CENTAUR, 0, 0, 5.5, 3.5, 5.5, 3.5, 4.5, 0},
+  {CHAMPION_CARD, 1, 77, 4, 3, COLOR_INDIGO, SPECIES_MINOTAUR, 0, 0, 5.5, 2.5, 5.5, 2.5, 4, 0},
+  {CHAMPION_CARD, 1, 78, 12, 0, COLOR_INDIGO, SPECIES_FAIRY, 0, 0, 6.5, 6.5, 6.5, 6.5, 6.5, 0},
+  {CHAMPION_CARD, 1, 79, 4, 4, COLOR_INDIGO, SPECIES_LYCAN, 0, 0, 6.5, 2.5, 6.5, 2.5, 4.5, 0},
+  {CHAMPION_CARD, 1, 80, 8, 2, COLOR_INDIGO, SPECIES_DWARF, 0, 0, 6.5, 4.5, 6.5, 4.5, 5.5, 0},
+  {CHAMPION_CARD, 1, 81, 6, 3, COLOR_INDIGO, SPECIES_DWARF, 0, 0, 6.5, 3.5, 6.5, 3.5, 5, 0},
+  {CHAMPION_CARD, 1, 82, 6, 4, COLOR_INDIGO, SPECIES_MINOTAUR, 0, 0, 7.5, 3.5, 7.5, 3.5, 5.5, 0},
+  {CHAMPION_CARD, 1, 83, 12, 1, COLOR_INDIGO, SPECIES_FAIRY, 0, 0, 7.5, 6.5, 7.5, 6.5, 7, 0},
+  {CHAMPION_CARD, 1, 84, 4, 5, COLOR_INDIGO, SPECIES_LYCAN, 0, 0, 7.5, 2.5, 7.5, 2.5, 5, 0},
+  {CHAMPION_CARD, 1, 85, 8, 3, COLOR_INDIGO, SPECIES_FAIRY, 0, 0, 7.5, 4.5, 7.5, 4.5, 6, 0},
+  {CHAMPION_CARD, 2, 86, 8, 4, COLOR_INDIGO, SPECIES_MINOTAUR, 0, 0, 8.5, 4.5, 4.25, 2.25, 3.25, 0},
+  {CHAMPION_CARD, 2, 87, 6, 5, COLOR_INDIGO, SPECIES_CENTAUR, 0, 0, 8.5, 3.5, 4.25, 1.75, 3, 0},
+  {CHAMPION_CARD, 2, 88, 12, 2, COLOR_INDIGO, SPECIES_FAIRY, 0, 0, 8.5, 6.5, 4.25, 3.25, 3.75, 0},
+  {CHAMPION_CARD, 2, 89, 4, 6, COLOR_INDIGO, SPECIES_MINOTAUR, 0, 0, 8.5, 2.5, 4.25, 1.25, 2.75, 0},
+  {CHAMPION_CARD, 2, 90, 8, 5, COLOR_INDIGO, SPECIES_CENTAUR, 0, 0, 9.5, 4.5, 4.75, 2.25, 3.5, 0},
+  {CHAMPION_CARD, 2, 91, 6, 6, COLOR_INDIGO, SPECIES_DWARF, 0, 0, 9.5, 3.5, 4.75, 1.75, 3.25, 0},
+  {CHAMPION_CARD, 2, 92, 12, 3, COLOR_INDIGO, SPECIES_LYCAN, 0, 0, 9.5, 6.5, 4.75, 3.25, 4, 0},
+  {CHAMPION_CARD, 2, 93, 20, 0, COLOR_INDIGO, SPECIES_FAIRY, 0, 0, 10.5, 10.5, 5.25, 5.25, 5.25, 0},
+  {CHAMPION_CARD, 2, 94, 12, 4, COLOR_INDIGO, SPECIES_MINOTAUR, 0, 0, 10.5, 6.5, 5.25, 3.25, 4.25, 0},
+  {CHAMPION_CARD, 2, 95, 8, 6, COLOR_INDIGO, SPECIES_CENTAUR, 0, 0, 10.5, 4.5, 5.25, 2.25, 3.75, 0},
+  {CHAMPION_CARD, 3, 96, 20, 1, COLOR_INDIGO, SPECIES_DWARF, 0, 0, 11.5, 10.5, 3.83, 3.5, 3.67, 0},
+  {CHAMPION_CARD, 3, 97, 12, 5, COLOR_INDIGO, SPECIES_FAIRY, 0, 0, 11.5, 6.5, 3.83, 2.17, 3, 0},
+  {CHAMPION_CARD, 3, 98, 20, 2, COLOR_INDIGO, SPECIES_LYCAN, 0, 0, 12.5, 10.5, 4.17, 3.5, 3.83, 0},
+  {CHAMPION_CARD, 3, 99, 12, 6, COLOR_INDIGO, SPECIES_MINOTAUR, 0, 0, 12.5, 6.5, 4.17, 2.17, 3.17, 0},
+  {CHAMPION_CARD, 3, 100, 20, 3, COLOR_INDIGO, SPECIES_CENTAUR, 0, 0, 13.5, 10.5, 4.5, 3.5, 4, 0},
+  {CHAMPION_CARD, 3, 101, 20, 4, COLOR_INDIGO, SPECIES_DWARF, 0, 0, 14.5, 10.5, 4.83, 3.5, 4.17, 0},
+  {CHAMPION_CARD, 3, 102, 20, 5, COLOR_INDIGO, SPECIES_LYCAN, 0, 0, 15.5, 10.5, 5.17, 3.5, 4.33, 0},    // fullDeck[101]
 
-  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1}, // fullDeck[102]
-  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1},
-  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1},
-  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1},
-  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1},
-  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1},
-  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1},
-  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1},
-  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1},
+  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1, 0, 0, 0, 0, 2, 0}, // fullDeck[102]
+  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1, 0, 0, 0, 0, 2, 0},
+  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1, 0, 0, 0, 0, 2, 0},
+  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1, 0, 0, 0, 0, 2, 0},
+  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1, 0, 0, 0, 0, 2, 0},
+  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1, 0, 0, 0, 0, 2, 0},
+  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1, 0, 0, 0, 0, 2, 0},
+  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1, 0, 0, 0, 0, 2, 0},
+  {DRAW_CARD, 1, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 2, 1, 0, 0, 0, 0, 2, 0},
   
-  {DRAW_CARD, 2, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 3, 2},  // fullDeck[111]
-  {DRAW_CARD, 2, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 3, 2},
-  {DRAW_CARD, 2, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 3, 2},
-  {DRAW_CARD, 2, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 3, 2},
-  {DRAW_CARD, 2, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 3, 2},
-  {DRAW_CARD, 2, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 3, 2}  // fullDeck[116]
+  {DRAW_CARD, 2, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 3, 2, 0, 0, 0, 0, 3, 0}, // fullDeck[111]
+  {DRAW_CARD, 2, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 3, 2, 0, 0, 0, 0, 3, 0},
+  {DRAW_CARD, 2, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 3, 2, 0, 0, 0, 0, 3, 0},
+  {DRAW_CARD, 2, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 3, 2, 0, 0, 0, 0, 3, 0},
+  {DRAW_CARD, 2, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 3, 2, 0, 0, 0, 0, 3, 0},
+  {DRAW_CARD, 2, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 3, 2, 0, 0, 0, 0, 3, 0}, // fullDeck[116]
+
+  {CASH_CARD, 0, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 0, 0, 0, 0, 0, 0, 2.5, 5}, // cash cards
+  {CASH_CARD, 0, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 0, 0, 0, 0, 0, 0, 2.5, 5}, 
+  {CASH_CARD, 0, 0, 0, 0, COLOR_NOT_APPLICABLE, SPECIES_NOT_APPLICABLE, 0, 0, 0, 0, 0, 0, 2.5, 5}, // fullDeck[119]
 }; 
 
 
@@ -353,17 +440,45 @@ struct gamestate
   enum PlayerID player_to_move; // PLAYER_A, PLAYER_B (this will generally be current_player in attack phase, and the not-current player in defense phase)
 };
 
+/*
+ * card visibility: for each card in hands and decks, need to have one value in game state from player A perspective and one from player B perspective:
+visible
+hidden (could be anywhere, including in cards left completely out of play for this game)
+hidden but known to be somewhere in own deck
+hidden but known to be somewhere in opponent deck
+hidden but known to be in opponent’s hand (effectively, this is the same as ‘visible’ from the strategic value perspective)
+hidden but known to be in either opponent’s hand or deck
+ * 
+ * 
+ */
+
 // game / sim stats
 struct gamestats {  
   uint16_t cumul_player_wins[2]; // number of wins for each player
   uint16_t cumul_number_of_draws;  // to track number  of games that do not end before the maximum number of turns
   uint16_t game_end_turn_number[MAX_NUMBER_OF_SIM]; // keeps track of 'turn' at which game ended for each simulation
-  uint16_t cash_progression[MAX_NUMBER_OF_SIM][MAX_NUMBER_OF_TURNS][2]; // cash on hand by each player at each turn of the game, for each sim
+  //uint16_t cash_progression[MAX_NUMBER_OF_SIM][MAX_NUMBER_OF_TURNS][2]; // cash on hand by each player at each turn of the game, for each sim
   uint16_t simnum; // simulation counter
 };
 
-// global variables (keep to a minimum)
-bool debug_enabled = false;
+// action structure
+/*
+action type enum: PLAYEXCHANGECARD, PLAYDRAWRECALLCARD, PASS, PLAYCHAMPIONCARDS, OFFERDRAW, FORFEIT, ACCEPTDRAW, REFUSEDRAW, DISCARDCARDS (for mulligan and discard to 7)
+
+
+championtoexchange, when playing exchange card
+* 
+numberofchampioncardsplayed = uint 0 to 3
+numberofcardsdiscarted
+
+cardstorecall from discard when playing draw card
+recallordrawcards enum: recallcards, drawcards
+
+championcardsplayed = array(3) of uint (index in full deck)
+* 
+cardsdiscarted = array(3) of uint (index in full deck)
+
+*/
 
 // function definitions
 
@@ -379,12 +494,11 @@ int main()
   
   // decide on number of simulations (games) to run
   uint16_t numsim;
-  numsim = MAX_NUMBER_OF_SIM;
-  //numsim = 1;  
+  numsim = debug_enabled ? DEBUG_NUMBER_OF_SIM : MAX_NUMBER_OF_SIM;   
   
   // initialize initial cash for a simulation run
   uint16_t initial_cash;
-  initial_cash = 24;
+  initial_cash = 30;
   
   ORACLE_0a_simulation(numsim, initial_cash, &gstats);
   ORACLE_9_present_results(&gstats);
@@ -427,6 +541,7 @@ void ORACLE_0b_play_game(uint16_t initial_cash, struct gamestats* gstats)
   {
     gstate.turn++;  // consider moving this step inside 'play_turn()' function
     if (debug_enabled) { printf(" Begin round %.4u, turn %.4u\n", (uint16_t) ((gstate.turn-1) * 0.5)+1, gstate.turn); }
+    // consider calculating and storing the 'round' number instead of calculating it multiple times here
     ORACLE_4a_play_turn(gstats, &gstate);
     if (debug_enabled) { printf(" End   round %.4u, turn %.4u\n", (uint16_t) ((gstate.turn-1) * 0.5)+1, gstate.turn); }
     if (debug_enabled) { printf(" Turn ended with %d A, %d B cash balances; %d A, %d B energy; %d A, %d B hand size; %d A, %d B deck size; %d A, %d B discard size\n", 
@@ -451,6 +566,7 @@ void ORACLE_0b_play_game(uint16_t initial_cash, struct gamestats* gstats)
   if (!gstate.someone_has_zero_energy) gstate.game_state = DRAW;
    
   if (debug_enabled) { printf("Game ended at round %.4u, turn %.4u, winner is %u\n", (uint16_t)((gstate.turn-1) * 0.5)+1, gstate.turn, gstate.game_state); }
+  // refresh_display()
   
   // compile final game stats (increment cumulative player wins and 
   // save game end turn number) in &gstats
@@ -485,8 +601,10 @@ void ORACLE_1_setup_game(uint16_t initial_cash, struct gamestate* gstate)
   gstate->deck[PLAYER_A].top = -1; 
   gstate->deck[PLAYER_B].top = -1;
   
+  // refresh_display()
+  
   // draw deckA and deckB
-  // randomly sample 39 * 2 = 78 card indices from the full deck
+  // randomly sample 40 * 2 = 80 card indices from the full deck
   uint8_t rndCardIndex[FULL_DECK_SIZE];
   uint8_t i;
   for (i = 0; i < FULL_DECK_SIZE; i++)
@@ -496,7 +614,7 @@ void ORACLE_1_setup_game(uint16_t initial_cash, struct gamestate* gstate)
   
   RND_partial_shuffle(rndCardIndex, FULL_DECK_SIZE, 2*MAX_DECK_STACK_SIZE);
 
-  // push to deck_A and deck_B alternately the 78 card indices
+  // push to deck_A and deck_B alternately the 80 card indices
   i = 0;
   while (i < 2*MAX_DECK_STACK_SIZE)
   {
@@ -524,6 +642,8 @@ void ORACLE_1_setup_game(uint16_t initial_cash, struct gamestate* gstate)
   HDCLL_initialize(&gstate->combat_zone[PLAYER_A]);
   HDCLL_initialize(&gstate->combat_zone[PLAYER_B]);
   
+  // refresh_display()
+  
   // draw 5 cards hand for each player
   // for each player, pop 5 card indices from the deck and place them in their hand  
   uint8_t cardindex;
@@ -534,13 +654,74 @@ void ORACLE_1_setup_game(uint16_t initial_cash, struct gamestate* gstate)
     cardindex = DeckStk_pop(&gstate->deck[PLAYER_B]);
     HDCLL_insertNodeAtBeginning(&gstate->hand[PLAYER_B], cardindex);    
   }  
-   
-  ORACLE_3_apply_mulligan();
+  
+  // refresh_display()
+  
+  ORACLE_3_apply_mulligan(gstate);
 
 } // setup_game
 
-void ORACLE_3_apply_mulligan() 
+void ORACLE_3_apply_mulligan(struct gamestate* gstate) 
 {
+  uint8_t max_nbr_cards_to_mulligan = 2;
+  
+  // for each card in hand of player B
+  // assess how many cards we want to mulligan (up to the maximum) based on 'power' of each card in hand
+  struct LLNode* current = gstate->hand[PLAYER_B].head;
+  uint8_t nbr_cards_to_mulligan = 0;
+  for (uint8_t i = 0; (i < gstate->hand[PLAYER_B].size) && (nbr_cards_to_mulligan < max_nbr_cards_to_mulligan); i++)
+  {
+    if (debug_enabled) { printf(" Card %u power %f \n", current->data, fullDeck[current->data].power); }
+    if (fullDeck[current->data].power < AVERAGE_POWER_FOR_MULLIGAN)
+    {
+      nbr_cards_to_mulligan++;
+    }
+    current = current->next; 
+  }
+  
+  if (debug_enabled) { printf("Number of cards to mulligan: %u\n", nbr_cards_to_mulligan); }
+  if (debug_enabled) { printf(" Hand B prior to mulligan: "); }
+  if (debug_enabled) { HDCLL_printLinkedList(&gstate->hand[PLAYER_B]); }
+  if (debug_enabled) { printf("\n"); }
+  
+  // discard so many cards from hand
+  float minpower = 100.0;
+  uint8_t card_with_lowest_power = 0;
+  uint8_t nbr_cards_left_to_mulligan = nbr_cards_to_mulligan;
+  while (nbr_cards_left_to_mulligan > 0)
+  {
+    // find card with lowest 'power'
+    minpower = 100.0;
+    card_with_lowest_power = 0;
+    current = gstate->hand[PLAYER_B].head;
+    for (uint8_t i = 0; i < gstate->hand[PLAYER_B].size; i++)
+    {
+      if ( fullDeck[current->data].power < minpower)
+      {
+        minpower = fullDeck[current->data].power;
+        card_with_lowest_power = current->data;
+      }
+      current = current->next; 
+    }
+      
+    // discard the card with lowest 'power' that is still in hand
+    HDCLL_removeNodeByValue(&gstate->hand[PLAYER_B], card_with_lowest_power);
+    HDCLL_insertNodeAtBeginning(&gstate->discard[PLAYER_B], card_with_lowest_power); 
+    nbr_cards_left_to_mulligan--;
+    if (debug_enabled) { printf("Discarded card %u which had power %f\n", card_with_lowest_power, fullDeck[card_with_lowest_power].power); } 
+    // refresh_display()   
+  } 
+  
+  // draw so many cards from deck to hand
+  for (uint8_t i = 0; i < nbr_cards_to_mulligan; i++)
+  {
+    ORACLE_4b_draw1card(gstate, PLAYER_B);
+    if (debug_enabled) { printf("Drew card %u which had power %f\n", gstate->hand[PLAYER_B].head->data, fullDeck[gstate->hand[PLAYER_B].head->data].power); }  
+    // refresh_display()
+  }
+  
+  
+
   // for each card in Player B's hand
     // compile stats about 'power' of each card in hand of current player: make use of helper function for that
     // store 'power' and 'efficiency' directly as constants in 'fullDeck' and just look them up here for each card in the hand  
@@ -566,7 +747,10 @@ void ORACLE_4a_play_turn(struct gamestats* gstats, struct gamestate* gstate)
   enum PlayerID defender = 1 - gstate->current_player;
   
   // 4a: draw 1 card
+  // refresh_display()
   if (!(gstate->turn == 1 && attacker == PLAYER_A)) ORACLE_4b_draw1card(gstate, attacker);
+  //ORACLE_4b_draw1card(gstate, attacker);
+  // refresh_display()
   
   // consider including in one 'helper' function called 'begin_of_turn()' the following 4 actions:
   // turn++ (to be transfered from 'play game')
@@ -580,6 +764,8 @@ void ORACLE_4a_play_turn(struct gamestats* gstats, struct gamestate* gstate)
   
   if (gstate->hand[attacker].size > 0) // if attacker's hand is not empty
   {
+    // refresh_display() and ask attacker to make a choice, if the attacker is a non-AI player
+    
     // pick one card randomly from attacker's hand and play it. If that's a champion card, this means putting it in the combat zone.
     // need to make a list first of only the cards that the attacker has enough cash to play, and randomly pick one of those (not the entire hand)
     uint8_t attackerAffordableCardIndices[gstate->hand[attacker].size];
@@ -594,6 +780,9 @@ void ORACLE_4a_play_turn(struct gamestats* gstats, struct gamestate* gstate)
       possible_attacker_card_index = attacker_hand[i];
       if (fullDeck[possible_attacker_card_index].cost <= gstate->current_cash_balance[attacker])
       {
+        // if the possible attacker card is a cash card, need to check if there is also an affordable champion card in the hand that could be discarded in exchange for lunas
+        // otherwise, the cash card cannot be part of the list of possible attacker cards
+        
         attackerAffordableCardIndices[numberOfAffordableAttackerCardsInHand] = possible_attacker_card_index;
         numberOfAffordableAttackerCardsInHand++;
       }
@@ -618,45 +807,52 @@ void ORACLE_4a_play_turn(struct gamestats* gstats, struct gamestate* gstate)
       // need to deduct from attacker's cash the cost of playing the card
       gstate->current_cash_balance[attacker] -= fullDeck[attackerCardIndexToPlay].cost;
     }
+    
+    // refresh_display()
     	  
     // if there is a combat, as a temporary strategy, defender plays one champion randomly from their hand, if their hand is non-empty
     if (gstate->combat_zone[attacker].size > 0) // if there is a combat
     {      
       if (gstate->hand[defender].size > 0) // if defender hand is not empty
       {
-        // check list of defender's champion cards and if there are some 1 or more champion cards,
-        // pick one champion randomly from defender's hand and play it.
-        // build array with list of champion cards' indices:
-        uint8_t defenderAffordableChampionCardIndices[gstate->hand[defender].size];
-        uint8_t numberOfAffordableDefenderChampionsInHand = 0;       
+        // refresh_display() and wait for defending player to make a choice if defending player is not an AI
         
-        // convert gstate->hand[defender] to an array here for more efficient searching in the loop below
-        uint8_t* defender_hand = HDCLL_toArray(&gstate->hand[defender]);
-        
-        uint8_t possible_champion_card_index = 0;
-        for (uint8_t i = 0; i < gstate->hand[defender].size; i++)
-        {          
-          possible_champion_card_index = defender_hand[i];
-          if ((fullDeck[possible_champion_card_index].card_type == CHAMPION_CARD) 
-              && (fullDeck[possible_champion_card_index].cost <= gstate->current_cash_balance[defender])) 
-          {
-            defenderAffordableChampionCardIndices[numberOfAffordableDefenderChampionsInHand] = possible_champion_card_index;
-            numberOfAffordableDefenderChampionsInHand++;
-          }
-        } // for
-        free(defender_hand);
-        
-        if (numberOfAffordableDefenderChampionsInHand > 0)
+        if (genRand(&MTwister_rand_struct) <= 0.47) // only defend x% of the time
         {
-          chosenCardIndex = RND_randn(numberOfAffordableDefenderChampionsInHand);
-          uint8_t defenderCardIndexToPlay = defenderAffordableChampionCardIndices[chosenCardIndex];
-          HDCLL_insertNodeAtBeginning(&gstate->combat_zone[defender], defenderCardIndexToPlay);
-          HDCLL_removeNodeByValue(&gstate->hand[defender], defenderCardIndexToPlay);
-          if (debug_enabled) { printf(" Played champion card index %u from defender's hand\n", defenderCardIndexToPlay); }
+          // check list of defender's champion cards and if there are some 1 or more champion cards,
+          // pick one champion randomly from defender's hand and play it.
+          // build array with list of champion cards' indices:
+          uint8_t defenderAffordableChampionCardIndices[gstate->hand[defender].size];
+          uint8_t numberOfAffordableDefenderChampionsInHand = 0;       
           
-          // need to deduct from defender's cash the cost of playing the card
-          gstate->current_cash_balance[defender] -= fullDeck[defenderCardIndexToPlay].cost;
-        } // if there are champion cards in the defender deck
+          // convert gstate->hand[defender] to an array here for more efficient searching in the loop below
+          uint8_t* defender_hand = HDCLL_toArray(&gstate->hand[defender]);
+          
+          uint8_t possible_champion_card_index = 0;
+          for (uint8_t i = 0; i < gstate->hand[defender].size; i++)
+          {          
+            possible_champion_card_index = defender_hand[i];
+            if ((fullDeck[possible_champion_card_index].card_type == CHAMPION_CARD) 
+                && (fullDeck[possible_champion_card_index].cost <= gstate->current_cash_balance[defender])) 
+            {
+              defenderAffordableChampionCardIndices[numberOfAffordableDefenderChampionsInHand] = possible_champion_card_index;
+              numberOfAffordableDefenderChampionsInHand++;
+            }
+          } // for
+          free(defender_hand);
+          
+          if (numberOfAffordableDefenderChampionsInHand > 0)
+          {
+            chosenCardIndex = RND_randn(numberOfAffordableDefenderChampionsInHand);
+            uint8_t defenderCardIndexToPlay = defenderAffordableChampionCardIndices[chosenCardIndex];
+            HDCLL_insertNodeAtBeginning(&gstate->combat_zone[defender], defenderCardIndexToPlay);
+            HDCLL_removeNodeByValue(&gstate->hand[defender], defenderCardIndexToPlay);
+            if (debug_enabled) { printf(" Played champion card index %u from defender's hand\n", defenderCardIndexToPlay); }
+            
+            // need to deduct from defender's cash the cost of playing the card
+            gstate->current_cash_balance[defender] -= fullDeck[defenderCardIndexToPlay].cost;
+          } // if there are champion cards in the defender deck
+        } // only defend x% of the time       
         
       } // if defender hand is not empty
       
@@ -670,10 +866,11 @@ void ORACLE_4a_play_turn(struct gamestats* gstats, struct gamestate* gstate)
       {        
         card_index = combat_node->data;
         total_attack += fullDeck[card_index].attack_base + RND_dn(fullDeck[card_index].defense_dice);
+        // refresh_display()
         combat_node = combat_node->next; 
         if (debug_enabled) { printf(" Champion attacker card index %u played. D%u+%u, cost %u, cummulative total attack %u\n", card_index, 
           fullDeck[card_index].defense_dice, fullDeck[card_index].attack_base, fullDeck[card_index].cost, total_attack); }
-      }    
+      } 
       
       // calculate total defense
       int16_t total_defense = 0;      
@@ -682,6 +879,7 @@ void ORACLE_4a_play_turn(struct gamestats* gstats, struct gamestate* gstate)
       {        
         card_index = combat_node->data;
         total_defense += RND_dn(fullDeck[card_index].defense_dice);
+        // refresh_display()
         combat_node = combat_node->next;
         if (debug_enabled) { printf(" Champion defender card index %u played. D%u+%u, cost %u, cummulative total defense %u\n", card_index, 
           fullDeck[card_index].defense_dice, fullDeck[card_index].attack_base, fullDeck[card_index].cost, total_defense); }  
@@ -689,8 +887,10 @@ void ORACLE_4a_play_turn(struct gamestats* gstats, struct gamestate* gstate)
       
       // apply damage
       int16_t total_damage = max(total_attack - total_defense, 0);
+      // refresh_display()
       if (debug_enabled) { printf(" Defender energy prior to taking damage of %u", gstate->current_energy[defender]); }
       gstate->current_energy[defender] -= min((uint8_t)total_damage, gstate->current_energy[defender]);
+      // refresh_display()
       if (debug_enabled) { printf(" less damage of %u = energy after taking damage of %u\n", total_damage, gstate->current_energy[defender]); }
       
       
@@ -702,7 +902,8 @@ void ORACLE_4a_play_turn(struct gamestats* gstats, struct gamestate* gstate)
       {
         card_index = HDCLL_removeNodeFromBeginning(&gstate->combat_zone[attacker]);
         HDCLL_insertNodeAtBeginning(&gstate->discard[attacker], card_index); 
-      }      
+      }
+      // refresh_display()   
       
       // defender combat area
       for (uint8_t i = 0; i < gstate->combat_zone[defender].size; i++)
@@ -710,6 +911,7 @@ void ORACLE_4a_play_turn(struct gamestats* gstats, struct gamestate* gstate)
         card_index = HDCLL_removeNodeFromBeginning(&gstate->combat_zone[defender]);
         HDCLL_insertNodeAtBeginning(&gstate->discard[defender], card_index); 
       }
+      // refresh_display()
       
     } // if there is a combat
     else // there is no combat
@@ -722,6 +924,7 @@ void ORACLE_4a_play_turn(struct gamestats* gstats, struct gamestate* gstate)
         for (uint8_t i = 0; i < n; i++)
         {
           ORACLE_4b_draw1card(gstate, attacker);
+          // refresh_display()
         }
         
         // Using the draw card is already paid for in the above code        
@@ -729,7 +932,7 @@ void ORACLE_4a_play_turn(struct gamestats* gstats, struct gamestate* gstate)
         
         // Move the played draw card to the discard:
         HDCLL_insertNodeAtBeginning(&gstate->discard[attacker], attackerCardIndexToPlay);  // putting the draw card in the discard
-        
+        // refresh_display()
       }
       else if (fullDeck[attackerCardIndexToPlay].card_type == CASH_CARD)
       {
@@ -737,34 +940,39 @@ void ORACLE_4a_play_turn(struct gamestats* gstats, struct gamestate* gstate)
         
         
         // Move the played cash card to the discard:
-        HDCLL_insertNodeAtBeginning(&gstate->discard[attacker], attackerCardIndexToPlay);  // putting the draw card in the discard        
+        HDCLL_insertNodeAtBeginning(&gstate->discard[attacker], attackerCardIndexToPlay);  // putting the cash card in the discard
+        // refresh_display()        
       }
     } // if there is no combat
     
   } // if attacker's hand is not empty
   
   // update gstats cash_progression
-  gstats->cash_progression[gstats->simnum][gstate->turn-1][attacker] = gstate->current_cash_balance[attacker];
-  gstats->cash_progression[gstats->simnum][gstate->turn-1][defender] = gstate->current_cash_balance[defender];
+  //gstats->cash_progression[gstats->simnum][gstate->turn-1][attacker] = gstate->current_cash_balance[attacker];
+  //gstats->cash_progression[gstats->simnum][gstate->turn-1][defender] = gstate->current_cash_balance[defender];
 
   if (gstate->current_energy[defender] == 0) // end of game
   {
     // set flag someone_has_zero_energy and change game state to indicate the winning player
     gstate->someone_has_zero_energy = true;
-    gstate->game_state = (attacker == PLAYER_A) ? PLAYER_A_WINS : PLAYER_B_WINS;
+    gstate->game_state = (attacker == PLAYER_A) ? PLAYER_A_WINS : PLAYER_B_WINS;    
   }
   else  // not end of game
   {
     // consider bundling these 3 function calls into a call to one helper function, named 'end_of_turn()', that calls them. this will allow re-use of the helper function outside of this situation.
-    ORACLE_6_collect1luna(gstate);
-    ORACLE_7a_discard_to_7_cards(gstate);
+    ORACLE_6_collect1luna(gstate);    
+    ORACLE_7a_discard_to_7_cards(gstate);    
     ORACLE_7b_chg_current_player(gstate);
-  } 
+    
+  }
+  
+  // refresh_display()
 
 } // play_turn
 
 // consider adding the expected value of attack and defense, as well as the efficiency of attack and defense and total 'power' as new values in the 'FullDeck' as they will be static
 // Calculate expected value for attack or defense
+/*
 double ORACLE_5_calculate_expected_value(uint8_t base, uint8_t dice_type) {
     double dice_expected = (dice_type + 1) / 2.0;
     return base + dice_expected;
@@ -786,6 +994,7 @@ double ORACLE_5_calculate_card_power(struct card* card) {
   return (ORACLE_5_calculate_attack_efficiency(card) 
         + ORACLE_5_calculate_defense_efficiency(card)) * 0.5;
 }
+*/
 
 void ORACLE_4b_draw1card(struct gamestate* gstate, enum PlayerID player)
 {  
@@ -837,24 +1046,48 @@ void ORACLE_4c_shuffle_discard_and_form_deck(struct HDCLList* discard, struct de
 
 void ORACLE_6_collect1luna(struct gamestate* gstate)
 {
-  gstate->current_cash_balance[gstate->current_player]++;  
+  gstate->current_cash_balance[gstate->current_player]++;
+  // refresh_display()
 } // collect1luna
 
 void ORACLE_7a_discard_to_7_cards(struct gamestate* gstate)
 {
-  // count number of cards in hand of current player and exit the function if the hand has 7 or less cards
+  if (gstate->hand[gstate->current_player].size <= 7) return;
   
-  // for each card in hand
-    // compile stats about 'power' of each card in hand of current player: make use of helper function for that as will be able to re-use
-    // store 'power' and 'efficiency' directly as constants in 'fullDeck' and just look them up here for each card in the hand    
+  // for each card in hand of current player
+  float minpower = 100.0;
+  uint8_t card_with_lowest_power = 0;  
+   
+  while (gstate->hand[gstate->current_player].size > 7)
+  {
+    // refresh_display() and ask current player to choose cards to discard, if current player is not an AI agent
+    
+    // find card with lowest 'power'
+    minpower = 100.0;
+    card_with_lowest_power = 0;
+    struct LLNode* current = gstate->hand[gstate->current_player].head;
+    for (uint8_t i = 0; i < gstate->hand[gstate->current_player].size; i++)
+    {
+      if (fullDeck[current->data].power < minpower)
+      {
+        minpower = fullDeck[current->data].power;
+        card_with_lowest_power = current->data;
+      }
+      current = current->next; 
+    }
+      
+    // discard the card with lowest 'power' that is still in hand
+    HDCLL_removeNodeByValue(&gstate->hand[gstate->current_player], card_with_lowest_power);
+    HDCLL_insertNodeAtBeginning(&gstate->discard[gstate->current_player], card_with_lowest_power); 
+    
+  } // while hand size is greater than 7
   
-  // while current player's hand size is larger than 7 cards loop
-    // discard card with lowest 'power' that is still in hand: make use of helper function here as well as will be able to re-use for mulligan
-}
+} // discard to 7 cards
 
 void ORACLE_7b_chg_current_player(struct gamestate* gstate)
 {
   gstate->current_player = 1 - gstate->current_player;
+  // refresh_display()
 }
 
 void ORACLE_8_record_final_stats(struct gamestats* gstats, struct gamestate* gstate)
@@ -884,19 +1117,22 @@ void ORACLE_9_present_results(struct gamestats* gstats)
   printf("Number of wins for player B: %u\n", gstats->cumul_player_wins[PLAYER_B]);
   printf("Number of draws: %u\n", gstats->cumul_number_of_draws);
   
-  printf("Number of turns for each game: ");
+  // refresh_display()
+  
+  //printf("Number of turns for each game: ");
   uint16_t minNbrTurn = MAX_NUMBER_OF_TURNS;
   uint16_t maxNbrTurn = 0;
-  uint16_t totalNbrTurn = 0;
+  uint32_t totalNbrTurn = 0;
   for (uint16_t s = 0; s < gstats->simnum; s++)
   {
-    printf("%u, ", gstats->game_end_turn_number[s]);
+    //printf("%u, ", gstats->game_end_turn_number[s]);
     minNbrTurn = min(minNbrTurn, gstats->game_end_turn_number[s]);
     maxNbrTurn = max(maxNbrTurn, gstats->game_end_turn_number[s]);
     totalNbrTurn += gstats->game_end_turn_number[s];
   }
   printf("\nAverage = %.1f, Minimum = %u, Maximum = %d number of turns per game\n", (float)totalNbrTurn / (float)gstats->simnum, minNbrTurn, maxNbrTurn);
   
+  /*
   printf("Cash Progression");
   for (uint16_t s = 0; s < gstats->simnum; s++)
   {
@@ -913,5 +1149,6 @@ void ORACLE_9_present_results(struct gamestats* gstats)
     }    
     printf("\n");
   } // for each sim
+  */
   
 } // present results

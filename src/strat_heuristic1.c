@@ -14,4 +14,12 @@
  * Can the heuristic approach be a superset of the balanced approach? How? Should it be, or does it become too complex? Or is the 'balanced approach' already using 'optimal'
  * epsilon and gamma parameters?
  * 
+ * Consider reducing weights on number of cards and cash advantage (possibly reducing them to the minimum of 0) gradually as the opponent’s energy gets lower. 
+ * It’s okay (ideal) to win the game with no remaining cards in hand and no remaining / unspent cash.
+ * 
+ * in heuristic strat, add a hand total power advantage metric. add actual hand combo power (based on best combos that can be achieved with cards in hand). 
+ * estimate a potential (probability weighted) combo hand power (2 rounds look forward only) and add to the total hand power: eg player has only one card in hand and 
+ * it's an orange card, calCulate prob of drawing another orange next round and say that's 35%, add 0.35 * 2 cards of same colour combo / expected cost of the 2 cards 
+ * to the total hand power 
+
  */

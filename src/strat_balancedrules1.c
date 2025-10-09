@@ -25,7 +25,7 @@
  * 
  * Play that many cards as long as actual cash - cost of those cards >= target cash
  * 
- * Target effective cash left atfre attack play (before collecting 1 luna at end of turn)
+ * Target effective cash left after attack play (before collecting 1 luna at end of turn)
  *   19 when opponent has 99 energy
  *   15                   80
  *   11                   61

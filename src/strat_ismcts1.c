@@ -1,4 +1,19 @@
 /* 
+   Info Set Monte Carlo Tree Search (strat_ismcts1):
+        define this strategy as a call to the ISMCTS() function, from the applyAttDefStrat() function
+        make a clone of the root gamestate as provided by the call from applyAttDefStrat(): clone_gamestate()
+        apply ISMCTS to the clone gamestate, and return the best move: 
+          - clone gamestate will provide the 'playerToMove' data field
+          - implement a new Clone_And_Randomize_gamestate(observer) function : Create a copy of the state, then determinize the hidden information from observer's point of view.
+          - implement a new GetResult(player) function: If the state is terminal, return 1 if the given player has won, 0 if not, 0.5 for a draw. If the state is not 
+              terminal, the result is undefined. This should be trivial given the gamestate structure.
+          - make use of the 'getAvailableMoves()' function:  Get a list of the legal moves from this state, or return an empty list if the state is terminal.
+          - implement a new DoMove(move) function: Apply the given move to the state, and update playerToMove to specify whose turn is next and turn_phase to specify what the
+              new phase is (attack or defense). Controlable by the AI with one call to DoMove() for the attacker followed by another call to DoMove() for the defender (if there is combat), etc.
+        analyze probability of this strategy to win against the simple 'random' strategy.
+        analyze the best moves recommended by the ISMCTS, if it's the best of all of the strategies so far, to improve the balanced and heuristic strategies
+        
+   
    store entire tree and cloned gamestates on the heap (malloc / free)
    
    use an array of pointers to children nodes as the tree node approach. initialize the array size to the total number of possible moves (also a dynamically created array 
