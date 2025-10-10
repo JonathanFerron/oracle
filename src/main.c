@@ -780,7 +780,7 @@ void ORACLE_4a_play_turn(struct gamestats* gstats, struct gamestate* gstate)
       possible_attacker_card_index = attacker_hand[i];
       if (fullDeck[possible_attacker_card_index].cost <= gstate->current_cash_balance[attacker])
       {
-        // if the possible attacker card is a cash card, need to check if there is also an affordable champion card in the hand that could be discarded in exchange for lunas
+        // if the possible attacker card is a cash card, need to check if there is also a champion card in the hand that could be discarded in exchange for lunas
         // otherwise, the cash card cannot be part of the list of possible attacker cards
         
         attackerAffordableCardIndices[numberOfAffordableAttackerCardsInHand] = possible_attacker_card_index;
