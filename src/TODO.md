@@ -1,6 +1,7 @@
+# oracle TO DOs
 1. was anything deleted from old source files (esp main.c/h) that i wanted to keep (eg for future use)
 
-2. see suggested steps in file_listing.md and refactor_summary.md
+2. check for memory leaks with valgrind. also, see suggested steps in refactor_summary.md
 
 3. Check that following logic was captured in claudeAI generated code.
   resolveCombat(), which will swith to turn_phase = attachk as the last line of code
@@ -105,45 +106,57 @@ case CUSTOM:
     else if o3=o1 then +4
     endif
     
-5.   - integrate cards visibility indicators inside the gamestate struct: eg ai agent should only be provided visible (or 'known to be somewhere') portion of gamestate
+5. Verify the cash card implementation
+      Cash Card Implementation
+      - `has_champion_in_hand()` - checks if champions are available
+      - `select_champion_for_cash_exchange()` - selects lowest power champion
+      - `play_cash_card()` - complete cash card logic
+      - Properly integrated into card selection and play logic
+
+6. integrate cards visibility indicators inside the gamestate struct: eg ai agent should only be provided visible (or 'known to be somewhere') portion of gamestate
    
-6.   - clearly delineate and delegate (to a separate function) the code that creates the 'list of possible moves' when faced with a decision, and then call 
+7. clearly delineate and delegate (to a separate function) the code that creates the 'list of possible moves' when faced with a decision, and then call 
     the 'select_action' code using that and the (visible portion of) gamestate
   
-7.  should make use of the 'action' structure: build (encode) it in decision portion of the code, and then perform an action by decoding the action struct
+8.  should make use of the 'action' structure: build (encode) it in decision portion of the code, and then perform an action by decoding the action struct
       at the end of the day, the strat code (client side) should be building the action struct (using visible gamestate info passed from main code (server)), 
       and the main code (server side) should be executing it (applying it to the gamestate)
   
-8.  - Work on implementing a correct 'power' for non-champion cards to allow better 'power heuristic'-based choices. Model multiple simulations with varying power from 2 to 15
+9. Work on implementing a correct 'power' for non-champion cards to allow better 'power heuristic'-based choices. Model multiple simulations with varying power from 2 to 15
     for the non-champion cards for player A, and keep the same card's power to a fixed value for player B. Which of the values between 2, 3, 4, ..., 15 yield the best
     win percentage for player A? Say that's 5.00. Use 5.00 as the new default 'power' value for the card, and do the simulation again, keeping the default value of 5.00
     for player B's decisions but iterating from 2 to 15 for player A to confirm that it now yields a better win percentage for player B for all of A's values except when
     A also uses the 'optimal' value 5.00. When the 'cash card' is implemented, use the same approach to calculate a 'power heuristic' for it: calibrate the heuristic
     parameter to maximize the chances of winning.
   
-9.  - Implement a ncurses based text user interface to allow two human players to interactively play against each other or a human to play against the 'AI': 
+10.  - Implement a ncurses based text user interface to allow two human players to interactively play against each other or a human to play against the 'AI': 
      start immediately in 'interactive' mode unless user provided the -sim command line option.
        for interactive present the table on the left and a console on the right: console will allow a 'simmode' command to switch to simulation mode.
        for simulation present a console on the right, output on the left and parameters at the bottom left, with ability to export results to txt files (name of which
          on the bottom left as well). console in sim mode may allow an 'intermode' command to switch back to interactive mode.
 
-10.  - enhance decision rules to mimic what a smart player would do, and find what could be more optimal 
+11.  - enhance decision rules to mimic what a smart player would do, and find what could be more optimal 
        decision rules, probably using heuristics to keep things simple. See notes in balanced rules strategy source file: strat_balancedrules1.c and heuristics strategy
        source file.
+       
+       To Add New Strategies:
+         - Copy strat_random.c as template
+         - Implement attack/defense functions
+         - Register in main.c
    
-11. - Implement Monte Carlo Single Stage Analysis (strat_simplemc1)
+12. - Implement Monte Carlo Single Stage Analysis (strat_simplemc1)
 
-12.  - combined the 'balanced' and 'heuristic' strategies into a 3rd hybrid strategy that is better than those 2
+13.  - combined the 'balanced' and 'heuristic' strategies into a 3rd hybrid strategy that is better than those 2
 
-13.  - Implement Info Set Monte Carlo Tree Search
+14.  - Implement Info Set Monte Carlo Tree Search
       order of implementation of tree search methods for AI agent:
         pruning in 4 episodes (montre carlo single stage above), gradual progressive pruning, ucb1, pucb1, mcts (uct, or info set MCTS), mcts with prior predictor, 
         mcts with neural network based (eg dqn) prior predictor
   
-14.  - implement a GUI version of the game: may need to figure out how to make sure the program does not 'freeze' PC when calculating AI strategy. e.g. may want button / menu
+15.  - implement a GUI version of the game: may need to figure out how to make sure the program does not 'freeze' PC when calculating AI strategy. e.g. may want button / menu
       to let GUI user stop the calc or terminate the program in a 'clean' way. One option is to span the calculation intensive task to a 'worker thread'.
        
-15.  - implement the client / server approach:
+16.  - implement the client / server approach:
      - server handles game mechanics (including throwing the dices, coming up with the list of possible moves, etc.) and is only one knowing the full game state
      - server will provide clients also with opponent's last play and visible game state (which varies for each player because of the hand visibility to only one player) 
          for drawing the screen
@@ -160,4 +173,13 @@ case CUSTOM:
         in automated style, use a default of 1000 simulations and default console output that only takes 25 rows max
 
         interactive play code should call tui or gui draw functions depending on context (style)
+17. **Add Documentation**
+     - Doxygen comments
+     - API documentation
+     - Strategy guide
+
+18. **Performance Optimization**
+     - Profile hot paths
+     - Optimize combo calculations
+     - Memory pool for frequently allocated structures
 
