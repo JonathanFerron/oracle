@@ -1,36 +1,74 @@
-/*
- * Order of events in the 'play_turn' function:
- * 
- * attackPhase() 
- * defensePhase()
- * resolveCombat(), which will swith to turn_phase = attachk as the last line of code
- * 
- * attack_phase():
- *   apply_attack_strat(curPlayer) = apply_attack_def_strat[curPlayer, Attack (enum)]
- *      which will switch to turn_phase = defense as the last line of code
- * 
- * defense_phase():
- *   if combatZone[curPlayer] > 0
- *     apply_defense_strat[notCurPlayer] =  apply_attack_def_strat[notCurPlayer, Defense (enum)]
- *   endif
- * 
- * AttStratA, etc are 4 arrays of function pointers to be executed sequentially to execute the Attack Strategy for Player A, player B, etc.
- * void (*AttStratA[n]) (&gamestat, &gamestate, ...): n is the maximum number of steps in a strategy
- * void (*AttStratB[n]) (&gamestat, &gamestate, ...)
- * void (*DefStratA[n]) (&gamestat, &gamestate, ...)
- * void (*DefStratB[n]) (&gamestat, &gamestate, ...)
- * 
- * AttStratA[0] = function name, etc.; or initialize this way: AttStratA = {f1, f2, ...}
- * 
- * ApplyAttDefStrat(PlayerID, AttackDefenseIndicator (from an enum))
- *  function that will find, based on PlayerID and A/D ID which of the 4 array of function pointers to use, and will then call them
- * 
- * inside ApplyAttDefStrat, 
- *   define void (*Strat[n]) (&gamestat, &gamestate, ...);
- * then based on PlayerID and A/D ID in switch case stmts, could then do:
- *   Strat = AttStratA;
- * 
- * then loop over n indices of Strat and call functions:
- *   for each i from 0 to n - 1
- *     Strat[i] (&gamestat, &gamestate, ...);
- */
+// strat_random.c
+// Random strategy implementation
+
+#include "strat_random.h"
+#include "card_actions.h"
+#include "game_constants.h"
+#include "rnd.h"
+#include "mtwister.h"
+#include <stdlib.h>
+
+extern MTRand MTwister_rand_struct;
+
+void random_attack_strategy(struct gamestate* gstate) {
+    PlayerID attacker = gstate->current_player;
+    
+    if (gstate->hand[attacker].size == 0) return;
+    
+    // Build list of affordable cards
+    uint8_t affordable[gstate->hand[attacker].size];
+    uint8_t count = 0;
+    
+    int has_champions = has_champion_in_hand(&gstate->hand[attacker]);
+    uint8_t* hand_array = HDCLL_toArray(&gstate->hand[attacker]);
+    
+    for (uint8_t i = 0; i < gstate->hand[attacker].size; i++) {
+        uint8_t card_idx = hand_array[i];
+        
+        if (fullDeck[card_idx].cost <= gstate->current_cash_balance[attacker]) {
+            // Skip cash cards if no champions available
+            if (fullDeck[card_idx].card_type == CASH_CARD && !has_champions) {
+                continue;
+            }
+            affordable[count++] = card_idx;
+        }
+    }
+    free(hand_array);
+    
+    if (count == 0) return;
+    
+    // Play random affordable card
+    uint8_t chosen = RND_randn(count);
+    play_card(gstate, attacker, affordable[chosen]);
+}
+
+void random_defense_strategy(struct gamestate* gstate) {
+    PlayerID defender = 1 - gstate->current_player;
+    
+    if (gstate->hand[defender].size == 0) return;
+    
+    // Only defend 47% of the time
+    if (genRand(&MTwister_rand_struct) > 0.47) return;
+    
+    // Build list of affordable champions
+    uint8_t affordable[gstate->hand[defender].size];
+    uint8_t count = 0;
+    
+    uint8_t* hand_array = HDCLL_toArray(&gstate->hand[defender]);
+    
+    for (uint8_t i = 0; i < gstate->hand[defender].size; i++) {
+        uint8_t card_idx = hand_array[i];
+        
+        if (fullDeck[card_idx].card_type == CHAMPION_CARD &&
+            fullDeck[card_idx].cost <= gstate->current_cash_balance[defender]) {
+            affordable[count++] = card_idx;
+        }
+    }
+    free(hand_array);
+    
+    if (count == 0) return;
+    
+    // Play random champion
+    uint8_t chosen = RND_randn(count);
+    play_champion(gstate, defender, affordable[chosen]);
+}
