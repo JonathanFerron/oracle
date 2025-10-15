@@ -35,7 +35,7 @@
     for each i from 0 to n - 1
       Strat[i] (&gamestat, &gamestate, ...);
  
-3. check that combo bonuses are properly calculated (the 'random' strategy always only selects one card to be played, so no combos ever apply with that strategy). 
+3. check that combo bonuses are properly calculated
 
 my pseudo code originally was
 
@@ -212,16 +212,15 @@ case CUSTOM:
      - human client takes a visible game state, present game state on screen, take action (input) from user, and then return an action to the server
      - server applies the action chosen by the client to the gamestate
   
-      how the different modes and styles can be chosen when the game is launched via the command line:
-      oracle -m option
-        mode options: (s)erver, (c)lient (for human players), s(t)andalone, (a)i (for ai players)
-      
-      oracle -s option, available only with the client and standalone modes (server mode has text CLI only, ai mode has text CLI only)
-        style options: (a)utomated (available only with standalone mode), s(imulation), t(ext user interface), g(raphical user interface)
-
-        in automated style, use a default of 1000 simulations and default console output that only takes 25 rows max
-
-        interactive play code should call tui or gui draw functions depending on context (style)
+      how the different modes can be chosen when the game is launched via the command line:
+      usage: oracle -m mode
+        mode options: 
+          (st)andalone: (a)utomated (use 'sta' as the mode), s(imulation) (use 'sts'), t(ext user interface) ('stt'), g(raphical user interface) ('stg')
+                            in automated style, use a default of 1000 simulations and default console output that only takes 25 rows max
+                            interactive play code should call tui or gui draw functions depending on context
+          (se)rver: will automatically use text CLI
+          (cl)ient (for human players): s(imulation) ('cls'), t(ext user interface) ('clt'), g(raphical user interface) ('clg')
+          (ai) (for ai players): will automatically use text CLI
 
 13. **Add Documentation**
      - Doxygen comments

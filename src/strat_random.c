@@ -20,7 +20,7 @@ void random_attack_strategy(struct gamestate* gstate)
   uint8_t count = 0;
 
   int has_champions = has_champion_in_hand(&gstate->hand[attacker]);
-  uint8_t* hand_array = HDCLL_toArray(&gstate->hand[attacker]);
+  uint8_t* hand_array = HDCLL_toArray(&gstate->hand[attacker]);  // this allocates memory on the heap for array hand_array, make sure to free() it
 
   for(uint8_t i = 0; i < gstate->hand[attacker].size; i++)
   { uint8_t card_idx = hand_array[i];
@@ -53,7 +53,7 @@ void random_defense_strategy(struct gamestate* gstate)
   uint8_t affordable[gstate->hand[defender].size];
   uint8_t count = 0;
 
-  uint8_t* hand_array = HDCLL_toArray(&gstate->hand[defender]);
+  uint8_t* hand_array = HDCLL_toArray(&gstate->hand[defender]); // this allocates memory on the heap for array hand_array, make sure to free() it
 
   for(uint8_t i = 0; i < gstate->hand[defender].size; i++)
   { uint8_t card_idx = hand_array[i];

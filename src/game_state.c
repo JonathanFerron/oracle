@@ -136,11 +136,6 @@ void play_game(uint16_t initial_cash, struct gamestats* gstats,
            gstate.turn,
            GAME_STATE_NAMES[gstate.game_state]);
   }
-  /* printf("Game ended at round %.4u, turn %.4u, winner is %s\n",
-             (uint16_t)((gstate.turn-1) * 0.5)+1,
-             gstate.turn,
-             GAME_STATE_NAMES[gstate.game_state]);
-  */
 
   record_final_stats(gstats, &gstate);
 
@@ -153,7 +148,7 @@ void play_game(uint16_t initial_cash, struct gamestats* gstats,
   HDCLL_emptyOut(&gstate.hand[PLAYER_B]);
   HDCLL_emptyOut(&gstate.discard[PLAYER_A]);
   HDCLL_emptyOut(&gstate.discard[PLAYER_B]);
-}
+} // play_game
 
 void run_simulation(uint16_t numsim, uint16_t initial_cash,
                     struct gamestats* gstats, StrategySet* strategies)
@@ -184,6 +179,56 @@ void record_final_stats(struct gamestats* gstats, struct gamestate* gstate)
   gstats->game_end_turn_number[gstats->simnum] = gstate->turn;
 }
 
+/* Histogram preparation:
+    Total bins: The NUM_BINS includes special underflow and overflow bins, resulting in a total of NUM_BINS + 2 bins in the histogram array.
+    Underflow bin (Index 0): Any value in the raw data that is less than MIN_VALUE will be counted in this special bin.
+    Overflow bin (Index NUM_BINS + 1): Any value in the raw data that is greater than or equal to the maximum valid value (MIN_VALUE + NUM_BINS * BIN_WIDTH) will be counted in this bin.
+    Standard bins (Index 1 to NUM_BINS): The original range of bins now starts at index 1 and ends at index NUM_BINS.
+    Calculations: The logic for assigning a data point to a bin checks for the underflow and overflow conditions before calculating the index for the standard bins.
+      The size of the histogram_array should reflect that.
+    Printout changes: The output section is updated to properly label and display the results for the special underflow and overflow bins.
+*/
+
+// Hardcoded histogram parameters
+#define NUM_BINS 27
+#define BIN_WIDTH 4
+#define MIN_VALUE 20
+
+// Define indices for the special bins
+#define UNDERFLOW_BIN 0
+#define OVERFLOW_BIN (NUM_BINS + 1)
+#define TOTAL_BINS (NUM_BINS + 2)
+
+// Function to create a histogram array from unsigned int data
+void createHistogram(uint16_t data[], uint16_t data_size, uint16_t histogram_array[])
+{ // Initialize the histogram array with zeros
+  for(uint16_t i = 0; i < TOTAL_BINS; i++)
+    histogram_array[i] = 0;
+
+  // Define the upper boundary of the standard bins
+  uint16_t max_valid_value = MIN_VALUE + (NUM_BINS * BIN_WIDTH);
+
+  // Process each data point
+  for(uint16_t i = 0; i < data_size; i++)
+  { uint16_t value = data[i];
+
+    if(value < MIN_VALUE)
+    { // Assign to the underflow bin
+      histogram_array[UNDERFLOW_BIN]++;
+    }
+    else if(value >= max_valid_value)
+    { // Assign to the overflow bin
+      histogram_array[OVERFLOW_BIN]++;
+    }
+    else
+    { // Calculate the bin index for standard bins
+      uint8_t bin_index = (value - MIN_VALUE) / BIN_WIDTH;
+      // The standard bins start at index 1
+      histogram_array[bin_index + 1]++;
+    }
+  }
+} // createHistogram
+
 void present_results(struct gamestats* gstats)
 { printf("Number of wins for player A: %u\n", gstats->cumul_player_wins[PLAYER_A]);
   printf("Number of wins for player B: %u\n", gstats->cumul_player_wins[PLAYER_B]);
@@ -201,4 +246,25 @@ void present_results(struct gamestats* gstats)
 
   printf("\nAverage = %.1f, Minimum = %u, Maximum = %d number of turns per game\n",
          (float)totalNbrTurn / (float)gstats->simnum, minNbrTurn, maxNbrTurn);
-}
+
+  // compute and display histogram
+  { // Array to store the histogram counts. Size is total number of bins.
+    uint16_t histogram[TOTAL_BINS];
+
+    // Create the histogram
+    createHistogram(gstats->game_end_turn_number, gstats->simnum, histogram);
+
+    // Print the histogram results
+    printf("\nHistogram with %d bins, each with a width of %d, starting from %u:\n", NUM_BINS, BIN_WIDTH, MIN_VALUE);
+    printf("Bin (<%3u): %d\n", MIN_VALUE, histogram[UNDERFLOW_BIN]);
+
+    for(uint8_t i = 0; i < NUM_BINS; i++)
+    { uint16_t bin_start = MIN_VALUE + (i * BIN_WIDTH);
+      uint16_t bin_end = bin_start + BIN_WIDTH - 1;
+      printf("Bin [%3u - %3u]: %d\n", bin_start, bin_end, histogram[i + 1]);
+    }
+
+    printf("Bin (>=%3u): %d\n", MIN_VALUE + (NUM_BINS * BIN_WIDTH), histogram[OVERFLOW_BIN]);
+  } // histogram section
+
+} // present_results

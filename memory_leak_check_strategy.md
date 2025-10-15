@@ -32,53 +32,21 @@ gcc -g -O0 -Wall -std=c23 src/*.c -o bin/oracle -lm
 
 ### High Priority Areas in Your Code:
 
-#### A. HDCLL_toArray() - CRITICAL
+#### A. HDCLL_toArray()
 Location: `src/hdcll.c:145`, `src/hdcll.h:16`
 
 **Every call to `HDCLL_toArray()` MUST be followed by `free()`**
-
-Current usage locations:
-- ✅ `src/card_actions.c:134` - **Properly freed on line 137**
-- ❓ `src/strat_random.c:20` - **CHECK: freed on line 33**
-- ❓ `src/strat_random.c:40` - **CHECK: freed on line 52**
-
-**Action**: Verify all three locations properly free the array.
 
 #### B. Strategy Set Memory
 Location: `src/strategy.c`
 
 - `create_strategy_set()` allocates memory
-- ✅ `free_strategy_set()` is called in `src/main.c:40`
-
-**Action**: Verify cleanup happens even on early exit paths.
-
-#### C. Game State Cleanup
-Location: `src/game_state.c:103-110`
-
-All linked lists and stacks are cleaned up in `play_game()`:
-```c
-DeckStk_emptyOut(&gstate.deck[PLAYER_A]);
-DeckStk_emptyOut(&gstate.deck[PLAYER_B]);
-HDCLL_emptyOut(&gstate.combat_zone[PLAYER_A]);
-HDCLL_emptyOut(&gstate.combat_zone[PLAYER_B]);
-HDCLL_emptyOut(&gstate.hand[PLAYER_A]);
-HDCLL_emptyOut(&gstate.hand[PLAYER_B]);
-HDCLL_emptyOut(&gstate.discard[PLAYER_A]);
-HDCLL_emptyOut(&gstate.discard[PLAYER_B]);
-```
-
-**Action**: Ensure this happens even if `someone_has_zero_energy` is true before turn limit.
+- `free_strategy_set()` must be called to free memory
 
 ### Memory Allocation Patterns to Check:
 - [x] `malloc()` in `HDCLL_insertNodeAtBeginning()` - freed by `HDCLL_emptyOut()`
-- [x] `malloc()` in `HDCLL_toArray()` - **caller must free**
-- [x] `malloc()` in `create_strategy_set()` - freed by `free_strategy_set()`
-- [ ] Verify no early returns skip cleanup in `play_game()`
 
 ### Common Leak Scenarios to Check:
-- [x] Early returns in `play_game()` - line 100 has early return if energy = 0
-- [ ] Verify cleanup still happens after early return
-- [x] Loop iterations in strategies - checked, looks good
 - [x] Error paths - `HDCLL_insertNodeAtBeginning()` returns on malloc failure
 
 ## 3. Debug Wrapper Functions for Tracking
@@ -330,33 +298,7 @@ This tells you:
 
 **Fix**: Add `free(hand_array);` after using the array.
 
-## 7. Specific Areas to Test in Oracle
-
-Based on your code structure, test these scenarios:
-
-### Test 1: Single Game
-```bash
-# Set DEBUG_NUMBER_OF_SIM to 1 in game_constants.h
-# Or modify main.c line 23: uint16_t numsim = 1;
-make memcheck-full
-```
-
-### Test 2: Multiple Games
-```bash
-# Increase simulation count to catch cumulative leaks
-# Modify main.c line 23: uint16_t numsim = 10;
-make memcheck-full
-```
-
-### Test 3: Strategy Changes
-Test with different strategies once you add more:
-```c
-// In main.c, try different strategy combinations
-set_player_strategy(strategies, PLAYER_A,
-                    balanced_attack_strategy, balanced_defense_strategy);
-```
-
-## 8. Workflow Summary
+## 7. Workflow Summary
 
 1. **Build with debug symbols**: `make oracle-debug`
 2. **Run Valgrind**: `make memcheck-full`
@@ -365,14 +307,3 @@ set_player_strategy(strategies, PLAYER_A,
 5. **Fix leak**: Add missing `free()` calls or fix cleanup logic
 6. **Verify fix**: Run Valgrind again
 7. **Optional**: Use `make memtrack` during development for real-time feedback
-
-## 9. Known Good Patterns in Your Code
-
-✅ **Properly handled:**
-- Strategy set cleanup (main.c:40)
-- Game state cleanup (game_state.c:103-110)
-- Shuffle array cleanup (card_actions.c:137)
-
-⚠️ **Needs verification:**
-- Early return in play_game() at line 100
-- HDCLL_toArray() usage in strat_random.c

@@ -126,7 +126,7 @@ void draw_1_card(struct gamestate* gstate, PlayerID player)
 }
 
 void shuffle_discard_and_form_deck(struct HDCLList* discard, struct deck_stack* deck)
-{ uint8_t* A = HDCLL_toArray(discard);
+{ uint8_t* A = HDCLL_toArray(discard); // this allocates memory on the heap for array A, make sure to free() it
   uint8_t n = discard->size;
 
   if(debug_enabled)
