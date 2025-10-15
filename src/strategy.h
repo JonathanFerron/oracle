@@ -11,15 +11,15 @@ typedef void (*AttackStrategyFunc)(struct gamestate* gstate);
 typedef void (*DefenseStrategyFunc)(struct gamestate* gstate);
 
 // Strategy set for both players
-typedef struct {
-    AttackStrategyFunc attack_strategy[2];   // One for each player
-    DefenseStrategyFunc defense_strategy[2]; // One for each player
+typedef struct
+{ AttackStrategyFunc attack_strategy[2];   // One for each player
+  DefenseStrategyFunc defense_strategy[2]; // One for each player
 } StrategySet;
 
 // Strategy set management
 StrategySet* create_strategy_set(void);
-void set_player_strategy(StrategySet* strat, PlayerID player, 
-                         AttackStrategyFunc att_func, 
+void set_player_strategy(StrategySet* strat, PlayerID player,
+                         AttackStrategyFunc att_func,
                          DefenseStrategyFunc def_func);
 void free_strategy_set(StrategySet* strat);
 

@@ -8,7 +8,7 @@
 #include "strategy.h"
 
 // Main turn function
-void play_turn(struct gamestats* gstats, struct gamestate* gstate, 
+void play_turn(struct gamestats* gstats, struct gamestate* gstate,
                StrategySet* player_strategies);
 
 // Turn phase functions

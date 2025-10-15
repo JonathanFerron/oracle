@@ -20,13 +20,10 @@ extern const struct card fullDeck[FULL_DECK_SIZE];
 extern const ChampionOrder SPECIES_TO_ORDER[];
 
 // String name arrays (defined in game_constants.c)
-extern const char *const PLAYER_NAMES[];
-extern const char *const GAME_STATE_NAMES[];
-extern const char *const TURN_PHASE_NAMES[];
-extern const char *const CARD_TYPE_SHORT_NAMES[];
-extern const char *const CHAMPION_COLOR_NAMES[];
-
-// Helper function to get order from species
-ChampionOrder get_order_from_species(ChampionSpecies species);
+extern const char* const PLAYER_NAMES[];
+extern const char* const GAME_STATE_NAMES[];
+extern const char* const TURN_PHASE_NAMES[];
+extern const char* const CARD_TYPE_SHORT_NAMES[];
+extern const char* const CHAMPION_COLOR_NAMES[];
 
 #endif // GAME_CONSTANTS_H

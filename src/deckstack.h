@@ -3,12 +3,12 @@
 
 #define MAX_DECK_STACK_SIZE 40
 
-struct deck_stack {
-  uint8_t card_indices[MAX_DECK_STACK_SIZE];
+struct deck_stack
+{ uint8_t card_indices[MAX_DECK_STACK_SIZE];
   int8_t top;
 };
 
-void DeckStk_push(struct deck_stack *, uint8_t ) ;
+void DeckStk_push(struct deck_stack *, uint8_t) ;
 uint8_t DeckStk_pop(struct deck_stack *) ;
 bool DeckStk_isEmpty(struct deck_stack *);
 void DeckStk_emptyOut(struct deck_stack *);

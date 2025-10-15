@@ -7,9 +7,10 @@
 #include "game_types.h"
 
 // Simplified combat card structure for combo calculations
-typedef struct {
-    ChampionSpecies species;
-    ChampionColor color;
+typedef struct
+{ ChampionSpecies species;
+  ChampionColor color;
+  ChampionOrder order;
 } CombatCard;
 
 // Main calculation function
@@ -20,10 +21,10 @@ int calc_random_bonus(CombatCard *cards, int num_cards);
 int calc_prebuilt_bonus(CombatCard *cards, int num_cards);
 
 // Helper functions
-void count_by_species(CombatCard *cards, int num_cards, int *counts);
-void count_by_order(CombatCard *cards, int num_cards, int *counts);
-void count_by_color(CombatCard *cards, int num_cards, int *counts);
-int get_max_count(int *counts, int size);
+void count_by_species(CombatCard *cards, int num_cards, int* counts);
+void count_by_order(CombatCard *cards, int num_cards, int* counts);
+void count_by_color(CombatCard *cards, int num_cards, int* counts);
+int get_max_count(int* counts, int size);
 
 // Matching helpers
 int third_matches_order_of_species_pair(CombatCard *cards, int num_cards);

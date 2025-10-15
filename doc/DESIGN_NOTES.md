@@ -1,0 +1,1 @@
+# Design Notes (documentationation) about the oracle software

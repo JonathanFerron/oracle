@@ -88,6 +88,10 @@ $(OLDBUILDDIR)/%.o: $(OLDSRCDIR)/%.$(SRCEXT)
 	@echo "Compiling $<..."
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+.PHONY: format
+format:
+	astyle --project --suffix=none --recursive "*.c,*.h"
+
 # Help target
 .PHONY: help
 help:
@@ -98,6 +102,8 @@ help:
 	@echo "  clean        - Remove build artifacts"
 	@echo "  debug        - Build with debug symbols and -O0"
 	@echo "  test_combo   - Build combo bonus tests"
+	@echo "  oldcode      - Build the old code (usually used for regression testing purpose)"
+	@echo "  format       - Format the c and h source files using astyle"
 	@echo "  help         - Show this help message"
 	@echo ""
 	@echo "Current configuration:"
