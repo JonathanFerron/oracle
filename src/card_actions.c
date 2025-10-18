@@ -13,12 +13,13 @@ int has_champion_in_hand(struct HDCLList* hand)
 { struct LLNode* current = hand->head;
   for(uint8_t i = 0; i < hand->size; i++)
   { if(fullDeck[current->data].card_type == CHAMPION_CARD)
-      return 1;
+      return true;
     current = current->next;
   }
-  return 0;
+  return false;
 }
 
+// note that this code could be moved to the strategy, similar to how the mulligan function should be moved there as well
 uint8_t select_champion_for_cash_exchange(struct HDCLList* hand)
 { struct LLNode* current = hand->head;
   float min_power = 100.0;
@@ -77,7 +78,7 @@ void play_draw_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx)
   for(uint8_t i = 0; i < n; i++)
     draw_1_card(gstate, player);
 
-  // Move to discard
+  // Move the draw card to discard
   HDCLL_insertNodeAtBeginning(&gstate->discard[player], card_idx);
 }
 
@@ -87,7 +88,7 @@ void play_cash_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx)
   HDCLL_removeNodeByValue(&gstate->hand[player], card_idx);
 
   // Pay cost (0 for cash cards)
-  gstate->current_cash_balance[player] -= fullDeck[card_idx].cost;
+  gstate->current_cash_balance[player] -= fullDeck[card_idx].cost;  // we could consider removing this line of code as long as we can always assume that the cost will be 0
 
   // Select champion to exchange
   uint8_t champion_to_exchange = select_champion_for_cash_exchange(&gstate->hand[player]);

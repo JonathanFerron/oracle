@@ -266,39 +266,7 @@ echo "=== Checking for indirect leaks ==="
 grep "indirectly lost" leak-report.txt
 ```
 
-## 6. Expected Clean Output
-
-**What you want to see:**
-```
-==12345== HEAP SUMMARY:
-==12345==     in use at exit: 0 bytes in 0 blocks
-==12345==   total heap usage: 45,234 allocs, 45,234 frees, 892,456 bytes allocated
-==12345== 
-==12345== All heap blocks were freed -- no leaks are possible
-==12345==
-==12345== For lists of detected and suppressed errors, rerun with: -s
-==12345== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
-```
-
-**What indicates problems:**
-```
-==12345== 144 bytes in 3 blocks are definitely lost in loss record 5 of 10
-==12345==    at 0x4C2AB80: malloc (in /usr/lib/valgrind/...)
-==12345==    by 0x401234: HDCLL_toArray (hdcll.c:145)
-==12345==    by 0x400987: random_attack_strategy (strat_random.c:20)
-==12345==    by 0x400567: attack_phase (turn_logic.c:45)
-==12345==    by 0x400123: play_turn (turn_logic.c:15)
-```
-
-This tells you:
-- 144 bytes leaked (3 allocations of uint8_t arrays)
-- Allocated by `HDCLL_toArray()` at line 145 of hdcll.c
-- Called from `random_attack_strategy()` at line 20 of strat_random.c
-- The array was never freed
-
-**Fix**: Add `free(hand_array);` after using the array.
-
-## 7. Workflow Summary
+## 6. Workflow Summary
 
 1. **Build with debug symbols**: `make oracle-debug`
 2. **Run Valgrind**: `make memcheck-full`

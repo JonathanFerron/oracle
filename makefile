@@ -12,7 +12,7 @@ TARGET := $(BINDIR)/oracle
 SRCEXT := c
 INCEXT := h
 LIBS := -lm
-#LIBS=-pthread
+#LIBS=-pthread -lncursesw -lpanelw -lformw -lmenuw
 
 
 # Automatically find all .c files in src directory

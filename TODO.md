@@ -1,136 +1,80 @@
 # oracle TO DOs
-1. check for memory leaks with valgrind
+1. Implement a ncurses based text user interface to allow two human players to interactively play against each other or a human to play against the 'AI' (strategy sets): 
+       'TUI' mode (-m=stt, for (st)andalone TUI mode)
+       Interactive simulation mode: -m=sts (interactive simulation)
+       Automated simulation (original non-interactive) mode: -m=sta command line option.
+       for TUI mode, present the game table on the left and a console on the right: console will allow a 'simmode' command to switch to simulation mode.
+       for interactive simulation mode, present a console on the right, output on the left and parameters at the bottom left, with ability to export results to txt files 
+         (name of which on the bottom left as well). console in interactive sim mode may allow an 'tuimode' command to switch back to TUI mode.
+      
+       see https://opensource.com/article/19/5/how-write-good-c-main-function for ideas on how to write clean code to parse command line arguments
+       see cubestats project (H:\My Drive\Rubik Cube\cubestats\cubestats\src, see Main and CubeTUI primarily), as well as ncurse documentation 
+       at https://tldp.org/HOWTO/NCURSES-Programming-HOWTO/helloworld.html
+       to decide how to structure the ncurses TUI code: need to use a pure C approach if at all possible instead of the C++ approach of CubeStats
+       
+   Additonal idea on TUI mode with sample (generic) code:
+   #include <ncurses.h>
+   #include <stdio.h>
+   #include <string.h> // For strcmp
 
-2. Check that following logic was captured in claudeAI generated code.
-  resolveCombat(), which will swith to turn_phase = attachk as the last line of code
-  
-  check 'strategy' code : my notes were
-  
-  attack_phase():
-    apply_attack_strat(curPlayer) = apply_attack_def_strat[curPlayer, Attack (enum)]
-       which will switch to turn_phase = defense as the last line of code
-  
-  defense_phase():
-    if combatZone[curPlayer] > 0
-      apply_defense_strat[notCurPlayer] =  apply_attack_def_strat[notCurPlayer, Defense (enum)]
-    endif
-  
-  AttStratA, etc are 4 arrays of function pointers to be executed sequentially to execute the Attack Strategy for Player A, player B, etc.
-  void (*AttStratA[n]) (&gamestat, &gamestate, ...): n is the maximum number of steps in a strategy
-  void (*AttStratB[n]) (&gamestat, &gamestate, ...)
-  void (*DefStratA[n]) (&gamestat, &gamestate, ...)
-  void (*DefStratB[n]) (&gamestat, &gamestate, ...)
-  
-  AttStratA[0] = function name, etc.; or initialize this way: AttStratA = {f1, f2, ...}
-  
-  ApplyAttDefStrat(PlayerID, AttackDefenseIndicator (from an enum))
-   function that will find, based on PlayerID and A/D ID which of the 4 array of function pointers to use, and will then call them
-  
-  inside ApplyAttDefStrat, 
-    define void (*Strat[n]) (&gamestat, &gamestate, ...);
-  then based on PlayerID and A/D ID in switch case stmts, could then do:
-    Strat = AttStratA;
-  
-  then loop over n indices of Strat and call functions:
-    for each i from 0 to n - 1
-      Strat[i] (&gamestat, &gamestate, ...);
- 
-3. check that combo bonuses are properly calculated
+      // Function for ncurses mode
 
-my pseudo code originally was
+      void run_ncurses_mode() {
+          initscr();              // Initialize the screen
+          cbreak();               // Disable line buffering
+          noecho();               // Don't echo user input
+          printw("Running in ncurses mode. Press any key to exit.");
+          getch();                // Wait for user input
+          endwin();               // End ncurses mode
+      }      
 
-s1, s2, s3: species combat cards 1, 2, 3
-c1, c2, c3: colours combat cards 1, 2, 3
-o1, o2, o3: order combat cards 1, 2, 3
+      // Function for CLI mode
+      void run_cli_mode() {
+          printf("Running in CLI mode.\n");
+          printf("This is the standard command-line output.\n");
+      }      
 
-switch deck_drawing_approach
+      int main(int argc, char *argv[]) {
+          int cli_mode = 0; // Flag to determine if CLI mode should be used       
 
-case RANDOM:
+          // Check command-line arguments
+          for (int i = 1; i < argc; i++) {
+              if (strcmp(argv[i], "--cli") == 0 || strcmp(argv[i], "-c") == 0) {
+                  cli_mode = 1;
+                  break; // Found the CLI flag, no need to check further
+              }
+          }      
 
-  if 2 cards in combat zone:
-    if s2=s1 then +10
-    else if o2=o1 then +7
-    else if c2=c1 then +5
+          if (cli_mode) {
+              run_cli_mode();
+          } else {
+              run_ncurses_mode();
+          }      
 
-  if 3 cards in combat zone:
-    if s2=s1 then
-      if s3=s1 then +16
-      else if o3=o1 then +14
-      else if c3=c1 then +13
-      else +10
-    else if s3=s1 then
-      if o3=o2 then +14
-      else if c3=c2 then +13
-      else +10
-    else if o2=o1 then
-      if o3=o1 then +11
-      else if c3=c2 then +9
-      else +7
-    else if o3=o1 then
-      if c2=c1 then +9
-      else +7
-    else if c2=c1 then
-      if c3=c1 then +8
-      else +5
-    else if c3=c1 then = 5
-    endif
+          return 0;
+      }       
 
-case MONOCHROME:
-  if 2 cards in combat zone:
-    if o2=o1 then +7
+      argv Array Construction: The program loader constructs an array of pointers, where each pointer points to one of these argument strings in memory. This array of pointers is what becomes argv.
+      argv[0] points to the string containing the program's name (as it was invoked).
+      argv[1] points to the first command-line argument.
+      argv[2] points to the second command-line argument, and so on.
+      argv[argc] is a NULL pointer, marking the end of the array.
+      argc Population: The argc integer variable is populated with the total count of arguments, including the program name itself. So, if a program is run with no additional arguments, argc will be 1 (for argv[0]).
 
-  if 3 cards in combat zone:
-    if o2=o1 then
-      if o3=o1 then +12
-      else +7
-    endif
-
-case CUSTOM:
-  if 2 cards in combat zone:
-    if s2=s1 then +7
-    else if o2=o1 then +4
-    
-  if 3 cards in combat zone:
-    if s2=s1 then
-      if s3=s1 then +12
-      else if o3=o1 then +9
-      else +7
-    else if s3=s1 then
-      if o3=o2 then +9
-      else +7
-    else if o2=o1 then
-      if o3=o1 then +6
-      else +4
-    else if o3=o1 then +4
-    endif
-    
-4. Verify the cash card implementation
-      Cash Card Implementation
-      - `has_champion_in_hand()` - checks if champions are available
-      - `select_champion_for_cash_exchange()` - selects lowest power champion
-      - `play_cash_card()` - complete cash card logic
-      - Properly integrated into card selection and play logic
-
-5. Implement a ncurses based text user interface to allow two human players to interactively play against each other or a human to play against the 'AI': 
-     start immediately in 'interactive' mode unless user provided the -sim command line option.
-       for interactive present the table on the left and a console on the right: console will allow a 'simmode' command to switch to simulation mode.
-       for simulation present a console on the right, output on the left and parameters at the bottom left, with ability to export results to txt files (name of which
-         on the bottom left as well). console in sim mode may allow an 'intermode' command to switch back to interactive mode.
-
-6. Build foundation to allow for smart AI playing agents:
+2. Build foundation to allow for smart AI playing agents:
 
    integrate cards visibility indicators inside the gamestate struct: eg ai agent should only be provided visible (or 'known to be somewhere') portion of gamestate    
       card visibility: for each card in hands and decks, need to have one value in game state 
       from player A perspective and one from player B perspective:
         visible
-        hidden (could be anywhere, including in cards left completely out of play for this game)
-        hidden but known to be somewhere in own deck
-        hidden but known to be somewhere in opponent deck
         hidden but known to be in opponent's hand (effectively, this is the same as 'visible' from 
           the strategic value perspective)
-        hidden but known to be in either opponent's hand or deck
+        hidden (could be anywhere, including in fullDeck cards left completely out of play for this game (may not even be in any one's deck'))
+        hidden but known to be somewhere in own deck
+        hidden but known to be somewhere in opponent deck        
+        hidden but known to be in opponent's hand or deck (but we don't know which, since of course the opponent's hand is hidden from the other player)
    
-7. Finalize foundation to allow for smart AI playing agents:
+3. Finalize foundation to allow for smart AI playing agents:
 
     should make use of the 'action' structure: build (encode) it in decision portion of the code, and then perform an action by decoding the action struct
       at the end of the day, the strat code should be building the action struct (using visible gamestate info passed from main code), 
@@ -157,11 +101,11 @@ case CUSTOM:
 
       cardsdiscarted = array(3) of uint (index in full deck)
 
-8. Build a first set of 'smart' AI playing agents
+4. Build a first set of 'smart' AI playing agents
     
     enhance decision rules to mimic what a smart player would do, and find what could be more optimal 
        decision rules, probably using heuristics to keep things simple. See notes in balanced rules strategy source file: strat_balancedrules1.c and in heuristics strategy
-       source file.
+       source file. Don't forget that a call to a strategy function should also be done when mulliganing and discarting (to 7 cards).
        
       Need to put in place, in the module that calls the simulation code (from main()), an optimization mechanism that can be used to automate the fine tuning of AI agent
         heuristics / parameters with the goal of maximizing that agent's win rate, or eventually finding the parameters that will make a given agent's win rate equal to x%
@@ -179,11 +123,11 @@ case CUSTOM:
          - Implement attack/defense functions
          - Register in main.c
          
-9. Build a 'somewhat smarter' AI playing agent
+5. Build a 'somewhat smarter' AI playing agent
 
     combine the 'balanced' and 'heuristic' strategies into a 3rd hybrid strategy that is better than those 2
    
-10. Build even stronger AI playing agents:
+6. Build even stronger AI playing agents:
       - Monte Carlo Single Stage Analysis (strat_simplemc1): pruning in 4 episodes
 
       - Gradual progressive pruning
@@ -200,10 +144,10 @@ case CUSTOM:
       
       - mcts with neural network based (eg dqn) prior predictor: presumably this would be a very very strong agent
   
-11. implement a GUI version of the game: may need to figure out how to make sure the program does not 'freeze' PC when calculating AI strategy. e.g. may want button / menu
+7. implement a GUI version of the game: may need to figure out how to make sure the program does not 'freeze' PC when calculating AI strategy. e.g. may want button / menu
       to let GUI user stop the calc or terminate the program in a 'clean' way. One option is to span the calculation intensive task to a 'worker thread'.
        
-12. implement the client / server approach:
+8. implement the client / server approach:
      - server handles game mechanics (including throwing the dices, coming up with the list of possible moves, etc.) and is only one knowing the full game state
      - server will provide clients also with opponent's last play and visible game state (which varies for each player because of the hand visibility to only one player) 
          for drawing the screen
@@ -221,13 +165,34 @@ case CUSTOM:
           (se)rver: will automatically use text CLI
           (cl)ient (for human players): s(imulation) ('cls'), t(ext user interface) ('clt'), g(raphical user interface) ('clg')
           (ai) (for ai players): will automatically use text CLI
+    
+    - additional notes on client / server approach for consideration / integration in the proposed approach:
+      AI client to be called by server: could be on the same physical machine as the server, or a different one
+      source code files could be split between client (mostly user I/O) (cl_xyz.c), server (game logic and state) (sr_abc.c) and shared constants and structures (sh_xyz.c)
+        ai client implementation could be in ai_xyz.c source files (likely mostly using the strategy.c files)
+        simulation in standalone mode could be in sim_xyz.c source files
+      
+      client and server communicate via socket text messages when on different machines or simple function calls (with the 'text commands') when running in standalone mode
+      when in 'network' mode, text messages and function calls travel this way:
+          client -> client command to text translation -> socket port (client side) -> net -> socket (server side) -> server text to command interpreter -> server
+            in 'network' mode, both sockets could also be on the same PC on 2 different ports, attached to 2 independent programs
+      
+      when in 'standalone' mode, message could travel this way. may want to eventually consider further reducing 'overhead' created by the 'encode, then decode' of the command by using
+        another more efficient / fast way to get the client and server to communicate (e.g. directly passing an 'action' struct when the client wants to inform the server of the
+        action it wants to take?):
+          client -> client command to text translation -> server text to command interpreter -> server
+     
+     server's message back often to be the 'visible game state' (from the perspective of a given client / player) or the 'result of last dice roll'
+     
+     text commands: 4 letters (mandatory) + 6 digits (optional) (e.g. "play 01,04,06" or "cham 01,04,06" to indicate we want to play card IDs 1, 4 and 6 (decide if IDs should represent
+     position in player's hand array, or the actual card's index in the fullDeck array)
 
-13. **Add Documentation**
+9. **Add Documentation**
      - Doxygen comments
      - API documentation
      - Strategy guide
 
-14. **Performance Optimization**
+10. **Performance Optimization**
      - Profile hot paths
      - Optimize combo calculations
      - Memory pool for frequently allocated structures

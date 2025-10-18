@@ -19,14 +19,14 @@ void random_attack_strategy(struct gamestate* gstate)
   uint8_t affordable[gstate->hand[attacker].size];
   uint8_t count = 0;
 
-  int has_champions = has_champion_in_hand(&gstate->hand[attacker]);
+  bool has_champions = has_champion_in_hand(&gstate->hand[attacker]);
   uint8_t* hand_array = HDCLL_toArray(&gstate->hand[attacker]);  // this allocates memory on the heap for array hand_array, make sure to free() it
 
   for(uint8_t i = 0; i < gstate->hand[attacker].size; i++)
   { uint8_t card_idx = hand_array[i];
 
     if(fullDeck[card_idx].cost <= gstate->current_cash_balance[attacker])
-    { // Skip cash cards if no champions available
+    { // Skip cash cards if no champions available (in the hand)
       if(fullDeck[card_idx].card_type == CASH_CARD && !has_champions)
         continue;
       affordable[count++] = card_idx;
@@ -39,14 +39,14 @@ void random_attack_strategy(struct gamestate* gstate)
   // Play random affordable card
   uint8_t chosen = RND_randn(count);
   play_card(gstate, attacker, affordable[chosen]);
-}
+} // random_attack_strategy
 
 void random_defense_strategy(struct gamestate* gstate)
 { PlayerID defender = 1 - gstate->current_player;
 
   if(gstate->hand[defender].size == 0) return;
 
-  // Only defend 47% of the time
+  // Only defend 47% of the time: this is a parameter of the strategy that could be set more dynamically and tested, the goal being to make the strategy as strong as possible
   if(genRand(&MTwister_rand_struct) > 0.47) return;
 
   // Build list of affordable champions
@@ -69,4 +69,4 @@ void random_defense_strategy(struct gamestate* gstate)
   // Play random champion
   uint8_t chosen = RND_randn(count);
   play_champion(gstate, defender, affordable[chosen]);
-}
+} // random_defense_strategy
