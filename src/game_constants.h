@@ -34,5 +34,6 @@ extern const char* const GAME_STATE_NAMES[];
 extern const char* const TURN_PHASE_NAMES[];
 extern const char* const CARD_TYPE_SHORT_NAMES[];
 extern const char* const CHAMPION_COLOR_NAMES[];
+extern const char* const CHAMPION_SPECIES_NAMES[];
 
 #endif // GAME_CONSTANTS_H
