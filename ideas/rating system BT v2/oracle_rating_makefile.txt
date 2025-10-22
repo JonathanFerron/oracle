@@ -1,0 +1,78 @@
+# Makefile for Oracle Rating System
+# Usage:
+#   make          - Build test executable
+#   make clean    - Remove built files
+#   make run      - Build and run tests
+#   make lib      - Build static library
+
+CC = gcc
+CFLAGS = -Wall -Wextra -O2 -std=c99
+LDFLAGS = -lm
+
+# Source files
+SRCS = oracle_rating.c oracle_rating_test.c
+OBJS = $(SRCS:.c=.o)
+TARGET = oracle_test
+
+# Library
+LIB_SRCS = oracle_rating.c
+LIB_OBJS = $(LIB_SRCS:.c=.o)
+LIB_TARGET = liboracle_rating.a
+
+# Default target
+all: $(TARGET)
+
+# Build test executable
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	@echo "Built $(TARGET) successfully"
+
+# Build static library
+lib: $(LIB_OBJS)
+	ar rcs $(LIB_TARGET) $^
+	@echo "Built $(LIB_TARGET) successfully"
+
+# Compile object files
+%.o: %.c oracle_rating.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Run tests
+run: $(TARGET)
+	./$(TARGET)
+
+# Clean build artifacts
+clean:
+	rm -f $(OBJS) $(TARGET) $(LIB_TARGET)
+	rm -f test_ratings.csv ratings.csv
+	@echo "Cleaned build artifacts"
+
+# Install library (optional)
+install: lib
+	mkdir -p /usr/local/lib
+	mkdir -p /usr/local/include
+	cp $(LIB_TARGET) /usr/local/lib/
+	cp oracle_rating.h /usr/local/include/
+	@echo "Installed to /usr/local"
+
+# Uninstall
+uninstall:
+	rm -f /usr/local/lib/$(LIB_TARGET)
+	rm -f /usr/local/include/oracle_rating.h
+	@echo "Uninstalled from /usr/local"
+
+# Debug build
+debug: CFLAGS += -g -DDEBUG
+debug: clean $(TARGET)
+
+# Help
+help:
+	@echo "Oracle Rating System - Build Targets:"
+	@echo "  make          - Build test executable"
+	@echo "  make lib      - Build static library"
+	@echo "  make run      - Build and run tests"
+	@echo "  make clean    - Remove built files"
+	@echo "  make debug    - Build with debug symbols"
+	@echo "  make install  - Install library system-wide"
+	@echo "  make help     - Show this help"
+
+.PHONY: all lib run clean install uninstall debug help

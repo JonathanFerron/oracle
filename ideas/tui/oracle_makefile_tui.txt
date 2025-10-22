@@ -1,5 +1,5 @@
 # Makefile for Oracle: The Champions of Arcadia
-# Updated to work with refactored modular structure
+# Updated with TUI (ncurses) support
 
 CC := gcc
 SRCDIR := src
@@ -11,9 +11,9 @@ BINDIR := bin
 TARGET := $(BINDIR)/oracle
 SRCEXT := c
 INCEXT := h
-LIBS := -lm
-#LIBS=-pthread -lncursesw -lpanelw -lformw -lmenuw
 
+# Libraries - add ncurses for TUI
+LIBS := -lm -lncurses
 
 # Automatically find all .c files in src directory
 SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
@@ -51,10 +51,10 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle*
+	$(RM) -r $(BUILDDIR)/* $(BINDIR)/*
 	@echo "Clean complete"
 
-# Debug build (keeps your debug flags)
+# Debug build
 .PHONY: debug
 debug: CFLAGS := -g -O0 -Wall -std=c23 -DDEBUG
 debug: clean all
@@ -70,6 +70,7 @@ $(TEST_COMBO_TARGET): $(TEST_COMBO_OBJS)
 	$(CC) $(TEST_COMBO_OBJS) -o $(TEST_COMBO_TARGET) $(LIBS)
 	@echo "Test build complete: $(TEST_COMBO_TARGET)"
 
+# Build old code
 OLDCODE_TARGET := $(BINDIR)/oracle_old
 OLDCODE_SRCS := $(shell find $(OLDSRCDIR) -type f -name *.$(SRCEXT))
 OLDCODE_OBJS := $(patsubst $(OLDSRCDIR)/%,$(OLDBUILDDIR)/%,$(OLDCODE_SRCS:.$(SRCEXT)=.o))
@@ -78,7 +79,7 @@ OLDCODE_OBJS := $(patsubst $(OLDSRCDIR)/%,$(OLDBUILDDIR)/%,$(OLDCODE_SRCS:.$(SRC
 oldcode: $(OLDCODE_TARGET)
 
 $(OLDCODE_TARGET): $(OLDCODE_OBJS)
-	@echo "Linking ..."
+	@echo "Linking old code..."
 	@mkdir -p $(BINDIR)
 	$(CC) $^ -o $(OLDCODE_TARGET) $(LIBS)
 	@echo "Build complete: $(OLDCODE_TARGET)"
@@ -88,9 +89,22 @@ $(OLDBUILDDIR)/%.o: $(OLDSRCDIR)/%.$(SRCEXT)
 	@echo "Compiling $<..."
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+# Format source code
 .PHONY: format
 format:
 	astyle --project --suffix=none --recursive "*.c,*.h"
+
+# Run TUI mode
+.PHONY: tui
+tui: $(TARGET)
+	@echo "Launching TUI mode..."
+	$(TARGET) -t
+
+# Run automated simulation
+.PHONY: sim
+sim: $(TARGET)
+	@echo "Running automated simulation..."
+	$(TARGET) -a
 
 # Help target
 .PHONY: help
@@ -101,9 +115,11 @@ help:
 	@echo "  all          - Build the project (default)"
 	@echo "  clean        - Remove build artifacts"
 	@echo "  debug        - Build with debug symbols and -O0"
+	@echo "  tui          - Build and launch TUI mode"
+	@echo "  sim          - Build and run automated simulation"
 	@echo "  test_combo   - Build combo bonus tests"
-	@echo "  oldcode      - Build the old code (usually used for regression testing purpose)"
-	@echo "  format       - Format the c and h source files using astyle"
+	@echo "  oldcode      - Build old code for regression testing"
+	@echo "  format       - Format C source files using astyle"
 	@echo "  help         - Show this help message"
 	@echo ""
 	@echo "Current configuration:"
@@ -112,23 +128,4 @@ help:
 	@echo "  Target:      $(TARGET)"
 	@echo "  Compiler:    $(CC)"
 	@echo "  Flags:       $(CFLAGS)"
-	
-# Future Test Additions:
-# To add more tests, simply follow this pattern:
-# Add after TEST_COMBO_* definitions
-# TEST_COMBAT_TARGET := $(BINDIR)/test_combat
-# TEST_COMBAT_SRCS := $(SRCDIR)/test_combat.c \
-#                     $(SRCDIR)/combat.c \
-#                     $(SRCDIR)/combo_bonus.c \
-#                     $(SRCDIR)/game_constants.c
-# TEST_COMBAT_OBJS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(TEST_COMBAT_SRCS:.$(SRCEXT)=.o))
-
-# Add build rule
-# $(TEST_COMBAT_TARGET): $(TEST_COMBAT_OBJS)
-# 	@echo "Linking test_combat..."
-# 	@mkdir -p $(BINDIR)
-# 	$(CC) $(TEST_COMBAT_OBJS) -o $(TEST_COMBAT_TARGET) $(LIBS)
-
-# Add test target
-# .PHONY: test_combat
-# test_combat: $(TEST_COMBAT_TARGET)
+	@echo "  Libraries:   $(LIBS)"

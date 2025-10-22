@@ -1,0 +1,448 @@
+// tui.c
+// Text User Interface implementation for Oracle game
+
+#include "tui.h"
+#include "game_constants.h"
+#include "card_actions.h"
+#include "turn_logic.h"
+#include "game_state.h"
+#include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
+
+#define COLOR_DARK_GRAY   8
+#define COLOR_LIGHT_GRAY  9
+
+TUIState* tui_init(void) {
+    TUIState *tui = malloc(sizeof(TUIState));
+    if (!tui) return NULL;
+    
+    // Initialize ncurses
+    initscr();
+    cbreak();
+    noecho();
+    keypad(stdscr, TRUE);
+    curs_set(0);
+    
+    // Setup colors if available
+    if (has_colors()) {
+        start_color();
+        tui_setup_colors();
+    }
+    
+    // Calculate dimensions
+    int max_y, max_x;
+    getmaxyx(stdscr, max_y, max_x);
+    
+    // Create windows
+    tui->game_win = newwin(max_y - STATUS_HEIGHT - COMMAND_HEIGHT,
+                           GAME_AREA_WIDTH, 0, 0);
+    tui->console_win = newwin(max_y - STATUS_HEIGHT - COMMAND_HEIGHT,
+                              max_x - GAME_AREA_WIDTH, 0, GAME_AREA_WIDTH);
+    tui->status_win = newwin(STATUS_HEIGHT, max_x,
+                             max_y - STATUS_HEIGHT - COMMAND_HEIGHT, 0);
+    tui->command_win = newwin(COMMAND_HEIGHT, max_x,
+                              max_y - COMMAND_HEIGHT, 0);
+    
+    // Enable scrolling for console
+    scrollok(tui->console_win, TRUE);
+    
+    // Initialize state
+    tui->mode = TUI_MODE_PLAY;
+    tui->running = true;
+    tui->show_details = true;
+    tui->gstate = NULL;
+    tui->strategies = NULL;
+    
+    // Initialize message buffer
+    tui->max_messages = 100;
+    tui->messages = calloc(tui->max_messages, sizeof(char*));
+    tui->message_count = 0;
+    
+    refresh();
+    return tui;
+}
+
+void tui_cleanup(TUIState *tui) {
+    if (!tui) return;
+    
+    // Free message buffer
+    for (int i = 0; i < tui->message_count; i++) {
+        free(tui->messages[i]);
+    }
+    free(tui->messages);
+    
+    // Delete windows
+    delwin(tui->game_win);
+    delwin(tui->console_win);
+    delwin(tui->status_win);
+    delwin(tui->command_win);
+    
+    // End ncurses
+    endwin();
+    free(tui);
+}
+
+void tui_setup_colors(void) {
+    init_color(COLOR_DARK_GRAY, 300, 300, 300);
+    init_color(COLOR_LIGHT_GRAY, 700, 700, 700);
+    
+    init_pair(COLOR_PAIR_DEFAULT, COLOR_WHITE, COLOR_BLACK);
+    init_pair(COLOR_PAIR_HEADER, COLOR_CYAN, COLOR_BLACK);
+    init_pair(COLOR_PAIR_HIGHLIGHT, COLOR_BLACK, COLOR_WHITE);
+    init_pair(COLOR_PAIR_RED, COLOR_RED, COLOR_BLACK);
+    init_pair(COLOR_PAIR_INDIGO, COLOR_BLUE, COLOR_BLACK);
+    init_pair(COLOR_PAIR_ORANGE, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(COLOR_PAIR_STATUS, COLOR_GREEN, COLOR_BLACK);
+}
+
+int tui_run(TUIState *tui) {
+    while (tui->running) {
+        // Draw all windows
+        tui_draw_game_area(tui);
+        tui_draw_console(tui);
+        tui_draw_status(tui);
+        
+        // Refresh all windows
+        wrefresh(tui->game_win);
+        wrefresh(tui->console_win);
+        wrefresh(tui->status_win);
+        wrefresh(tui->command_win);
+        
+        // Get input
+        int ch = getch();
+        tui_handle_input(tui, ch);
+        
+        // Check for game end
+        if (tui->gstate && tui->gstate->someone_has_zero_energy) {
+            tui_add_message(tui, "Game Over! %s wins!",
+                           GAME_STATE_NAMES[tui->gstate->game_state]);
+            tui->running = false;
+        }
+    }
+    
+    return 0;
+}
+
+void tui_draw_game_area(TUIState *tui) {
+    if (!tui->gstate) return;
+    
+    werase(tui->game_win);
+    box(tui->game_win, 0, 0);
+    
+    // Draw Player B at top (opponent)
+    tui_draw_player_info(tui, tui->game_win, PLAYER_B, 1, 1);
+    tui_draw_hand(tui, tui->game_win, PLAYER_B, 3, 1);
+    tui_draw_deck_discard(tui, tui->game_win, PLAYER_B, 5, 1);
+    tui_draw_combat_zone(tui, tui->game_win, PLAYER_B, 7, 1);
+    
+    // Draw center divider
+    mvwprintw(tui->game_win, 12, 1, 
+              "──────────────────────────────────────────────");
+    
+    // Draw Player A at bottom (user)
+    tui_draw_combat_zone(tui, tui->game_win, PLAYER_A, 14, 1);
+    tui_draw_deck_discard(tui, tui->game_win, PLAYER_A, 16, 1);
+    tui_draw_hand(tui, tui->game_win, PLAYER_A, 18, 1);
+    tui_draw_player_info(tui, tui->game_win, PLAYER_A, 20, 1);
+}
+
+void tui_draw_player_info(TUIState *tui, WINDOW *win, 
+                          PlayerID player, int y, int x) {
+    if (!tui->gstate) return;
+    
+    const char *status = (tui->gstate->current_player == player) ?
+                         "Active" : "Waiting";
+    const char *role = (tui->gstate->turn_phase == ATTACK) ?
+                       ((tui->gstate->current_player == player) ?
+                        "Attacker" : "Defender") :
+                       ((tui->gstate->current_player == player) ?
+                        "Defender" : "Attacker");
+    
+    wattron(win, COLOR_PAIR(COLOR_PAIR_HEADER));
+    mvwprintw(win, y, x, "%s | %s/%s | %d lunas | %d energy",
+              PLAYER_NAMES[player], status, role,
+              tui->gstate->current_cash_balance[player],
+              tui->gstate->current_energy[player]);
+    wattroff(win, COLOR_PAIR(COLOR_PAIR_HEADER));
+}
+
+void tui_draw_hand(TUIState *tui, WINDOW *win, PlayerID player,
+                   int y, int x) {
+    if (!tui->gstate) return;
+    
+    mvwprintw(win, y, x, "Hand (%d):", 
+              tui->gstate->hand[player].size);
+    
+    // For opponent, show hidden cards
+    if (player != PLAYER_A || !tui->show_details) {
+        mvwprintw(win, y, x + 12, "[Hidden]");
+        return;
+    }
+    
+    // Show player's hand with details
+    struct LLNode *current = tui->gstate->hand[PLAYER_A].head;
+    int card_x = x + 12;
+    int idx = 0;
+    
+    while (current != NULL && idx < 10) {
+        char buf[32];
+        tui_get_card_display(current->data, buf, sizeof(buf));
+        
+        int color = tui_get_color_for_card(
+            fullDeck[current->data].color);
+        wattron(win, COLOR_PAIR(color));
+        mvwprintw(win, y, card_x, "[%d]%s", idx, buf);
+        wattroff(win, COLOR_PAIR(color));
+        
+        card_x += strlen(buf) + 4;
+        current = current->next;
+        idx++;
+    }
+}
+
+void tui_draw_combat_zone(TUIState *tui, WINDOW *win, PlayerID player,
+                          int y, int x) {
+    if (!tui->gstate) return;
+    
+    mvwprintw(win, y, x, "Combat Zone (%d):",
+              tui->gstate->combat_zone[player].size);
+    
+    if (tui->gstate->combat_zone[player].size == 0) {
+        mvwprintw(win, y, x + 18, "[Empty]");
+        return;
+    }
+    
+    struct LLNode *current = tui->gstate->combat_zone[player].head;
+    int card_x = x + 18;
+    
+    while (current != NULL) {
+        char buf[32];
+        tui_get_card_display(current->data, buf, sizeof(buf));
+        
+        int color = tui_get_color_for_card(
+            fullDeck[current->data].color);
+        wattron(win, COLOR_PAIR(color));
+        mvwprintw(win, y, card_x, "%s", buf);
+        wattroff(win, COLOR_PAIR(color));
+        
+        card_x += strlen(buf) + 1;
+        current = current->next;
+    }
+}
+
+void tui_draw_deck_discard(TUIState *tui, WINDOW *win, PlayerID player,
+                           int y, int x) {
+    if (!tui->gstate) return;
+    
+    int deck_size = tui->gstate->deck[player].top + 1;
+    int discard_size = tui->gstate->discard[player].size;
+    
+    mvwprintw(win, y, x, "Deck: %2d | Discard: %2d",
+              deck_size, discard_size);
+}
+
+void tui_draw_console(TUIState *tui) {
+    werase(tui->console_win);
+    box(tui->console_win, 0, 0);
+    
+    wattron(tui->console_win, COLOR_PAIR(COLOR_PAIR_HEADER));
+    mvwprintw(tui->console_win, 0, 2, " Game Log ");
+    wattroff(tui->console_win, COLOR_PAIR(COLOR_PAIR_HEADER));
+    
+    // Draw messages (newest at bottom)
+    int max_y, max_x;
+    getmaxyx(tui->console_win, max_y, max_x);
+    
+    int start_msg = (tui->message_count > max_y - 3) ?
+                    tui->message_count - (max_y - 3) : 0;
+    int y = 1;
+    
+    for (int i = start_msg; i < tui->message_count; i++) {
+        mvwprintw(tui->console_win, y++, 1, "%s", tui->messages[i]);
+    }
+}
+
+void tui_draw_status(TUIState *tui) {
+    werase(tui->status_win);
+    box(tui->status_win, 0, 0);
+    
+    if (tui->mode == TUI_MODE_PLAY) {
+        wattron(tui->status_win, COLOR_PAIR(COLOR_PAIR_STATUS));
+        mvwprintw(tui->status_win, 1, 2,
+                  "TAB: Command Mode | 0-9: Play Card | "
+                  "P: Pass | Q: Quit");
+        wattroff(tui->status_win, COLOR_PAIR(COLOR_PAIR_STATUS));
+    } else {
+        wattron(tui->status_win, COLOR_PAIR(COLOR_PAIR_STATUS));
+        mvwprintw(tui->status_win, 1, 2,
+                  "Command Mode - Type command and press ENTER "
+                  "(TAB to exit)");
+        wattroff(tui->status_win, COLOR_PAIR(COLOR_PAIR_STATUS));
+    }
+}
+
+void tui_add_message(TUIState *tui, const char *format, ...) {
+    char buffer[256];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+    
+    if (tui->message_count >= tui->max_messages) {
+        // Remove oldest message
+        free(tui->messages[0]);
+        memmove(tui->messages, tui->messages + 1,
+                (tui->max_messages - 1) * sizeof(char*));
+        tui->message_count--;
+    }
+    
+    tui->messages[tui->message_count++] = strdup(buffer);
+}
+
+void tui_clear_messages(TUIState *tui) {
+    for (int i = 0; i < tui->message_count; i++) {
+        free(tui->messages[i]);
+    }
+    tui->message_count = 0;
+}
+
+void tui_handle_input(TUIState *tui, int ch) {
+    if (ch == '\t') {
+        tui->mode = (tui->mode == TUI_MODE_PLAY) ?
+                    TUI_MODE_COMMAND : TUI_MODE_PLAY;
+        return;
+    }
+    
+    if (tui->mode == TUI_MODE_PLAY) {
+        tui_handle_play_mode(tui, ch);
+    } else {
+        tui_handle_command_mode(tui, ch);
+    }
+}
+
+void tui_handle_play_mode(TUIState *tui, int ch) {
+    switch (ch) {
+        case 'q':
+        case 'Q':
+            tui->running = false;
+            break;
+        case 'p':
+        case 'P':
+            tui_execute_pass(tui);
+            break;
+        case '0': case '1': case '2': case '3': case '4':
+        case '5': case '6': case '7': case '8': case '9':
+            tui_execute_play_card(tui, ch - '0');
+            break;
+    }
+}
+
+void tui_handle_command_mode(TUIState *tui, int ch) {
+    static char cmd_buffer[256] = {0};
+    static int cmd_pos = 0;
+    
+    werase(tui->command_win);
+    box(tui->command_win, 0, 0);
+    mvwprintw(tui->command_win, 0, 2, " Command ");
+    
+    if (ch == '\n') {
+        cmd_buffer[cmd_pos] = '\0';
+        tui_process_command(tui, cmd_buffer);
+        cmd_pos = 0;
+        cmd_buffer[0] = '\0';
+    } else if (ch == KEY_BACKSPACE || ch == 127) {
+        if (cmd_pos > 0) cmd_pos--;
+        cmd_buffer[cmd_pos] = '\0';
+    } else if (ch >= 32 && ch < 127 && cmd_pos < 255) {
+        cmd_buffer[cmd_pos++] = ch;
+    }
+    
+    mvwprintw(tui->command_win, 1, 2, "> %s", cmd_buffer);
+    wrefresh(tui->command_win);
+}
+
+void tui_process_command(TUIState *tui, const char *command) {
+    if (strcmp(command, "help") == 0) {
+        tui_add_message(tui, "Available commands: help, pass, quit");
+    } else if (strcmp(command, "pass") == 0) {
+        tui_execute_pass(tui);
+    } else if (strcmp(command, "quit") == 0) {
+        tui->running = false;
+    } else {
+        tui_add_message(tui, "Unknown command: %s", command);
+    }
+}
+
+void tui_execute_play_card(TUIState *tui, int card_index) {
+    if (!tui->gstate) return;
+    if (tui->gstate->current_player != PLAYER_A) {
+        tui_add_message(tui, "Not your turn!");
+        return;
+    }
+    
+    if (card_index >= tui->gstate->hand[PLAYER_A].size) {
+        tui_add_message(tui, "Invalid card index!");
+        return;
+    }
+    
+    uint8_t card_idx = HDCLL_getNodeValueByIndex(
+        &tui->gstate->hand[PLAYER_A], card_index);
+    
+    if (fullDeck[card_idx].cost > 
+        tui->gstate->current_cash_balance[PLAYER_A]) {
+        tui_add_message(tui, "Not enough cash!");
+        return;
+    }
+    
+    play_card(tui->gstate, PLAYER_A, card_idx);
+    
+    char buf[32];
+    tui_get_card_display(card_idx, buf, sizeof(buf));
+    tui_add_message(tui, "Played: %s", buf);
+}
+
+void tui_execute_pass(TUIState *tui) {
+    if (!tui->gstate) return;
+    tui_add_message(tui, "Pass");
+    tui_next_turn(tui);
+}
+
+void tui_next_turn(TUIState *tui) {
+    if (!tui->gstate) return;
+    
+    // This is a simplified version - full implementation
+    // would integrate with turn_logic.c
+    struct gamestats gstats = {0};
+    play_turn(&gstats, tui->gstate, tui->strategies);
+}
+
+const char* tui_get_card_display(uint8_t card_idx, char *buffer,
+                                  size_t bufsize) {
+    if (fullDeck[card_idx].card_type == CHAMPION_CARD) {
+        snprintf(buffer, bufsize, "d%u+%u %s",
+                fullDeck[card_idx].defense_dice,
+                fullDeck[card_idx].attack_base,
+                CHAMPION_SPECIES_NAMES[fullDeck[card_idx].species]);
+    } else if (fullDeck[card_idx].card_type == DRAW_CARD) {
+        snprintf(buffer, bufsize, "Draw%u",
+                fullDeck[card_idx].draw_num);
+    } else {
+        snprintf(buffer, bufsize, "Cash");
+    }
+    return buffer;
+}
+
+int tui_get_color_for_card(ChampionColor color) {
+    switch (color) {
+        case COLOR_RED: return COLOR_PAIR_RED;
+        case COLOR_INDIGO: return COLOR_PAIR_INDIGO;
+        case COLOR_ORANGE: return COLOR_PAIR_ORANGE;
+        default: return COLOR_PAIR_DEFAULT;
+    }
+}
+
+void tui_format_dice_attack(uint8_t dice, uint8_t base, char *buffer,
+                            size_t bufsize) {
+    snprintf(buffer, bufsize, "d%u+%u", dice, base);
+}

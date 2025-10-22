@@ -1,0 +1,12 @@
+// version.h
+// Version information for Oracle game
+
+#ifndef VERSION_H
+#define VERSION_H
+
+// Version information - year.month format with optional suffix
+#define VERSION_YEAR 2025
+#define VERSION_MONTH 10
+#define VERSION_SUFFIX ""  // Empty or "b", "c", etc.
+
+#endif // VERSION_H

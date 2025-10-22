@@ -9,21 +9,21 @@
 extern bool debug_enabled;
 
 void play_turn(struct gamestats* gstats, struct gamestate* gstate,
-               StrategySet* player_strategies)
+               StrategySet* player_strategies) // need to accept cfg pointer to provide (at least) game mode information
 { begin_of_turn(gstate);
 
-  attack_phase(gstate, player_strategies);
+  attack_phase(gstate, player_strategies);  // need to pass cfg pointer to provide game mode information
 
   if(gstate->combat_zone[gstate->current_player].size > 0)
-  { defense_phase(gstate, player_strategies);
-    resolve_combat(gstate);
+  { defense_phase(gstate, player_strategies);  // need to pass cfg pointer to provide game mode information
+    resolve_combat(gstate);  // need to pass cfg pointer to provide game mode information
   }
 
   if(gstate->someone_has_zero_energy)
   { return; // Game ended
   }
 
-  end_of_turn(gstate);
+  end_of_turn(gstate); // need to pass cfg pointer to provide game mode information
 } // play_turn
 
 void begin_of_turn(struct gamestate* gstate)
@@ -59,9 +59,9 @@ void defense_phase(struct gamestate* gstate, StrategySet* strategies)
     strategies->defense_strategy[defender](gstate);
 }
 
-void end_of_turn(struct gamestate* gstate)
+void end_of_turn(struct gamestate* gstate) // need to accept cfg pointer to provide game mode information
 { collect_1_luna(gstate);
-  discard_to_7_cards(gstate);
+  discard_to_7_cards(gstate); // need to pass cfg pointer to provide game mode information
   change_current_player(gstate);
 
   if(debug_enabled)

@@ -1,65 +1,25 @@
 # oracle TO DOs
-1. Implement a ncurses based text user interface to allow two human players to interactively play against each other or a human to play against the 'AI' (strategy sets): 
-       'TUI' mode (-m=stt, for (st)andalone TUI mode)
-       Interactive simulation mode: -m=sts (interactive simulation)
-       Automated simulation (original non-interactive) mode: -m=sta command line option.
-       for TUI mode, present the game table on the left and a console on the right: console will allow a 'simmode' command to switch to simulation mode.
-       for interactive simulation mode, present a console on the right, output on the left and parameters at the bottom left, with ability to export results to txt files 
+1. Implement a ncurses based text user interface (TUI) to allow two human players to interactively play against each other or a human to play against the 'AI' (strategy sets): 
+       for TUI mode: present the game table on the left and a console on the right: console will allow a 'simmode' command to switch to simulation mode.
+       for interactive simulation mode: present a console on the right, output on the left and parameters at the bottom left, with ability to export results to txt files 
          (name of which on the bottom left as well). console in interactive sim mode may allow an 'tuimode' command to switch back to TUI mode.
       
-       see https://opensource.com/article/19/5/how-write-good-c-main-function for ideas on how to write clean code to parse command line arguments
-       see cubestats project (H:\My Drive\Rubik Cube\cubestats\cubestats\src, see Main and CubeTUI primarily), as well as ncurse documentation 
-       at https://tldp.org/HOWTO/NCURSES-Programming-HOWTO/helloworld.html
-       to decide how to structure the ncurses TUI code: need to use a pure C approach if at all possible instead of the C++ approach of CubeStats
+       see https://tldp.org/HOWTO/NCURSES-Programming-HOWTO/helloworld.html to decide how to structure the ncurses TUI code
        
    Additonal idea on TUI mode with sample (generic) code:
    #include <ncurses.h>
    #include <stdio.h>
-   #include <string.h> // For strcmp
 
-      // Function for ncurses mode
+    // Function for ncurses mode
 
-      void run_ncurses_mode() {
-          initscr();              // Initialize the screen
-          cbreak();               // Disable line buffering
-          noecho();               // Don't echo user input
-          printw("Running in ncurses mode. Press any key to exit.");
-          getch();                // Wait for user input
-          endwin();               // End ncurses mode
-      }      
-
-      // Function for CLI mode
-      void run_cli_mode() {
-          printf("Running in CLI mode.\n");
-          printf("This is the standard command-line output.\n");
-      }      
-
-      int main(int argc, char *argv[]) {
-          int cli_mode = 0; // Flag to determine if CLI mode should be used       
-
-          // Check command-line arguments
-          for (int i = 1; i < argc; i++) {
-              if (strcmp(argv[i], "--cli") == 0 || strcmp(argv[i], "-c") == 0) {
-                  cli_mode = 1;
-                  break; // Found the CLI flag, no need to check further
-              }
-          }      
-
-          if (cli_mode) {
-              run_cli_mode();
-          } else {
-              run_ncurses_mode();
-          }      
-
-          return 0;
-      }       
-
-      argv Array Construction: The program loader constructs an array of pointers, where each pointer points to one of these argument strings in memory. This array of pointers is what becomes argv.
-      argv[0] points to the string containing the program's name (as it was invoked).
-      argv[1] points to the first command-line argument.
-      argv[2] points to the second command-line argument, and so on.
-      argv[argc] is a NULL pointer, marking the end of the array.
-      argc Population: The argc integer variable is populated with the total count of arguments, including the program name itself. So, if a program is run with no additional arguments, argc will be 1 (for argv[0]).
+    void run_ncurses_mode() {
+        initscr();              // Initialize the screen
+        cbreak();               // Disable line buffering
+        noecho();               // Don't echo user input
+        printw("Running in ncurses mode. Press any key to exit.");
+        getch();                // Wait for user input
+        endwin();               // End ncurses mode
+    }      
 
 2. Build foundation to allow for smart AI playing agents:
 

@@ -12,6 +12,15 @@
 #define MAX_NUMBER_OF_SIM 1000
 #define DEBUG_NUMBER_OF_SIM 1
 #define AVERAGE_POWER_FOR_MULLIGAN 4.98
+#define INITIAL_CASH_DEFAULT 30
+#define INITIAL_ENERGY_DEFAULT 99
+#define INITAL_HAND_SIZE_DEFAULT 6
+#define M_TWISTER_SEED 1337
+
+#define min(a,b) ({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })
+#define max(a,b) ({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
+
+extern const bool debug_enabled;
 
 // Full deck array (defined in game_constants.c)
 extern const struct card fullDeck[FULL_DECK_SIZE];

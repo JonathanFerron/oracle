@@ -3,6 +3,8 @@
 
 #include "game_constants.h"
 
+const bool debug_enabled = false;
+
 // String name arrays
 const char* const PLAYER_NAMES[] = {"PLAYER A", "PLAYER B"};
 

@@ -9,16 +9,7 @@
 
 // Game initialization and management
 void setup_game(uint16_t initial_cash, struct gamestate* gstate);
-void apply_mulligan(struct gamestate* gstate);
-void play_game(uint16_t initial_cash, struct gamestats* gstats,
-               StrategySet* strategies);
-
-// Simulation functions
-void run_simulation(uint16_t numsim, uint16_t initial_cash,
-                    struct gamestats* gstats, StrategySet* strategies);
-
-// Stats recording and presentation
-void record_final_stats(struct gamestats* gstats, struct gamestate* gstate);
-void present_results(struct gamestats* gstats);
+void collect_1_luna(struct gamestate* gstate);
+void change_current_player(struct gamestate* gstate);
 
 #endif // GAME_STATE_H

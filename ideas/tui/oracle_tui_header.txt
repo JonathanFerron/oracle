@@ -1,0 +1,97 @@
+// tui.h
+// Text User Interface for Oracle game using ncurses
+
+#ifndef TUI_H
+#define TUI_H
+
+#include <ncurses.h>
+#include "game_types.h"
+#include "strategy.h"
+
+// Color pair definitions
+#define COLOR_PAIR_DEFAULT    1
+#define COLOR_PAIR_HEADER     2
+#define COLOR_PAIR_HIGHLIGHT  3
+#define COLOR_PAIR_RED        4
+#define COLOR_PAIR_INDIGO     5
+#define COLOR_PAIR_ORANGE     6
+#define COLOR_PAIR_STATUS     7
+
+// Window layout constants
+#define GAME_AREA_WIDTH   50
+#define CONSOLE_WIDTH     30
+#define STATUS_HEIGHT     3
+#define COMMAND_HEIGHT    2
+
+// TUI mode enumeration
+typedef enum {
+    TUI_MODE_PLAY,      // Normal play mode
+    TUI_MODE_COMMAND    // Command entry mode
+} TUIMode;
+
+// TUI state structure
+typedef struct {
+    WINDOW *game_win;      // Main game display window
+    WINDOW *console_win;   // Message console window
+    WINDOW *status_win;    // Status bar window
+    WINDOW *command_win;   // Command input window
+    
+    TUIMode mode;
+    bool running;
+    bool show_details;     // Show/hide card details
+    
+    // Game state reference
+    struct gamestate *gstate;
+    StrategySet *strategies;
+    
+    // Console message buffer
+    char **messages;
+    int message_count;
+    int max_messages;
+} TUIState;
+
+// TUI lifecycle functions
+TUIState* tui_init(void);
+void tui_cleanup(TUIState *tui);
+void tui_setup_colors(void);
+
+// Main TUI loop
+int tui_run(TUIState *tui);
+
+// Display functions
+void tui_draw_game_area(TUIState *tui);
+void tui_draw_player_info(TUIState *tui, WINDOW *win, PlayerID player, 
+                           int y, int x);
+void tui_draw_hand(TUIState *tui, WINDOW *win, PlayerID player, 
+                   int y, int x);
+void tui_draw_combat_zone(TUIState *tui, WINDOW *win, PlayerID player,
+                          int y, int x);
+void tui_draw_deck_discard(TUIState *tui, WINDOW *win, PlayerID player,
+                           int y, int x);
+void tui_draw_console(TUIState *tui);
+void tui_draw_status(TUIState *tui);
+void tui_draw_help(TUIState *tui, WINDOW *win);
+
+// Message handling
+void tui_add_message(TUIState *tui, const char *format, ...);
+void tui_clear_messages(TUIState *tui);
+
+// Input handling
+void tui_handle_input(TUIState *tui, int ch);
+void tui_handle_play_mode(TUIState *tui, int ch);
+void tui_handle_command_mode(TUIState *tui, int ch);
+void tui_process_command(TUIState *tui, const char *command);
+
+// Game action functions
+void tui_execute_play_card(TUIState *tui, int card_index);
+void tui_execute_pass(TUIState *tui);
+void tui_next_turn(TUIState *tui);
+
+// Helper functions
+const char* tui_get_card_display(uint8_t card_idx, char *buffer, 
+                                  size_t bufsize);
+int tui_get_color_for_card(ChampionColor color);
+void tui_format_dice_attack(uint8_t dice, uint8_t base, char *buffer,
+                            size_t bufsize);
+
+#endif // TUI_H

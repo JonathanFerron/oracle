@@ -4,58 +4,133 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "game_types.h"
+#include "main.h"
+#include "cmdline.h"
 #include "game_constants.h"
 #include "game_state.h"
 #include "strategy.h"
 #include "strat_random.h"
 #include "mtwister.h"
-
-#define M_TWISTER_SEED 1337  // we may consider moving this define to game_constants.h to have all of those in the same place
+#include "stda_auto.h"
+#include "stda_cli.h"
 
 // Global variables
-bool debug_enabled = false;  // we may consider moving this line to game_constants.h to have all of them in the same place, and in fact we could likely declare it as const
 extern MTRand MTwister_rand_struct;
+extern const bool debug_enabled;
 
-int main()
-{ 
-  // Note: command line argument parsing could be based on 'if-else if ladder with strcmp', esp. if the command line arguments are strings longer than 1 char
-  
-  run_chosen_mode();
-  
-  return EXIT_SUCCESS;
+/* Main entry point */
+int main(int argc, char** argv)
+{ config_t cfg;  // config struct
+  int ret;  // return value
+
+  /* Parse command line options */
+  ret = parse_options(argc, argv, &cfg);
+  if(ret != EXIT_SUCCESS)
+  { cleanup_config(&cfg);
+    return (ret < EXIT_SUCCESS) ? EXIT_SUCCESS : ret;
+  }
+
+  /* Redirect output if requested */
+  if(cfg.output_file)
+  { if(!freopen(cfg.output_file, "w", stdout))
+    { perror("Failed to redirect output");
+      cleanup_config(&cfg);
+      return EXIT_FAILURE;
+    }
+    /* Also redirect stderr to same file */
+    if(!freopen(cfg.output_file, "a", stderr))
+    { perror("Failed to redirect stderr");
+      cleanup_config(&cfg);
+      return EXIT_FAILURE;
+    }
+  }
+
+  /* Launch appropriate game mode */
+  switch(cfg.mode)
+  { case MODE_STDA_AUTO:
+      ret = run_mode_stda_auto(&cfg);
+      break;
+    case MODE_STDA_SIM:
+      ret = run_mode_stda_sim(&cfg);
+      break;
+    case MODE_STDA_CLI:
+      ret = run_mode_stda_cli(&cfg);
+      break;
+    case MODE_STDA_TUI:
+      ret = run_mode_stda_tui(&cfg);
+      break;
+    case MODE_STDA_GUI:
+      ret = run_mode_stda_gui(&cfg);
+      break;
+    case MODE_SERVER:
+      ret = run_mode_server(&cfg);
+      break;
+    case MODE_CLIENT_SIM:
+      ret = run_mode_client_sim(&cfg);
+      break;
+    case MODE_CLIENT_CLI:
+      ret = run_mode_client_cli(&cfg);
+      break;
+    case MODE_CLIENT_TUI:
+      ret = run_mode_client_tui(&cfg);
+      break;
+    case MODE_CLIENT_GUI:
+      ret = run_mode_client_gui(&cfg);
+      break;
+    case MODE_CLIENT_AI:
+      ret = run_mode_client_ai(&cfg);
+      break;
+    default:
+      fprintf(stderr, "Error: invalid game mode\n");
+      ret = EXIT_FAILURE;
+  }
+
+  cleanup_config(&cfg);
+  return ret;
+
 } // main
 
-void run_chosen_mode()
-{
-  // use parsed command line arguments to decide which mode to launch.
-  runmode_standalone_automatedsim(); // of course this will be based on command line arguments that will specify which mode to launch
+int run_mode_stda_sim(config_t* cfg)
+{ printf("Standalone simulation (ncurses) mode not yet implemented...\n");
+  return EXIT_SUCCESS;
+}
+int run_mode_stda_tui(config_t* cfg)
+{ printf("Standalone TUI mode (ncurses) not yet implemented...\n");
+  return EXIT_SUCCESS;
+}
+int run_mode_stda_gui(config_t* cfg)
+{ printf("Standalone GUI mode not yet implemented...\n");
+  return EXIT_SUCCESS;
+}
+int run_mode_server(config_t* cfg)
+{ printf("Server mode not yet implemented...\n");
+  return EXIT_SUCCESS;
+}
+int run_mode_client_sim(config_t* cfg)
+{ printf("Client simulation (ncurses) mode not yet implemented...\n");
+  return EXIT_SUCCESS;
+}
+int run_mode_client_cli(config_t* cfg)
+{ printf("Client command line interface mode not yet implemented...\n");
+  return EXIT_SUCCESS;
+}
+int run_mode_client_tui(config_t* cfg)
+{ printf("Client TUI mode (ncurses) not yet implemented...\n");
+  return EXIT_SUCCESS;
+}
+int run_mode_client_gui(config_t* cfg)
+{ printf("Client GUI mode not yet implemented...\n");
+  return EXIT_SUCCESS;
+}
+int run_mode_client_ai(config_t* cfg)
+{ printf("AI agent client mode not yet implemented...\n");
+  printf("AI agent: %s\n", cfg->ai_agent);
+  return EXIT_SUCCESS;
 }
 
-// Standalone Auto mode code
-void runmode_standalone_automatedsim()
-{    // Initialize random number generator: this is something that would be server side (mostly, unless an AI client needs a RNG, in which case it could have a separate one)
-  MTwister_rand_struct = seedRand(M_TWISTER_SEED);
-
-  // Initialize game statistics: this is something that would be server side once we split the code between the client and server side code
-  struct gamestats gstats;
-  memset(&gstats, 0, sizeof(struct gamestats));
-
-  // Simulation parameters: this is something that is specific to a 'simulation' mode (stda.sim or client.sim for interactive simulation or stda.auto for automated simulation)
-  uint16_t numsim = debug_enabled ? DEBUG_NUMBER_OF_SIM : MAX_NUMBER_OF_SIM;
-  uint16_t initial_cash = 30;
-
-  // Setup strategies for both players: this is something that would be client side
-  StrategySet* strategies = create_strategy_set();
-  set_player_strategy(strategies, PLAYER_A,
-                      random_attack_strategy, random_defense_strategy);
-  set_player_strategy(strategies, PLAYER_B,
-                      random_attack_strategy, random_defense_strategy);
-
-  // Run simulation: this is something that is specific to simulation mode (in this specific case, for the CLI only application, it's the automated simulation stda.auto)
-  run_simulation(numsim, initial_cash, &gstats, strategies);  
-  present_results(&gstats);
-
-  // Cleanup (counterpart to initialization strategies struct earlier)
-  free_strategy_set(strategies);
-} // end of standalone auto mode code
+/* Cleanup configuration */
+void cleanup_config(config_t* cfg)
+{ if(cfg->input_file) free(cfg->input_file);
+  if(cfg->output_file) free(cfg->output_file);
+  if(cfg->ai_agent) free(cfg->ai_agent);
+}

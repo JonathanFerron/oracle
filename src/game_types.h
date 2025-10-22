@@ -110,7 +110,7 @@ struct card
 
   // Cash card fields
   uint8_t exchange_cash;
-};
+}; // card
 
 // Game state structure
 struct gamestate
@@ -128,14 +128,40 @@ struct gamestate
   GameStateEnum game_state;
   TurnPhase turn_phase;
   PlayerID player_to_move;
-};
+}; // gamestate
 
 // Game statistics structure
 struct gamestats
 { uint16_t cumul_player_wins[2];
   uint16_t cumul_number_of_draws;
-  uint16_t game_end_turn_number[1000];
+  uint16_t game_end_turn_number[1000];  // look into dynamically allocating space for this as we don't need 1000 entries for interactive modes (we just need one)
   uint16_t simnum;
-};
+}; // gamestats
+
+/* Game mode enumeration */
+typedef enum
+{ MODE_NONE = 0,
+  MODE_STDA_AUTO,    /* Standalone automated */
+  MODE_STDA_SIM,     /* Standalone simulation */
+  MODE_STDA_CLI,     /* Standalone text command line interface */
+  MODE_STDA_TUI,     /* Standalone text UI */
+  MODE_STDA_GUI,     /* Standalone graphical UI */
+  MODE_SERVER,       /* Server mode */
+  MODE_CLIENT_SIM,   /* Client simulation */
+  MODE_CLIENT_CLI,   /* Client text command line interface */
+  MODE_CLIENT_TUI,   /* Client text UI */
+  MODE_CLIENT_GUI,   /* Client graphical UI */
+  MODE_CLIENT_AI     /* AI agent client */
+} game_mode_t;
+
+/* Configuration structure */
+typedef struct
+{ game_mode_t mode;
+  bool verbose;
+  int numsim;
+  char* input_file;
+  char* output_file;
+  char* ai_agent;
+} config_t;
 
 #endif // GAME_TYPES_H

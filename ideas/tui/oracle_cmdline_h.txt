@@ -1,0 +1,32 @@
+// cmdline.h
+// Command line parsing header
+
+#ifndef CMDLINE_H
+#define CMDLINE_H
+
+#include <stdbool.h>
+#include "version.h"
+
+// Game mode enumeration
+typedef enum {
+    MODE_NONE = 0,
+    MODE_STDA_AUTO,    // Standalone automated
+    MODE_STDA_SIM,     // Standalone simulation
+    MODE_STDA_TUI,     // Standalone text UI
+    MODE_STDA_GUI      // Standalone graphical UI
+} game_mode_t;
+
+// Configuration structure
+typedef struct {
+    game_mode_t mode;
+    bool verbose;
+    int numsim;
+    char *output_file;
+} config_t;
+
+// Command line parsing functions
+void print_usage(const char *prog);
+void print_version(void);
+int parse_options(int argc, char **argv, config_t *cfg);
+
+#endif // CMDLINE_H

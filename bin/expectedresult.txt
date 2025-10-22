@@ -1,0 +1,36 @@
+Number of wins for player A: 539
+Number of wins for player B: 461
+Number of draws: 0
+
+Average = 34.3, Minimum = 19, Maximum = 58 number of turns per game
+
+Histogram with 27 bins, each with a width of 4, starting from 20:
+Bin (< 20): 3
+Bin [ 20 -  23]: 23
+Bin [ 24 -  27]: 116
+Bin [ 28 -  31]: 195
+Bin [ 32 -  35]: 251
+Bin [ 36 -  39]: 218
+Bin [ 40 -  43]: 124
+Bin [ 44 -  47]: 43
+Bin [ 48 -  51]: 19
+Bin [ 52 -  55]: 7
+Bin [ 56 -  59]: 1
+Bin [ 60 -  63]: 0
+Bin [ 64 -  67]: 0
+Bin [ 68 -  71]: 0
+Bin [ 72 -  75]: 0
+Bin [ 76 -  79]: 0
+Bin [ 80 -  83]: 0
+Bin [ 84 -  87]: 0
+Bin [ 88 -  91]: 0
+Bin [ 92 -  95]: 0
+Bin [ 96 -  99]: 0
+Bin [100 - 103]: 0
+Bin [104 - 107]: 0
+Bin [108 - 111]: 0
+Bin [112 - 115]: 0
+Bin [116 - 119]: 0
+Bin [120 - 123]: 0
+Bin [124 - 127]: 0
+Bin (>=128): 0

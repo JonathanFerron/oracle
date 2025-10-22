@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-extern bool debug_enabled;
+extern const bool debug_enabled;
 
 int has_champion_in_hand(struct HDCLList* hand)
 { struct LLNode* current = hand->head;
@@ -148,10 +148,6 @@ void shuffle_discard_and_form_deck(struct HDCLList* discard, struct deck_stack* 
     HDCLL_removeNodeFromBeginning(discard);
 }
 
-void collect_1_luna(struct gamestate* gstate)
-{ gstate->current_cash_balance[gstate->current_player]++;
-}
-
 void discard_to_7_cards(struct gamestate* gstate)
 { if(gstate->hand[gstate->current_player].size <= 7) return;
 
@@ -180,6 +176,4 @@ void discard_to_7_cards(struct gamestate* gstate)
   }
 }
 
-void change_current_player(struct gamestate* gstate)
-{ gstate->current_player = 1 - gstate->current_player;
-}
+

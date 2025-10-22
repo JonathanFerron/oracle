@@ -132,14 +132,13 @@ int third_matches_order_of_species_pair(CombatCard *cards, int n)
   CombatCard *singleton = NULL;
   for(int i = 0; i < n; i++)
   { if(cards[i].species == paired)
-    { paired_order = cards[i].order;  
-    }
+      paired_order = cards[i].order;
     else
       singleton = &cards[i];
   }
 
   if(!singleton) return 0;
-  
+
   return (singleton->order == paired_order &&
           singleton->species != paired);
 }
@@ -191,8 +190,7 @@ int third_matches_color_of_order_pair(CombatCard *cards, int n)
   int match_count = 0;
 
   for(int i = 0; i < n; i++)
-  { 
-    if(cards[i].order == paired_order)
+  { if(cards[i].order == paired_order)
       order_match_cards[match_count++] = &cards[i];
     else
       singleton = &cards[i];

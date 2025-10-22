@@ -1,0 +1,172 @@
+// main.c
+// Oracle: The Champions of Arcadia - Main entry point with TUI support
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "game_types.h"
+#include "game_constants.h"
+#include "game_state.h"
+#include "strategy.h"
+#include "strat_random.h"
+#include "mtwister.h"
+#include "cmdline.h"
+#include "tui.h"
+
+#define M_TWISTER_SEED 1337
+
+// Global variables
+bool debug_enabled = false;
+extern MTRand MTwister_rand_struct;
+
+// Forward declarations
+void cleanup_config(config_t *cfg);
+int run_mode_stda_auto(config_t *cfg);
+int run_mode_stda_sim(config_t *cfg);
+int run_mode_stda_tui(config_t *cfg);
+int run_mode_stda_gui(config_t *cfg);
+
+int main(int argc, char **argv) {
+    config_t cfg;
+    int ret;
+    
+    // Parse command line options
+    ret = parse_options(argc, argv, &cfg);
+    if (ret != 0) {
+        cleanup_config(&cfg);
+        return (ret < 0) ? 0 : ret;
+    }
+    
+    // Set debug mode based on verbose flag
+    debug_enabled = cfg.verbose;
+    
+    // Redirect output if specified
+    if (cfg.output_file) {
+        if (!freopen(cfg.output_file, "w", stdout)) {
+            perror("Failed to redirect output");
+            cleanup_config(&cfg);
+            return 1;
+        }
+    }
+    
+    // Launch appropriate game mode
+    switch (cfg.mode) {
+        case MODE_STDA_AUTO:
+            ret = run_mode_stda_auto(&cfg);
+            break;
+        case MODE_STDA_SIM:
+            ret = run_mode_stda_sim(&cfg);
+            break;
+        case MODE_STDA_TUI:
+            ret = run_mode_stda_tui(&cfg);
+            break;
+        case MODE_STDA_GUI:
+            ret = run_mode_stda_gui(&cfg);
+            break;
+        default:
+            fprintf(stderr, "Error: invalid game mode\n");
+            ret = 1;
+    }
+    
+    cleanup_config(&cfg);
+    return ret;
+}
+
+void cleanup_config(config_t *cfg) {
+    if (cfg->output_file) free(cfg->output_file);
+}
+
+int run_mode_stda_auto(config_t *cfg) {
+    // Initialize random number generator
+    MTwister_rand_struct = seedRand(M_TWISTER_SEED);
+    
+    // Initialize game statistics
+    struct gamestats gstats;
+    memset(&gstats, 0, sizeof(struct gamestats));
+    
+    // Simulation parameters
+    uint16_t numsim = cfg->numsim;
+    uint16_t initial_cash = 30;
+    
+    // Setup strategies for both players
+    StrategySet* strategies = create_strategy_set();
+    set_player_strategy(strategies, PLAYER_A,
+                       random_attack_strategy, random_defense_strategy);
+    set_player_strategy(strategies, PLAYER_B,
+                       random_attack_strategy, random_defense_strategy);
+    
+    // Run simulation
+    printf("Running %d automated simulations...\n", numsim);
+    run_simulation(numsim, initial_cash, &gstats, strategies);
+    present_results(&gstats);
+    
+    // Cleanup
+    free_strategy_set(strategies);
+    return 0;
+}
+
+int run_mode_stda_sim(config_t *cfg) {
+    printf("Interactive simulation mode not yet implemented\n");
+    printf("Use -a for automated simulation or -t for TUI\n");
+    return 1;
+}
+
+int run_mode_stda_tui(config_t *cfg) {
+    // Initialize random number generator
+    MTwister_rand_struct = seedRand(M_TWISTER_SEED);
+    
+    // Create TUI
+    TUIState *tui = tui_init();
+    if (!tui) {
+        fprintf(stderr, "Failed to initialize TUI\n");
+        return 1;
+    }
+    
+    // Initialize game state
+    struct gamestate gstate;
+    uint16_t initial_cash = 30;
+    setup_game(initial_cash, &gstate);
+    
+    // Setup strategies
+    StrategySet* strategies = create_strategy_set();
+    set_player_strategy(strategies, PLAYER_A,
+                       random_attack_strategy, random_defense_strategy);
+    set_player_strategy(strategies, PLAYER_B,
+                       random_attack_strategy, random_defense_strategy);
+    
+    // Attach game state to TUI
+    tui->gstate = &gstate;
+    tui->strategies = strategies;
+    
+    // Welcome messages
+    tui_add_message(tui, "Welcome to Oracle: Champions of Arcadia!");
+    tui_add_message(tui, "You are Player A. Press TAB for help.");
+    tui_add_message(tui, "Game initialized with %d cash each.", 
+                   initial_cash);
+    
+    // Run TUI main loop
+    int ret = tui_run(tui);
+    
+    // Cleanup
+    free_strategy_set(strategies);
+    
+    // Free game state resources
+    DeckStk_emptyOut(&gstate.deck[PLAYER_A]);
+    DeckStk_emptyOut(&gstate.deck[PLAYER_B]);
+    HDCLL_emptyOut(&gstate.combat_zone[PLAYER_A]);
+    HDCLL_emptyOut(&gstate.combat_zone[PLAYER_B]);
+    HDCLL_emptyOut(&gstate.hand[PLAYER_A]);
+    HDCLL_emptyOut(&gstate.hand[PLAYER_B]);
+    HDCLL_emptyOut(&gstate.discard[PLAYER_A]);
+    HDCLL_emptyOut(&gstate.discard[PLAYER_B]);
+    
+    tui_cleanup(tui);
+    
+    return ret;
+}
+
+int run_mode_stda_gui(config_t *cfg) {
+    printf("GUI mode not yet implemented\n");
+    printf("Use -t for TUI or -a for automated simulation\n");
+    return 1;
+}
