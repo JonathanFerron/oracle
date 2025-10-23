@@ -225,8 +225,8 @@ void present_results(struct gamestats* gstats)
   uint32_t totalNbrTurn = 0;
 
   for(uint16_t s = 0; s < gstats->simnum; s++)
-  { minNbrTurn = min(minNbrTurn, gstats->game_end_turn_number[s]);
-    maxNbrTurn = max(maxNbrTurn, gstats->game_end_turn_number[s]);
+  { minNbrTurn = oraclemin(minNbrTurn, gstats->game_end_turn_number[s]);
+    maxNbrTurn = oraclemax(maxNbrTurn, gstats->game_end_turn_number[s]);
     totalNbrTurn += gstats->game_end_turn_number[s];
   }
 

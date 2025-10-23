@@ -1,4 +1,5 @@
 # Oracle: The Champions of Arcadia
+
 ## SDL3 GUI Development Plan
 
 **Target Platforms**: Windows (MSYS2), Linux (Arch), iOS (tablets), Android (tablets)  
@@ -99,18 +100,19 @@ Based on the tablet mockup, the interface requires:
 - **Messages and buttons** (bottom center)
 
 **Layout Design:**
+
 - Use normalized coordinates (0.0-1.0) internally
 - Scale to actual pixels based on screen resolution
 - Touch targets: minimum 44x44pt (iOS), 48x48dp (Android)
 
 ### 1.2 Multi-Platform Considerations
 
-| Platform | Input | Resolution | DPI Scaling | Build Tool |
-|----------|-------|------------|-------------|------------|
-| Windows | Mouse/Touch | Variable | 96-192 DPI | MSYS2/gcc |
-| Linux | Mouse/Touch | Variable | 96-192 DPI | gcc |
-| iOS | Touch only | Retina | 2x-3x | Xcode (+ C core) |
-| Android | Touch only | Variable | mdpi-xxxhdpi | NDK/gradle |
+| Platform | Input       | Resolution | DPI Scaling  | Build Tool       |
+| -------- | ----------- | ---------- | ------------ | ---------------- |
+| Windows  | Mouse/Touch | Variable   | 96-192 DPI   | MSYS2/gcc        |
+| Linux    | Mouse/Touch | Variable   | 96-192 DPI   | gcc              |
+| iOS      | Touch only  | Retina     | 2x-3x        | Xcode (+ C core) |
+| Android  | Touch only  | Variable   | mdpi-xxxhdpi | NDK/gradle       |
 
 ---
 
@@ -119,16 +121,19 @@ Based on the tablet mockup, the interface requires:
 ### 2.1 SDL3 Setup & Build System
 
 **Recommended approach:**
+
 1. **CMake as build system** - Works across all platforms
 2. **vcpkg or manual SDL3 builds** - For Windows/Linux
 3. **iOS**: Embed SDL3 as framework
 4. **Android**: Use SDL3's Android project template
 
 **Alternative (Makefile-based):**
+
 - Separate Makefiles for Windows (MSYS2) and Linux
 - Python scripts to generate platform-specific builds
 
 **Example Makefile (Linux/Windows):**
+
 ```makefile
 # Makefile for Linux/MSYS2
 CC = gcc
@@ -140,16 +145,17 @@ SOURCES = src/main.c src/gui/renderer.c src/gui/card_renderer.c \
 OBJECTS = $(SOURCES:.c=.o)
 
 oracle: $(OBJECTS)
-	$(CC) -o $@ $^ $(LIBS)
+    $(CC) -o $@ $^ $(LIBS)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+    $(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJECTS) oracle
+    rm -f $(OBJECTS) oracle
 ```
 
 **CMake Example:**
+
 ```cmake
 cmake_minimum_required(VERSION 3.20)
 project(Oracle)
@@ -241,27 +247,32 @@ typedef struct {
 ### 3.2 Keyboard Shortcut Scheme (Desktop Only)
 
 **Combat Actions:**
+
 - `1-9` - Select card from hand (position)
 - `SPACE` - Play selected cards / Confirm action
 - `ENTER` - End turn / Pass
 - `ESC` - Cancel selection / Back to menu
 
 **Card Management:**
+
 - `TAB` - Cycle through cards in hand
 - `SHIFT+TAB` - Cycle backwards
 - `D` - Show detailed view of selected card
 
 **Information:**
+
 - `I` - Show opponent's discard pile
 - `P` - Show own discard pile
 - `H` - Show hand (if hidden)
 - `S` - Game statistics/state
 
 **Quick Actions:**
+
 - `R` - Draw/Recall card (when applicable)
 - `E` - Exchange champion (when applicable)
 
 **Debug (development only):**
+
 - `F1` - Toggle FPS counter
 - `F12` - Screenshot
 
@@ -292,15 +303,15 @@ GameAction map_key_to_action(SDL_Keycode key) {
 
 bool process_keyboard_event(SDL_Event* e, InputEvent* out) {
     if (e->type != SDL_EVENT_KEY_DOWN) return false;
-    
+
     out->action = map_key_to_action(e->key.key);
     out->param = 0;
-    
+
     // Special cases: number keys for card selection
     if (e->key.key >= SDLK_1 && e->key.key <= SDLK_9) {
         out->param = e->key.key - SDLK_1;
     }
-    
+
     return out->action != ACTION_NONE;
 }
 ```
@@ -407,7 +418,7 @@ void render_card_border(SDL_Renderer* r, CardColor color,
     SDL_SetRenderDrawColor(r, bg.r, bg.g, bg.b, 255);
     SDL_FRect border = {x, y, w, h};
     SDL_RenderFillRect(r, &border);
-    
+
     // Inner frame
     SDL_SetRenderDrawColor(r, 240, 240, 240, 255);
     SDL_FRect inner = {x+6, y+6, w-12, h-12};
@@ -417,7 +428,7 @@ void render_card_border(SDL_Renderer* r, CardColor color,
 void render_card_artwork(SDL_Renderer* r, Card* card,
                          int x, int y, int w, int h) {
     if (!card->artwork) return;
-    
+
     // Artwork occupies the large central rectangle
     int sidebar_width = w * 0.20;  // 20% for left sidebar
     SDL_FRect art_rect = {
@@ -435,23 +446,23 @@ void render_left_sidebar(SDL_Renderer* r, Card* card,
     int sidebar_x = x + 12;
     int sidebar_width = w * 0.15;
     SDL_Color black = {0, 0, 0, 255};
-    
+
     // Defense dice at top
     char dice_str[8];
     snprintf(dice_str, 8, "d%d", card->data.defense_dice);
     draw_text(r, fm->fonts[FONT_CARD_STATS], dice_str,
              sidebar_x, y + 40, black);
-    
+
     // Plus sign
     draw_text(r, fm->fonts[FONT_CARD_STATS], "+",
              sidebar_x + 15, y + 70, black);
-    
+
     // Attack base
     char atk_str[8];
     snprintf(atk_str, 8, "%d", card->data.attack_base);
     draw_text(r, fm->fonts[FONT_CARD_STATS], atk_str,
              sidebar_x + 10, y + 100, black);
-    
+
     // Sword icon rendering would go here
     render_sword_icon(r, sidebar_x, y + 130);
 }
@@ -460,7 +471,7 @@ void render_species_and_order(SDL_Renderer* r, TextureCache* tc,
                               Card* card, int x, int y, int w, int h) {
     int sidebar_x = x + 12;
     int bottom_y = y + h - 180;
-    
+
     // Species icon
     SDL_Texture* species_tex = get_texture(tc, 
                                           card->data.species_icon_path);
@@ -468,11 +479,11 @@ void render_species_and_order(SDL_Renderer* r, TextureCache* tc,
         SDL_FRect dst = {sidebar_x, bottom_y, 48, 48};
         SDL_RenderTexture(r, species_tex, NULL, &dst);
     }
-    
+
     // Small circle indicator
     SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
     // SDL_RenderFillCircle implementation needed
-    
+
     // Order shield/symbol
     SDL_Texture* order_tex = get_texture(tc, 
                                         card->data.order_symbol_path);
@@ -480,7 +491,7 @@ void render_species_and_order(SDL_Renderer* r, TextureCache* tc,
         SDL_FRect dst = {sidebar_x, bottom_y + 60, 48, 50};
         SDL_RenderTexture(r, order_tex, NULL, &dst);
     }
-    
+
     // Defense dice repeated at bottom
     char dice_str[8];
     snprintf(dice_str, 8, "d%d", card->data.defense_dice);
@@ -494,7 +505,7 @@ void render_name_banner(SDL_Renderer* r, FontManager* fm,
     SDL_SetRenderDrawColor(r, 245, 245, 220, 255);  // Beige
     SDL_FRect banner = {x + 6, y + h - 60, w - 12, 50};
     SDL_RenderFillRect(r, &banner);
-    
+
     // Champion name (centered)
     draw_text_centered(r, fm->fonts[FONT_CARD_TITLE],
                       card->data.name, 
@@ -509,7 +520,7 @@ void render_cost_hexagon(SDL_Renderer* r, FontManager* fm,
     SDL_SetRenderDrawColor(r, 200, 200, 200, 255);
     SDL_FRect hex = {x + 8, y + 8, 50, 44};
     SDL_RenderFillRect(r, &hex);
-    
+
     // Cost number
     char cost_str[8];
     snprintf(cost_str, 8, "%d", card->data.cost);
@@ -522,10 +533,10 @@ void render_selection(SDL_Renderer* r, int x, int y, int w, int h) {
     // Pulsing border effect
     static float pulse = 0.0f;
     pulse += 0.05f;
-    
+
     float alpha = 150 + 105 * sinf(pulse);
     SDL_SetRenderDrawColor(r, 255, 255, 100, (int)alpha);
-    
+
     // Draw thick border
     for (int i = 0; i < 4; i++) {
         SDL_FRect border = {x-i, y-i, w+i*2, h+i*2};
@@ -572,16 +583,19 @@ typedef struct {
 ### 5.2 Font Recommendations
 
 **For Card Titles (Champion Names):**
+
 - **Cinzel** - Elegant serif, medieval feel
 - **Almendra** - Fantasy-style serif
 - **Libre Baskerville** - Classic readability
 
 **For Stats/Numbers:**
+
 - **Roboto Mono** - Clear monospaced digits
 - **Source Code Pro** - Excellent number readability
 - **Inconsolata** - Clean monospace
 
 **For UI:**
+
 - **Roboto** - Clean, modern sans-serif
 - **Open Sans** - Highly readable
 - **Lato** - Professional appearance
@@ -601,14 +615,14 @@ void init_font_manager(FontManager* fm, float dpi_scale) {
            "assets/fonts/stats.ttf");
     strcpy(fm->font_paths[FONT_UI_NORMAL], 
            "assets/fonts/ui.ttf");
-    
+
     // Scale sizes for DPI
     fm->font_sizes[FONT_CARD_TITLE] = (int)(24 * dpi_scale);
     fm->font_sizes[FONT_CARD_STATS] = (int)(28 * dpi_scale);
     fm->font_sizes[FONT_UI_NORMAL] = (int)(16 * dpi_scale);
     fm->font_sizes[FONT_UI_LARGE] = (int)(20 * dpi_scale);
     fm->font_sizes[FONT_UI_SMALL] = (int)(12 * dpi_scale);
-    
+
     load_fonts(fm);
 }
 
@@ -633,11 +647,11 @@ TTF_Font* load_font_with_fallback(const char* primary,
                                    int size) {
     TTF_Font* font = TTF_OpenFont(primary, size);
     if (font) return font;
-    
+
     printf("Failed to load %s, trying fallback\n", primary);
     font = TTF_OpenFont(fallback, size);
     if (font) return font;
-    
+
     printf("Failed to load fallback %s\n", fallback);
     return NULL;
 }
@@ -652,7 +666,7 @@ SDL_Texture* render_text(SDL_Renderer* r, TTF_Font* font,
                          const char* text, SDL_Color color) {
     SDL_Surface* surf = TTF_RenderText_Blended(font, text, color);
     if (!surf) return NULL;
-    
+
     SDL_Texture* tex = SDL_CreateTextureFromSurface(r, surf);
     SDL_DestroySurface(surf);
     return tex;
@@ -662,7 +676,7 @@ void draw_text(SDL_Renderer* r, TTF_Font* font,
                const char* text, int x, int y, SDL_Color color) {
     SDL_Texture* tex = render_text(r, font, text, color);
     if (!tex) return;
-    
+
     int w, h;
     SDL_QueryTexture(tex, NULL, NULL, &w, &h);
     SDL_FRect dst = {x, y, w, h};
@@ -735,6 +749,7 @@ assets/
 ### 6.2 Card Asset Requirements
 
 From game specifications:
+
 - **120 card images** total
   - 102 champions
   - 9 draw cards (2 types)
@@ -742,6 +757,7 @@ From game specifications:
 - **Card dimensions**: 65mm × 86mm (656×869 pixels at 300 DPI)
 
 **Recommended workflow:**
+
 1. Source assets at high resolution (2048px height)
 2. Generate @1x, @2x, @3x versions for different DPI
 3. Sprite sheets for better loading performance
@@ -758,30 +774,30 @@ def create_card_frame_template(color, width=656, height=869):
     """Generate base card frame template"""
     img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    
+
     # Color mapping
     colors = {
         'red': (220, 20, 60),
         'indigo': (75, 0, 130),
         'orange': (255, 140, 0)
     }
-    
+
     # Draw border
     border_color = colors.get(color, (100, 100, 100))
     draw.rectangle([0, 0, width-1, height-1], 
                    outline=border_color, width=8)
-    
+
     return img
 
 def resize_asset_for_dpi(input_path, output_dir, scales=[1.0, 2.0, 3.0]):
     """Generate multiple DPI versions of an asset"""
     img = Image.open(input_path)
     base_name = os.path.splitext(os.path.basename(input_path))[0]
-    
+
     for scale in scales:
         new_size = (int(img.width * scale), int(img.height * scale))
         resized = img.resize(new_size, Image.LANCZOS)
-        
+
         suffix = f"@{int(scale)}x" if scale != 1.0 else ""
         output_path = os.path.join(output_dir, f"{base_name}{suffix}.png")
         resized.save(output_path)
@@ -800,13 +816,13 @@ def validate_card_assets():
     champion_names = [
         "lof", "fulgur", "furial", # ... etc
     ]
-    
+
     missing = []
     for name in champion_names:
         path = f"assets/cards/artwork/{name}.png"
         if not os.path.exists(path):
             missing.append(path)
-    
+
     if missing:
         print("Missing artwork files:")
         for m in missing:
@@ -862,21 +878,21 @@ SDL_Texture* get_texture(TextureCache* tc, const char* path) {
             return tc->textures[i].texture;
         }
     }
-    
+
     // Load new texture
     SDL_Texture* tex = IMG_LoadTexture(tc->renderer, path);
     if (!tex) {
         printf("Failed to load texture: %s\n", path);
         return NULL;
     }
-    
+
     // Add to cache
     if (tc->count < tc->capacity) {
         strcpy(tc->textures[tc->count].path, path);
         tc->textures[tc->count].texture = tex;
         tc->count++;
     }
-    
+
     return tex;
 }
 
@@ -886,7 +902,7 @@ void cache_all_species_icons(TextureCache* tc) {
         "dragon", "hobbit", "centaur", "minotaur", "aven",
         "cyclops", "faun", "fairy", "koatl", "lycan"
     };
-    
+
     for (int i = 0; i < 15; i++) {
         char path[128];
         snprintf(path, 128, "assets/icons/species/%s.png", species[i]);
@@ -919,22 +935,22 @@ typedef struct {
     bool fullscreen;
     bool vsync;
     float ui_scale;
-    
+
     // Fonts
     char card_title_font[128];
     char card_stats_font[128];
     char ui_font[128];
     int font_size_multiplier;  // 80-120%
-    
+
     // Input
     KeyBinding keybindings[ACTION_COUNT];
     bool enable_shortcuts;
     float mouse_sensitivity;
-    
+
     // Audio
     int music_volume;
     int sfx_volume;
-    
+
     // Gameplay
     bool show_tooltips;
     bool confirm_actions;
@@ -986,12 +1002,12 @@ void set_default_config(GameConfig* cfg) {
     cfg->fullscreen = false;
     cfg->vsync = true;
     cfg->ui_scale = 1.0f;
-    
+
     strcpy(cfg->card_title_font, "assets/fonts/title.ttf");
     strcpy(cfg->card_stats_font, "assets/fonts/stats.ttf");
     strcpy(cfg->ui_font, "assets/fonts/ui.ttf");
     cfg->font_size_multiplier = 100;
-    
+
     cfg->enable_shortcuts = true;
     cfg->music_volume = 80;
     cfg->sfx_volume = 70;
@@ -1002,13 +1018,13 @@ void set_default_config(GameConfig* cfg) {
 
 void load_config(GameConfig* cfg, const char* path) {
     set_default_config(cfg);
-    
+
     FILE* f = fopen(path, "r");
     if (!f) {
         printf("Config not found, using defaults\n");
         return;
     }
-    
+
     parse_config_file(f, cfg);
     fclose(f);
 }
@@ -1016,20 +1032,20 @@ void load_config(GameConfig* cfg, const char* path) {
 void parse_config_file(FILE* f, GameConfig* cfg) {
     char line[256];
     char section[64] = "";
-    
+
     while (fgets(line, sizeof(line), f)) {
         // Remove newline
         line[strcspn(line, "\n")] = 0;
-        
+
         // Skip empty lines and comments
         if (line[0] == '\0' || line[0] == '#') continue;
-        
+
         // Check for section header
         if (line[0] == '[') {
             sscanf(line, "[%[^]]", section);
             continue;
         }
-        
+
         // Parse key=value
         char key[64], value[128];
         if (sscanf(line, "%[^=]=%s", key, value) == 2) {
@@ -1041,21 +1057,21 @@ void parse_config_file(FILE* f, GameConfig* cfg) {
 void save_config(GameConfig* cfg, const char* path) {
     FILE* f = fopen(path, "w");
     if (!f) return;
-    
+
     fprintf(f, "[Graphics]\n");
     fprintf(f, "width=%d\n", cfg->window_width);
     fprintf(f, "height=%d\n", cfg->window_height);
     fprintf(f, "fullscreen=%s\n", cfg->fullscreen ? "true" : "false");
     fprintf(f, "vsync=%s\n", cfg->vsync ? "true" : "false");
     fprintf(f, "ui_scale=%.1f\n", cfg->ui_scale);
-    
+
     fprintf(f, "\n[Fonts]\n");
     fprintf(f, "card_title_font=%s\n", cfg->card_title_font);
     fprintf(f, "card_stats_font=%s\n", cfg->card_stats_font);
     fprintf(f, "ui_font=%s\n", cfg->ui_font);
-    
+
     // ... etc
-    
+
     fclose(f);
 }
 ```
@@ -1095,7 +1111,7 @@ void show_context_menu(ContextMenu* menu, Card* card,
     menu->y = y;
     menu->target_card = card;
     menu->num_options = 0;
-    
+
     // Add relevant options based on card and game state
     add_menu_option(menu, "View Details", show_card_details);
     add_menu_option(menu, "Play Card", play_card);
@@ -1115,19 +1131,19 @@ void add_menu_option(ContextMenu* menu, const char* text,
 void render_context_menu(SDL_Renderer* r, ContextMenu* menu,
                         FontManager* fm) {
     if (!menu->visible) return;
-    
+
     int w = 200;
     int h = menu->num_options * 30 + 10;
-    
+
     // Background
     SDL_FRect bg = {menu->x, menu->y, w, h};
     SDL_SetRenderDrawColor(r, 40, 40, 40, 240);
     SDL_RenderFillRect(r, &bg);
-    
+
     // Border
     SDL_SetRenderDrawColor(r, 200, 200, 200, 255);
     SDL_RenderRect(r, &bg);
-    
+
     // Options
     for (int i = 0; i < menu->num_options; i++) {
         int y = menu->y + 5 + i * 30;
@@ -1139,10 +1155,10 @@ void render_context_menu(SDL_Renderer* r, ContextMenu* menu,
 
 void handle_context_menu_click(ContextMenu* menu, int x, int y) {
     if (!menu->visible) return;
-    
+
     int option_height = 30;
     int clicked_option = (y - menu->y - 5) / option_height;
-    
+
     if (clicked_option >= 0 && clicked_option < menu->num_options) {
         menu->callbacks[clicked_option](menu->target_card);
         hide_context_menu(menu);
@@ -1205,25 +1221,25 @@ void format_tooltip_text(Tooltip* tt, Card* card) {
 void render_tooltip(SDL_Renderer* r, Tooltip* tt, 
                     FontManager* fm) {
     if (!tt->visible) return;
-    
+
     // Background with padding
     int padding = 10;
     int line_height = 20;
     int num_lines = 4;  // Adjust based on actual content
     int width = 250;
     int height = num_lines * line_height + padding * 2;
-    
+
     SDL_FRect bg = {tt->x, tt->y, width, height};
     SDL_SetRenderDrawColor(r, 30, 30, 30, 240);
     SDL_RenderFillRect(r, &bg);
-    
+
     SDL_SetRenderDrawColor(r, 200, 200, 100, 255);
     SDL_RenderRect(r, &bg);
-    
+
     // Render multi-line text
     char* line = strtok(tt->text, "\n");
     int line_num = 0;
-    
+
     while (line) {
         draw_text(r, fm->fonts[FONT_UI_SMALL], line,
                  tt->x + padding, 
@@ -1248,12 +1264,12 @@ typedef struct {
 void render_keyboard_hints(SDL_Renderer* r, FontManager* fm,
                            GameState* g) {
     if (!g->show_hints) return;
-    
+
     SDL_Color hint_color = {255, 255, 150, 180};
     TTF_Font* font = fm->fonts[FONT_UI_SMALL];
-    
+
     int x = 10, y = 10;
-    
+
     // Show hints for available actions based on game phase
     if (g->phase == PHASE_PLAYER_TURN) {
         draw_text(r, font, "[1-9] Select Card", x, y, hint_color);
@@ -1263,7 +1279,7 @@ void render_keyboard_hints(SDL_Renderer* r, FontManager* fm,
         draw_text(r, font, "[ENTER] Pass Turn", x, y, hint_color);
         y += 20;
     }
-    
+
     // Always available
     draw_text(r, font, "[ESC] Cancel", x, y, hint_color);
     y += 20;
@@ -1284,14 +1300,14 @@ void toggle_hints(GameState* g) {
 
 void highlight_card_at_index(GameState* g, int index) {
     if (index < 0 || index >= g->hand_size) return;
-    
+
     // Clear previous selections if Ctrl not held
     if (!is_ctrl_held()) {
         clear_all_selections(g);
     }
-    
+
     g->hand[index].is_selected = !g->hand[index].is_selected;
-    
+
     // Play subtle sound effect
     play_sfx(SFX_CARD_SELECT);
 }
@@ -1309,11 +1325,13 @@ bool is_ctrl_held(void) {
 ### 9.1 Windows/Linux Desktop
 
 **Pros:**
+
 - Easy development and testing
 - Full debugging tools
 - Fast iteration
 
 **Specific needs:**
+
 - **High DPI awareness**: Handle Windows display scaling
 - **Multiple screen support**: Remember window position
 - **File paths**: Use `SDL_GetBasePath()` for cross-platform asset loading
@@ -1326,7 +1344,7 @@ void init_platform(void) {
         // Windows-specific: Enable high DPI awareness
         SetProcessDPIAware();
     #endif
-    
+
     // Get base path for assets
     char* base_path = SDL_GetBasePath();
     if (base_path) {
@@ -1338,10 +1356,10 @@ void init_platform(void) {
 float get_dpi_scale(SDL_Window* window) {
     int window_w, window_h;
     int drawable_w, drawable_h;
-    
+
     SDL_GetWindowSize(window, &window_w, &window_h);
     SDL_GetWindowSizeInPixels(window, &drawable_w, &drawable_h);
-    
+
     return (float)drawable_w / (float)window_w;
 }
 ```
@@ -1349,11 +1367,13 @@ float get_dpi_scale(SDL_Window* window) {
 ### 9.2 iOS Specifics
 
 **Challenges:**
+
 - Apple Developer account required ($99/year)
 - Code signing complexity
 - Must use Xcode for final build
 
 **Architecture:**
+
 ```
 iOS App
 ├── Objective-C/Swift wrapper (minimal)
@@ -1361,6 +1381,7 @@ iOS App
 ```
 
 **Key considerations:**
+
 - No file system access outside sandbox
 - Bundle assets in app package
 - Handle iPad multitasking
@@ -1398,10 +1419,12 @@ void ios_handle_lifecycle_event(AppLifecycleEvent event) {
 ### 9.3 Android Specifics
 
 **Challenges:**
+
 - Device fragmentation
 - Various screen densities
 
 **Architecture:**
+
 ```
 Android App
 ├── Java/Kotlin wrapper (minimal)
@@ -1409,6 +1432,7 @@ Android App
 ```
 
 **Key considerations:**
+
 - Test on multiple virtual devices
 - Handle hardware back button
 - Request storage permissions if saving state
@@ -1421,7 +1445,7 @@ void android_get_external_storage(char* buffer, size_t size) {
     // Access via JNI
     JNIEnv* env = (JNIEnv*)SDL_AndroidGetJNIEnv();
     jobject activity = (jobject)SDL_AndroidGetActivity();
-    
+
     // Call Java method to get external storage path
     // ... JNI code ...
 }
@@ -1468,12 +1492,14 @@ void android_log(const char* tag, const char* message) {
 ### Milestone 1: Desktop Prototype (5-7 weeks)
 
 **Week 1-2: Core Foundation**
+
 - SDL3 + SDL_ttf + SDL_image setup on Windows (MSYS2) and Linux
 - Window, renderer, event loop
 - Font manager implementation
 - Load and display single card with text overlay
 
 **Week 3-4: Input & Interaction**
+
 - Mouse input (click, hover, drag)
 - Keyboard shortcut system
 - Card selection visual feedback
@@ -1481,12 +1507,14 @@ void android_log(const char* tag, const char* message) {
 - Tooltip system
 
 **Week 5-6: Card Rendering**
+
 - Complete card compositor matching your design
 - Hand visualization (9 cards)
 - Battle zone layout (3v3 cards)
 - Basic animations (card slide, selection pulse)
 
 **Week 7: UI Polish**
+
 - Tooltips on hover with full card info
 - Keyboard hint overlay
 - Energy/luna display (top bars)
@@ -1500,12 +1528,14 @@ void android_log(const char* tag, const char* message) {
 ### Milestone 2: Touch Input & Tablet Layout (3-4 weeks)
 
 **Week 8-9: Touch Abstraction**
+
 - Touch input handling
 - Gesture recognition (tap, long-press, drag)
 - Touch-friendly button sizing (48dp minimum)
 - Pinch-to-zoom for card details (optional)
 
 **Week 10-11: Responsive Layout**
+
 - Layout system using normalized coordinates
 - Tablet UI (based on mockup)
 - Orientation support (landscape primary)
@@ -1518,6 +1548,7 @@ void android_log(const char* tag, const char* message) {
 ### Milestone 3: Mobile Platform Ports (6-8 weeks)
 
 **iOS Port (Weeks 12-15):**
+
 - Set up Xcode project with SDL3
 - Create iOS app wrapper
 - Link C game core as static library
@@ -1527,6 +1558,7 @@ void android_log(const char* tag, const char* message) {
 - App Store metadata preparation
 
 **Android Port (Weeks 16-19):**
+
 - Set up Android Studio with NDK
 - Use SDL3's Android template
 - JNI bridge (minimal - SDL3 handles most)
@@ -1542,6 +1574,7 @@ void android_log(const char* tag, const char* message) {
 ### Milestone 4: Content & Polish (4-6 weeks)
 
 **Week 20-22: Asset Integration**
+
 - Integrate all 102 champion artworks
 - Add all 15 species icons
 - Add 5 order symbols
@@ -1549,6 +1582,7 @@ void android_log(const char* tag, const char* message) {
 - Animation polish
 
 **Week 23-25: Testing & Optimization**
+
 - Performance profiling
 - Memory leak detection
 - Cross-platform testing
@@ -1586,23 +1620,23 @@ void render_card(SDL_Renderer* r, Card* c, TTF_Font* font,
     SDL_SetRenderDrawColor(r, 75, 0, 130, 255);  // Indigo
     SDL_FRect border = {x, y, w, h};
     SDL_RenderFillRect(r, &border);
-    
+
     // Inner background
     SDL_SetRenderDrawColor(r, 245, 245, 245, 255);
     SDL_FRect inner = {x+6, y+6, w-12, h-12};
     SDL_RenderFillRect(r, &inner);
-    
+
     // Artwork area
     if (c->artwork) {
         SDL_FRect art = {x+70, y+50, w-86, h-120};
         SDL_RenderTexture(r, c->artwork, NULL, &art);
     }
-    
+
     // Left sidebar stats
     SDL_Color black = {0, 0, 0, 255};
     char dice_str[8];
     snprintf(dice_str, 8, "d%d", c->defense_dice);
-    
+
     SDL_Surface* surf = TTF_RenderText_Blended(font, dice_str, black);
     if (surf) {
         SDL_Texture* tex = SDL_CreateTextureFromSurface(r, surf);
@@ -1611,12 +1645,12 @@ void render_card(SDL_Renderer* r, Card* c, TTF_Font* font,
         SDL_DestroyTexture(tex);
         SDL_DestroySurface(surf);
     }
-    
+
     // Name banner
     SDL_SetRenderDrawColor(r, 245, 245, 220, 255);
     SDL_FRect banner = {x+6, y+h-60, w-12, 50};
     SDL_RenderFillRect(r, &banner);
-    
+
     surf = TTF_RenderText_Blended(font, c->name, black);
     if (surf) {
         SDL_Texture* tex = SDL_CreateTextureFromSurface(r, surf);
@@ -1626,7 +1660,7 @@ void render_card(SDL_Renderer* r, Card* c, TTF_Font* font,
         SDL_DestroyTexture(tex);
         SDL_DestroySurface(surf);
     }
-    
+
     // Selection indicator
     if (c->selected) {
         static float pulse = 0.0f;
@@ -1644,17 +1678,17 @@ int main(int argc, char** argv) {
     SDL_Init(SDL_INIT_VIDEO);
     IMG_Init(IMG_INIT_PNG);
     TTF_Init();
-    
+
     SDL_Window* win = SDL_CreateWindow("Oracle Card Demo",
         1280, 720, 0);
     SDL_Renderer* r = SDL_CreateRenderer(win, NULL);
-    
+
     TTF_Font* font = TTF_OpenFont("assets/fonts/title.ttf", 20);
     if (!font) {
         printf("Failed to load font\n");
         return 1;
     }
-    
+
     Card card = {
         .name = "Lof",
         .attack = 0,
@@ -1664,7 +1698,7 @@ int main(int argc, char** argv) {
         .artwork = IMG_LoadTexture(r, "assets/cards/artwork/lof.png"),
         .selected = false
     };
-    
+
     bool running = true;
     while (running) {
         SDL_Event e;
@@ -1675,16 +1709,16 @@ int main(int argc, char** argv) {
                 if (e.key.key == SDLK_ESCAPE) running = false;
             }
         }
-        
+
         SDL_SetRenderDrawColor(r, 30, 30, 30, 255);
         SDL_RenderClear(r);
-        
+
         render_card(r, &card, font, 100, 50, 280, 370);
-        
+
         SDL_RenderPresent(r);
         SDL_Delay(16);  // ~60 FPS
     }
-    
+
     if (card.artwork) SDL_DestroyTexture(card.artwork);
     TTF_CloseFont(font);
     SDL_DestroyRenderer(r);
@@ -1692,12 +1726,13 @@ int main(int argc, char** argv) {
     TTF_Quit();
     IMG_Quit();
     SDL_Quit();
-    
+
     return 0;
 }
 ```
 
 **Compile:**
+
 ```bash
 # Linux
 gcc minimal_card_demo.c -o demo \
@@ -1717,6 +1752,7 @@ gcc minimal_card_demo.c -o demo.exe \
 Based on the thematic names of each Order, here are simple, distinct symbols that work well at small sizes:
 
 #### **Order A - Dawn Light / Lumière d'Aurore**
+
 **Species**: Human, Elf, Dwarf
 
 - **Symbol**: **Rising sun** (semicircle with rays pointing upward)
@@ -1725,6 +1761,7 @@ Based on the thematic names of each Order, here are simple, distinct symbols tha
 - **Simple design**: Half-circle at bottom with 5-7 triangular rays
 
 #### **Order B - Verdant Light / Lumière Verdoyante**
+
 **Species**: Hobbit, Faun, Centaur
 
 - **Symbol**: **Leaf** or **simple tree** (three-pointed leaf or Y-shaped tree)
@@ -1733,6 +1770,7 @@ Based on the thematic names of each Order, here are simple, distinct symbols tha
 - **Simple design**: Three-pointed maple leaf or stylized tree with three branches
 
 #### **Order C - Ember Light / Lumière de Braise**
+
 **Species**: Orc, Goblin, Minotaur
 
 - **Symbol**: **Flame** (simple triangular flame shape)
@@ -1741,6 +1779,7 @@ Based on the thematic names of each Order, here are simple, distinct symbols tha
 - **Simple design**: Teardrop or triangle pointing upward with wavy top edge
 
 #### **Order D - Eternal Light / Lumière Éternelle**
+
 **Species**: Dragon, Cyclops, Fairy
 
 - **Symbol**: **Star** (4 or 5-pointed star) or **diamond**
@@ -1749,6 +1788,7 @@ Based on the thematic names of each Order, here are simple, distinct symbols tha
 - **Simple design**: Four-pointed star (like a compass rose) or diamond shape
 
 #### **Order E - Moonlight / Lumière Lunaire**
+
 **Species**: Aven, Koatl, Lycan
 
 - **Symbol**: **Crescent moon** (facing right)
@@ -1801,13 +1841,13 @@ const char* ORDER_SYMBOL_PATHS[5] = {
 
 If you prefer more abstract/geometric symbols:
 
-| Order | Shape | Meaning | Color |
-|-------|-------|---------|-------|
-| A | **Triangle pointing up** | Dawn/ascension | Gold |
-| B | **Square** | Earth/stability | Green |
-| C | **Inverted triangle** | Fire element | Red |
-| D | **Circle** | Eternity/perfection | White/Cyan |
-| E | **Crescent** | Moon phases | Silver |
+| Order | Shape                    | Meaning             | Color      |
+| ----- | ------------------------ | ------------------- | ---------- |
+| A     | **Triangle pointing up** | Dawn/ascension      | Gold       |
+| B     | **Square**               | Earth/stability     | Green      |
+| C     | **Inverted triangle**    | Fire element        | Red        |
+| D     | **Circle**               | Eternity/perfection | White/Cyan |
+| E     | **Crescent**             | Moon phases         | Silver     |
 
 ### Python Script to Generate Simple Order Icons
 
@@ -1821,10 +1861,10 @@ def create_sun_icon(size=64):
     """Order A: Rising Sun"""
     img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    
+
     center_x, center_y = size // 2, size * 3 // 4
     radius = size // 4
-    
+
     # Draw rays
     for i in range(8):
         angle = math.pi * (i / 8.0 + 1.0)
@@ -1833,19 +1873,19 @@ def create_sun_icon(size=64):
         x2 = center_x + (radius + 10) * math.cos(angle)
         y2 = center_y + (radius + 10) * math.sin(angle)
         draw.line([(x1, y1), (x2, y2)], fill=(255, 215, 0, 255), width=3)
-    
+
     # Draw semicircle
     bbox = [center_x - radius, center_y - radius, 
             center_x + radius, center_y + radius]
     draw.pieslice(bbox, 180, 360, fill=(255, 215, 0, 255))
-    
+
     return img
 
 def create_leaf_icon(size=64):
     """Order B: Leaf"""
     img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    
+
     # Simple three-pointed leaf shape
     points = [
         (size//2, size//8),           # Top point
@@ -1854,18 +1894,18 @@ def create_leaf_icon(size=64):
         (size//4, size//2),           # Left point
     ]
     draw.polygon(points, fill=(34, 139, 34, 255))
-    
+
     # Center vein
     draw.line([(size//2, size//8), (size//2, size*7//8)], 
              fill=(20, 100, 20, 255), width=2)
-    
+
     return img
 
 def create_flame_icon(size=64):
     """Order C: Flame"""
     img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    
+
     # Teardrop/flame shape
     points = [
         (size//2, size//8),           # Top point
@@ -1876,7 +1916,7 @@ def create_flame_icon(size=64):
         (size*3//8, size//2),         # Left curve
     ]
     draw.polygon(points, fill=(220, 20, 60, 255))
-    
+
     # Inner flame
     inner_points = [
         (size//2, size//4),
@@ -1885,18 +1925,18 @@ def create_flame_icon(size=64):
         (size*7//16, size//2),
     ]
     draw.polygon(inner_points, fill=(255, 140, 0, 255))
-    
+
     return img
 
 def create_star_icon(size=64):
     """Order D: Four-pointed star"""
     img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    
+
     center = size // 2
     outer_radius = size * 3 // 8
     inner_radius = size // 6
-    
+
     points = []
     for i in range(4):
         angle = math.pi / 2 * i
@@ -1909,37 +1949,37 @@ def create_star_icon(size=64):
         x = center + inner_radius * math.cos(angle)
         y = center + inner_radius * math.sin(angle)
         points.append((x, y))
-    
+
     draw.polygon(points, fill=(0, 191, 255, 255))
-    
+
     return img
 
 def create_crescent_icon(size=64):
     """Order E: Crescent Moon"""
     img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    
+
     center_x, center_y = size // 2, size // 2
     outer_radius = size * 3 // 8
-    
+
     # Draw full circle
     bbox1 = [center_x - outer_radius, center_y - outer_radius,
              center_x + outer_radius, center_y + outer_radius]
     draw.ellipse(bbox1, fill=(192, 192, 192, 255))
-    
+
     # Cut out inner circle to create crescent
     offset = outer_radius // 2
     bbox2 = [center_x - outer_radius + offset, center_y - outer_radius,
              center_x + outer_radius + offset, center_y + outer_radius]
     draw.ellipse(bbox2, fill=(0, 0, 0, 0))
-    
+
     return img
 
 def generate_all_order_icons():
     """Generate all 5 order symbol icons"""
     import os
     os.makedirs('assets/icons/orders', exist_ok=True)
-    
+
     icons = [
         ('order_a_sun.png', create_sun_icon),
         ('order_b_leaf.png', create_leaf_icon),
@@ -1947,13 +1987,13 @@ def generate_all_order_icons():
         ('order_d_star.png', create_star_icon),
         ('order_e_crescent.png', create_crescent_icon),
     ]
-    
+
     for filename, create_func in icons:
         img = create_func(64)
         path = f'assets/icons/orders/{filename}'
         img.save(path)
         print(f"Generated: {path}")
-        
+
         # Also generate @2x version
         img_2x = create_func(128)
         path_2x = f'assets/icons/orders/{filename.replace(".png", "@2x.png")}'
@@ -1973,15 +2013,15 @@ void render_order_symbol(SDL_Renderer* r, TextureCache* tc,
                         ChampionOrder order, int x, int y, int size) {
     const char* symbol_path = ORDER_SYMBOL_PATHS[order];
     SDL_Texture* tex = get_texture(tc, symbol_path);
-    
+
     if (!tex) return;
-    
+
     SDL_FRect dst = {x, y, size, size};
-    
+
     // Optional: tint with order color
     SDL_Color color = ORDER_COLORS[order];
     SDL_SetTextureColorMod(tex, color.r, color.g, color.b);
-    
+
     SDL_RenderTexture(r, tex, NULL, &dst);
 }
 ```
@@ -1989,6 +2029,7 @@ void render_order_symbol(SDL_Renderer* r, TextureCache* tc,
 ### Benefits of Thematic Symbols vs. Geometric
 
 **Thematic (Sun, Leaf, Flame, Star, Crescent):**
+
 - ✅ More evocative and memorable
 - ✅ Instantly convey the "flavor" of each Order
 - ✅ Help players associate species with their Order
@@ -1996,6 +2037,7 @@ void render_order_symbol(SDL_Renderer* r, TextureCache* tc,
 - ❌ Slightly more complex to draw at very small sizes
 
 **Geometric (Triangle, Square, Circle, etc.):**
+
 - ✅ Very simple to render and recognize
 - ✅ Clear at any size
 - ✅ Culturally neutral
@@ -2019,7 +2061,7 @@ void render_card_batch(SDL_Renderer* r, Card* cards, int count,
         get_texture(tc, cards[i].data.artwork_file);
         get_texture(tc, cards[i].data.species_icon_path);
     }
-    
+
     // Render all cards
     for (int i = 0; i < count; i++) {
         int x = calculate_card_x(i);
@@ -2058,7 +2100,7 @@ void get_animated_position(CardAnimation* anim, float* x, float* y) {
     // Ease-out cubic
     float t = anim->progress;
     float ease = 1.0f - powf(1.0f - t, 3.0f);
-    
+
     *x = anim->start_x + (anim->end_x - anim->start_x) * ease;
     *y = anim->start_y + (anim->end_y - anim->start_y) * ease;
 }
@@ -2100,13 +2142,13 @@ void release_card(CardPool* pool, Card* card) {
 void render_debug_info(SDL_Renderer* r, FontManager* fm,
                        GameState* g, float fps) {
     char debug_text[256];
-    
+
     snprintf(debug_text, 256,
              "FPS: %.1f | Cards in hand: %d | Energy: %d/%d",
              fps, g->hand_size, 
              g->current_energy[PLAYER_A],
              g->current_energy[PLAYER_B]);
-    
+
     draw_text(r, fm->fonts[FONT_UI_SMALL], debug_text,
              10, 10, (SDL_Color){255, 255, 0, 255});
 }
@@ -2115,14 +2157,14 @@ void render_debug_info(SDL_Renderer* r, FontManager* fm,
 void take_screenshot(SDL_Renderer* r, const char* filename) {
     int w, h;
     SDL_GetRenderOutputSize(r, &w, &h);
-    
+
     SDL_Surface* surface = SDL_CreateSurface(w, h, SDL_PIXELFORMAT_RGB24);
     SDL_RenderReadPixels(r, NULL, surface->format, surface->pixels, 
                         surface->pitch);
-    
+
     IMG_SavePNG(surface, filename);
     SDL_DestroySurface(surface);
-    
+
     printf("Screenshot saved: %s\n", filename);
 }
 ```
@@ -2132,41 +2174,48 @@ void take_screenshot(SDL_Renderer* r, const char* filename) {
 ## Summary Checklist
 
 ### Phase 1 ✓ Architecture
+
 - [ ] Directory structure created
 - [ ] Build system chosen (Makefile/CMake)
 - [ ] SDL3 installed on development platforms
 
 ### Phase 2 ✓ Core Systems
+
 - [ ] Window and renderer initialized
 - [ ] Event loop implemented
 - [ ] Input abstraction layer complete
 - [ ] Keyboard shortcuts working
 
 ### Phase 3 ✓ Rendering
+
 - [ ] Font manager implemented
 - [ ] Texture cache working
 - [ ] Card rendering matches design spec
 - [ ] UI elements render correctly
 
 ### Phase 4 ✓ Assets
+
 - [ ] All 102 champion names mapped to fullDeck
 - [ ] Species icons (15) created/acquired
 - [ ] Order symbols (5) designed
 - [ ] Font files acquired and licensed
 
 ### Phase 5 ✓ Desktop Features
+
 - [ ] Context menu functional
 - [ ] Tooltips working
 - [ ] Keyboard hints overlay
 - [ ] Configuration system
 
 ### Phase 6 ✓ Polish
+
 - [ ] Animations smooth
 - [ ] Performance optimized
 - [ ] Sound effects integrated
 - [ ] All game states functional
 
 ### Phase 7 ✓ Mobile
+
 - [ ] Touch input working
 - [ ] iOS build functional
 - [ ] Android build functional
@@ -2177,18 +2226,22 @@ void take_screenshot(SDL_Renderer* r, const char* filename) {
 ## Resources
 
 ### SDL3 Documentation
+
 - Official docs: https://wiki.libsdl.org/SDL3/
 - Migration guide: https://github.com/libsdl-org/SDL/blob/main/docs/README-migration.md
 
 ### Font Resources
+
 - Google Fonts: https://fonts.google.com
 - Font licensing guide: https://fonts.google.com/about
 
 ### Platform-Specific
+
 - iOS with SDL: https://wiki.libsdl.org/SDL3/README/ios
 - Android with SDL: https://wiki.libsdl.org/SDL3/README/android
 
 ### Tools
+
 - GIMP (image editing): https://www.gimp.org/
 - Inkscape (vector graphics): https://inkscape.org/
 - Pillow (Python image library): https://python-pillow.org/

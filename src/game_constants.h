@@ -17,8 +17,8 @@
 #define INITAL_HAND_SIZE_DEFAULT 6
 #define M_TWISTER_SEED 1337
 
-#define min(a,b) ({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })
-#define max(a,b) ({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
+#define oraclemin(a,b) ({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })
+#define oraclemax(a,b) ({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
 
 extern const bool debug_enabled;
 

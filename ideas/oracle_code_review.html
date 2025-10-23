@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oracle Card Game: Code Quality & Architecture Review</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        h3 {
+            color: #764ba2;
+            font-size: 1.4em;
+            margin: 25px 0 15px 0;
+        }
+        
+        h4 {
+            color: #555;
+            font-size: 1.1em;
+            margin: 15px 0 10px 0;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .critical { background: #fee; color: #c00; }
+        .warning { background: #ffeaa7; color: #d63031; }
+        .good { background: #dfe6e9; color: #2d3436; }
+        .excellent { background: #d5f4e6; color: #00b894; }
+        
+        .icon {
+            margin-right: 5px;
+        }
+        
+        .summary-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .strength-list, .issue-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .strength-list li, .issue-list li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+        
+        .strength-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #00b894;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        .issue-list li:before {
+            content: "⚠";
+            position: absolute;
+            left: 0;
+            font-size: 1.2em;
+        }
+        
+        pre {
+            background: #2d3436;
+            color: #dfe6e9;
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+        
+        code {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+        
+        .inline-code {
+            background: #f1f3f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .grade-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .grade-box .grade {
+            font-size: 4em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .action-items {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .priority {
+            font-weight: bold;
+            color: #d63031;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .recommendation-box {
+            background: #e8f4f8;
+            border-left: 4px solid #0984e3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .recommendation-box strong {
+            color: #0984e3;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            header {
+                padding: 20px;
+            }
+            
+            header h1 {
+                font-size: 1.8em;
+            }
+            
+            pre {
+                font-size: 0.8em;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎴 Oracle: The Champions of Arcadia</h1>
+            <p>Code Quality & Architecture Review</p>
+        </header>
+        
+        <div class="content">
+            <!-- Executive Summary -->
+            <div class="section">
+                <h2>Executive Summary</h2>
+                <div class="summary-box">
+                    <p>This is a <strong>well-structured card game implementation</strong> with clear separation of concerns. The codebase demonstrates good modularity, consistent naming conventions, and thoughtful organization. However, there are opportunities to improve maintainability, reduce coupling, and prepare for the ambitious future objectives outlined in TODO.md.</p>
+                </div>
+            </div>
+
+            <!-- Strengths -->
+            <div class="section">
+                <h2>✨ Strengths</h2>
+                
+                <h3>1. Excellent Module Organization</h3>
+                <ul class="strength-list">
+                    <li>Clear separation between game logic, AI strategies, and data structures</li>
+                    <li>Consistent file naming (<code class="inline-code">module.h</code> / <code class="inline-code">module.c</code> pairs)</li>
+                    <li>Well-documented module responsibilities</li>
+                </ul>
+                
+                <h3>2. Good Abstraction Layers</h3>
+                <ul class="strength-list">
+                    <li>Strategy pattern implementation allows easy AI swapping</li>
+                    <li>Combat logic cleanly separated from turn flow</li>
+                    <li>Card actions abstracted into dedicated module</li>
+                </ul>
+                
+                <h3>3. Type Safety</h3>
+                <ul class="strength-list">
+                    <li>Extensive use of enums for type-safe state representation</li>
+                    <li>Consistent use of fixed-width integers (<code class="inline-code">uint8_t</code>, <code class="inline-code">uint16_t</code>)</li>
+                </ul>
+                
+                <h3>4. Documentation</h3>
+                <ul class="strength-list">
+                    <li>Comprehensive documentation of game rules and mechanics</li>
+                    <li>Good inline comments explaining complex logic</li>
+                    <li>Detailed TODO with clear roadmap</li>
+                </ul>
+            </div>
+
+            <!-- Critical Issues -->
+            <div class="section">
+                <h2>🔴 Critical Issues</h2>
+                
+                <h3>1. Global State Management <span class="status-badge critical">🔴 CRITICAL</span></h3>
+                <p><strong>Problem:</strong> Multiple modules rely on global variables:</p>
+                <pre><code>// From multiple files:
+extern const bool debug_enabled;
+extern MTRand MTwister_rand_struct;</code></pre>
+                
+                <div class="recommendation-box">
+                    <strong>Recommendation:</strong> Create a context structure to pass state explicitly:
+                    <pre><code>// New: game_context.h
+typedef struct {
+    bool debug_enabled;
+    MTRand rng;
+    config_t* config;
+    // Future: network_context, ui_context, etc.
+} GameContext;
+
+// Pass context to functions that need it
+void play_turn(GameContext* ctx, struct gamestats* gstats, 
+               struct gamestate* gstate, StrategySet* strategies);</code></pre>
+                </div>
+                
+                <h3>2. Memory Management Concerns <span class="status-badge critical">🔴 CRITICAL</span></h3>
+                <p><strong>Problem:</strong> Inconsistent memory ownership patterns:</p>
+                <pre><code>// card_actions.c - caller must free
+uint8_t* hand_array = HDCLL_toArray(&gstate->hand[player]);
+// ... use array ...
+free(hand_array);  // Easy to forget!</code></pre>
+                
+                <div class="recommendation-box">
+                    <strong>Best Option:</strong> Use stack allocation where possible:
+                    <pre><code>// For bounded collections, use fixed arrays
+void get_hand_snapshot(struct HDCLList* hand, 
+                       uint8_t out[40], 
+                       uint8_t* out_size);</code></pre>
+                </div>
+                
+                <h3>3. Config Structure Scattered <span class="status-badge warning">🟡 WARNING</span></h3>
+                <p><strong>Problem:</strong> Configuration handling split between multiple files</p>
+                <ul class="issue-list">
+                    <li><code class="inline-code">cmdline.c</code> - parsing</li>
+                    <li><code class="inline-code">main.c</code> - cleanup</li>
+                    <li><code class="inline-code">stda_auto.c</code>, <code class="inline-code">stda_cli.c</code> - usage</li>
+                </ul>
+                
+                <div class="recommendation-box">
+                    <strong>Recommendation:</strong> Centralize in new <code class="inline-code">config.h</code> / <code class="inline-code">config.c</code>
+                </div>
+            </div>
+
+            <!-- Architecture Recommendations -->
+            <div class="section">
+                <h2>🏗️ Architecture Recommendations</h2>
+                
+                <h3>1. Prepare for Client-Server Split <span class="status-badge good">🟢 IMPORTANT</span></h3>
+                <p>Current code is monolithic. Start preparing for separation:</p>
+                <pre><code>// New: game_server.h
+typedef struct GameServer GameServer;
+
+GameServer* server_create(uint16_t initial_cash);
+void server_apply_action(GameServer* srv, PlayerID player, Action* action);
+VisibleGameState server_get_view(GameServer* srv, PlayerID observer);
+void server_destroy(GameServer* srv);
+
+// New: game_client.h  
+typedef struct GameClient GameClient;
+
+GameClient* client_create(PlayerID player_id);
+void client_receive_state(GameClient* cli, VisibleGameState* state);
+Action client_get_action(GameClient* cli);  // AI or human input
+void client_destroy(GameClient* cli);</code></pre>
+                
+                <h3>2. Action Structure (TODO Item #3) <span class="status-badge good">🟢 IMPORTANT</span></h3>
+                <pre><code>// action.h
+typedef enum {
+    ACTION_PLAY_CHAMPIONS,
+    ACTION_PLAY_DRAW_CARD,
+    ACTION_PLAY_CASH_CARD,
+    ACTION_PASS,
+    ACTION_DEFEND,
+    ACTION_DISCARD
+} ActionType;
+
+typedef struct {
+    ActionType type;
+    uint8_t num_cards;
+    uint8_t card_indices[3];
+    uint8_t draw_or_recall;
+} Action;
+
+// Clean interface
+bool action_is_legal(const Action* action, const VisibleGameState* state);
+void action_apply(Action* action, struct gamestate* gstate);</code></pre>
+                
+                <h3>3. Visibility System (TODO Item #2) <span class="status-badge good">🟢 IMPORTANT</span></h3>
+                <p>Critical for AI and multiplayer:</p>
+                <pre><code>// visibility.h
+typedef enum {
+    CARD_VISIBLE,
+    CARD_KNOWN_IN_OPPONENT_HAND,
+    CARD_HIDDEN,
+    CARD_KNOWN_IN_OWN_DECK,
+    CARD_KNOWN_IN_OPPONENT_DECK
+} CardVisibility;
+
+typedef struct {
+    struct gamestate base;
+    CardVisibility visibility[2][FULL_DECK_SIZE];
+} GameStateWithVisibility;</code></pre>
+            </div>
+
+            <!-- Code Quality Issues -->
+            <div class="section">
+                <h2>📊 Code Quality Issues</h2>
+                
+                <h3>1. Magic Numbers <span class="status-badge warning">🟡</span></h3>
+                <pre><code>// stda_auto.c - BAD
+if(genRand(&MTwister_rand_struct) > 0.47) return;
+
+// GOOD
+#define DEFENSE_PROBABILITY 0.47  // Tunable strategy parameter
+if(genRand(&MTwister_rand_struct) > DEFENSE_PROBABILITY) return;</code></pre>
+                
+                <h3>2. Error Handling Inconsistency <span class="status-badge warning">🟡</span></h3>
+                <div class="recommendation-box">
+                    <strong>Recommendation:</strong> Consistent error enum:
+                    <pre><code>typedef enum {
+    GAME_OK = 0,
+    GAME_ERR_EMPTY_DECK,
+    GAME_ERR_INSUFFICIENT_CASH,
+    GAME_ERR_INVALID_CARD,
+    GAME_ERR_ILLEGAL_MOVE
+} GameError;
+
+GameError DeckStk_pop_safe(struct deck_stack* deck, uint8_t* out);</code></pre>
+                </div>
+                
+                <h3>3. Function Length <span class="status-badge excellent">✅ GOOD</span></h3>
+                <p>Most functions stay under 30 lines as specified. Excellent discipline!</p>
+            </div>
+
+            <!-- Module Reviews -->
+            <div class="section">
+                <h2>🔍 Specific Module Reviews</h2>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Module</th>
+                            <th>Status</th>
+                            <th>Comments</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code class="inline-code">combo_bonus.c</code></td>
+                            <td><span class="status-badge excellent">✅ Excellent</span></td>
+                            <td>Clean, well-tested, single responsibility. No changes needed.</td>
+                        </tr>
+                        <tr>
+                            <td><code class="inline-code">card_actions.c</code></td>
+                            <td><span class="status-badge warning">🟡 Good</span></td>
+                            <td>Improve memory safety with array handling.</td>
+                        </tr>
+                        <tr>
+                            <td><code class="inline-code">strat_random.c</code></td>
+                            <td><span class="status-badge excellent">✅ Excellent</span></td>
+                            <td>Good example of strategy pattern. Clean interface.</td>
+                        </tr>
+                        <tr>
+                            <td><code class="inline-code">turn_logic.c</code></td>
+                            <td><span class="status-badge warning">🟡 Good</span></td>
+                            <td>Consider phase state machine for MCTS support.</td>
+                        </tr>
+                        <tr>
+                            <td><code class="inline-code">hdcll.c</code></td>
+                            <td><span class="status-badge warning">🟡 Consider</span></td>
+                            <td>Works but fixed arrays might be simpler for card game.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Action Items -->
+            <div class="section">
+                <h2>⚡ Immediate Action Items</h2>
+                
+                <div class="action-items">
+                    <h3><span class="priority">Priority 1</span> (Before adding more AI)</h3>
+                    <ol>
+                        <li>✅ <strong>Implement Action structure</strong> (TODO #3)</li>
+                        <li>✅ <strong>Add visibility system</strong> (TODO #2)</li>
+                        <li>🔧 <strong>Remove global state</strong> - Pass context explicitly</li>
+                        <li>🔧 <strong>Document memory ownership</strong> - Add comments to allocation functions</li>
+                    </ol>
+                </div>
+                
+                <div class="action-items" style="background: #e3f2fd; border-color: #2196f3;">
+                    <h3><span class="priority" style="color: #1976d2;">Priority 2</span> (Enables better AI)</h3>
+                    <ol start="5">
+                        <li>✅ <strong>Create get_available_moves()</strong> function</li>
+                        <li>✅ <strong>Implement game state cloning</strong> for MCTS</li>
+                        <li>🔧 <strong>Add phase state machine</strong> for cleaner turn flow</li>
+                    </ol>
+                </div>
+                
+                <div class="action-items" style="background: #f3e5f5; border-color: #9c27b0;">
+                    <h3><span class="priority" style="color: #7b1fa2;">Priority 3</span> (Code quality)</h3>
+                    <ol start="8">
+                        <li>🔧 <strong>Consolidate config management</strong></li>
+                        <li>🔧 <strong>Replace magic numbers with constants</strong></li>
+                        <li>🔧 <strong>Expand test coverage</strong></li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- File Organization -->
+            <div class="section">
+                <h2>📁 File Organization Suggestion</h2>
+                <p>Consider reorganizing as complexity grows:</p>
+                <pre><code>src/
+├── core/           # game_types, game_constants, game_state
+├── engine/         # turn_logic, combat, card_actions
+├── data/           # deckstack, hdcll
+├── ai/             # strategy, strat_*.c
+├── modes/          # stda_auto, stda_cli, future modes
+├── network/        # Future: server, client code
+├── ui/             # Future: ui abstraction layer
+└── util/           # rnd, mtwister</code></pre>
+            </div>
+
+            <!-- Overall Grade -->
+            <div class="section">
+                <div class="grade-box">
+                    <div class="grade">B+</div>
+                    <h2 style="color: white; border: none; margin: 0;">Overall Assessment</h2>
+                    <p style="font-size: 1.1em; margin-top: 15px;">Solid foundation with clear vision. Well-structured and maintainable.</p>
+                </div>
+                
+                <h3>Key Strength</h3>
+                <p>✓ Modular design that allows incremental improvement without rewrites.</p>
+                
+                <h3>Key Risk</h3>
+                <p>⚠ Growing complexity without addressing global state will make testing and networking very difficult.</p>
+                
+                <h3>Final Recommendation</h3>
+                <div class="recommendation-box">
+                    <strong>Invest 1-2 weeks addressing Priority 1 items before implementing more AI strategies.</strong> This will pay dividends when you reach MCTS and network play. The TODO list is comprehensive and well-thought-out. The suggested Action structure and visibility system are exactly right for enabling advanced AI strategies.
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
