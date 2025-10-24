@@ -1,16 +1,15 @@
 // game_state.c
 // Game state initialization and management implementation
+#include <stdio.h>
+#include <string.h>
 
 #include "game_state.h"
 #include "game_constants.h"
 #include "rnd.h"
 #include "deckstack.h"
-#include <stdio.h>
-#include <string.h>
+#include "game_context.h"
 
-extern const bool debug_enabled;
-
-void setup_game(uint16_t initial_cash, struct gamestate* gstate)
+void setup_game(uint16_t initial_cash, struct gamestate* gstate, GameContext* ctx)
 { // Initialize game state
   gstate->current_player = PLAYER_A;
   gstate->current_cash_balance[PLAYER_A] = initial_cash;
@@ -28,7 +27,7 @@ void setup_game(uint16_t initial_cash, struct gamestate* gstate)
   uint8_t rndCardIndex[FULL_DECK_SIZE];
   for(uint8_t i = 0; i < FULL_DECK_SIZE; i++)
     rndCardIndex[i] = i;
-  RND_partial_shuffle(rndCardIndex, FULL_DECK_SIZE, 2*MAX_DECK_STACK_SIZE);
+  RND_partial_shuffle(rndCardIndex, FULL_DECK_SIZE, 2*MAX_DECK_STACK_SIZE, ctx);
 
   // Push cards to decks alternately
   uint8_t i = 0;

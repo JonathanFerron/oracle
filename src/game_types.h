@@ -130,14 +130,6 @@ struct gamestate
   PlayerID player_to_move;
 }; // gamestate
 
-// Game statistics structure
-struct gamestats
-{ uint16_t cumul_player_wins[2];
-  uint16_t cumul_number_of_draws;
-  uint16_t game_end_turn_number[1000];  // look into dynamically allocating space for this as we don't need 1000 entries for interactive modes (we just need one)
-  uint16_t simnum;
-}; // gamestats
-
 /* Game mode enumeration */
 typedef enum
 { MODE_NONE = 0,
@@ -163,5 +155,15 @@ typedef struct
   char* output_file;
   char* ai_agent;
 } config_t;
+
+#include "game_constants.h"
+
+// Game statistics structure
+struct gamestats
+{ uint16_t cumul_player_wins[2];
+  uint16_t cumul_number_of_draws;
+  uint16_t game_end_turn_number[MAX_NUMBER_OF_SIM];  // look into dynamically allocating space for this as we don't need 1000 entries for interactive modes (we just need one)
+  uint16_t simnum;
+}; // gamestats
 
 #endif // GAME_TYPES_H

@@ -9,12 +9,12 @@
 
 // Main turn function
 void play_turn(struct gamestats* gstats, struct gamestate* gstate,
-               StrategySet* player_strategies);
+               StrategySet* player_strategies, GameContext* ctx);
 
 // Turn phase functions
-void begin_of_turn(struct gamestate* gstate);
-void end_of_turn(struct gamestate* gstate);
-void attack_phase(struct gamestate* gstate, StrategySet* strategies);
-void defense_phase(struct gamestate* gstate, StrategySet* strategies);
+void begin_of_turn(struct gamestate* gstate, GameContext* ctx);
+void end_of_turn(struct gamestate* gstate, GameContext* ctx);
+void attack_phase(struct gamestate* gstate, StrategySet* strategies, GameContext* ctx);
+void defense_phase(struct gamestate* gstate, StrategySet* strategies, GameContext* ctx);
 
 #endif // TURN_LOGIC_H

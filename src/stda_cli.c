@@ -39,8 +39,6 @@
 #define COLOR_ENERGY  MAGENTA
 #define COLOR_LUNA    CYAN
 
-extern MTRand MTwister_rand_struct;
-
 /* ========================================================================
    Display Functions
    ======================================================================== */
@@ -161,7 +159,7 @@ int parse_champion_indices(char* input, uint8_t* indices, int max_count, int han
 
 // Validate and play champions
 int validate_and_play_champions(struct gamestate* gstate, PlayerID player,
-                                uint8_t* indices, int count)
+                                uint8_t* indices, int count, GameContext* ctx)
 { if(count <= 0) return NO_ACTION;
 
   // Validate cards and calculate cost
@@ -187,7 +185,7 @@ int validate_and_play_champions(struct gamestate* gstate, PlayerID player,
 
   // Play the champions in reverse order
   for(int i = count - 1; i >= 0; i--)
-    play_champion(gstate, player, hand_array[indices[i]]);
+    play_champion(gstate, player, hand_array[indices[i]], ctx);
 
   free(hand_array);
   printf(GREEN "✓ Played %d champion(s)\n" RESET, count);
@@ -199,7 +197,7 @@ int validate_and_play_champions(struct gamestate* gstate, PlayerID player,
    ======================================================================== */
 
 // Handle draw command
-int handle_draw_command(struct gamestate* gstate, PlayerID player, char* input)
+int handle_draw_command(struct gamestate* gstate, PlayerID player, char* input, GameContext* ctx)
 { int idx = atoi(input);
   if(idx < 1 || idx > gstate->hand[player].size)
   { printf(RED "Error: Invalid card number (must be 1-%d)\n" RESET,
@@ -221,13 +219,13 @@ int handle_draw_command(struct gamestate* gstate, PlayerID player, char* input)
     return NO_ACTION;
   }
 
-  play_draw_card(gstate, player, card_idx);
+  play_draw_card(gstate, player, card_idx, ctx);
   printf(GREEN "✓ Played draw card\n" RESET);
   return ACTION_TAKEN;
 }
 
 // Handle cash command
-int handle_cash_command(struct gamestate* gstate, PlayerID player, char* input)
+int handle_cash_command(struct gamestate* gstate, PlayerID player, char* input, GameContext* ctx)
 { int idx = atoi(input);
   if(idx < 1 || idx > gstate->hand[player].size)
   { printf(RED "Error: Invalid card number (must be 1-%d)\n" RESET,
@@ -249,18 +247,18 @@ int handle_cash_command(struct gamestate* gstate, PlayerID player, char* input)
     return NO_ACTION;
   }
 
-  play_cash_card(gstate, player, card_idx);
+  play_cash_card(gstate, player, card_idx, ctx);
   printf(GREEN "✓ Played exchange card\n" RESET);
   return ACTION_TAKEN;
 }
 
 // Process champion command (attack or defense)
 static int process_champion_command(char* input, struct gamestate* gstate,
-                                    PlayerID player)
+                                    PlayerID player, GameContext* ctx)
 { uint8_t indices[3];
   int count = parse_champion_indices(input, indices, 3,
                                      gstate->hand[player].size);
-  if(count > 0 && validate_and_play_champions(gstate, player, indices, count))
+  if(count > 0 && validate_and_play_champions(gstate, player, indices, count, ctx))
     return ACTION_TAKEN;
   return NO_ACTION;
 }
@@ -270,15 +268,15 @@ static int process_champion_command(char* input, struct gamestate* gstate,
    ======================================================================== */
 
 // Process attack phase command
-static int process_attack_command(char* input_buffer, struct gamestate* gstate)
+static int process_attack_command(char* input_buffer, struct gamestate* gstate, GameContext* ctx)
 { input_buffer[strcspn(input_buffer, "\n")] = 0;
 
   if(strncmp(input_buffer, "cham ", 5) == 0)
-    return process_champion_command(input_buffer + 5, gstate, PLAYER_A);
+    return process_champion_command(input_buffer + 5, gstate, PLAYER_A, ctx);
   else if(strncmp(input_buffer, "draw ", 5) == 0)
-    return handle_draw_command(gstate, PLAYER_A, input_buffer + 5);
+    return handle_draw_command(gstate, PLAYER_A, input_buffer + 5, ctx);
   else if(strncmp(input_buffer, "cash ", 5) == 0)
-    return handle_cash_command(gstate, PLAYER_A, input_buffer + 5);
+    return handle_cash_command(gstate, PLAYER_A, input_buffer + 5, ctx);
   else if(strcmp(input_buffer, "pass") == 0)
   { printf(YELLOW "Passed turn\n" RESET);
     return ACTION_TAKEN;
@@ -299,7 +297,7 @@ static int process_attack_command(char* input_buffer, struct gamestate* gstate)
 }
 
 // Process defense phase command
-static int process_defense_command(char* input_buffer, struct gamestate* gstate)
+static int process_defense_command(char* input_buffer, struct gamestate* gstate, GameContext* ctx)
 { input_buffer[strcspn(input_buffer, "\n")] = 0;
 
   if(strcmp(input_buffer, "exit") == 0)
@@ -313,7 +311,7 @@ static int process_defense_command(char* input_buffer, struct gamestate* gstate)
     int count = parse_champion_indices(input_buffer + 5, indices, 3,
                                        gstate->hand[PLAYER_A].size);
     if(count > 0)
-    { if(!validate_and_play_champions(gstate, PLAYER_A, indices, count))
+    { if(!validate_and_play_champions(gstate, PLAYER_A, indices, count, ctx))
         printf(YELLOW "Taking damage without defending\n" RESET);
     }
     else if(count == 0)
@@ -334,7 +332,7 @@ static int process_defense_command(char* input_buffer, struct gamestate* gstate)
    ======================================================================== */
 
 // Handle interactive attack phase
-static int handle_interactive_attack(struct gamestate* gstate)
+static int handle_interactive_attack(struct gamestate* gstate, GameContext* ctx)
 { char input_buffer[MAX_COMMAND_LEN];
   int action_taken = NO_ACTION;
 
@@ -351,7 +349,7 @@ static int handle_interactive_attack(struct gamestate* gstate)
       return EXIT_SIGNAL;
     }
 
-    action_taken = process_attack_command(input_buffer, gstate);
+    action_taken = process_attack_command(input_buffer, gstate, ctx);
     if(action_taken == EXIT_SIGNAL) return EXIT_SIGNAL;
   }
 
@@ -359,7 +357,7 @@ static int handle_interactive_attack(struct gamestate* gstate)
 }
 
 // Handle interactive defense phase
-static int handle_interactive_defense(struct gamestate* gstate)
+static int handle_interactive_defense(struct gamestate* gstate, GameContext* ctx)
 { char input_buffer[MAX_COMMAND_LEN];
 
   display_attack_state(gstate);
@@ -372,7 +370,7 @@ static int handle_interactive_defense(struct gamestate* gstate)
   if(fgets(input_buffer, sizeof(input_buffer), stdin) == NULL)
     return EXIT_SUCCESS;
 
-  int result = process_defense_command(input_buffer, gstate);
+  int result = process_defense_command(input_buffer, gstate, ctx);
   return (result == EXIT_SIGNAL) ? EXIT_SIGNAL : EXIT_SUCCESS;
 }
 
@@ -381,27 +379,27 @@ static int handle_interactive_defense(struct gamestate* gstate)
    ======================================================================== */
 
 // Execute a single game turn
-static int execute_game_turn(struct gamestate* gstate, StrategySet* strategies)
-{ begin_of_turn(gstate);
+static int execute_game_turn(struct gamestate* gstate, StrategySet* strategies, GameContext* ctx)
+{ begin_of_turn(gstate, ctx);
 
   // Attack phase
   if(gstate->current_player == PLAYER_A)
-  { int result = handle_interactive_attack(gstate);
+  { int result = handle_interactive_attack(gstate, ctx);
     if(result == EXIT_SIGNAL) return EXIT_SIGNAL;
   }
   else
-    attack_phase(gstate, strategies);
+    attack_phase(gstate, strategies, ctx);
 
   // Defense and combat phase
   if(gstate->combat_zone[gstate->current_player].size > 0)
   { if(gstate->current_player == PLAYER_A)
-      defense_phase(gstate, strategies);
+      defense_phase(gstate, strategies, ctx);
     else
-    { int result = handle_interactive_defense(gstate);
+    { int result = handle_interactive_defense(gstate, ctx);
       if(result == EXIT_SIGNAL) return EXIT_SIGNAL;
     }
 
-    resolve_combat(gstate);
+    resolve_combat(gstate, ctx);
   }
 
   return EXIT_SUCCESS;
@@ -413,8 +411,9 @@ static int execute_game_turn(struct gamestate* gstate, StrategySet* strategies)
 
 // Initialize CLI game
 static struct gamestate* initialize_cli_game(uint16_t initial_cash,
-                                             StrategySet** strategies_out)
-{ MTwister_rand_struct = seedRand(M_TWISTER_SEED);
+                                             StrategySet** strategies_out, GameContext** ctx_out)
+{ GameContext* ctx = create_game_context(M_TWISTER_SEED, NULL);
+  if(ctx == NULL) return NULL;
 
   StrategySet* strategies = create_strategy_set();
   set_player_strategy(strategies, PLAYER_A,
@@ -423,14 +422,15 @@ static struct gamestate* initialize_cli_game(uint16_t initial_cash,
                       random_attack_strategy, random_defense_strategy);
 
   struct gamestate* gstate = malloc(sizeof(struct gamestate));
-  setup_game(initial_cash, gstate);
+  setup_game(initial_cash, gstate, ctx);
 
   *strategies_out = strategies;
+  *ctx_out = ctx;
   return gstate;
 }
 
 // Cleanup CLI game resources
-static void cleanup_cli_game(struct gamestate* gstate, StrategySet* strategies)
+static void cleanup_cli_game(struct gamestate* gstate, StrategySet* strategies, GameContext* ctx)
 { DeckStk_emptyOut(&gstate->deck[PLAYER_A]);
   DeckStk_emptyOut(&gstate->deck[PLAYER_B]);
   HDCLL_emptyOut(&gstate->combat_zone[PLAYER_A]);
@@ -442,6 +442,7 @@ static void cleanup_cli_game(struct gamestate* gstate, StrategySet* strategies)
 
   free(gstate);
   free_strategy_set(strategies);
+  destroy_game_context(ctx);
 }
 
 /* ========================================================================
@@ -452,15 +453,20 @@ static void cleanup_cli_game(struct gamestate* gstate, StrategySet* strategies)
 int run_mode_stda_cli(config_t* cfg)
 {
   #ifdef _WIN32
-  SetConsoleOutputCP(CP_UTF8);
-  SetConsoleCP(CP_UTF8);
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
   #endif
 
   printf("Running in command line interface mode...\n");
 
   StrategySet* strategies;
+  GameContext* ctx;
   struct gamestate* gstate = initialize_cli_game(INITIAL_CASH_DEFAULT,
-                                                 &strategies);
+                                                 &strategies, &ctx);
+  if(gstate == NULL)
+  { fprintf(stderr, "Failed to initialize CLI game\n");
+    return EXIT_FAILURE;
+  }
 
   printf("\n=== Game Start ===\n");
   gstate->turn = 0;
@@ -468,7 +474,7 @@ int run_mode_stda_cli(config_t* cfg)
   // Main game loop
   while(gstate->turn < MAX_NUMBER_OF_TURNS &&
         !gstate->someone_has_zero_energy)
-  { int result = execute_game_turn(gstate, strategies);
+  { int result = execute_game_turn(gstate, strategies, ctx);
     if(result == EXIT_SIGNAL) break;
 
     if(gstate->someone_has_zero_energy) break;
@@ -481,6 +487,6 @@ int run_mode_stda_cli(config_t* cfg)
   if(!gstate->someone_has_zero_energy)
     gstate->game_state = DRAW;
 
-  cleanup_cli_game(gstate, strategies);
+  cleanup_cli_game(gstate, strategies, ctx);
   return EXIT_SUCCESS;
 }

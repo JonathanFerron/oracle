@@ -1,33 +1,33 @@
 // combat.c
 // Combat resolution implementation
+#include <stdio.h>
 
 #include "combat.h"
 #include "combo_bonus.h"
 #include "game_constants.h"
 #include "rnd.h"
-#include <stdio.h>
-
-extern const bool debug_enabled;
+#include "game_context.h"
+#include "debug.h"
 
 #define max(a,b) ({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
 #define min(a,b) ({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })
 
-void resolve_combat(struct gamestate* gstate)
+void resolve_combat(struct gamestate* gstate, GameContext* ctx)
 { PlayerID attacker = gstate->current_player;
   PlayerID defender = 1 - gstate->current_player;
 
   // Calculate attack and defense
-  int16_t total_attack = calculate_total_attack(gstate, attacker);
-  int16_t total_defense = calculate_total_defense(gstate, defender);
+  int16_t total_attack = calculate_total_attack(gstate, attacker, ctx);
+  int16_t total_defense = calculate_total_defense(gstate, defender, ctx);
 
   // Apply damage
-  apply_combat_damage(gstate, total_attack, total_defense);
+  apply_combat_damage(gstate, total_attack, total_defense, ctx);
 
   // Clear combat zones
-  clear_combat_zones(gstate);
+  clear_combat_zones(gstate, ctx);
 }
 
-int16_t calculate_total_attack(struct gamestate* gstate, PlayerID player)
+int16_t calculate_total_attack(struct gamestate* gstate, PlayerID player, GameContext* ctx)
 { int16_t total = 0;
   struct LLNode* current = gstate->combat_zone[player].head;
 
@@ -40,20 +40,18 @@ int16_t calculate_total_attack(struct gamestate* gstate, PlayerID player)
 
     // Add base attack + dice roll
     total += fullDeck[card_idx].attack_base +
-             RND_dn(fullDeck[card_idx].defense_dice);
+             RND_dn(fullDeck[card_idx].defense_dice, ctx);
 
     // Store for combo calculation
     combat_cards[i].species = fullDeck[card_idx].species;
     combat_cards[i].color = fullDeck[card_idx].color;
     combat_cards[i].order = fullDeck[card_idx].order;
 
-    if(debug_enabled)
-    { printf(" Attack card %u: D%u+%u, cost %u\n",
+    DEBUG_PRINT(" Attack card %u: D%u+%u, cost %u\n",
              card_idx,
              fullDeck[card_idx].defense_dice,
              fullDeck[card_idx].attack_base,
-             fullDeck[card_idx].cost);
-    }
+             fullDeck[card_idx].cost);    
 
     current = current->next;
   }
@@ -63,16 +61,14 @@ int16_t calculate_total_attack(struct gamestate* gstate, PlayerID player)
   int bonus = calculate_combo_bonus(combat_cards, num_cards, DECK_RANDOM);
   total += bonus;
 
-  if(debug_enabled && bonus > 0)
-    printf(" Combo bonus: +%d\n", bonus);
+  DEBUG_ONLY(if(bonus > 0) printf(" Combo bonus: +%d\n", bonus));
 
-  if(debug_enabled)
-    printf(" Total attack: %d\n", total);
+  DEBUG_PRINT(" Total attack: %d\n", total);
 
   return total;
 }
 
-int16_t calculate_total_defense(struct gamestate* gstate, PlayerID player)
+int16_t calculate_total_defense(struct gamestate* gstate, PlayerID player, GameContext* ctx)
 { int16_t total = 0;
   struct LLNode* current = gstate->combat_zone[player].head;
 
@@ -84,19 +80,18 @@ int16_t calculate_total_defense(struct gamestate* gstate, PlayerID player)
   { uint8_t card_idx = current->data;
 
     // Add dice roll only (no base for defense)
-    total += RND_dn(fullDeck[card_idx].defense_dice);
+    total += RND_dn(fullDeck[card_idx].defense_dice, ctx);
 
     // Store for combo calculation
     combat_cards[i].species = fullDeck[card_idx].species;
     combat_cards[i].color = fullDeck[card_idx].color;
     combat_cards[i].order = fullDeck[card_idx].order;
 
-    if(debug_enabled)
-    { printf(" Defense card %u: D%u, cost %u\n",
+    DEBUG_PRINT(" Defense card %u: D%u, cost %u\n",
              card_idx,
              fullDeck[card_idx].defense_dice,
              fullDeck[card_idx].cost);
-    }
+    
 
     current = current->next;
   }
@@ -105,32 +100,26 @@ int16_t calculate_total_defense(struct gamestate* gstate, PlayerID player)
   int bonus = calculate_combo_bonus(combat_cards, num_cards, DECK_RANDOM);
   total += bonus;
 
-  if(debug_enabled && bonus > 0)
-    printf(" Combo bonus: +%d\n", bonus);
-
-  if(debug_enabled)
-    printf(" Total defense: %d\n", total);
+  DEBUG_ONLY(if(bonus > 0) printf(" Combo bonus: +%d\n", bonus));
+  DEBUG_PRINT(" Total defense: %d\n", total);
 
   return total;
 }
 
 void apply_combat_damage(struct gamestate* gstate, int16_t total_attack,
-                         int16_t total_defense)
+                         int16_t total_defense, GameContext* ctx)
 { PlayerID defender = 1 - gstate->current_player;
 
   int16_t total_damage = max(total_attack - total_defense, 0);
 
-  if(debug_enabled)
-    printf(" Defender energy before: %u\n", gstate->current_energy[defender]);
+  DEBUG_PRINT(" Defender energy before: %u\n", gstate->current_energy[defender]);
 
   gstate->current_energy[defender] -= min((uint8_t)total_damage,
                                           gstate->current_energy[defender]);
 
-  if(debug_enabled)
-  { printf(" Damage dealt: %d\n", total_damage);
-    printf(" Defender energy after: %u\n", gstate->current_energy[defender]);
-  }
-
+  DEBUG_PRINT(" Damage dealt: %d\n", total_damage);
+  DEBUG_PRINT(" Defender energy after: %u\n", gstate->current_energy[defender]);
+  
   // Check for game end
   if(gstate->current_energy[defender] == 0)
   { gstate->someone_has_zero_energy = true;
@@ -139,7 +128,7 @@ void apply_combat_damage(struct gamestate* gstate, int16_t total_attack,
   }
 }
 
-void clear_combat_zones(struct gamestate* gstate)
+void clear_combat_zones(struct gamestate* gstate, GameContext* ctx)
 { PlayerID attacker = gstate->current_player;
   PlayerID defender = 1 - gstate->current_player;
 

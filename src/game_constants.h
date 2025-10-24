@@ -4,8 +4,6 @@
 #ifndef GAME_CONSTANTS_H
 #define GAME_CONSTANTS_H
 
-#include "game_types.h"
-
 // Constants
 #define FULL_DECK_SIZE 120
 #define MAX_NUMBER_OF_TURNS 500
@@ -20,7 +18,7 @@
 #define oraclemin(a,b) ({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })
 #define oraclemax(a,b) ({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
 
-extern const bool debug_enabled;
+#include "game_types.h"
 
 // Full deck array (defined in game_constants.c)
 extern const struct card fullDeck[FULL_DECK_SIZE];

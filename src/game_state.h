@@ -8,7 +8,7 @@
 #include "strategy.h"
 
 // Game initialization and management
-void setup_game(uint16_t initial_cash, struct gamestate* gstate);
+void setup_game(uint16_t initial_cash, struct gamestate* gstate, GameContext* ctx);
 void collect_1_luna(struct gamestate* gstate);
 void change_current_player(struct gamestate* gstate);
 

@@ -11,20 +11,25 @@
 #include "game_state.h"
 #include "turn_logic.h"
 #include "card_actions.h"
+#include "debug.h"
 
 extern MTRand MTwister_rand_struct;
 
 // Standalone Auto mode code
 int run_mode_stda_auto(config_t* cfg)
-{ // Initialize random number generator: this is something that would be server side (mostly, unless an AI client needs a RNG, in which case it could have a separate one)
-  MTwister_rand_struct = seedRand(M_TWISTER_SEED);
+{ // Create game context
+  GameContext* ctx = create_game_context(M_TWISTER_SEED, cfg);
+  if(ctx == NULL)
+  { fprintf(stderr, "Failed to create game context\n");
+    return EXIT_FAILURE;
+  }
 
   // Initialize game statistics: this is something that would be server side once we split the code between the client and server side code
   struct gamestats gstats;
   memset(&gstats, 0, sizeof(struct gamestats));
 
   // Simulation parameters: this is something that is specific to a 'simulation' mode (stda.sim or client.sim for interactive simulation or stda.auto for automated simulation)
-  uint16_t numsim = debug_enabled ? DEBUG_NUMBER_OF_SIM : MAX_NUMBER_OF_SIM;
+  uint16_t numsim = (cfg->numsim > 0) ? oraclemin(cfg->numsim, MAX_NUMBER_OF_SIM) : MAX_NUMBER_OF_SIM;
   uint16_t initial_cash = INITIAL_CASH_DEFAULT;
 
   // Setup strategies for both players: this is something that would be client side
@@ -35,58 +40,55 @@ int run_mode_stda_auto(config_t* cfg)
                       random_attack_strategy, random_defense_strategy);
 
   // Run simulation: this is something that is specific to simulation mode (in this specific case, for the CLI only application, it's the automated simulation stda.auto)
-  run_simulation(numsim, initial_cash, &gstats, strategies);
+  run_simulation(numsim, initial_cash, &gstats, strategies, ctx);
   present_results(&gstats);
 
   // Cleanup (counterpart to initialization strategies struct earlier)
   free_strategy_set(strategies);
+  destroy_game_context(ctx);
 
   return EXIT_SUCCESS;
 } // end of standalone auto mode code
 
 void run_simulation(uint16_t numsim, uint16_t initial_cash,
-                    struct gamestats* gstats, StrategySet* strategies)
+                    struct gamestats* gstats, StrategySet* strategies, GameContext* ctx)
 { for(gstats->simnum = 0; gstats->simnum < numsim; gstats->simnum++)
-  { if(debug_enabled)
-      printf("Begin game %.4u\n", gstats->simnum);
-    play_stda_auto_game(initial_cash, gstats, strategies);
-    if(debug_enabled)
-      printf("End game %.4u\n\n", gstats->simnum);
+  { DEBUG_PRINT("Begin game %.4u\n", gstats->simnum);
+    play_stda_auto_game(initial_cash, gstats, strategies, ctx);
+    DEBUG_PRINT("End game %.4u\n\n", gstats->simnum);
   }
 }
 
 void play_stda_auto_game(uint16_t initial_cash, struct gamestats* gstats,
-                         StrategySet* strategies)  // need to accept a *cfg here so as to use later on
+                         StrategySet* strategies, GameContext* ctx)  // need to accept a *cfg here so as to use later on
 { struct gamestate gstate;
-  setup_game(initial_cash, &gstate);
+  setup_game(initial_cash, &gstate, ctx);
 
   // Apply mulligan for player B: when in interactive mode (CLI, TUI, GUI), this needs to be delegated to the user or AI to make a choice of what to mulligan (if anything)
-  apply_mulligan(&gstate);
+  apply_mulligan(&gstate, ctx);
 
-  if(debug_enabled)
-  { printf("Game started with %d A, %d B cash; %d A, %d B energy\n",
+  DEBUG_PRINT("Game started with %d A, %d B cash; %d A, %d B energy\n",
            gstate.current_cash_balance[PLAYER_A],
            gstate.current_cash_balance[PLAYER_B],
            gstate.current_energy[PLAYER_A],
            gstate.current_energy[PLAYER_B]);
-  }
+  
 
   gstate.turn = 0;
 
   do
-  { play_turn(gstats, &gstate, strategies); // need to pass cfg pointer to provide game mode information
+  { play_turn(gstats, &gstate, strategies, ctx); // need to pass cfg pointer to provide game mode information
   }
   while(gstate.turn < MAX_NUMBER_OF_TURNS && !gstate.someone_has_zero_energy);
 
   if(!gstate.someone_has_zero_energy)
     gstate.game_state = DRAW;
 
-  if(debug_enabled)
-  { printf("Game ended at round %.4u, turn %.4u, winner is %s\n",
+  DEBUG_PRINT("Game ended at round %.4u, turn %.4u, winner is %s\n",
            (uint16_t)((gstate.turn-1) * 0.5)+1,
            gstate.turn,
            GAME_STATE_NAMES[gstate.game_state]);
-  }
+  
 
   record_final_stats(gstats, &gstate); // need to pass cfg pointer to provide game mode information
 
@@ -101,7 +103,7 @@ void play_stda_auto_game(uint16_t initial_cash, struct gamestats* gstats,
   HDCLL_emptyOut(&gstate.discard[PLAYER_B]);
 } // play_game
 
-void apply_mulligan(struct gamestate* gstate)
+void apply_mulligan(struct gamestate* gstate, GameContext* ctx)
 { uint8_t max_nbr_cards_to_mulligan = 2;
 
   // Count cards to mulligan
@@ -115,8 +117,7 @@ void apply_mulligan(struct gamestate* gstate)
     current = current->next;
   }
 
-  if(debug_enabled)
-    printf("Number of cards to mulligan: %u\n", nbr_cards_to_mulligan);
+  DEBUG_PRINT("Number of cards to mulligan: %u\n", nbr_cards_to_mulligan);
 
   // Discard lowest power cards
   float minpower;
@@ -143,7 +144,7 @@ void apply_mulligan(struct gamestate* gstate)
 
   // Draw replacement cards
   for(uint8_t i = 0; i < nbr_cards_to_mulligan; i++)
-    draw_1_card(gstate, PLAYER_B);
+    draw_1_card(gstate, PLAYER_B, ctx);
 } // apply_mulligan
 
 void record_final_stats(struct gamestats* gstats, struct gamestate* gstate) // need to accept cfg pointer to see game mode information

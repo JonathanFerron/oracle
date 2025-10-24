@@ -54,9 +54,9 @@ clean:
 	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle*
 	@echo "Clean complete"
 
-# Debug build (keeps your debug flags)
+# Debug build
 .PHONY: debug
-debug: CFLAGS := -g -O0 -Wall -std=c23 -DDEBUG
+debug: CFLAGS := -g -Og -Wall -std=c23 -DDEBUG -DDEBUG_ENABLED=1
 debug: clean all
 	@echo "Debug build complete"
 
@@ -100,7 +100,7 @@ help:
 	@echo "Available targets:"
 	@echo "  all          - Build the project (default)"
 	@echo "  clean        - Remove build artifacts"
-	@echo "  debug        - Build with debug symbols and -O0"
+	@echo "  debug        - Build with debug symbols and -Og"
 	@echo "  test_combo   - Build combo bonus tests"
 	@echo "  oldcode      - Build the old code (usually used for regression testing purpose)"
 	@echo "  format       - Format the c and h source files using astyle"
