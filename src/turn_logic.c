@@ -10,7 +10,7 @@
 #include "game_state.h"
 
 void play_turn(struct gamestats* gstats, struct gamestate* gstate,
-               StrategySet* player_strategies, GameContext* ctx) // need to accept cfg pointer to provide (at least) game mode information (eg auto vs interactive modes)
+               StrategySet* player_strategies, GameContext* ctx)
 { begin_of_turn(gstate, ctx);
 
   attack_phase(gstate, player_strategies, ctx);  // need to pass cfg pointer to provide game mode information
@@ -27,8 +27,9 @@ void play_turn(struct gamestats* gstats, struct gamestate* gstate,
   end_of_turn(gstate, ctx); // need to pass cfg pointer to provide game mode information
 } // play_turn
 
+// TODO: add a 'UICallbacks* uicb' parameter to this function that will have a function pointer to a function in the UI code that can be called to display the card drawn
 void begin_of_turn(struct gamestate* gstate, GameContext* ctx)
-{ gstate->turn++;
+{ gstate->turn++;  // TODO: may eventually need to look into whethere or not this line of code should be moved to the bottom of the end_of_turn() function
   gstate->turn_phase = ATTACK;  // TODO: may eventually need to look into whethere or not this line of code should be moved to become the very last instruction in the end_of_turn() function. this is likely to matter only when come the time to implement the MCTS AI engines, due to the nature of the strategy sets that may be required to allow the MCTS to recursively traverse the tree
   gstate->player_to_move = gstate->current_player; // TODO: look into whether the change discussed above for the turn_phase should extend to the player_to_move as well
 
@@ -59,7 +60,7 @@ void defense_phase(struct gamestate* gstate, StrategySet* strategies, GameContex
     strategies->defense_strategy[defender](gstate, ctx);
 }
 
-void end_of_turn(struct gamestate* gstate, GameContext* ctx) // need to accept cfg pointer to provide game mode information
+void end_of_turn(struct gamestate* gstate, GameContext* ctx)
 { collect_1_luna(gstate);
   discard_to_7_cards(gstate, ctx); // need to pass cfg pointer to provide game mode information
   change_current_player(gstate);

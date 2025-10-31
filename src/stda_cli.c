@@ -89,9 +89,10 @@ void display_player_hand(PlayerID player, struct gamestate* gstate)
 void display_attack_state(struct gamestate* gstate)
 { printf("\n" RED "=== Combat! You are being attacked ===" RESET "\n");
   printf("Attacker's champions in combat:\n");
-  struct LLNode* current = gstate->combat_zone[1 - gstate->current_player].head;
+  
+  struct LLNode* current = gstate->combat_zone[gstate->current_player].head;
 
-  for(uint8_t i = 0; i < gstate->combat_zone[1 - gstate->current_player].size; i++)
+  for(uint8_t i = 0; i < gstate->combat_zone[gstate->current_player].size; i++)
   { const struct card* c = &fullDeck[current->data];
     printf("  - %s (D%d+%d)\n", CHAMPION_SPECIES_NAMES[c->species],
            c->defense_dice, c->attack_base);
@@ -185,7 +186,7 @@ int validate_and_play_champions(struct gamestate* gstate, PlayerID player,
 
   // Play the champions in reverse order
   for(int i = count - 1; i >= 0; i--)
-    play_champion(gstate, player, hand_array[indices[i]], ctx);
+    play_champion(gstate, player, hand_array[indices[i]], ctx);  // TODO: output a message to the console here to mention which champion was just played
 
   free(hand_array);
   printf(GREEN "✓ Played %d champion(s)\n" RESET, count);
@@ -219,7 +220,10 @@ int handle_draw_command(struct gamestate* gstate, PlayerID player, char* input, 
     return NO_ACTION;
   }
 
-  play_draw_card(gstate, player, card_idx, ctx);
+  // TODO: make use of the on_card_drawn callback function here to get the program to display the details of the drawn or recalled cards
+  // TODO: must give the option to the interactive player  to choose between draw and recall, and if they choose recall, give them the list of champion cards in the discard for them to choose from
+  // TODO: must add eventually to the AI agent all of the the possible action (via get_possible_actions), which should include playing the recall card (there will be many possible combination of recalls when the discard is large and the player plays the 'recall 2' card) 
+  play_draw_card(gstate, player, card_idx, ctx); 
   printf(GREEN "✓ Played draw card\n" RESET);
   return ACTION_TAKEN;
 }
@@ -247,7 +251,7 @@ int handle_cash_command(struct gamestate* gstate, PlayerID player, char* input, 
     return NO_ACTION;
   }
 
-  play_cash_card(gstate, player, card_idx, ctx);
+  play_cash_card(gstate, player, card_idx, ctx);  // TODO: when the current player is the interactive player, must give them the opportunity to choose which champion card they want to discard
   printf(GREEN "✓ Played exchange card\n" RESET);
   return ACTION_TAKEN;
 }
@@ -337,10 +341,10 @@ static int handle_interactive_attack(struct gamestate* gstate, GameContext* ctx)
   int action_taken = NO_ACTION;
 
   while(!action_taken && !gstate->someone_has_zero_energy)
-  { printf("\n=== %s's Turn (Turn %d) ===\n",
+  { printf("\n=== %s's Turn (Turn %d) ===\n",      // TODO: also add round number here
            PLAYER_NAMES[PLAYER_A], gstate->turn);
-    display_player_prompt(PLAYER_A, gstate, 0);
-    display_player_hand(PLAYER_A, gstate);
+    display_player_prompt(PLAYER_A, gstate, 0);    // TODO: also provide information to Player A about Player B's energy, lunas (see how that's done in display_game_status)
+    display_player_hand(PLAYER_A, gstate);         // TODO: also provide info on player B (opponent) number of cards in hand (see how that's done in display_game_status)
     printf("\nCommands: cham <indices>, draw <index>, cash <index>, "
            "pass, gmst, help, exit\n> ");
 
@@ -360,17 +364,17 @@ static int handle_interactive_attack(struct gamestate* gstate, GameContext* ctx)
 static int handle_interactive_defense(struct gamestate* gstate, GameContext* ctx)
 { char input_buffer[MAX_COMMAND_LEN];
 
-  display_attack_state(gstate);
+  display_attack_state(gstate);  // TODO: need to show round and turn number
   printf("\n");
-  display_player_prompt(PLAYER_A, gstate, 1);
+  display_player_prompt(PLAYER_A, gstate, 1);  // TODO: show opponent's energy, luna and number of cards in hand
   display_player_hand(PLAYER_A, gstate);
   printf("\nDefend: 'cham <indices>' (e.g., 'cham 1 2') or "
-         "'pass' to take damage\n> ");
+         "'pass' to take damage\n> ");  // TODO: add the 'gmst' command here as an option
 
   if(fgets(input_buffer, sizeof(input_buffer), stdin) == NULL)
     return EXIT_SUCCESS;
 
-  int result = process_defense_command(input_buffer, gstate, ctx);
+  int result = process_defense_command(input_buffer, gstate, ctx); // TODO: process the 'gmst' command once added as an option
   return (result == EXIT_SIGNAL) ? EXIT_SIGNAL : EXIT_SUCCESS;
 }
 
@@ -380,7 +384,7 @@ static int handle_interactive_defense(struct gamestate* gstate, GameContext* ctx
 
 // Execute a single game turn
 static int execute_game_turn(struct gamestate* gstate, StrategySet* strategies, GameContext* ctx)
-{ begin_of_turn(gstate, ctx);
+{ begin_of_turn(gstate, ctx); // TODO: use a callback (to the CLI) approach to allow printing messages to the user: e.g. something like void (*on_card_drawn)(PlayerID player, uint8_t card_id, void* ui_ctx);
 
   // Attack phase
   if(gstate->current_player == PLAYER_A)
@@ -393,13 +397,13 @@ static int execute_game_turn(struct gamestate* gstate, StrategySet* strategies, 
   // Defense and combat phase
   if(gstate->combat_zone[gstate->current_player].size > 0)
   { if(gstate->current_player == PLAYER_A)
-      defense_phase(gstate, strategies, ctx);
+      defense_phase(gstate, strategies, ctx);  // TODO: If AI agent decides not to defend, say so via a message on the console. If they do, say what the AI has played as defense champions.
     else
     { int result = handle_interactive_defense(gstate, ctx);
       if(result == EXIT_SIGNAL) return EXIT_SIGNAL;
     }
 
-    resolve_combat(gstate, ctx);
+    resolve_combat(gstate, ctx);  // TODO: print out messages to the console with the details of the dice rolls, the attack and defense of each champion, the total attack and defense, and finally the damage taken by the defending player and their remaining energy. this can be done by passing a function pointer to the function, pointing to the 'void (*on_combat_resolved)(int16_t damage, void* ui_ctx);' callback function located in stda_cli_callback.c.
   }
 
   return EXIT_SUCCESS;
@@ -467,9 +471,14 @@ int run_mode_stda_cli(config_t* cfg)
   { fprintf(stderr, "Failed to initialize CLI game\n");
     return EXIT_FAILURE;
   }
-
+  
+  printf("\nYou are Player A\n");  // TODO: build into the 'experience' the ability for the human player to be either Player A or Player B, as would be the case in real life. This could be simply determined randomly.
+  printf("Player B is the "); printf("RANDOM"); printf(" AI engine\n");   // TODO: insert here in a more dynamic way the 'name' of the player's strategy
+  
   printf("\n=== Game Start ===\n");
   gstate->turn = 0;
+  
+  // TODO: add here the logic to perform the mulligan for player B
 
   // Main game loop
   while(gstate->turn < MAX_NUMBER_OF_TURNS &&
@@ -480,12 +489,15 @@ int run_mode_stda_cli(config_t* cfg)
     if(gstate->someone_has_zero_energy) break;
 
     collect_1_luna(gstate);
+    // TODO: add here the functionality to discard to 7 cards
     change_current_player(gstate);
   }
 
   // Determine final game state
   if(!gstate->someone_has_zero_energy)
     gstate->game_state = DRAW;
+
+  // TODO: provide a message to the player summarizing the final outcome of the game. who won (or was a draw), what is the remaining energy of the winner (or both players if a draw), the number of turns and rounds played, the number of lunas and cards left in each player hands
 
   cleanup_cli_game(gstate, strategies, ctx);
   return EXIT_SUCCESS;

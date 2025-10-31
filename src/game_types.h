@@ -147,6 +147,7 @@ typedef enum
 } game_mode_t;
 
 /* Configuration structure */
+// TODO: consider whether this struct should be moved to the game_context.h source file, or to cmdline.h as it's primarily populated in the cmldline.c file.
 typedef struct
 { game_mode_t mode;
   bool verbose;
