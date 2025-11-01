@@ -221,7 +221,7 @@ int handle_draw_command(struct gamestate* gstate, PlayerID player, char* input, 
   }
 
   // TODO: make use of the on_card_drawn callback function here to get the program to display the details of the drawn or recalled cards
-  // TODO: must give the option to the interactive player  to choose between draw and recall, and if they choose recall, give them the list of champion cards in the discard for them to choose from
+  // TODO: must give the option to the interactive player to choose between draw and recall, and if they choose recall, give them the list of champion cards in the discard for them to choose from
   // TODO: must add eventually to the AI agent all of the the possible action (via get_possible_actions), which should include playing the recall card (there will be many possible combination of recalls when the discard is large and the player plays the 'recall 2' card) 
   play_draw_card(gstate, player, card_idx, ctx); 
   printf(GREEN "✓ Played draw card\n" RESET);
@@ -341,10 +341,13 @@ static int handle_interactive_attack(struct gamestate* gstate, GameContext* ctx)
   int action_taken = NO_ACTION;
 
   while(!action_taken && !gstate->someone_has_zero_energy)
-  { printf("\n=== %s's Turn (Turn %d) ===\n",      // TODO: also add round number here
-           PLAYER_NAMES[PLAYER_A], gstate->turn);
-    display_player_prompt(PLAYER_A, gstate, 0);    // TODO: also provide information to Player A about Player B's energy, lunas (see how that's done in display_game_status)
-    display_player_hand(PLAYER_A, gstate);         // TODO: also provide info on player B (opponent) number of cards in hand (see how that's done in display_game_status)
+  { printf("\n=== %s's Turn (Turn %d), Round (%d) ===\n",      
+           PLAYER_NAMES[PLAYER_A], gstate->turn, (uint16_t)((gstate->turn - 1) * 0.5 + 1));  // TODO: Consider using a GAMEROUND(turn) macro to avoid coding the round manually each time we want to display or store it
+    printf("\n=== Defender's Status ===\n");
+    display_player_prompt(PLAYER_B, gstate, 1);  // TODO: also provide information about Player B's number of cards in hand (see how that's done in display_game_status)
+    printf("\n");
+    display_player_prompt(PLAYER_A, gstate, 0);    
+    display_player_hand(PLAYER_A, gstate);
     printf("\nCommands: cham <indices>, draw <index>, cash <index>, "
            "pass, gmst, help, exit\n> ");
 
@@ -364,9 +367,15 @@ static int handle_interactive_attack(struct gamestate* gstate, GameContext* ctx)
 static int handle_interactive_defense(struct gamestate* gstate, GameContext* ctx)
 { char input_buffer[MAX_COMMAND_LEN];
 
-  display_attack_state(gstate);  // TODO: need to show round and turn number
+  printf("\n=== %s's Turn (Turn %d), Round (%d) ===\n",      
+           PLAYER_NAMES[PLAYER_A], gstate->turn, (uint16_t)((gstate->turn - 1) * 0.5 + 1));
+  display_attack_state(gstate);
+  
+  printf("\n=== Opponent Status ===\n");
+  display_player_prompt(PLAYER_B, gstate, 0);   // show attacker's energy, luna and number of cards in hand: TODO: add number of cards, see display_game_status for an example of how to do that
+  
   printf("\n");
-  display_player_prompt(PLAYER_A, gstate, 1);  // TODO: show opponent's energy, luna and number of cards in hand
+  display_player_prompt(PLAYER_A, gstate, 1);  // interactive player info
   display_player_hand(PLAYER_A, gstate);
   printf("\nDefend: 'cham <indices>' (e.g., 'cham 1 2') or "
          "'pass' to take damage\n> ");  // TODO: add the 'gmst' command here as an option
