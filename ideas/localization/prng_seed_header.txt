@@ -1,0 +1,32 @@
+/* ============================================================
+   prng_seed.h - PRNG seed management header
+   ============================================================ */
+
+#ifndef PRNG_SEED_H
+#define PRNG_SEED_H
+
+#include <stdint.h>
+#include <stdbool.h>
+
+#define M_TWISTER_SEED 1337
+#define MT_SEED_MAX 0xFFFFFFFFUL  /* Maximum valid seed for MT19937 */
+
+/* PRNG seed configuration structure */
+typedef struct {
+    uint32_t seed;
+    bool use_random;
+} prng_config_t;
+
+/* Initialize PRNG configuration with defaults */
+void prng_config_init(prng_config_t* config);
+
+/* Generate a random seed using system entropy */
+uint32_t generate_random_seed(void);
+
+/* Parse seed from command line argument, returns true on success */
+bool parse_seed_arg(const char* arg, uint32_t* seed);
+
+/* Validate and clamp seed to legal values */
+uint32_t validate_seed(uint32_t seed);
+
+#endif /* PRNG_SEED_H */

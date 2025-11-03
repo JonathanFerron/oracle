@@ -1,0 +1,47 @@
+/* ============================================================
+   game_types.h - Game type definitions
+   ============================================================ */
+
+#ifndef GAME_TYPES_H
+#define GAME_TYPES_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+/* Game modes */
+typedef enum {
+    MODE_NONE = 0,
+    MODE_STDA_AUTO,
+    MODE_STDA_SIM,
+    MODE_STDA_CLI,
+    MODE_STDA_TUI,
+    MODE_STDA_GUI,
+    MODE_SERVER,
+    MODE_CLIENT_SIM,
+    MODE_CLIENT_CLI,
+    MODE_CLIENT_TUI,
+    MODE_CLIENT_GUI,
+    MODE_CLIENT_AI
+} game_mode_t;
+
+/* UI language codes */
+typedef enum {
+    LANG_EN = 0,  /* English (default) */
+    LANG_FR,      /* French */
+    LANG_ES       /* Spanish */
+} ui_language_t;
+
+/* Configuration structure */
+typedef struct {
+    game_mode_t mode;
+    bool verbose;
+    int numsim;
+    char* input_file;
+    char* output_file;
+    char* ai_agent;
+    ui_language_t language;
+    uint32_t prng_seed;
+    bool use_random_seed;
+} config_t;
+
+#endif /* GAME_TYPES_H */
