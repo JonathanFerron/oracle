@@ -13,6 +13,7 @@ Oracle is an open-source card game project combining tactical gameplay with AI d
   - Random deck distribution (maximum variety)
   - Monochrome decks (single-color strategy)
   - Custom deck building (advanced play)
+  - Three deck drafting modes (advanced play)
 
 ## 🤖 AI Research Focus
 
@@ -63,11 +64,13 @@ make
 **Phase 2: Turn Logic Completion** (In Progress)
 
 Working features:
+
 - ✅ Random AI strategy
 - ✅ CLI interactive mode
 - ✅ Automated simulation
 
 In development:
+
 - ⚠️ Mulligan system for interactive player
 - ⚠️ Discard-to-7 mechanic for interactive player
 - ⚠️ Balanced AI strategy
@@ -83,6 +86,7 @@ GPL v3 - See [LICENSE](LICENSE) for details
 ## 🌟 Why Oracle?
 
 Oracle combines:
+
 - **Game design exploration** - Testing mechanics and balance
 - **AI research** - Practical implementation of search algorithms
 - **Software architecture** - Clean patterns and maintainable code

@@ -612,14 +612,14 @@ int run_mode_stda_cli(config_t* cfg)
   }
   
   printf("\n%s %s\n", 
-         LOCALIZED_STRING("You are", "Vous etes", "Tu eres"),
+         LOCALIZED_STRING("You are", "Vous êtes le", "Tu eres el"),
          LOCALIZED_STRING("Player A", "Joueur A", "Jugador A"));
   printf("%s %s %s\n",
-         LOCALIZED_STRING("Player B", "Joueur B", "Jugador B"),
+         LOCALIZED_STRING("Player B", "le Joueur B", "el Jugador B"),
          LOCALIZED_STRING("is the", "est le moteur", "es el motor"),
-         LOCALIZED_STRING("RANDOM AI engine", "IA ALEATOIRE", "IA ALEATORIO"));
+         LOCALIZED_STRING("RANDOM AI engine", "IA ALÉATOIRE", "IA ALEATORIO"));
   
-  printf("\n=== %s ===\n", LOCALIZED_STRING("Game Start", "Debut du jeu", "Inicio del juego"));
+  printf("\n=== %s ===\n", LOCALIZED_STRING("Game Start", "Début du jeu", "Inicio del juego"));
   gstate->turn = 0;
 
   while(gstate->turn < MAX_NUMBER_OF_TURNS &&
