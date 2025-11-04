@@ -11,12 +11,9 @@
 #include "strategy.h"
 #include "strat_random.h"
 #include "mtwister.h"
+#include "prng_seed.h"
 #include "stda_auto.h"
 #include "stda_cli.h"
-
-// Global variables
-extern MTRand MTwister_rand_struct;
-extern const bool debug_enabled;
 
 /* Main entry point */
 int main(int argc, char** argv)
@@ -29,6 +26,9 @@ int main(int argc, char** argv)
   { cleanup_config(&cfg);
     return (ret < EXIT_SUCCESS) ? EXIT_SUCCESS : ret;
   }
+
+  /* Initialize PRNG with the configured seed */
+  seedRand(validate_seed(cfg.prng_seed));
 
   /* Redirect output if requested */
   if(cfg.output_file)

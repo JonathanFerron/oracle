@@ -63,7 +63,7 @@ Tasks:
   - [ ] Power-based selection heuristic
   - [ ] Edge case: exactly 7 cards (do nothing)
 - [ ] Phase transition validation
-- [ ] Win condition detection (energy = 0)
+- [x] Win condition detection (energy = 0)
 - [ ] Draw condition (max turns exceeded)
 
 #### Card Actions ⚠️
@@ -168,9 +168,7 @@ Tasks:
   - [ ] Validation (discard down to exactly 7)
 - [ ] Better game state display
 - [ ] Show combat results clearly
-- [ ] Command history (readline integration?)
 - [ ] Save/load game state
-- [ ] Undo last action (maybe?)
 
 #### TUI Mode (stda_tui.c) 📋
 See `ideas/tui/` for full implementation plan
@@ -214,7 +212,7 @@ See `ideas/tui/` for full implementation plan
 - [x] --numsim, --verbose, --output
 - [x] Help and version display
 - [ ] Add --config option
-- [ ] Add --deck option (random/mono/custom)
+- [ ] Add --deck option (random/mono/custom/the 3 drafting formats)
 
 #### Game Context ✅
 - [x] GameContext structure (game_context.h)
@@ -238,7 +236,7 @@ See `ideas/tui/` for full implementation plan
 - [x] RND_dn() for dice rolls
 - [x] RND_randn() for ranges
 - [x] RND_partial_shuffle()
-- [ ] Add seed management (for reproducible games)
+- [x] Add seed management (for reproducible games)
 
 ---
 
@@ -331,10 +329,10 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 - [ ] test_protocol.c (for future network code)
 
 ### Integration Tests 📋
-- [ ] Full game Random vs Random (1000 games)
-  - [ ] ~50% win rate for each
-  - [ ] No crashes
-  - [ ] Reasonable turn counts
+- [x] Full game Random vs Random (1000 games)
+  - [x] ~50% win rate for each
+  - [x] No crashes
+  - [x] Reasonable turn counts
 - [ ] Full game Human vs AI (manual testing)
   - [ ] All phases work correctly
   - [ ] UI is responsive
@@ -342,7 +340,7 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 - [ ] Simulation batch tests
   - [ ] Statistics are correct
   - [ ] CSV export works
-  - [ ] Reproducible with same seed
+  - [x] Reproducible with same seed
 
 ### Performance Tests 📋
 - [ ] 10,000 game simulation (should complete in <5 min)
@@ -355,7 +353,7 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 - [ ] Check with cppcheck
 - [ ] Run with valgrind (no leaks)
 - [ ] Format with astyle (consistent style)
-- [ ] Review all functions >30 lines (refactor)
+- [ ] Review all functions >35 lines (refactor)
 - [ ] Review all files >500 lines (split if needed)
 
 ---
@@ -372,14 +370,14 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 
 ### User Documentation 📋
 - [ ] Update README.md:
-  - [ ] Build instructions
+  - [x] Build instructions
   - [ ] Usage examples
   - [ ] Feature list
   - [ ] Screenshot (CLI mode)
 - [ ] Write STRATEGY_GUIDE.md:
-  - [ ] Explain combo bonuses
+  - [x] Explain combo bonuses
   - [ ] AI strategy descriptions
-  - [ ] Tips for playing
+  - [x] Tips for playing
 - [ ] Write PROTOCOL.md (when network code exists)
 
 ### Design Documentation 📋
@@ -393,15 +391,9 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 ## Bug Tracker
 
 ### Known Bugs 🐛
-- [ ] Deck reshuffle might trigger at wrong time (needs investigation)
-- [ ] Unicode symbols broken on some Windows terminals
-- [ ] Combat zone not always cleared properly after draw
-- [ ] Discard pile can have duplicates (investigate)
+- [ ] Describe bug here
 
 ### Potential Issues ⚠️
-- [ ] What happens if both players run out of deck?
-- [ ] Edge case: play cash card with no champions in hand
-- [ ] Edge case: draw card when deck and discard both empty
 - [ ] Memory leak in HDCLL_toArray (must free() after use)
 
 ---
@@ -410,10 +402,10 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 
 ### Refactoring Needed 🔧
 - [ ] stda_cli.c exceeds 500 line limit (split into cli_display.c + cli_input.c)
-- [ ] stda_auto.c mixes simulation logic with presentation (extract simulation.c)
+- [ ] stda_auto.c mixes simulation logic with presentation (extract stda_simulation.c)
 - [ ] card_actions.c needs better error handling
 - [ ] gamestate.c setup_game() is too long (split deck setup)
-- [ ] Remove global MTwister_rand_struct (use GameContext everywhere)
+- [x] Remove global MTwister_rand_struct (use GameContext everywhere)
 
 ### Architecture Improvements 🏗️
 - [ ] Separate game logic from UI (already started with GameContext)

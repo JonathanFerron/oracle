@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define M_TWISTER_SEED 1337
+//#define M_TWISTER_SEED 1337UL
 #define MT_SEED_MAX 0xFFFFFFFFUL  /* Maximum valid seed for MT19937 */
 
 /* PRNG seed configuration structure */

@@ -6,7 +6,41 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <ctype.h>
 #include "main.h"
+#include "prng_seed.h"
+
+/* Parse language code from string */
+static ui_language_t parse_language(const char* lang_str)
+{ if (!lang_str || *lang_str == '\0')
+  { return LANG_EN;  /* Default to English */
+  }
+  
+  /* Convert to lowercase for case-insensitive comparison */
+  char lower[3] = {0};
+  int i;
+  for (i = 0; i < 2 && lang_str[i]; i++)
+  { lower[i] = tolower(lang_str[i]);
+  }
+  lower[i] = '\0';
+  
+  if (strcmp(lower, "en") == 0) return LANG_EN;
+  if (strcmp(lower, "fr") == 0) return LANG_FR;
+  if (strcmp(lower, "es") == 0) return LANG_ES;
+  
+  fprintf(stderr, "Warning: Unknown language '%s', using English\n", lang_str);
+  return LANG_EN;
+}
+
+/* Get language name for display */
+static const char* get_language_name(ui_language_t lang)
+{ switch (lang)
+  { case LANG_EN: return "English";
+    case LANG_FR: return "French";
+    case LANG_ES: return "Spanish";
+    default: return "English";
+  }
+}
 
 /* Print usage information */
 void print_usage(const char* prog)
@@ -15,9 +49,13 @@ void print_usage(const char* prog)
   printf("  -h,  -he, --help              Show this help message\n");
   printf("  -v,  -vb, --verbose           Enable verbose output\n");
   printf("  -V,  -vr, --version           Show version information\n");
-  printf("  -n,  -ns, --numsim N          Set number of simulations to N\n");
-  printf("  -i,  -in, --input FILE        Use FILE as input configuration\n");
-  printf("  -o,  -ou, --output FILE       Output to FILE instead of stdout\n\n");
+  printf("  -n,  -ns, --numsim=N          Set number of simulations to N\n");
+  printf("  -i,  -in, --input=FILE        Use FILE as input configuration\n");
+  printf("  -o,  -ou, --output=FILE       Output to FILE instead of stdout\n\n");
+  printf("  -u,  -ul, --ui.lang=[LANG]    Set UI language (en/fr/es) [default: en]\n");
+  printf("  -p,  -pr, --prng.seed=[SEED]  Set PRNG seed [default: random]\n");
+  printf("                                If SEED omitted, uses %lu\n", M_TWISTER_SEED);
+  printf("                                If option omitted, uses random seed\n\n");
   printf("Game Modes:\n");
   printf("  -a,  -sa, --stda.auto         Standalone automated mode\n");
   printf("  -s,  -ss, --stda.sim          Standalone simulation mode (ncurses)\n");
@@ -51,6 +89,8 @@ int parse_options(int argc, char** argv, config_t* cfg)
     {"n",          required_argument, 0, 'n'},
     {"i",          required_argument, 0, 'i'},
     {"o",          required_argument, 0, 'o'},
+    {"u",          optional_argument, 0, 'u'},
+    {"p",          optional_argument, 0, 'p'},
     {"a",          no_argument,       0, 'a'},
     {"s",          no_argument,       0, 's'},
     {"l",          no_argument,       0, 'l'},
@@ -69,6 +109,8 @@ int parse_options(int argc, char** argv, config_t* cfg)
     {"ns",         required_argument, 0, 'n'},
     {"in",         required_argument, 0, 'i'},
     {"ou",         required_argument, 0, 'o'},
+    {"ul",         optional_argument, 0, 'u'},
+    {"pr",         optional_argument, 0, 'p'},
     {"sa",         no_argument,       0, 'a'},
     {"ss",         no_argument,       0, 's'},
     {"sl",         no_argument,       0, 'l'},
@@ -87,6 +129,8 @@ int parse_options(int argc, char** argv, config_t* cfg)
     {"numsim",     required_argument, 0, 'n'},
     {"input",      required_argument, 0, 'i'},
     {"output",     required_argument, 0, 'o'},
+    {"ui.lang",    optional_argument, 0, 'u'},
+    {"prng.seed",  optional_argument, 0, 'p'},
     {"stda.auto",  no_argument,       0, 'a'},
     {"stda.sim",   no_argument,       0, 's'},
     {"stda.cli",   no_argument,       0, 'l'},
@@ -103,10 +147,14 @@ int parse_options(int argc, char** argv, config_t* cfg)
   /* Initialize config with defaults */
   memset(cfg, 0, sizeof(config_t));
   cfg->verbose = false;
-  cfg->numsim = 1000;  /* Default number of simulations */
+  cfg->numsim = 1000;
+  cfg->language = LANG_EN;
+  cfg->use_random_seed = true;
+  cfg->prng_seed = 0;
 
   while((opt = getopt_long_only(argc, argv,
-                                "hvVn:i:o:asltgSCLTGA:", long_options, &option_index)) != -1)
+                                "hvVn:i:o:u::p::asltgSCLTGA:", 
+                                long_options, &option_index)) != -1)
   { switch(opt)
     { case 'h':
         print_usage(argv[0]);
@@ -129,6 +177,21 @@ int parse_options(int argc, char** argv, config_t* cfg)
         break;
       case 'o':
         cfg->output_file = strdup(optarg);
+        break;
+      case 'u':
+        cfg->language = parse_language(optarg);
+        if (cfg->verbose)
+        { printf("UI language set to: %s\n", get_language_name(cfg->language));
+        }
+        break;
+      case 'p':
+        cfg->use_random_seed = false;
+        if (optarg)
+        { parse_seed_arg(optarg, &cfg->prng_seed);
+        }
+        else
+        { cfg->prng_seed = M_TWISTER_SEED;
+        }
         break;
       case 'a':
         cfg->mode = MODE_STDA_AUTO;
@@ -174,6 +237,21 @@ int parse_options(int argc, char** argv, config_t* cfg)
   { fprintf(stderr, "Error: no game mode specified\n");
     print_usage(argv[0]);
     return 1;
+  }
+
+  /* Initialize PRNG seed */
+  if (cfg->use_random_seed)
+  { cfg->prng_seed = generate_random_seed();
+    if (cfg->verbose)
+    { printf("Using random PRNG seed: %u (0x%08X)\n", 
+             cfg->prng_seed, cfg->prng_seed);
+    }
+  }
+  else
+  { if (cfg->verbose)
+    { printf("Using specified PRNG seed: %u (0x%08X)\n",
+             cfg->prng_seed, cfg->prng_seed);
+    }
   }
 
   return EXIT_SUCCESS;

@@ -2,7 +2,6 @@
    prng_seed.c - PRNG seed management implementation
    ============================================================ */
 
-#include "prng_seed.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +15,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 #endif
+
+#include "prng_seed.h"
+#include "game_constants.h"
 
 void prng_config_init(prng_config_t* config)
 { config->seed = 0;
@@ -62,7 +64,7 @@ bool parse_seed_arg(const char* arg, uint32_t* seed)
   
   /* Check for empty string */
   if (*arg == '\0')
-  { fprintf(stderr, "Warning: Empty seed value, using default %u\n",
+  { fprintf(stderr, "Warning: Empty seed value, using default %lu\n",
             M_TWISTER_SEED);
     *seed = M_TWISTER_SEED;
     return true;
@@ -74,7 +76,7 @@ bool parse_seed_arg(const char* arg, uint32_t* seed)
   /* Check for negative sign (strtoul silently wraps negative values) */
   if (*arg == '-')
   { fprintf(stderr, "Warning: Negative seed '%s' not allowed, ", arg);
-    fprintf(stderr, "using default %u\n", M_TWISTER_SEED);
+    fprintf(stderr, "using default %lu\n", M_TWISTER_SEED);
     *seed = M_TWISTER_SEED;
     return true;
   }
@@ -104,7 +106,7 @@ bool parse_seed_arg(const char* arg, uint32_t* seed)
     
     if (errno == ERANGE || (endptr && *endptr != '\0'))
     { fprintf(stderr, "Warning: Invalid seed '%s', ", arg);
-      fprintf(stderr, "using default %u\n", M_TWISTER_SEED);
+      fprintf(stderr, "using default %lu\n", M_TWISTER_SEED);
       *seed = M_TWISTER_SEED;
       return true;
     }
@@ -112,9 +114,9 @@ bool parse_seed_arg(const char* arg, uint32_t* seed)
   
   /* Check for overflow (value exceeds uint32_t) */
   if (val > MT_SEED_MAX)
-  { fprintf(stderr, "Warning: Seed value %lu exceeds maximum %u, ",
+  { fprintf(stderr, "Warning: Seed value %lu exceeds maximum %lu, ",
             val, MT_SEED_MAX);
-    fprintf(stderr, "using default seed %u\n", M_TWISTER_SEED);
+    fprintf(stderr, "using default seed %lu\n", M_TWISTER_SEED);
     *seed = M_TWISTER_SEED;
     return true;
   }

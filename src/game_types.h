@@ -146,6 +146,13 @@ typedef enum
   MODE_CLIENT_AI     /* AI agent client */
 } game_mode_t;
 
+/* UI language codes */
+typedef enum {
+    LANG_EN = 0,  /* English (default) */
+    LANG_FR,      /* French */
+    LANG_ES       /* Spanish */
+} ui_language_t;
+
 /* Configuration structure */
 // TODO: consider whether this struct should be moved to the game_context.h source file, or to cmdline.h as it's primarily populated in the cmldline.c file.
 typedef struct
@@ -155,6 +162,9 @@ typedef struct
   char* input_file;
   char* output_file;
   char* ai_agent;
+  ui_language_t language;
+  uint32_t prng_seed;
+  bool use_random_seed;
 } config_t;
 
 #include "game_constants.h"

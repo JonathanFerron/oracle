@@ -1,4 +1,6 @@
-// proposed stda_cli refactoring
+/* ============================================================
+   stda_cli.c - Standalone CLI mode implementation
+   ============================================================ */
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -19,13 +21,14 @@
 #include "combat.h"
 #include "game_state.h"
 #include "card_actions.h"
+#include "localization.h"
 
 #define MAX_COMMAND_LEN 256
 #define EXIT_SIGNAL -1
 #define ACTION_TAKEN 1
 #define NO_ACTION 0
 
-// ANSI color codes
+/* ANSI color codes */
 #define RESET   "\033[0m"
 #define RED     "\033[31m"
 #define GREEN   "\033[32m"
@@ -33,33 +36,42 @@
 #define BLUE    "\033[34m"
 #define MAGENTA "\033[35m"
 #define CYAN    "\033[36m"
+#define GRAY    "\033[38;2;128;128;128m" // for cash cards
 #define BOLD_WHITE   "\033[1;37m"
-#define COLOR_P1      "\033[1;36m"  // Cyan for Player 1
-#define COLOR_P2      "\033[1;33m"  // Yellow for Player 2
-#define COLOR_ENERGY  MAGENTA
-#define COLOR_LUNA    CYAN
+#define COLOR_P1     "\033[1;36m"  // bold cyan for player 1
+#define COLOR_P2     "\033[1;33m"  // bold yellow for player 2
+#define COLOR_ENERGY MAGENTA
+#define COLOR_LUNA   CYAN
+
+/* Visual indicators */
+#define ICON_PROMPT  ">"
+#define ICON_SUCCESS "[OK]"
 
 /* ========================================================================
    Display Functions
    ======================================================================== */
 
-// Display player prompt with status
-void display_player_prompt(PlayerID player, struct gamestate* gstate, int is_defense)
+// display player prompt with status
+void display_player_prompt(PlayerID player, struct gamestate* gstate, 
+                          int is_defense, config_t* cfg)
 { const char* player_color = (player == PLAYER_A) ? COLOR_P1 : COLOR_P2;
-  const char* player_name = (player == PLAYER_A) ? "Player A" : "Player B";
-  const char* phase_icon = is_defense ? "🛡" : "⚔";
+  const char* player_name = (player == PLAYER_A) ? 
+    LOCALIZED_STRING("Player A", "Joueur A", "Jugador A") :
+    LOCALIZED_STRING("Player B", "Joueur B", "Jugador B");
+  const char* phase_icon = is_defense ? 
+    LOCALIZED_STRING("[DEF]", "[DEF]", "[DEF]") : 
+    LOCALIZED_STRING("[ATK]", "[ATQ]", "[ATQ]");
 
-  printf("%s%s" RESET " [" COLOR_ENERGY "❤ %d" RESET " "
-         COLOR_LUNA "☾%d" RESET "] %s ⟡ ",
+  printf("%s%s" RESET " [" COLOR_ENERGY "HP:%d" RESET " "
+         COLOR_LUNA "L:%d" RESET "] %s " ICON_PROMPT " ",
          player_color, player_name,
          gstate->current_energy[player],
          gstate->current_cash_balance[player],
          phase_icon);
 }
 
-// Display player's hand
-void display_player_hand(PlayerID player, struct gamestate* gstate)
-{ printf("\nYour hand:\n");
+void display_player_hand(PlayerID player, struct gamestate* gstate, config_t* cfg)
+{ printf("\n%s\n", LOCALIZED_STRING("Your hand:", "Votre main:", "Tu mano:"));
   uint8_t* hand_array = HDCLL_toArray(&gstate->hand[player]);
 
   for(uint8_t i = 0; i < gstate->hand[player].size; i++)
@@ -69,26 +81,36 @@ void display_player_hand(PlayerID player, struct gamestate* gstate)
     if(c->card_type == CHAMPION_CARD)
     { const char* color = (c->color == COLOR_INDIGO) ? BLUE :
                           (c->color == COLOR_ORANGE) ? YELLOW : RED;
-      printf("  [%d] %s%s" RESET " (D%d+%d, " CYAN "☾%d" RESET ")\n",
+      printf("  [%d] %s%s" RESET " (D%d+%d, " CYAN "L%d" RESET ")\n",
              i + 1, color, CHAMPION_SPECIES_NAMES[c->species],
              c->defense_dice, c->attack_base, c->cost);
     }
     else if(c->card_type == DRAW_CARD)
-    { printf("  [%d] " YELLOW "Draw %d" RESET " (" CYAN "☾%d" RESET ")\n",
-             i + 1, c->draw_num, c->cost);
+    { printf("  [%d] " GREEN "%s %d" RESET " (" CYAN "L%d" RESET ")\n",
+             i + 1, LOCALIZED_STRING("Draw", "Piocher", "Robar"), 
+             c->draw_num, c->cost);
     }
     else if(c->card_type == CASH_CARD)
-    { printf("  [%d] " GREEN "Exchange for %d lunas" RESET " (" CYAN "☾%d" RESET ")\n",
-             i + 1, c->exchange_cash, c->cost);
+    { printf("  [%d] " GRAY "%s %d %s" RESET " (" CYAN "L%d" RESET ")\n",
+             i + 1, 
+             LOCALIZED_STRING("Exchange for", "Echanger pour", "Cambiar por"),
+             c->exchange_cash,
+             LOCALIZED_STRING("lunas", "lunas", "lunas"),
+             c->cost);
     }
   }
   free(hand_array);
 }
 
-// Display attacker's champions in combat
-void display_attack_state(struct gamestate* gstate)
-{ printf("\n" RED "=== Combat! You are being attacked ===" RESET "\n");
-  printf("Attacker's champions in combat:\n");
+// display attacker's champions in combat
+void display_attack_state(struct gamestate* gstate, config_t* cfg)
+{ printf("\n" RED "=== %s ===" RESET "\n",
+         LOCALIZED_STRING("Combat! You are being attacked",
+                         "Combat! Vous etes attaque",
+                         "Combate! Estas siendo atacado"));
+  printf("%s\n", LOCALIZED_STRING("Attacker's champions in combat:",
+                                  "Champions de l'attaquant au combat:",
+                                  "Campeones del atacante en combate:"));
   
   struct LLNode* current = gstate->combat_zone[gstate->current_player].head;
 
@@ -100,77 +122,110 @@ void display_attack_state(struct gamestate* gstate)
   }
 }
 
-// Display game status
-void display_game_status(struct gamestate* gstate)
-{ printf("\n" BOLD_WHITE "=== Game Status ===" RESET "\n");
-  printf(COLOR_P1 "Player A" RESET ": " COLOR_ENERGY "❤ %d" RESET
-         " " COLOR_LUNA "☾%d" RESET " Hand:%d Deck:%d\n",
+void display_game_status(struct gamestate* gstate, config_t* cfg)
+{ printf("\n" BOLD_WHITE "=== %s ===" RESET "\n",
+         LOCALIZED_STRING("Game Status", "Statut du jeu", "Estado del juego"));
+  printf(COLOR_P1 "%s" RESET ": " COLOR_ENERGY "HP:%d" RESET
+         " " COLOR_LUNA "L:%d" RESET " %s:%d %s:%d\n",
+         LOCALIZED_STRING("Player A", "Joueur A", "Jugador A"),
          gstate->current_energy[PLAYER_A],
          gstate->current_cash_balance[PLAYER_A],
+         LOCALIZED_STRING("Hand", "Main", "Mano"),
          gstate->hand[PLAYER_A].size,
+         LOCALIZED_STRING("Deck", "Paquet", "Mazo"),
          gstate->deck[PLAYER_A].top + 1);
-  printf(COLOR_P2 "Player B" RESET ": " COLOR_ENERGY "❤ %d" RESET
-         " " COLOR_LUNA "☾%d" RESET " Hand:%d Deck:%d\n",
+  printf(COLOR_P2 "%s" RESET ": " COLOR_ENERGY "HP:%d" RESET
+         " " COLOR_LUNA "L:%d" RESET " %s:%d %s:%d\n",
+         LOCALIZED_STRING("Player B", "Joueur B", "Jugador B"),
          gstate->current_energy[PLAYER_B],
          gstate->current_cash_balance[PLAYER_B],
+         LOCALIZED_STRING("Hand", "Main", "Mano"),
          gstate->hand[PLAYER_B].size,
+         LOCALIZED_STRING("Deck", "Paquet", "Mazo"),
          gstate->deck[PLAYER_B].top + 1);
 }
 
-// Display CLI help
-void display_cli_help(int is_defense)
-{ printf("\n" BOLD_WHITE "=== Commands ===" RESET "\n");
+void display_cli_help(int is_defense, config_t* cfg)
+{ printf("\n" BOLD_WHITE "=== %s ===" RESET "\n",
+         LOCALIZED_STRING("Commands", "Commandes", "Comandos"));
   if(is_defense)
-  { printf("  cham <indices>  - Defend with 1-3 champions (e.g., 'cham 1 2')\n");
-    printf("  pass            - Take damage without defending\n");
+  { printf("  cham <indices>  - %s\n",
+           LOCALIZED_STRING("Defend with 1-3 champions (e.g., 'cham 1 2')",
+                           "Defendre avec 1-3 champions (ex: 'cham 1 2')",
+                           "Defender con 1-3 campeones (ej: 'cham 1 2')"));
+    printf("  pass            - %s\n",
+           LOCALIZED_STRING("Take damage without defending",
+                           "Prendre des degats sans defendre",
+                           "Recibir dano sin defender"));
   }
   else
-  { printf("  cham <indices>  - Attack with 1-3 champions (e.g., 'cham 1 3')\n");
-    printf("  draw <index>    - Play draw/recall card (e.g., 'draw 2')\n");
-    printf("  cash <index>    - Play exchange card (e.g., 'cash 1')\n");
-    printf("  pass            - Pass your turn\n");
-    printf("  gmst            - Show game status\n");
+  { printf("  cham <indices>  - %s\n",
+           LOCALIZED_STRING("Attack with 1-3 champions (e.g., 'cham 1 3')",
+                           "Attaquer avec 1-3 champions (ex: 'cham 1 3')",
+                           "Atacar con 1-3 campeones (ej: 'cham 1 3')"));
+    printf("  draw <index>    - %s\n",
+           LOCALIZED_STRING("Play draw/recall card (e.g., 'draw 2')",
+                           "Jouer carte piocher/rappeler (ex: 'draw 2')",
+                           "Jugar carta robar/recuperar (ej: 'draw 2')"));
+    printf("  cash <index>    - %s\n",
+           LOCALIZED_STRING("Play exchange card (e.g., 'cash 1')",
+                           "Jouer carte echange (ex: 'cash 1')",
+                           "Jugar carta intercambio (ej: 'cash 1')"));
+    printf("  pass            - %s\n",
+           LOCALIZED_STRING("Pass your turn", "Passer votre tour", "Pasar tu turno"));
+    printf("  gmst            - %s\n",
+           LOCALIZED_STRING("Show game status", "Afficher statut", "Mostrar estado"));
   }
-  printf("  help            - Show this help\n");
-  printf("  exit            - Quit game\n\n");
+  printf("  help            - %s\n",
+         LOCALIZED_STRING("Show this help", "Afficher cette aide", "Mostrar esta ayuda"));
+  printf("  exit            - %s\n\n",
+         LOCALIZED_STRING("Quit game", "Quitter le jeu", "Salir del juego"));
 }
 
 /* ========================================================================
    Input Parsing and Validation Functions
    ======================================================================== */
 
-// Parse champion indices from input string (1-based to 0-based)
-int parse_champion_indices(char* input, uint8_t* indices, int max_count, int hand_size)
+int parse_champion_indices(char* input, uint8_t* indices, int max_count, 
+                           int hand_size, config_t* cfg)
 { int count = 0;
   char* token = strtok(input, " ");
 
   while(token != NULL && count < max_count)
   { int idx = atoi(token);
     if(idx < 1 || idx > hand_size)
-    { printf(RED "Error: Invalid card number %d (must be 1-%d)\n" RESET,
-             idx, hand_size);
+    { printf(RED "%s %d (%s 1-%d)\n" RESET,
+             LOCALIZED_STRING("Error: Invalid card number",
+                             "Erreur: Numero de carte invalide",
+                             "Error: Numero de carta invalido"),
+             idx,
+             LOCALIZED_STRING("must be", "doit etre", "debe ser"),
+             hand_size);
       return -1;
     }
-    indices[count++] = idx - 1;  // Convert to 0-based
+    indices[count++] = idx - 1; // convert to 0-based
     token = strtok(NULL, " ");
   }
 
   return count;
 }
 
-// Validate and play champions
 int validate_and_play_champions(struct gamestate* gstate, PlayerID player,
-                                uint8_t* indices, int count, GameContext* ctx)
+                                uint8_t* indices, int count, GameContext* ctx,
+                                config_t* cfg)
 { if(count <= 0) return NO_ACTION;
 
-  // Validate cards and calculate cost
   int total_cost = 0;
   uint8_t* hand_array = HDCLL_toArray(&gstate->hand[player]);
 
   for(int i = 0; i < count; i++)
   { uint8_t card_idx = hand_array[indices[i]];
     if(fullDeck[card_idx].card_type != CHAMPION_CARD)
-    { printf(RED "Error: Card %d is not a champion\n" RESET, indices[i] + 1);
+    { printf(RED "%s %d %s\n" RESET,
+             LOCALIZED_STRING("Error: Card", "Erreur: Carte", "Error: Carta"),
+             indices[i] + 1,
+             LOCALIZED_STRING("is not a champion", "n'est pas un champion", 
+                             "no es un campeon"));
       free(hand_array);
       return NO_ACTION;
     }
@@ -178,18 +233,26 @@ int validate_and_play_champions(struct gamestate* gstate, PlayerID player,
   }
 
   if(total_cost > gstate->current_cash_balance[player])
-  { printf(RED "Error: Not enough lunas (need %d, have %d)\n" RESET,
-           total_cost, gstate->current_cash_balance[player]);
+  { printf(RED "%s (%s %d, %s %d)\n" RESET,
+           LOCALIZED_STRING("Error: Not enough lunas",
+                           "Erreur: Pas assez de lunas",
+                           "Error: No hay suficientes lunas"),
+           LOCALIZED_STRING("need", "besoin", "necesita"),
+           total_cost,
+           LOCALIZED_STRING("have", "avoir", "tienes"),
+           gstate->current_cash_balance[player]);
     free(hand_array);
     return NO_ACTION;
   }
 
-  // Play the champions in reverse order
   for(int i = count - 1; i >= 0; i--)
-    play_champion(gstate, player, hand_array[indices[i]], ctx);  // TODO: output a message to the console here to mention which champion was just played
+    play_champion(gstate, player, hand_array[indices[i]], ctx);
 
   free(hand_array);
-  printf(GREEN "✓ Played %d champion(s)\n" RESET, count);
+  printf(GREEN ICON_SUCCESS " %s %d %s\n" RESET,
+         LOCALIZED_STRING("Played", "Joue", "Jugado"),
+         count,
+         LOCALIZED_STRING("champion(s)", "champion(s)", "campeon(es)"));
   return ACTION_TAKEN;
 }
 
@@ -197,11 +260,14 @@ int validate_and_play_champions(struct gamestate* gstate, PlayerID player,
    Card Action Handlers
    ======================================================================== */
 
-// Handle draw command
-int handle_draw_command(struct gamestate* gstate, PlayerID player, char* input, GameContext* ctx)
+int handle_draw_command(struct gamestate* gstate, PlayerID player, 
+                        char* input, GameContext* ctx, config_t* cfg)
 { int idx = atoi(input);
   if(idx < 1 || idx > gstate->hand[player].size)
-  { printf(RED "Error: Invalid card number (must be 1-%d)\n" RESET,
+  { printf(RED "%s (must be 1-%d)\n" RESET,
+           LOCALIZED_STRING("Error: Invalid card number",
+                           "Erreur: Numero de carte invalide",
+                           "Error: Numero de carta invalido"),
            gstate->hand[player].size);
     return NO_ACTION;
   }
@@ -211,28 +277,36 @@ int handle_draw_command(struct gamestate* gstate, PlayerID player, char* input, 
   free(hand_array);
 
   if(fullDeck[card_idx].card_type != DRAW_CARD)
-  { printf(RED "Error: Not a draw card\n" RESET);
+  { printf(RED "%s\n" RESET,
+           LOCALIZED_STRING("Error: Not a draw card",
+                           "Erreur: Pas une carte piocher",
+                           "Error: No es una carta de robar"));
     return NO_ACTION;
   }
 
   if(fullDeck[card_idx].cost > gstate->current_cash_balance[player])
-  { printf(RED "Error: Not enough lunas\n" RESET);
+  { printf(RED "%s\n" RESET,
+           LOCALIZED_STRING("Error: Not enough lunas",
+                           "Erreur: Pas assez de lunas",
+                           "Error: No hay suficientes lunas"));
     return NO_ACTION;
   }
 
-  // TODO: make use of the on_card_drawn callback function here to get the program to display the details of the drawn or recalled cards
-  // TODO: must give the option to the interactive player to choose between draw and recall, and if they choose recall, give them the list of champion cards in the discard for them to choose from
-  // TODO: must add eventually to the AI agent all of the the possible action (via get_possible_actions), which should include playing the recall card (there will be many possible combination of recalls when the discard is large and the player plays the 'recall 2' card) 
-  play_draw_card(gstate, player, card_idx, ctx); 
-  printf(GREEN "✓ Played draw card\n" RESET);
+  play_draw_card(gstate, player, card_idx, ctx);
+  printf(GREEN ICON_SUCCESS " %s\n" RESET,
+         LOCALIZED_STRING("Played draw card", "Carte piocher jouee", 
+                         "Carta de robar jugada"));
   return ACTION_TAKEN;
 }
 
-// Handle cash command
-int handle_cash_command(struct gamestate* gstate, PlayerID player, char* input, GameContext* ctx)
+int handle_cash_command(struct gamestate* gstate, PlayerID player, 
+                        char* input, GameContext* ctx, config_t* cfg)
 { int idx = atoi(input);
   if(idx < 1 || idx > gstate->hand[player].size)
-  { printf(RED "Error: Invalid card number (must be 1-%d)\n" RESET,
+  { printf(RED "%s (must be 1-%d)\n" RESET,
+           LOCALIZED_STRING("Error: Invalid card number",
+                           "Erreur: Numero de carte invalide",
+                           "Error: Numero de carta invalido"),
            gstate->hand[player].size);
     return NO_ACTION;
   }
@@ -242,27 +316,35 @@ int handle_cash_command(struct gamestate* gstate, PlayerID player, char* input, 
   free(hand_array);
 
   if(fullDeck[card_idx].card_type != CASH_CARD)
-  { printf(RED "Error: Not an exchange card\n" RESET);
+  { printf(RED "%s\n" RESET,
+           LOCALIZED_STRING("Error: Not an exchange card",
+                           "Erreur: Pas une carte echange",
+                           "Error: No es una carta de intercambio"));
     return NO_ACTION;
   }
 
   if(!has_champion_in_hand(&gstate->hand[player]))
-  { printf(RED "Error: No champions to exchange\n" RESET);
+  { printf(RED "%s\n" RESET,
+           LOCALIZED_STRING("Error: No champions to exchange",
+                           "Erreur: Aucun champion a echanger",
+                           "Error: No hay campeones para intercambiar"));
     return NO_ACTION;
   }
 
-  play_cash_card(gstate, player, card_idx, ctx);  // TODO: when the current player is the interactive player, must give them the opportunity to choose which champion card they want to discard
-  printf(GREEN "✓ Played exchange card\n" RESET);
+  play_cash_card(gstate, player, card_idx, ctx);
+  printf(GREEN ICON_SUCCESS " %s\n" RESET,
+         LOCALIZED_STRING("Played exchange card", "Carte echange jouee",
+                         "Carta de intercambio jugada"));
   return ACTION_TAKEN;
 }
 
-// Process champion command (attack or defense)
 static int process_champion_command(char* input, struct gamestate* gstate,
-                                    PlayerID player, GameContext* ctx)
+                                    PlayerID player, GameContext* ctx,
+                                    config_t* cfg)
 { uint8_t indices[3];
   int count = parse_champion_indices(input, indices, 3,
-                                     gstate->hand[player].size);
-  if(count > 0 && validate_and_play_champions(gstate, player, indices, count, ctx))
+                                     gstate->hand[player].size, cfg);
+  if(count > 0 && validate_and_play_champions(gstate, player, indices, count, ctx, cfg))
     return ACTION_TAKEN;
   return NO_ACTION;
 }
@@ -271,61 +353,79 @@ static int process_champion_command(char* input, struct gamestate* gstate,
    Command Processing Functions
    ======================================================================== */
 
-// Process attack phase command
-static int process_attack_command(char* input_buffer, struct gamestate* gstate, GameContext* ctx)
+static int process_attack_command(char* input_buffer, struct gamestate* gstate, 
+                                  GameContext* ctx, config_t* cfg)
 { input_buffer[strcspn(input_buffer, "\n")] = 0;
 
   if(strncmp(input_buffer, "cham ", 5) == 0)
-    return process_champion_command(input_buffer + 5, gstate, PLAYER_A, ctx);
+    return process_champion_command(input_buffer + 5, gstate, PLAYER_A, ctx, cfg);
   else if(strncmp(input_buffer, "draw ", 5) == 0)
-    return handle_draw_command(gstate, PLAYER_A, input_buffer + 5, ctx);
+    return handle_draw_command(gstate, PLAYER_A, input_buffer + 5, ctx, cfg);
   else if(strncmp(input_buffer, "cash ", 5) == 0)
-    return handle_cash_command(gstate, PLAYER_A, input_buffer + 5, ctx);
+    return handle_cash_command(gstate, PLAYER_A, input_buffer + 5, ctx, cfg);
   else if(strcmp(input_buffer, "pass") == 0)
-  { printf(YELLOW "Passed turn\n" RESET);
+  { printf(YELLOW "%s\n" RESET, LOCALIZED_STRING("Passed turn", "Tour passe", "Turno pasado"));
     return ACTION_TAKEN;
   }
   else if(strcmp(input_buffer, "gmst") == 0)
-  { display_game_status(gstate);
+  { display_game_status(gstate, cfg);
     return NO_ACTION;
   }
   else if(strcmp(input_buffer, "help") == 0)
-  { display_cli_help(0);
+  { display_cli_help(0, cfg);
     return NO_ACTION;
   }
   else if(strcmp(input_buffer, "exit") == 0)
     return EXIT_SIGNAL;
 
-  printf(RED "Unknown command. Type 'help' for commands.\n" RESET);
+  printf(RED "%s\n" RESET,
+         LOCALIZED_STRING("Unknown command. Type 'help' for commands.",
+                         "Commande inconnue. Tapez 'help' pour les commandes.",
+                         "Comando desconocido. Escribe 'help' para comandos."));
   return NO_ACTION;
 }
 
-// Process defense phase command
-static int process_defense_command(char* input_buffer, struct gamestate* gstate, GameContext* ctx)
+static int process_defense_command(char* input_buffer, struct gamestate* gstate, 
+                                   GameContext* ctx, config_t* cfg)
 { input_buffer[strcspn(input_buffer, "\n")] = 0;
 
   if(strcmp(input_buffer, "exit") == 0)
     return EXIT_SIGNAL;
   else if(strcmp(input_buffer, "pass") == 0)
-  { printf(YELLOW "Taking damage without defending\n" RESET);
+  { printf(YELLOW "%s\n" RESET,
+           LOCALIZED_STRING("Taking damage without defending",
+                           "Prendre des degats sans defendre",
+                           "Recibir dano sin defender"));
     return NO_ACTION;
   }
   else if(strncmp(input_buffer, "cham ", 5) == 0)
   { uint8_t indices[3];
     int count = parse_champion_indices(input_buffer + 5, indices, 3,
-                                       gstate->hand[PLAYER_A].size);
+                                       gstate->hand[PLAYER_A].size, cfg);
     if(count > 0)
-    { if(!validate_and_play_champions(gstate, PLAYER_A, indices, count, ctx))
-        printf(YELLOW "Taking damage without defending\n" RESET);
+    { if(!validate_and_play_champions(gstate, PLAYER_A, indices, count, ctx, cfg))
+        printf(YELLOW "%s\n" RESET,
+               LOCALIZED_STRING("Taking damage without defending",
+                               "Prendre des degats sans defendre",
+                               "Recibir dano sin defender"));
     }
     else if(count == 0)
-      printf(YELLOW "No defenders specified, taking damage\n" RESET);
+      printf(YELLOW "%s\n" RESET,
+             LOCALIZED_STRING("No defenders specified, taking damage",
+                             "Aucun defenseur specifie, prendre des degats",
+                             "No se especificaron defensores, recibir dano"));
   }
   else if(strcmp(input_buffer, "help") == 0)
-    display_cli_help(1);
+    display_cli_help(1, cfg);
   else
-  { printf(RED "Unknown command. Use 'cham <indices>' or 'pass'\n" RESET);
-    printf(YELLOW "Taking damage without defending\n" RESET);
+  { printf(RED "%s\n" RESET,
+           LOCALIZED_STRING("Unknown command. Use 'cham <indices>' or 'pass'",
+                           "Commande inconnue. Utilisez 'cham <indices>' ou 'pass'",
+                           "Comando desconocido. Usa 'cham <indices>' o 'pass'"));
+    printf(YELLOW "%s\n" RESET,
+           LOCALIZED_STRING("Taking damage without defending",
+                           "Prendre des degats sans defendre",
+                           "Recibir dano sin defender"));
   }
 
   return NO_ACTION;
@@ -335,55 +435,83 @@ static int process_defense_command(char* input_buffer, struct gamestate* gstate,
    Game Phase Handlers
    ======================================================================== */
 
-// Handle interactive attack phase
-static int handle_interactive_attack(struct gamestate* gstate, GameContext* ctx)
+static int handle_interactive_attack(struct gamestate* gstate, 
+                                     GameContext* ctx, config_t* cfg)
 { char input_buffer[MAX_COMMAND_LEN];
   int action_taken = NO_ACTION;
 
   while(!action_taken && !gstate->someone_has_zero_energy)
-  { printf("\n=== %s's Turn (Turn %d), Round (%d) ===\n",      
-           PLAYER_NAMES[PLAYER_A], gstate->turn, (uint16_t)((gstate->turn - 1) * 0.5 + 1));  // TODO: Consider using a GAMEROUND(turn) macro to avoid coding the round manually each time we want to display or store it
-    printf("\n=== Defender's Status ===\n");
-    display_player_prompt(PLAYER_B, gstate, 1);  // TODO: also provide information about Player B's number of cards in hand (see how that's done in display_game_status)
+  { printf("\n=== %s %s (%s %d, %s %d) ===\n",
+           LOCALIZED_STRING("Player A", "Joueur A", "Jugador A"),
+           LOCALIZED_STRING("Turn", "Tour", "Turno"),
+           LOCALIZED_STRING("Turn", "Tour", "Turno"),
+           gstate->turn,
+           LOCALIZED_STRING("Round", "Manche", "Ronda"),
+           (uint16_t)((gstate->turn - 1) * 0.5 + 1)); // TODO: consider using a macro to calculate the round number, or store it in the gstate struct.
+    printf("\n=== %s ===\n",
+           LOCALIZED_STRING("Opponent (defender) Status",
+                           "Statut de l'adversaire (defenseur)",
+                           "Estado del oponente (defensor)"));
+    display_player_prompt(PLAYER_B, gstate, 1, cfg);
+    printf(" %s:%d\n",
+           LOCALIZED_STRING("Hand", "Main", "Mano"),
+           gstate->hand[PLAYER_B].size);
     printf("\n");
-    display_player_prompt(PLAYER_A, gstate, 0);    
-    display_player_hand(PLAYER_A, gstate);
-    printf("\nCommands: cham <indices>, draw <index>, cash <index>, "
-           "pass, gmst, help, exit\n> ");
+    display_player_prompt(PLAYER_A, gstate, 0, cfg);
+    display_player_hand(PLAYER_A, gstate, cfg);
+    printf("\n%s\n" ICON_PROMPT " ",
+           LOCALIZED_STRING("Commands: cham <indices>, draw <index>, cash <index>, pass, gmst, help, exit",
+                           "Commandes: cham <indices>, draw <index>, cash <index>, pass, gmst, help, exit",
+                           "Comandos: cham <indices>, draw <index>, cash <index>, pass, gmst, help, exit"));
 
     if(fgets(input_buffer, sizeof(input_buffer), stdin) == NULL)
-    { printf("Error reading input.\n");
+    { printf("%s\n", LOCALIZED_STRING("Error reading input.",
+                                      "Erreur de lecture.",
+                                      "Error al leer entrada."));
       return EXIT_SIGNAL;
     }
 
-    action_taken = process_attack_command(input_buffer, gstate, ctx);
+    action_taken = process_attack_command(input_buffer, gstate, ctx, cfg);
     if(action_taken == EXIT_SIGNAL) return EXIT_SIGNAL;
   }
 
   return EXIT_SUCCESS;
 }
 
-// Handle interactive defense phase
-static int handle_interactive_defense(struct gamestate* gstate, GameContext* ctx)
+static int handle_interactive_defense(struct gamestate* gstate, 
+                                      GameContext* ctx, config_t* cfg)
 { char input_buffer[MAX_COMMAND_LEN];
 
-  printf("\n=== %s's Turn (Turn %d), Round (%d) ===\n",      
-           PLAYER_NAMES[PLAYER_A], gstate->turn, (uint16_t)((gstate->turn - 1) * 0.5 + 1));
-  display_attack_state(gstate);
+  printf("\n=== %s %s (%s %d, %s %d) ===\n",
+         LOCALIZED_STRING("Player A", "Joueur A", "Jugador A"),
+         LOCALIZED_STRING("Turn", "Tour", "Turno"),
+         LOCALIZED_STRING("Turn", "Tour", "Turno"),
+         gstate->turn,
+         LOCALIZED_STRING("Round", "Manche", "Ronda"),
+         (uint16_t)((gstate->turn - 1) * 0.5 + 1));
+  display_attack_state(gstate, cfg);
   
-  printf("\n=== Opponent Status ===\n");
-  display_player_prompt(PLAYER_B, gstate, 0);   // show attacker's energy, luna and number of cards in hand: TODO: add number of cards, see display_game_status for an example of how to do that
+  printf("\n=== %s ===\n",
+         LOCALIZED_STRING("Opponent (attacker) Status",
+                         "Statut de l'adversaire (attaquant)",
+                         "Estado del oponente (atacante)"));
+  display_player_prompt(PLAYER_B, gstate, 0, cfg);
+  printf(" %s:%d\n",
+         LOCALIZED_STRING("Hand", "Main", "Mano"),
+         gstate->hand[PLAYER_B].size);
   
-  printf("\n");
-  display_player_prompt(PLAYER_A, gstate, 1);  // interactive player info
-  display_player_hand(PLAYER_A, gstate);
-  printf("\nDefend: 'cham <indices>' (e.g., 'cham 1 2') or "
-         "'pass' to take damage\n> ");  // TODO: add the 'gmst' command here as an option
+  printf("\n\n");
+  display_player_prompt(PLAYER_A, gstate, 1, cfg);
+  display_player_hand(PLAYER_A, gstate, cfg);
+  printf("\n%s\n" ICON_PROMPT " ",
+         LOCALIZED_STRING("Defend: 'cham <indices>' (e.g., 'cham 1 2') or 'pass' to take damage",
+                         "Defendre: 'cham <indices>' (ex: 'cham 1 2') ou 'pass' pour prendre des degats",
+                         "Defender: 'cham <indices>' (ej: 'cham 1 2') o 'pass' para recibir dano"));
 
   if(fgets(input_buffer, sizeof(input_buffer), stdin) == NULL)
     return EXIT_SUCCESS;
 
-  int result = process_defense_command(input_buffer, gstate, ctx); // TODO: process the 'gmst' command once added as an option
+  int result = process_defense_command(input_buffer, gstate, ctx, cfg);
   return (result == EXIT_SIGNAL) ? EXIT_SIGNAL : EXIT_SUCCESS;
 }
 
@@ -391,28 +519,26 @@ static int handle_interactive_defense(struct gamestate* gstate, GameContext* ctx
    Game Turn Execution
    ======================================================================== */
 
-// Execute a single game turn
-static int execute_game_turn(struct gamestate* gstate, StrategySet* strategies, GameContext* ctx)
-{ begin_of_turn(gstate, ctx); // TODO: use a callback (to the CLI) approach to allow printing messages to the user: e.g. something like void (*on_card_drawn)(PlayerID player, uint8_t card_id, void* ui_ctx);
+static int execute_game_turn(struct gamestate* gstate, StrategySet* strategies, 
+                             GameContext* ctx, config_t* cfg)
+{ begin_of_turn(gstate, ctx);
 
-  // Attack phase
   if(gstate->current_player == PLAYER_A)
-  { int result = handle_interactive_attack(gstate, ctx);
+  { int result = handle_interactive_attack(gstate, ctx, cfg);
     if(result == EXIT_SIGNAL) return EXIT_SIGNAL;
   }
   else
     attack_phase(gstate, strategies, ctx);
 
-  // Defense and combat phase
   if(gstate->combat_zone[gstate->current_player].size > 0)
   { if(gstate->current_player == PLAYER_A)
-      defense_phase(gstate, strategies, ctx);  // TODO: If AI agent decides not to defend, say so via a message on the console. If they do, say what the AI has played as defense champions.
+      defense_phase(gstate, strategies, ctx);
     else
-    { int result = handle_interactive_defense(gstate, ctx);
+    { int result = handle_interactive_defense(gstate, ctx, cfg);
       if(result == EXIT_SIGNAL) return EXIT_SIGNAL;
     }
 
-    resolve_combat(gstate, ctx);  // TODO: print out messages to the console with the details of the dice rolls, the attack and defense of each champion, the total attack and defense, and finally the damage taken by the defending player and their remaining energy. this can be done by passing a function pointer to the function, pointing to the 'void (*on_combat_resolved)(int16_t damage, void* ui_ctx);' callback function located in stda_cli_callback.c.
+    resolve_combat(gstate, ctx);
   }
 
   return EXIT_SUCCESS;
@@ -422,10 +548,11 @@ static int execute_game_turn(struct gamestate* gstate, StrategySet* strategies, 
    Game Initialization and Cleanup
    ======================================================================== */
 
-// Initialize CLI game
 static struct gamestate* initialize_cli_game(uint16_t initial_cash,
-                                             StrategySet** strategies_out, GameContext** ctx_out)
-{ GameContext* ctx = create_game_context(M_TWISTER_SEED, NULL);
+                                             StrategySet** strategies_out, 
+                                             GameContext** ctx_out,
+                                             config_t* cfg)
+{ GameContext* ctx = create_game_context(cfg->prng_seed, NULL);
   if(ctx == NULL) return NULL;
 
   StrategySet* strategies = create_strategy_set();
@@ -442,8 +569,8 @@ static struct gamestate* initialize_cli_game(uint16_t initial_cash,
   return gstate;
 }
 
-// Cleanup CLI game resources
-static void cleanup_cli_game(struct gamestate* gstate, StrategySet* strategies, GameContext* ctx)
+static void cleanup_cli_game(struct gamestate* gstate, StrategySet* strategies, 
+                            GameContext* ctx)
 { DeckStk_emptyOut(&gstate->deck[PLAYER_A]);
   DeckStk_emptyOut(&gstate->deck[PLAYER_B]);
   HDCLL_emptyOut(&gstate->combat_zone[PLAYER_A]);
@@ -462,7 +589,6 @@ static void cleanup_cli_game(struct gamestate* gstate, StrategySet* strategies, 
    Main CLI Mode Entry Point
    ======================================================================== */
 
-// Command line interface interactive mode
 int run_mode_stda_cli(config_t* cfg)
 {
   #ifdef _WIN32
@@ -470,43 +596,47 @@ int run_mode_stda_cli(config_t* cfg)
     SetConsoleCP(CP_UTF8);
   #endif
 
-  printf("Running in command line interface mode...\n");
+  printf("%s\n", LOCALIZED_STRING("Running in command line interface mode...",
+                                  "Execution en mode interface de ligne de commande...",
+                                  "Ejecutando en modo interfaz de linea de comandos..."));
 
   StrategySet* strategies;
   GameContext* ctx;
   struct gamestate* gstate = initialize_cli_game(INITIAL_CASH_DEFAULT,
-                                                 &strategies, &ctx);
+                                                 &strategies, &ctx, cfg);
   if(gstate == NULL)
-  { fprintf(stderr, "Failed to initialize CLI game\n");
+  { fprintf(stderr, "%s\n", LOCALIZED_STRING("Failed to initialize CLI game",
+                                             "Echec de l'initialisation du jeu CLI",
+                                             "Error al inicializar el juego CLI"));
     return EXIT_FAILURE;
   }
   
-  printf("\nYou are Player A\n");  // TODO: build into the 'experience' the ability for the human player to be either Player A or Player B, as would be the case in real life. This could be simply determined randomly.
-  printf("Player B is the "); printf("RANDOM"); printf(" AI engine\n");   // TODO: insert here in a more dynamic way the 'name' of the player's strategy
+  printf("\n%s %s\n", 
+         LOCALIZED_STRING("You are", "Vous etes", "Tu eres"),
+         LOCALIZED_STRING("Player A", "Joueur A", "Jugador A"));
+  printf("%s %s %s\n",
+         LOCALIZED_STRING("Player B", "Joueur B", "Jugador B"),
+         LOCALIZED_STRING("is the", "est le moteur", "es el motor"),
+         LOCALIZED_STRING("RANDOM AI engine", "IA ALEATOIRE", "IA ALEATORIO"));
   
-  printf("\n=== Game Start ===\n");
+  printf("\n=== %s ===\n", LOCALIZED_STRING("Game Start", "Debut du jeu", "Inicio del juego"));
   gstate->turn = 0;
-  
-  // TODO: add here the logic to perform the mulligan for player B
 
-  // Main game loop
   while(gstate->turn < MAX_NUMBER_OF_TURNS &&
         !gstate->someone_has_zero_energy)
-  { int result = execute_game_turn(gstate, strategies, ctx);
+  { int result = execute_game_turn(gstate, strategies, ctx, cfg);
     if(result == EXIT_SIGNAL) break;
 
     if(gstate->someone_has_zero_energy) break;
 
     collect_1_luna(gstate);
-    // TODO: add here the functionality to discard to 7 cards
     change_current_player(gstate);
   }
 
-  // Determine final game state
   if(!gstate->someone_has_zero_energy)
     gstate->game_state = DRAW;
-
-  // TODO: provide a message to the player summarizing the final outcome of the game. who won (or was a draw), what is the remaining energy of the winner (or both players if a draw), the number of turns and rounds played, the number of lunas and cards left in each player hands
+  
+  // TODO: display here a summary of the final results of the game
 
   cleanup_cli_game(gstate, strategies, ctx);
   return EXIT_SUCCESS;

@@ -13,7 +13,7 @@
 #define INITIAL_CASH_DEFAULT 30
 #define INITIAL_ENERGY_DEFAULT 99
 #define INITAL_HAND_SIZE_DEFAULT 6
-#define M_TWISTER_SEED 1337
+#define M_TWISTER_SEED 1337UL
 
 #define oraclemin(a,b) ({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })
 #define oraclemax(a,b) ({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
