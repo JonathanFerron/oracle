@@ -10,11 +10,11 @@
 2. [Current Implementation Status](#current-implementation-status)
 3. [Core Data Structures](#core-data-structures)
 4. [GameContext Pattern](#gamecontext-pattern)
-5. [Game Logic Flow](#game-logic-flow)
-6. [Strategy Framework](#strategy-framework)
-7. [Combat System](#combat-system)
-8. [Command-Line Interface](#command-line-interface)
-9. [File Organization](#file-organization)
+5. [Module Organization](#module-organization)
+6. [Game Logic Flow](#game-logic-flow)
+7. [Strategy Framework](#strategy-framework)
+8. [Combat System](#combat-system)
+9. [Command-Line Interface](#command-line-interface)
 10. [Future Architecture](#future-architecture)
 
 ---
@@ -23,11 +23,12 @@
 
 ### Design Principles
 
-- **Maximum 30 lines per function** (excluding comments/whitespace)
-- **Maximum 500 lines per source file** (ideally ≤400)
+- **Maximum 35 lines per function** (excluding comments/whitespace, firm limit at 100 lines)
+- **Maximum 500 lines per source file** (ideally ≤400, firm limit at 1000 lines)
 - **Separation of concerns**: Game logic, UI, AI, and modes are independent
-- **Testability**: GameContext pattern allows dependency injection
+- **Testability**: GameContext pattern enables dependency injection
 - **Extensibility**: Strategy framework enables pluggable AI
+- **Manual implementation preferred**: Code duplication acceptable for readability over macro magic
 
 ### Current Architecture
 
@@ -80,7 +81,7 @@
 - Game state management (energy, cash, hands, decks)
 - Combat resolution with dice rolling
 - Combo bonus calculations (all 3 deck types)
-- Turn-based flow (with some gaps)
+- Turn-based flow
 - Card playing (champions, draw, cash)
 
 **AI Framework**:
@@ -91,9 +92,10 @@
 **User Interface**:
 
 - Command-line argument parsing
-- CLI mode (human vs AI)
+- CLI mode (human vs AI, human vs human, AI vs AI)
 - ANSI color output with UTF-8 symbols
-- Basic game display and input
+- Player configuration and assignment
+- Localization support (English, French, Spanish)
 
 **Infrastructure**:
 
@@ -101,19 +103,20 @@
 - Debug macro system (compile-time)
 - Mersenne Twister RNG
 - Data structures (deck stack, circular linked list)
+- PRNG seed management (random or specified)
 
 ### What's Missing ⚠️
 
 **Game Logic Gaps**:
 
-- Mulligan system (Player B, 2 cards)
-- Discard to 7 cards (end of turn)
+- Mulligan system (interactive player)
+- Discard to 7 cards (interactive player)
 - Recall mechanic (draw/recall cards)
 
 **AI Strategies**:
 
-- Balanced rules AI
-- Heuristic AI
+- Balanced rules AI (in design phase)
+- Heuristic AI (in design phase)
 - All Monte Carlo variants
 - MCTS implementations
 
@@ -216,6 +219,14 @@ struct gamestate {
 - Convert to array for iteration
 - Size tracked in list structure
 
+**⚠️ Planned Refactoring**: Replace HDCLL with fixed-size arrays
+
+- Hand: max 15 cards
+- CombatZone: max 3 cards
+- Discard: max 40 cards
+- Eliminates heap allocations in game loop
+- Reduces memory per gamestate by 53% (240 → 112 bytes)
+
 ---
 
 ## 4. GameContext Pattern
@@ -239,7 +250,7 @@ typedef struct {
 
 ```c
 // Initialize once at program start
-GameContext* ctx = create_game_context(SEED, &cfg);
+GameContext* ctx = create_game_context(cfg->prng_seed, cfg);
 
 // Pass to all game functions
 setup_game(initial_cash, &gstate, ctx);
@@ -261,12 +272,158 @@ destroy_game_context(ctx);
 
 - ✅ Core game functions use GameContext
 - ✅ RNG functions take GameContext parameter
-- ⚠️ Some mode code still uses global config
+- ✅ PRNG seed managed through config
 - 📋 Future: Add network context, UI callbacks
 
 ---
 
-## 5. Game Logic Flow
+## 5. Module Organization
+
+### File Structure
+
+```
+oracle/
+├── src/
+│   ├── Core Game Logic
+│   │   ├── game_types.h          # All enums and struct definitions
+│   │   ├── game_constants.c/h    # Full deck, enums, strings
+│   │   ├── game_state.c/h        # Game initialization
+│   │   ├── card_actions.c/h      # Card playing, drawing
+│   │   ├── combat.c/h            # Combat resolution
+│   │   ├── combo_bonus.c/h       # Combo calculations
+│   │   ├── turn_logic.c/h        # Turn flow management
+│   │
+│   ├── Strategy Framework
+│   │   ├── strategy.c/h          # Function pointer framework
+│   │   ├── strat_random.c/h      # Random AI
+│   │   ├── strat_balancedrules1.c # Balanced AI (design)
+│   │   ├── strat_heuristic1.c    # Heuristic AI (design)
+│   │   ├── strat_simplemc1.c     # Simple MC (design)
+│   │   └── strat_ismcts1.c       # IS-MCTS (design)
+│   │
+│   ├── Game Modes
+│   │   ├── stda_auto.c/h         # Automated simulation
+│   │   └── stda_cli.c/h          # CLI interactive mode
+│   │
+│   ├── User Interface
+│   │   ├── player_selection.c/h  # Player type selection
+│   │   ├── player_config.c/h     # Names, strategies, assignment
+│   │   └── localization.h        # I18n support
+│   │
+│   ├── Utilities
+│   │   ├── rnd.c/h               # RNG wrapper functions
+│   │   ├── mtwister.c/h          # Mersenne Twister PRNG
+│   │   ├── prng_seed.c/h         # Seed management
+│   │   ├── game_context.c/h      # GameContext pattern
+│   │   └── debug.h               # Debug macros
+│   │
+│   ├── Data Structures
+│   │   ├── deckstack.c/h         # Fixed-size stack
+│   │   └── hdcll.c/h             # Circular linked list
+│   │
+│   ├── Build System
+│   │   ├── cmdline.c/h           # Command-line parsing
+│   │   ├── version.h             # Version info
+│   │   └── main.c/h              # Entry point
+│   │
+├── doc/                          # Documentation
+├── ideas/                        # Design explorations
+├── Makefile
+└── README.md
+```
+
+### Module Dependencies
+
+```
+main.c
+├─ cmdline.c → game_types.h, prng_seed.h
+├─ game_state.h → game_types.h, strategy.h
+├─ stda_auto.h → game_types.h, strategy.h
+├─ stda_cli.h → game_types.h, localization.h, player_config.h
+└─ game_context.h → mtwister.h, game_types.h
+
+game_state.c
+├─ game_constants.h → game_types.h
+├─ turn_logic.h → game_types.h, strategy.h
+├─ card_actions.h → game_types.h
+└─ rnd.h → game_context.h
+
+turn_logic.c
+├─ card_actions.h
+├─ combat.h → game_types.h
+└─ strategy.h
+
+combat.c
+├─ combo_bonus.h → game_types.h
+├─ game_constants.h
+└─ rnd.h
+
+card_actions.c
+├─ game_constants.h
+└─ rnd.h
+
+combo_bonus.c
+└─ game_constants.h
+
+strategy.c
+└─ game_types.h
+
+strat_random.c
+├─ card_actions.h
+├─ game_constants.h
+└─ rnd.h
+
+stda_auto.c
+├─ game_types.h
+├─ strategy.h
+├─ game_state.h
+├─ turn_logic.h
+└─ card_actions.h
+
+stda_cli.c
+├─ game_types.h
+├─ strategy.h
+├─ game_state.h
+├─ turn_logic.h
+├─ card_actions.h
+├─ localization.h
+├─ player_selection.h
+└─ player_config.h
+
+player_config.c
+├─ localization.h
+└─ rnd.h
+
+rnd.c
+└─ mtwister.h
+```
+
+### Module Responsibilities
+
+- **Data Layer**: `game_types.h`, `game_constants.h/c` - Core data structures and game data
+- **Data Structures**: `deckstack.h/c`, `hdcll.h/c` - Specialized collections
+- **Game Logic**: `card_actions.h/c`, `combat.h/c`, `combo_bonus.h/c` - Core game mechanics
+- **Flow Control**: `turn_logic.h/c`, `game_state.h/c` - Game loop and lifecycle
+- **AI Framework**: `strategy.h/c` - Strategy abstraction
+- **AI Implementations**: `strat_*.c` - Specific AI strategies
+- **User Interface**: `player_selection.h/c`, `player_config.h/c`, `localization.h` - Player setup
+- **Game Modes**: `stda_auto.c/h`, `stda_cli.c/h` - Mode implementations
+- **Utilities**: `rnd.h/c`, `mtwister.h/c`, `prng_seed.h/c`, `game_context.h/c` - Infrastructure
+- **Entry Point**: `main.c` - Program initialization and mode selection
+
+### Code Quality Metrics
+
+- **Function Length**: Target ≤35 lines of actual code (firm limit 100 lines)
+- **File Length**: Target ≤500 lines (ideally ≤400, firm limit 1000 lines)
+- **Modularity**: Clean separation between game logic, AI, and utilities
+- **Memory Management**: Explicit allocation/deallocation with helper functions
+- **Debug Support**: Global `debug_enabled` flag with detailed logging
+- **Platform Support**: MSYS2 (Windows) and Arch Linux
+- **Compiler**: GCC with C23 standard
+
+---
+
+## 6. Game Logic Flow
 
 ### Turn Structure
 
@@ -335,12 +492,12 @@ void draw_1_card(struct gamestate* gstate, PlayerID player, GameContext* ctx) {
 
 **Edge Cases**:
 
-- What if discard is also empty? (Game design question - should never happen?)
 - First player on turn 1 doesn't draw
+- Empty discard reshuffles to form new deck
 
 ---
 
-## 6. Strategy Framework
+## 7. Strategy Framework
 
 ### Function Pointer System
 
@@ -375,18 +532,19 @@ free_strategy_set(strategies);
 
 ### Adding New Strategy
 
-1. Create `src/ai/strategy_name.c`
+1. Create `src/strat_name.c/h`
 
-2. Implement attack and defense functions with signature:
+2. Implement attack and defense functions:
    
    ```c
-   void strategyname_attack_strategy(struct gamestate* gstate, GameContext* ctx);
-   void strategyname_defense_strategy(struct gamestate* gstate, GameContext* ctx);
+   void stratname_attack_strategy(struct gamestate* gstate, GameContext* ctx);void stratname_defense_strategy(struct gamestate* gstate, GameContext* ctx);
    ```
 
 3. Functions modify `gstate` directly (play cards, update combat zone)
 
 4. Register strategy in mode initialization
+
+5. Update `player_config.c` strategy menu and mapping
 
 ### Random Strategy Example
 
@@ -415,7 +573,7 @@ void random_attack_strategy(struct gamestate* gstate, GameContext* ctx) {
 
 ---
 
-## 7. Combat System
+## 8. Combat System
 
 ### Combo Bonus Calculation
 
@@ -445,8 +603,6 @@ int calculate_combo_bonus(CombatCard *cards, int num_cards, DeckType deck_type);
 - 2 Humans + 1 Elf (same order A): +14
 - 2 Humans + 1 Hobbit (same color): +13
 - 2 Orange cards (no species/order match): +5
-
-See `combo_bonus.c` for full decision tree.
 
 ### Combat Resolution
 
@@ -485,12 +641,12 @@ Total Defense = Σ(RND_dn(defense_dice)) + combo_bonus
 
 ---
 
-## 8. Command-Line Interface
+## 9. Command-Line Interface
 
 ### Implementation
 
 **Entry Point**: `main.c` → `run_mode_stda_cli()`  
-**Implementation**: `stda_cli.c` (550 lines, needs refactoring)
+**Implementation**: `stda_cli.c` (~800 lines after refactoring)
 
 ### Features
 
@@ -500,6 +656,7 @@ Total Defense = Σ(RND_dn(defense_dice)) + combo_bonus
 - UTF-8 symbols (❤ energy, ☾ luna, ⚔ attack, 🛡 defense)
 - Card display with species, dice, cost
 - Game status (energy, lunas, hand size, deck size)
+- Localization support (English, French, Spanish)
 
 **Commands**:
 
@@ -510,6 +667,13 @@ Total Defense = Σ(RND_dn(defense_dice)) + combo_bonus
 - `gmst` - Show game status
 - `help` - Show commands
 - `exit` - Quit game
+
+**Player Configuration**:
+
+- Player type selection (Human vs AI, Human vs Human, AI vs AI)
+- Player names
+- AI strategy selection (currently only Random available)
+- Player assignment (direct, inverted, random)
 
 **Input Handling**:
 
@@ -524,7 +688,7 @@ Total Defense = Σ(RND_dn(defense_dice)) + combo_bonus
 ```c
 // Main game loop
 while (!game_over) {
-    if (current_player == HUMAN) {
+    if (cfg->player_types[current_player] == INTERACTIVE_PLAYER) {
         display_prompt_and_hand();
         get_command_from_user();
         parse_and_validate_command();
@@ -547,71 +711,14 @@ while (!game_over) {
 #endif
 ```
 
----
+### Known Issues
 
-## 9. File Organization
+**⚠️ File Size**: `stda_cli.c` at ~800 lines exceeds recommended 500-line limit
 
-### Current Structure
-
-```
-oracle/
-├── src/
-│   ├── card_actions.c/h      # Play cards, draw, shuffle
-│   ├── cmdline.c/h           # Command-line parsing
-│   ├── combat.c/h            # Combat resolution
-│   ├── combo_bonus.c/h       # Combo calculations
-│   ├── debug.h               # Debug macros
-│   ├── deckstack.c/h         # Deck data structure
-│   ├── game_constants.c/h    # Full deck, enums, strings
-│   ├── game_context.c/h      # GameContext pattern
-│   ├── game_state.c/h        # Game initialization
-│   ├── game_types.h          # All type definitions
-│   ├── hdcll.c/h             # Circular linked list
-│   ├── main.c                # Main entry point
-│   ├── main.h                # Mode function declarations
-│   ├── mtwister.c/h          # Mersenne Twister RNG
-│   ├── rnd.c/h               # RNG wrapper functions
-│   ├── stda_auto.c/h         # Automated simulation mode
-│   ├── stda_cli.c/h          # CLI interactive mode
-│   ├── strat_random.c/h      # Random AI strategy
-│   ├── strategy.c/h          # Strategy framework
-│   ├── turn_logic.c/h        # Turn flow management
-│   └── version.h             # Version info
-│
-├── ideas/                    # Design explorations
-│   ├── config file/
-│   ├── gui/
-│   ├── rating system/
-│   ├── sim_export/
-│   └── tui/
-│
-├── docs/                     # Documentation
-│   ├── ROADMAP.md
-│   ├── TODO.md
-│   ├── DESIGN.md (this file)
-│   └── (game rule documents)
-│
-├── Makefile
-└── README.md
-```
-
-### File Size Guidelines
-
-**Target**: ≤500 lines actual code per file
-
-**Current Status**:
-
-- ✅ Most core files: <300 lines
-- ⚠️ stda_cli.c: 550 lines (needs split)
-- ⚠️ game_constants.c: 350 lines (mostly data, acceptable)
-
-**Refactoring Plan**:
-
-```
-stda_cli.c (550 lines) → split into:
-├── cli_display.c (~250 lines)  # Display functions
-└── cli_input.c (~250 lines)    # Input parsing/validation
-```
+- **Planned Split**:
+  - `cli_display.c` (~350 lines) - Display functions
+  - `cli_input.c` (~350 lines) - Input parsing/validation
+  - `cli_game.c` (~100 lines) - Game loop and initialization
 
 ---
 
@@ -668,16 +775,6 @@ src/gui/
 └── input.c              # Input abstraction (mouse/touch)
 ```
 
-**Asset Pipeline**:
-
-```
-assets/
-├── cards/artwork/       # 102 champion portraits
-├── icons/species/       # 15 species icons
-├── icons/orders/        # 5 order symbols
-└── fonts/               # TTF fonts
-```
-
 ### Rating System Architecture (Phase 6)
 
 **Bradley-Terry Model**:
@@ -722,7 +819,7 @@ src/rating/
    
    - Write design notes in `ideas/`
    - Define public API in header file
-   - Consider function size limits (30 lines)
+   - Consider function size limits (35 lines)
 
 2. **Implementation Phase**:
    
@@ -734,7 +831,7 @@ src/rating/
    
    - Update `Makefile`
    - Add to appropriate mode(s)
-   - Update `DESIGN.md`
+   - Update `oracle_design.md`
 
 4. **Testing Phase**:
    
@@ -746,14 +843,14 @@ src/rating/
 
 Before committing:
 
-- [ ] All functions ≤30 lines
-- [ ] All files ≤500 lines
+- [ ] All functions ≤35 lines (firm limit 100)
+- [ ] All files ≤500 lines (firm limit 1000)
 - [ ] No compiler warnings (-Wall -Wextra)
-- [ ] Doxygen comments on public functions
+- [ ] Comments on public functions
 - [ ] No memory leaks (valgrind clean)
 - [ ] Consistent naming (snake_case)
-- [ ] Updated TODO.md checkboxes
-- [ ] Updated DESIGN.md if architecture changed
+- [ ] Updated `oracle_todo.md` checkboxes
+- [ ] Updated `oracle_design.md` if architecture changed
 
 ### Common Patterns
 
@@ -763,7 +860,6 @@ Before committing:
 // Return bool for success/failure
 bool do_thing(Args* args) {
     if (!validate(args)) return false;
-
     // Do the thing
     return true;
 }
@@ -822,7 +918,14 @@ uint8_t choice = RND_randn(n, ctx);  // Choose 0 to n-1
 
 **Problem**: Different access patterns  
 **Solution**: Stack (LIFO) for deck, circular linked list for hand  
-**Benefit**: Optimal operations for each use case
+**Benefit**: Optimal operations for each use case  
+**Future**: Migrate to fixed arrays for better performance
+
+### Why PRNG Seed in Config?
+
+**Problem**: Seed is a configuration setting controlling program behavior  
+**Solution**: Store in `config_t`, pass to `create_game_context()`  
+**Benefit**: One source of truth, cleaner API, easier testing
 
 ---
 
@@ -845,7 +948,7 @@ uint8_t choice = RND_randn(n, ctx);  // Choose 0 to n-1
 **Future Optimizations** (if needed):
 
 - Cache combo bonus for card combinations
-- Use memory pools for linked list nodes
+- Use memory pools for linked list nodes (or migrate to fixed arrays)
 - Profile with gprof to find actual bottlenecks
 
 ---
@@ -858,7 +961,7 @@ Test individual functions in isolation:
 
 - `test_combo_bonus.c`: All combo scenarios
 - `test_combat.c`: Dice distribution, damage calculation
-- 
+- Future: `test_protocol.c`, `test_rating.c`
 
 ### Integration Tests
 
@@ -880,12 +983,626 @@ Test complete workflows:
 
 ## References
 
-- **Game Rules**: See attached documents (Diagramme déroulement du jeu.pdf, General information about the game)
+- **Game Rules**: See `doc/game_rules_doc.md`
+
+- **Roadmap**: See `doc/oracle_roadmap.md`
+
+- **TODO**: See `doc/oracle_todo.md`
+
 - **GitHub**: https://github.com/JonathanFerron/oracle/tree/main
+
 - **MCTS Resources**: (to be added as studied)
+
 - **Bradley-Terry Model**: See `ideas/rating system/` for full spec and papers
 
 ---
 
-*Last Updated: November 2024*  
-*Next Review: After Phase 2 completion*
+## Architectural Tensions and Design Trade-offs
+
+### Known Technical Debt
+
+**1. File Size Violations**
+
+Current violations of the 500-line guideline:
+
+- `stda_cli.c`: ~800 lines (needs split into display/input/game modules)
+- **Impact**: Medium - Makes code harder to navigate and maintain
+- **Resolution**: Planned refactoring into `cli_display.c`, `cli_input.c`, `cli_game.c`
+
+**2. Mixed Responsibilities**
+
+Some functions have responsibilities that could be better separated:
+
+- `select_champion_for_cash_exchange()` in `card_actions.c` uses strategy logic
+  - **Comment in code**: "this code could be moved to the strategy"
+  - **Impact**: Low - Works fine but violates separation of concerns
+  - **Resolution**: Move to strategy modules when implementing smarter AIs
+
+**3. HDCLL Memory Management**
+
+Current linked list implementation requires heap allocations:
+
+- `HDCLL_toArray()` allocates memory that must be freed by caller
+- Multiple allocation/free cycles during game loop
+- **Impact**: Low for current use, could matter for MCTS with thousands of simulations
+- **Resolution**: Planned migration to fixed-size arrays (see ideas/4)
+
+### Architectural Boundaries
+
+**What Goes Where**:
+
+| Concern             | Current Location | Future Location   | Rationale                                               |
+| ------------------- | ---------------- | ----------------- | ------------------------------------------------------- |
+| Player types        | `config_t`       | `PlayerConfig`    | Player-specific data belongs together                   |
+| PRNG seed           | `config_t`       | ✅ Stays in config | It's a configuration setting                            |
+| Mulligan logic      | `stda_auto.c`    | Strategy modules  | Different strategies need different mulligan approaches |
+| Discard-to-7 logic  | `card_actions.c` | Strategy modules  | Same reasoning as mulligan                              |
+| Cash card selection | `card_actions.c` | Strategy modules  | Strategy decision, not game rule                        |
+
+### Design Patterns in Use
+
+**1. Strategy Pattern**
+
+- Used for AI strategies
+- Function pointers enable runtime polymorphism
+- Clean separation between game engine and AI logic
+
+**2. Dependency Injection**
+
+- `GameContext` passed to all functions
+- Enables testing with mock RNG
+- Future: Can inject UI callbacks, network connections
+
+**3. Builder Pattern**
+
+- `PlayerConfig` built incrementally through UI
+- `StrategySet` configured per player
+- Clean separation of construction from use
+
+**4. Template Method Pattern** (implicit)
+
+- `play_turn()` defines the algorithm structure
+- Strategy functions fill in the variable parts
+- Ensures consistent turn flow regardless of AI
+
+---
+
+## Development Environment
+
+### Platform Support
+
+**Primary Platforms**:
+
+- MSYS2 (Windows) - GCC with C23
+- Arch Linux - GCC with C23
+
+**Editor**: Geany on both platforms
+
+**Build System**: GNU Make with automatic source discovery
+
+**Code Formatting**: Artistic Style (astyle)
+
+- Run-in braces
+- 2-space indentation
+- Type-aligned pointers (`int* ptr`)
+
+### Compiler Flags
+
+**Default Build**:
+
+```makefile
+CFLAGS := -g -Og -Wall -std=c23
+```
+
+**Debug Build**:
+
+```makefile
+CFLAGS := -g -O0 -Wall -std=c23 -DDEBUG -DDEBUG_ENABLED=1
+```
+
+**Future**:
+
+- Consider `-Wextra` for more warnings
+- Consider `-Werror` to enforce warning-free builds
+- Profile-guided optimization for MCTS
+
+### Makefile Features
+
+```makefile
+# Automatic source discovery
+SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
+
+# Targets
+all          # Build the project
+clean        # Remove build artifacts
+debug        # Build with debug symbols and -O0
+test_combo   # Build combo bonus tests
+oldcode      # Build old code for regression testing
+format       # Format code with astyle
+help         # Show help message
+```
+
+---
+
+## Module Details
+
+### Entry Point (main.c)
+
+**Responsibilities**:
+
+- Command-line argument parsing delegation
+- Mode dispatcher
+- Global cleanup
+
+**Key Functions**:
+
+- `main()` - Entry point (~40 lines)
+- `run_mode_*()` - Mode entry points (stubs for unimplemented modes)
+- `cleanup_config()` - Free allocated resources
+
+### Command-Line Parsing (cmdline.c)
+
+**Responsibilities**:
+
+- Parse all command-line options
+- Initialize configuration with defaults
+- Generate random or use specified PRNG seed
+
+**Key Functions**:
+
+- `parse_options()` - Main parsing function (~150 lines)
+- `print_usage()` - Display help
+- `print_version()` - Display version info
+- `parse_language()` - Language code parsing
+
+**Options Supported**:
+
+- `-h, --help` - Show help
+- `-v, --verbose` - Enable verbose output
+- `-V, --version` - Show version
+- `-n, --numsim=N` - Set simulation count
+- `-u, --ui.lang=[LANG]` - Set language (en/fr/es)
+- `-p, --prng.seed=[SEED]` - Set PRNG seed (random if omitted)
+- Game mode flags: `-a, -l, -t, -g, -S, -C, -L, -T, -G, -A`
+
+### PRNG Seed Management (prng_seed.c)
+
+**Responsibilities**:
+
+- Generate cryptographically secure random seeds
+- Parse seed arguments (decimal or hex)
+- Validate seed values
+- Robust error handling
+
+**Key Functions**:
+
+- `generate_random_seed()` - Platform-specific secure random
+  - Windows: `CryptGenRandom`
+  - Linux: `/dev/urandom`
+  - Fallback: Time + clock + stack address mixing
+- `parse_seed_arg()` - Parse user input with extensive validation
+- `validate_seed()` - Ensure seed is valid for MT19937
+
+**Design Philosophy**: Fail-safe approach - invalid input → default seed + warning
+
+### Player Configuration (player_config.c)
+
+**Responsibilities**:
+
+- Manage player names, types, and strategies
+- Player assignment (direct, inverted, random)
+- AI strategy selection menu
+- Localization support
+
+**Key Structures**:
+
+```c
+typedef struct {
+    char player_names[2][MAX_PLAYER_NAME_LEN];
+    AIStrategyType ai_strategies[2];
+    PlayerAssignmentMode assignment_mode;
+} PlayerConfig;
+```
+
+**Key Functions**:
+
+- `init_player_config()` - Initialize with defaults
+- `get_player_names()` - Interactive name entry
+- `get_ai_strategies()` - AI strategy selection
+- `get_player_assignment()` - Assignment mode selection
+- `apply_player_assignment()` - Apply with optional random swap
+- `get_strategy_display_name()` - Localized strategy names
+
+### Localization (localization.h)
+
+**Approach**: Macro-based with language enum
+
+```c
+#define LOCALIZED_STRING(en, fr, es) \
+    ((const char*[]){en, fr, es}[cfg->language])
+```
+
+**Supported Languages**:
+
+- English (default)
+- French
+- Spanish
+
+**Usage**:
+
+```c
+printf("%s\n", LOCALIZED_STRING("Game Over", "Fin du jeu", "Juego terminado"));
+```
+
+### Game Constants (game_constants.c)
+
+**Responsibilities**:
+
+- Full deck definition (120 cards)
+- String name arrays for all enums
+- Game-wide constants
+
+**Key Data**:
+
+- `fullDeck[120]` - Complete card database
+  - All champion attributes
+  - Calculated efficiency values
+  - Power ratings
+- Enum name arrays for debugging/display
+- Species-to-Order mapping (via Order field in card struct)
+
+**Constants**:
+
+```c
+#define FULL_DECK_SIZE 120
+#define MAX_NUMBER_OF_TURNS 500
+#define INITIAL_CASH_DEFAULT 30
+#define INITIAL_ENERGY_DEFAULT 99
+#define INITAL_HAND_SIZE_DEFAULT 6
+#define AVERAGE_POWER_FOR_MULLIGAN 4.98
+#define M_TWISTER_SEED 1337UL
+```
+
+### Card Actions (card_actions.c)
+
+**Responsibilities**:
+
+- Card playing logic
+- Draw mechanics
+- Deck shuffling
+- Discard-to-7 (currently AI logic only)
+
+**Key Functions**:
+
+- `play_card()` - Dispatcher based on card type
+- `play_champion()` - Move to combat zone, pay cost
+- `play_draw_card()` - Draw N cards
+- `play_cash_card()` - Exchange champion for lunas
+- `draw_1_card()` - Draw with deck refresh if needed
+- `shuffle_discard_and_form_deck()` - Reshuffle mechanic
+- `discard_to_7_cards()` - Power-based discard (AI logic)
+
+**TODO Items**:
+
+- Add recall mechanic (currently only draws)
+- Move strategy-specific logic to strategy modules
+- Add interactive player choice for discard-to-7
+
+### Combat (combat.c)
+
+**Responsibilities**:
+
+- Combat resolution
+- Attack/defense calculation with combo bonuses
+- Damage application
+- Combat zone clearing
+
+**Key Functions**:
+
+- `resolve_combat()` - Main orchestrator (~20 lines)
+- `calculate_total_attack()` - Base + dice + combo
+- `calculate_total_defense()` - Dice + combo (no base)
+- `apply_combat_damage()` - Apply damage, check win condition
+- `clear_combat_zones()` - Move cards to discard
+
+**Formula**:
+
+```c
+attack = Σ(base + roll_dice(die)) + combo_bonus
+defense = Σ(roll_dice(die)) + combo_bonus
+damage = max(attack - defense, 0)
+```
+
+### Combo Bonus (combo_bonus.c)
+
+**Responsibilities**:
+
+- Calculate combo bonuses for 2-3 champions
+- Support 3 deck types (random, monochrome, custom)
+- Complex matching logic
+
+**Key Functions**:
+
+- `calculate_combo_bonus()` - Router by deck type
+- `calc_random_bonus()` - Full combo system (species/order/color)
+- `calc_prebuilt_bonus()` - Simplified for monochrome/custom
+- Helper functions: counting, matching
+
+**Priority Order** (Random Deck):
+
+1. Species matches (highest)
+2. Order matches (if no species match)
+3. Color matches (if no species/order match)
+
+### Turn Logic (turn_logic.c)
+
+**Responsibilities**:
+
+- Turn sequence orchestration
+- Phase management
+- Turn counter
+
+**Key Functions**:
+
+- `play_turn()` - Main turn loop (~20 lines)
+- `begin_of_turn()` - Increment turn, draw card
+- `attack_phase()` - Call attack strategy
+- `defense_phase()` - Call defense strategy
+- `end_of_turn()` - Collect luna, discard, switch player
+
+**TODO**: Phase transition timing needs review for MCTS integration
+
+### Game State (game_state.c)
+
+**Responsibilities**:
+
+- Game initialization
+- Luna collection
+- Player switching
+
+**Key Functions**:
+
+- `setup_game()` - Initialize gamestate, distribute cards (~40 lines)
+- `collect_1_luna()` - Increment cash
+- `change_current_player()` - Switch active player
+
+**Initialization Steps**:
+
+1. Set starting energy (99) and cash (30)
+2. Shuffle full deck
+3. Deal 40 cards to each player
+4. Initialize all collections (hand, discard, combat zone)
+5. Draw 6 cards for each player
+
+### Strategy Framework (strategy.c)
+
+**Responsibilities**:
+
+- Manage function pointer sets
+- Strategy registration
+
+**Key Functions**:
+
+- `create_strategy_set()` - Allocate (~5 lines)
+- `set_player_strategy()` - Register functions (~5 lines)
+- `free_strategy_set()` - Cleanup (~5 lines)
+
+**Design**: Minimal framework, strategies are self-contained
+
+### Random Strategy (strat_random.c)
+
+**Responsibilities**:
+
+- Baseline AI implementation
+- Random card selection
+
+**Key Functions**:
+
+- `random_attack_strategy()` - Play random affordable card (~35 lines)
+- `random_defense_strategy()` - 47% chance to defend with random champion (~30 lines)
+
+**Behavior**:
+
+- Attack: Play any affordable card (champions, draw, cash)
+- Special case: Skip cash cards if no champions in hand
+- Defense: 47% chance to play random affordable champion
+
+**Performance**: ~50% win rate in mirror matches (as expected)
+
+### Automated Simulation (stda_auto.c)
+
+**Responsibilities**:
+
+- Batch game simulation
+- Statistics collection
+- Result presentation
+- Histogram generation
+
+**Key Functions**:
+
+- `run_mode_stda_auto()` - Entry point (~30 lines)
+- `run_simulation()` - Run N games (~10 lines)
+- `play_stda_auto_game()` - Single game (~40 lines)
+- `apply_mulligan()` - AI mulligan logic (~40 lines)
+- `record_final_stats()` - Update statistics (~20 lines)
+- `present_results()` - Display results with histogram (~60 lines)
+
+**Statistics**:
+
+- Win/loss/draw counts
+- Turn length statistics (min/max/avg)
+- Histogram with underflow/overflow bins
+
+### CLI Interactive Mode (stda_cli.c)
+
+**Responsibilities**:
+
+- Human vs AI gameplay
+- Command parsing
+- Display formatting
+- Player configuration UI
+
+**Key Components**:
+
+- Display functions (~250 lines)
+  - `display_player_prompt()`, `display_player_hand()`
+  - `display_attack_state()`, `display_game_status()`
+  - `display_cli_help()`
+- Input parsing (~150 lines)
+  - `parse_champion_indices()`, `validate_and_play_champions()`
+- Command handlers (~200 lines)
+  - `handle_draw_command()`, `handle_cash_command()`
+  - `process_attack_command()`, `process_defense_command()`
+- Game phases (~150 lines)
+  - `handle_interactive_attack()`, `handle_interactive_defense()`
+  - `execute_game_turn()`
+- Initialization/cleanup (~50 lines)
+
+**Features**:
+
+- ANSI color support
+- UTF-8 symbols (❤ ☾ ⚔ 🛡)
+- Localized messages
+- Player configuration flow
+- Game summary at end
+
+---
+
+## Future Considerations
+
+### Callback Architecture for UI
+
+**Problem**: Game logic needs to communicate events to UI without tight coupling
+
+**Proposed Solution**:
+
+```c
+typedef struct {
+    void (*on_card_drawn)(PlayerID player, uint8_t card_id, void* ui_ctx);
+    void (*on_combat_resolved)(int16_t damage, void* ui_ctx);
+    void (*on_champion_played)(PlayerID player, uint8_t card_id, void* ui_ctx);
+} UICallbacks;
+
+// Pass to game functions
+void draw_1_card(struct gamestate* gstate, PlayerID player, 
+                GameContext* ctx, UICallbacks* uicb);
+```
+
+**Benefits**:
+
+- Game logic remains UI-agnostic
+- Easy to add new UI implementations
+- Can disable callbacks for automated simulations
+
+### AI Development Path
+
+**Phase 1**: Balanced Rules (next)
+
+- Target metrics based on opponent energy
+- Resource management heuristics
+- Card selection by efficiency
+
+**Phase 2**: Heuristic Evaluation
+
+- Advantage function (energy + cards + cash)
+- 1-move lookahead
+- Parameter calibration
+
+**Phase 3**: Simple Monte Carlo
+
+- Progressive pruning (93 → 30 → 10 → 4 moves)
+- Staged simulations (100 → 200 → 400 → 800)
+- Can serve as interactive AI assistant
+
+**Phase 4**: IS-MCTS
+
+- Tree-based search
+- UCT node selection
+- Information set handling
+- Transposition tables
+
+### Configuration File System
+
+**Planned**: INI-style configuration
+
+```ini
+[game]
+initial_cash = 30
+initial_energy = 99
+
+[ui]
+language = en
+color_enabled = true
+
+[simulation]
+default_numsim = 1000
+```
+
+**Benefits**:
+
+- Persistent preferences
+- Easy to edit
+- Override with command-line
+
+### CSV Export System
+
+**Purpose**: Export simulation data for analysis
+
+**Files**:
+
+- Detail CSV: Per-game data (all stats)
+- Summary CSV: Aggregate statistics
+
+**Fields**:
+
+- Game ID, winner, turns, final energy/cash
+- Strategy names, deck types
+- Simparam string for grouping
+
+---
+
+## Appendix: Code Metrics
+
+### Current File Sizes (lines of actual code)
+
+**Within Guidelines** (≤500):
+
+- `main.c`: ~60
+- `cmdline.c`: ~200
+- `prng_seed.c`: ~100
+- `game_constants.c`: ~350 (mostly data)
+- `game_state.c`: ~40
+- `card_actions.c`: ~185
+- `combat.c`: ~130
+- `combo_bonus.c`: ~175
+- `turn_logic.c`: ~70
+- `strategy.c`: ~20
+- `strat_random.c`: ~70
+- `stda_auto.c`: ~280
+- `player_config.c`: ~350
+- `player_selection.c`: ~70
+- `deckstack.c`: ~65
+- `hdcll.c`: ~170
+- `rnd.c`: ~40
+- `mtwister.c`: ~65
+- `game_context.c`: ~15
+
+**Needs Refactoring**:
+
+- `stda_cli.c`: ~800 ⚠️ (target: split into 3 files)
+
+### Function Length Compliance
+
+**Target**: ≤35 lines  
+**Firm Limit**: 100 lines
+
+**Current Status**: Most functions comply, with exceptions for:
+
+- Display functions (formatting-heavy, acceptable)
+- Data initialization (mostly assignments, acceptable)
+- Mulligan/discard logic (needs refactoring to strategy modules)
+
+---
+
+*Last Updated: November 2025*  
+*Next Review: After CLI refactoring and Balanced AI implementation*
