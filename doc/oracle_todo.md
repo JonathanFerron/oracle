@@ -6,8 +6,6 @@
 
 ## Current Sprint Focus
 
-### 
-
 **Complete Turn Logic Module** - Get full game loop working end-to-end
 
 Tasks:
@@ -66,6 +64,7 @@ Tasks:
 ### AI Strategies (src/ai/)
 
 #### #### Balanced Rules Strategy
+
 - [ ] In stda.cli mode, when AI against AI play is selected, use 'AI strategy name + (A or B)' as the player name instead of asking for player 1's name and not asking for player 2
 - [ ] Design decision framework (see strat_balancedrules1.c notes)
 - [ ] Attack heuristics:
@@ -313,7 +312,7 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 
 - [ ] Update README.md:
   - [ ] Usage examples
-  - [ ]   - [ ] Feature list
+  - [ ] - [ ] Feature list
   - [ ] Screenshot (CLI mode)
 - [ ] Write STRATEGY_GUIDE.md:
   - [ ] AI strategy descriptions

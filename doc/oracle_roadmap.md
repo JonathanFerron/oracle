@@ -39,6 +39,22 @@
 
 ---
 
+## File Size Targets Violated**
+
+**Contradiction:**
+
+- Design guideline: "Maximum 500 lines per source file (ideally ≤400)"
+- **Violations:**
+  - `stda_cli.c`: 550 lines
+  - TODO.md says "split needed" but provides no timeline
+  - Makefile and doc/file_listing.md still reference it as single file
+
+**Impact:** Low-Medium - Code organization debt
+
+---
+
+
+
 ## Development Phases
 
 ### Complete Game Loop ⚠️ IN PROGRESS
@@ -72,9 +88,47 @@
 **Blockers**: None  
 **Next**: Implement mulligan system, then validate full game loop with tests
 
+## Mulligan Implementation
+
+- `stda_auto.c` has a working `apply_mulligan()` implementation (lines 109-149) with power-based heuristic
+- **But:** This is hardcoded for automated simulation only
+- `stda_cli.c` line 485: TODO comment "add here the logic to perform the mulligan for player B" but no implementation
+- `doc/file_listing.md` describes mulligan as if it's fully integrated across all modes
+- Game rules require interactive player choice in CLI/TUI modes
+
+**Impact:** High - Feature works in one mode but missing in interactive modes where player agency is critical
+
+
+
+## Discard-to-7 Implementation Exists But Not Integrated in CLI
+
+**Contradiction:**
+
+- `card_actions.c` has `discard_to_7_cards()` fully implemented (lines 138-162) with power-based heuristic
+- `turn_logic.c` line 73 calls it in `end_of_turn()`
+- **But:** This is automated via power heuristic - no player choice
+- `stda_cli.c` line 487: TODO "add here the functionality to discard to 7 cards"
+- Game rules state player must choose which cards to discard
+
+**Impact:** High - Automated implementation removes player agency in interactive mode
+
 ---
 
-### Standalone Modes
+## **Recall Mechanic **
+
+**Contradiction:**
+
+- Full deck includes 9 "Draw 2/Recall 1" and 6 "Draw 3/Recall 2" cards
+- Game rules document extensively describes recall mechanics
+- `card_actions.c` TODO: "TODO: must give the option to the interactive player to choose between draw and recall"
+- **Reality:** `play_draw_card()` ONLY draws cards, never recalls
+- `struct card` has `choose_num` field (for recall) but it's never used
+
+**Impact:** High - Major game feature completely missing
+
+---
+
+## ### Standalone Modes
 
 **Status**: Partial implementation, needs completion
 
@@ -114,6 +168,8 @@
 ### Basic AI Development
 
 **Status**: Foundation ready, implementation pending
+
+Cash Card Selection**: `select_champion_for_cash_exchange()` is in `card_actions.c` with TODO "this code could be moved to the strategy" - architectural boundary violation
 
 #### Balanced Rules AI 📋
 
@@ -160,7 +216,7 @@ for(int i = 0; i < 2; i++)
         }
     }
 }
-``` 
+```
 
 #### Heuristic AI 📋
 

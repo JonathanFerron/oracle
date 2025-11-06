@@ -9,6 +9,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
 ## Core Entry Point
 
 ### main.c
+
 - **Purpose:** Program entry point and mode selection
 - **Key Functionality:**
   - Command-line argument parsing (placeholder)
@@ -23,6 +24,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
 ## Core Type and Constant Modules
 
 ### 1. game_types.h
+
 - **Purpose:** Foundation header containing all enum and struct definitions
 - **Key Contents:**
   - Enums: `PlayerID`, `GameStateEnum`, `TurnPhase`, `CardType`, `ChampionColor`, `ChampionSpecies`, `ChampionOrder`, `DeckType`
@@ -33,6 +35,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
 ### 2. game_constants.h / game_constants.c
 
 **game_constants.h**
+
 - **Purpose:** Game-wide constants and external declarations
 - **Key Contents:**
   - Compile-time constants: `FULL_DECK_SIZE`, `MAX_NUMBER_OF_TURNS`, `MAX_NUMBER_OF_SIM`, `DEBUG_NUMBER_OF_SIM`, `AVERAGE_POWER_FOR_MULLIGAN`
@@ -40,6 +43,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
   - String name array declarations for all enums
 
 **game_constants.c**
+
 - **Purpose:** Full game data definitions and lookup tables
 - **Key Functionality:**
   - `fullDeck[120]` - Complete card database (102 champions + 18 special cards)
@@ -54,6 +58,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
 ### 3. combo_bonus.h / combo_bonus.c
 
 **combo_bonus.h**
+
 - **Purpose:** Combo bonus calculation system interface
 - **Key Contents:**
   - `CombatCard` struct for simplified combat tracking
@@ -62,6 +67,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
   - Helper functions for counting and matching logic
 
 **combo_bonus.c**
+
 - **Purpose:** Implements complex combo bonus calculation system
 - **Key Functionality:**
   - Main router: `calculate_combo_bonus()` - Dispatches to mode-specific calculators
@@ -74,6 +80,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
 ### 4. card_actions.h / card_actions.c
 
 **card_actions.h**
+
 - **Purpose:** Card playing and game action function interfaces
 - **Key Contents:**
   - Card playing: `play_card()`, `play_champion()`, `play_draw_card()`, `play_cash_card()`
@@ -81,6 +88,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
   - Game actions: `draw_1_card()`, `shuffle_discard_and_form_deck()`, `collect_1_luna()`, `discard_to_7_cards()`, `change_current_player()`
 
 **card_actions.c**
+
 - **Purpose:** Card playing and game action implementations
 - **Key Functionality:**
   - Card type routing: `play_card()` dispatches to specific handlers
@@ -95,6 +103,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
 ### 5. combat.h / combat.c
 
 **combat.h**
+
 - **Purpose:** Combat resolution system interface
 - **Key Contents:**
   - Main combat: `resolve_combat()`
@@ -102,6 +111,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
   - Combat effects: `apply_combat_damage()`, `clear_combat_zones()`
 
 **combat.c**
+
 - **Purpose:** Combat resolution with integrated combo bonuses
 - **Key Functionality:**
   - Main resolver: `resolve_combat()` - Orchestrates full combat sequence
@@ -119,12 +129,14 @@ The Oracle game is organized into a modular C codebase with clear separation of 
 ### 6. turn_logic.h / turn_logic.c
 
 **turn_logic.h**
+
 - **Purpose:** Turn flow and phase management interface
 - **Key Contents:**
   - Main turn: `play_turn()`
   - Turn phases: `begin_of_turn()`, `end_of_turn()`, `attack_phase()`, `defense_phase()`
 
 **turn_logic.c**
+
 - **Purpose:** Turn flow orchestration
 - **Key Functionality:**
   - Main loop: `play_turn()` - Manages full turn sequence
@@ -136,6 +148,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
 ### 7. game_state.h / game_state.c
 
 **game_state.h**
+
 - **Purpose:** Game initialization, simulation, and statistics interface
 - **Key Contents:**
   - Game setup: `setup_game()`, `apply_mulligan()`
@@ -144,6 +157,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
   - Statistics: `record_final_stats()`, `present_results()`
 
 **game_state.c**
+
 - **Purpose:** Game lifecycle and statistics management
 - **Key Functionality:**
   - Game initialization: `setup_game()` - Deck distribution, hand drawing, zone setup
@@ -161,6 +175,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
 ### 8. strategy.h / strategy.c
 
 **strategy.h**
+
 - **Purpose:** Strategy function pointer framework
 - **Key Contents:**
   - Function pointer types: `AttackStrategyFunc`, `DefenseStrategyFunc`
@@ -168,6 +183,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
   - Strategy management: `create_strategy_set()`, `set_player_strategy()`, `free_strategy_set()`
 
 **strategy.c**
+
 - **Purpose:** Strategy function pointer framework implementation
 - **Key Functionality:**
   - `create_strategy_set()` - Allocates strategy container
@@ -178,12 +194,14 @@ The Oracle game is organized into a modular C codebase with clear separation of 
 ### 9. strat_random.h / strat_random.c
 
 **strat_random.h**
+
 - **Purpose:** Random strategy implementation interface
 - **Key Contents:**
   - `random_attack_strategy()`
   - `random_defense_strategy()`
 
 **strat_random.c**
+
 - **Purpose:** Random decision-making strategy
 - **Key Functionality:**
   - `random_attack_strategy()` - Plays random affordable card (champions or draw/cash)
@@ -195,6 +213,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
 ### 10. Strategy Templates (Stub Files)
 
 **strat_balancedrules1.c**
+
 - **Purpose:** Planned balanced rules-based strategy
 - **Status:** Template/design document only (no corresponding .h file)
 - **Key Concepts:**
@@ -204,6 +223,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
   - Situational awareness (early/mid/late game)
 
 **strat_heuristic1.c**
+
 - **Purpose:** Planned heuristic evaluation strategy
 - **Status:** Template/design document only (no corresponding .h file)
 - **Key Concepts:**
@@ -213,6 +233,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
   - Hand power and combo potential estimation
 
 **strat_ismcts1.c**
+
 - **Purpose:** Planned Information Set Monte Carlo Tree Search
 - **Status:** Template/design document only (no corresponding .h file)
 - **Key Concepts:**
@@ -222,6 +243,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
   - Detailed notes on tree structure and move representation
 
 **strat_simplemc1.c**
+
 - **Purpose:** Planned Monte Carlo single-stage analysis
 - **Status:** Template/design document only (no corresponding .h file)
 - **Key Concepts:**
@@ -237,12 +259,14 @@ The Oracle game is organized into a modular C codebase with clear separation of 
 ### 11. deckstack.h / deckstack.c
 
 **deckstack.h**
+
 - **Purpose:** Fixed-size stack implementation for card decks
 - **Key Contents:**
   - `deck_stack` struct (40-card capacity)
   - Stack operations: `push()`, `pop()`, `isEmpty()`, `emptyOut()`, `print()`
 
 **deckstack.c**
+
 - **Purpose:** Fixed-size stack for deck management
 - **Key Functionality:**
   - Stack operations: `push()`, `pop()`, `isEmpty()`, `isFull()`
@@ -253,12 +277,14 @@ The Oracle game is organized into a modular C codebase with clear separation of 
 ### 12. hdcll.h / hdcll.c
 
 **hdcll.h**
+
 - **Purpose:** Head-tracked doubly-circular linked list for dynamic collections
 - **Key Contents:**
   - `LLNode` and `HDCLList` structs
   - List operations: `initialize()`, `insertNodeAtBeginning()`, `removeNodeFromBeginning()`, `removeNodeByValue()`, `removeNodeByIndex()`, `getNodeValueByIndex()`, `toArray()`, `emptyOut()`, `printLinkedList()`
 
 **hdcll.c**
+
 - **Purpose:** Head-tracked doubly-circular linked list implementation
 - **Key Functionality:**
   - List management: `initialize()`, `emptyOut()`
@@ -272,12 +298,14 @@ The Oracle game is organized into a modular C codebase with clear separation of 
 ### 13. rnd.h / rnd.c
 
 **rnd.h**
+
 - **Purpose:** Random number generation interface
 - **Key Contents:**
   - `randn()`, `dn()` - Random number functions
   - `swap()`, `partial_shuffle()` - Array manipulation
 
 **rnd.c**
+
 - **Purpose:** Random number generation wrapper
 - **Key Functionality:**
   - Dice rolling: `dn()` - Returns 1 to n
@@ -289,12 +317,14 @@ The Oracle game is organized into a modular C codebase with clear separation of 
 ### 14. mtwister.h / mtwister.c
 
 **mtwister.h**
+
 - **Purpose:** Mersenne Twister PRNG interface
 - **Key Contents:**
   - `MTRand` struct
   - `seedRand()`, `genRandLong()`, `genRand()`
 
 **mtwister.c**
+
 - **Purpose:** Mersenne Twister PRNG implementation
 - **Key Functionality:**
   - High-quality PRNG with 623-dimensional equidistribution
@@ -309,6 +339,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
 ## Build System
 
 **makefile**
+
 - **Purpose:** GNU Make build configuration
 - **Key Features:**
   - Automatic source discovery in `src/` directory
@@ -321,6 +352,7 @@ The Oracle game is organized into a modular C codebase with clear separation of 
 - **Flags:** `-g -Og -Wall` (default), `-g -O0 -Wall -DDEBUG` (debug)
 
 **.astylerc**
+
 - **Purpose:** Code formatting configuration for Artistic Style
 - **Style:** Run-in braces, 2-space indentation
 - **Pointer Alignment:** Type-aligned pointers (`int* ptr`)
