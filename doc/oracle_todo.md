@@ -6,50 +6,25 @@
 
 ## Current Sprint Focus
 
-### This Week's Priority
+### 
 
 **Complete Turn Logic Module** - Get full game loop working end-to-end
 
 Tasks:
 
+- [ ] Move player types into PlayerConfig and work on PRNG seed location
 - [ ] Implement mulligan system (Player B, 2 cards max)
 - [ ] Implement discard-to-7 system (end of turn)
-- [ ] Add phase transition validation
-- [ ] Test complete game with Random vs Random
-- [ ] Write unit tests for turn_logic.c
+- [ ] Display Discard Pile in CLI Mode
+- [ ] Move from HDC Linked List to Fixed (variable sized, really) Arrays
+- [ ] Get Recall Card functionality to work in at least stda.cli mode (it's fine to just use the 'draw n cards' option for the Random AI engine given that this engine is not meant to be strong) 
+- [ ] Enhance display of combat results in stda.cli mode
 
 ---
 
 ## By Module Status
 
 ### Core Game Logic (src/core/)
-
-#### Card System ✅
-
-- [x] Full 120-card deck definition (game_constants.c)
-- [x] Card structure with all attributes
-- [x] Champion species/orders
-- [x] Draw cards (pige 2/3)
-- [x] Cash exchange cards
-
-#### Game State ✅
-
-- [x] GameState structure (game_types.h)
-- [x] PlayerState tracking
-- [x] Deck/hand/discard/combat zones
-- [x] Energy and luna management
-- [x] Game initialization (game_state.c)
-
-#### Combat System ✅
-
-- [x] Combo bonus calculator (combo_bonus.c)
-  - [x] Random deck combos
-  - [x] Monochrome deck combos
-  - [x] Custom deck combos
-- [x] Combat resolver (combat.c)
-- [x] Dice rolling (RND_dn)
-- [x] Damage calculation
-- [x] Combat zone clearing
 
 #### Turn Logic ⚠️ IN PROGRESS
 
@@ -68,7 +43,6 @@ Tasks:
   - [ ] UI for attacker at end of turn
   - [ ] Power-based selection heuristic
   - [ ] Edge case: exactly 7 cards (do nothing)
-- [ ] Phase transition validation
 - [x] Win condition detection (energy = 0)
 - [x] Draw condition (max turns exceeded)
 
@@ -91,23 +65,8 @@ Tasks:
 
 ### AI Strategies (src/ai/)
 
-#### Strategy Framework ✅
-
-- [x] Function pointer system (strategy.h)
-- [x] StrategySet structure
-- [x] create_strategy_set()
-- [x] set_player_strategy()
-- [x] AttackStrategyFunc / DefenseStrategyFunc types
-
-#### Random Strategy ✅
-
-- [x] random_attack_strategy() (strat_random.c)
-- [x] random_defense_strategy()
-- [x] Affordable card filtering
-- [x] 47% defend rate (tunable parameter)
-
-#### Balanced Rules Strategy 📋 NEXT MAJOR FEATURE
-
+#### #### Balanced Rules Strategy
+- [ ] In stda.cli mode, when AI against AI play is selected, use 'AI strategy name + (A or B)' as the player name instead of asking for player 1's name and not asking for player 2
 - [ ] Design decision framework (see strat_balancedrules1.c notes)
 - [ ] Attack heuristics:
   - [ ] When to play 0-cost champions
@@ -163,14 +122,6 @@ Tasks:
 
 #### CLI Mode (stda_cli.c) ⚠️
 
-- [x] Basic game loop
-- [x] Human vs AI gameplay
-- [x] Command parsing (cham, draw, cash, pass, gmst, help, exit)
-- [x] ANSI color output
-- [x] UTF-8 symbols (❤ ☾ ⚔ 🛡)
-- [x] Attack phase UI
-- [x] Defense phase UI
-- [x] Error messages
 - [ ] **Mulligan UI** (Player B)
   - [ ] Display hand with power values
   - [ ] Prompt for cards to discard
@@ -223,40 +174,17 @@ See `ideas/tui/` for full implementation plan
 
 #### Command-Line Parsing ✅
 
-- [x] cmdline.c/h implementation
-- [x] Long/short option support
-- [x] Mode selection (--stda.auto, --stda.cli, etc.)
-- [x] --numsim, --verbose, --output
-- [x] Help and version display
 - [ ] Add --config option
 - [ ] Add --deck option (random/mono/custom/the 3 drafting formats)
 
 #### Game Context ✅
 
-- [x] GameContext structure (game_context.h)
-- [x] RNG encapsulation
-- [x] Config pointer
-- [x] create_game_context()
-- [x] destroy_game_context()
 - [ ] Document usage patterns in DESIGN.md
 
 #### Debug System ✅
 
-- [x] debug.h with compile-time flags
-- [x] DEBUG_PRINT macro
-- [x] DEBUG_ONLY macro
-- [x] -DDEBUG_ENABLED=1 flag support
 - [ ] Add debug levels (INFO, WARN, ERROR)
-- [ ] Add file/line number to debug output
-
-#### Random Number Generation ✅
-
-- [x] Mersenne Twister implementation (mtwister.c)
-- [x] RND wrapper functions (rnd.c)
-- [x] RND_dn() for dice rolls
-- [x] RND_randn() for ranges
-- [x] RND_partial_shuffle()
-- [x] Add seed management (for reproducible games)
+- [ ] Add file/line number to debug output 
 
 ---
 
@@ -264,26 +192,12 @@ See `ideas/tui/` for full implementation plan
 
 #### Deck Stack ✅
 
-- [x] deckstack.c/h implementation
-- [x] DeckStk_push/pop
-- [x] DeckStk_isEmpty
-- [x] DeckStk_emptyOut
 - [ ] Add DeckStk_size() helper
 - [ ] Add DeckStk_peek_at(index) for debugging
 
 #### Circular Linked List ✅
 
-- [x] hdcll.c/h implementation (hand/discard/combat/list)
-- [x] HDCLL_initialize
-- [x] HDCLL_insertNodeAtBeginning
-- [x] HDCLL_removeNodeFromBeginning
-- [x] HDCLL_removeNodeByValue
-- [x] HDCLL_removeNodeByIndex
-- [x] HDCLL_getNodeValueByIndex
-- [x] HDCLL_toArray
-- [x] HDCLL_emptyOut
-- [ ] Add HDCLL_find(value) helper
-- [ ] Add HDCLL_contains(value) helper
+- [ ] Replace with fixed arrays
 
 ---
 
@@ -338,7 +252,6 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 
 ### Unit Tests 📋
 
-- [x] test_combo_bonus.c (exists, needs expansion)
 - [ ] test_combat.c
   - [ ] Test dice rolling distribution
   - [ ] Test damage calculation
@@ -359,10 +272,6 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 
 ### Integration Tests 📋
 
-- [x] Full game Random vs Random (1000 games)
-  - [x] ~50% win rate for each
-  - [x] No crashes
-  - [x] Reasonable turn counts
 - [ ] Full game Human vs AI (manual testing)
   - [ ] All phases work correctly
   - [ ] UI is responsive
@@ -370,7 +279,6 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 - [ ] Simulation batch tests
   - [ ] Statistics are correct
   - [ ] CSV export works
-  - [x] Reproducible with same seed
 
 ### Performance Tests 📋
 
@@ -404,14 +312,11 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 ### User Documentation 📋
 
 - [ ] Update README.md:
-  - [x] Build instructions
   - [ ] Usage examples
-  - [ ] Feature list
+  - [ ]   - [ ] Feature list
   - [ ] Screenshot (CLI mode)
 - [ ] Write STRATEGY_GUIDE.md:
-  - [x] Explain combo bonuses
   - [ ] AI strategy descriptions
-  - [x] Tips for playing
 - [ ] Write PROTOCOL.md (when network code exists)
 
 ### Design Documentation 📋
@@ -431,7 +336,7 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 
 ### Potential Issues ⚠️
 
-- [ ] Memory leak in HDCLL_toArray (must free() after use)
+- [ ] Memory leak in HDCLL_toArray: replace the HDCLL with fixed arrays
 
 ---
 
@@ -439,11 +344,10 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 
 ### Refactoring Needed 🔧
 
-- [ ] stda_cli.c exceeds 500 line limit (split into cli_display.c + cli_input.c)
-- [ ] stda_auto.c mixes simulation logic with presentation (extract stda_simulation.c)
+- [ ] stda_cli.c exceeds 500 line limit
+- [ ] stda_auto.c mixes simulation logic with presentation
 - [ ] card_actions.c needs better error handling
-- [ ] gamestate.c setup_game() is too long (split deck setup)
-- [x] Remove global MTwister_rand_struct (use GameContext everywhere)
+- [ ] gamestate.c setup_game() is too long
 
 ### Architecture Improvements 🏗️
 
@@ -547,7 +451,7 @@ Current status (approximate):
 
 ---
 
-## Notes for Future Self
+## Notes for Future
 
 ### When Implementing Mulligan
 
@@ -591,5 +495,5 @@ Current status (approximate):
 
 ---
 
-*Last Updated: November 2024*  
-*Next Review: When Phase 2 completes*
+*Last Updated: November 2025*  
+*Next Review: When Turn Logic implementation in CLI mode is completed*

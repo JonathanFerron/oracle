@@ -14,6 +14,9 @@ Oracle is an open-source card game project combining tactical gameplay with AI d
   - Monochrome decks (single-color strategy)
   - Custom deck building (advanced play)
   - Three deck drafting modes (advanced play)
+    - Solomon 7x7
+    - Draft 12x8
+    - Draft 1-2-3
 
 ## 🤖 AI Research Focus
 
@@ -46,7 +49,7 @@ cd oracle
 make
 
 # Run automated simulation (AI vs AI)
-./bin/oracle --stda.auto --numsim 1000
+./bin/oracle --stda.auto --numsim=1000
 
 # Play interactively (Human vs AI)
 ./bin/oracle --stda.cli

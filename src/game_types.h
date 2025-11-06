@@ -161,7 +161,6 @@ typedef enum
 } PlayerType;
 
 /* Configuration structure */
-// TODO: consider whether this struct should be moved to the game_context.h source file, or to cmdline.h as it's primarily populated in the cmldline.c file.
 typedef struct
 { game_mode_t mode;
   bool verbose;
@@ -173,7 +172,8 @@ typedef struct
   uint32_t prng_seed;
   bool use_random_seed;
   PlayerType player_types[2]; // first value is for playerA, second value is for playerB
-} config_t;
+  void* player_config;  /* PlayerConfig* - forward declaration avoidance */
+ } config_t;
 
 #include "game_constants.h"
 

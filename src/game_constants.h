@@ -24,7 +24,7 @@
 extern const struct card fullDeck[FULL_DECK_SIZE];
 
 // Species to Order mapping (defined in game_constants.c)
-extern const ChampionOrder SPECIES_TO_ORDER[];
+//extern const ChampionOrder SPECIES_TO_ORDER[];
 
 // String name arrays (defined in game_constants.c)
 extern const char* const PLAYER_NAMES[];

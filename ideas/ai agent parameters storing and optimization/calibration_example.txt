@@ -1,0 +1,316 @@
+// calibration_example.c
+// Example usage of the AI parameter calibration system
+
+#include <stdio.h>
+#include <stdlib.h>
+#include "ai_params.h"
+#include "ai_calibration.h"
+#include "game_context.h"
+
+// ========================================================================
+// EXAMPLE 1: Optimize Random Strategy's Defense Probability
+// ========================================================================
+void example_optimize_random_defense(void)
+{
+    printf("\n=== Example 1: Optimize Random Strategy ===\n");
+    
+    // Step 1: Create calibration config
+    CalibrationConfig config = {
+        .method = OPT_GRID_SEARCH,
+        .grid_points_per_param = 10,
+        .games_per_evaluation = 100,
+        .random_seed = 12345,
+        .opponent_type = STRAT_RANDOM,  // Optimize against itself
+        .verbose = true
+    };
+    
+    // Initialize opponent with default params
+    ai_params_init_default(&config.opponent_params, STRAT_RANDOM);
+    
+    // Step 2: Define parameter ranges to explore
+    ParamRanges* ranges = calibration_create_default_ranges(STRAT_RANDOM);
+    
+    // Override with specific ranges we want to test
+    calibration_add_float_param(ranges, "behavior_defend_prob",
+                               0.0f, 1.0f, 0.1f, false);
+    
+    // Step 3: Create calibration session
+    CalibrationSession* session = calibration_create_session(&config, ranges);
+    
+    // Step 4: Run optimization
+    printf("Starting optimization...\n");
+    calibration_run(session);
+    
+    // Step 5: View results
+    calibration_print_results(session);
+    calibration_export_csv(session, "random_defense_calibration.csv");
+    calibration_save_best(session, "random_best_params.ini");
+    
+    // Cleanup
+    calibration_destroy_session(session);
+    free(ranges);
+}
+
+// ========================================================================
+// EXAMPLE 2: Optimize Heuristic Strategy's Advantage Weights
+// ========================================================================
+void example_optimize_heuristic_weights(void)
+{
+    printf("\n=== Example 2: Optimize Heuristic Weights ===\n");
+    
+    CalibrationConfig config = {
+        .method = OPT_RANDOM_SEARCH,
+        .random_samples = 200,
+        .games_per_evaluation = 100,
+        .random_seed = 54321,
+        .opponent_type = STRAT_RANDOM,
+        .verbose = true
+    };
+    
+    ai_params_init_default(&config.opponent_params, STRAT_RANDOM);
+    
+    // Define ranges for epsilon, gamma, delta
+    ParamRanges* ranges = calibration_create_default_ranges(STRAT_HEURISTIC);
+    
+    // Explore epsilon (energy weight) from 0.5 to 2.0
+    calibration_add_float_param(ranges, "weight_energy_advantage",
+                               0.5f, 2.0f, 0.1f, false);
+    
+    // Explore gamma (cards weight) from 0.05 to 0.5
+    calibration_add_float_param(ranges, "weight_cards_advantage",
+                               0.05f, 0.5f, 0.05f, false);
+    
+    // Keep delta (cash weight) fixed at 1.0 (by not adding range)
+    
+    CalibrationSession* session = calibration_create_session(&config, ranges);
+    calibration_run(session);
+    
+    calibration_print_results(session);
+    calibration_export_csv(session, "heuristic_weights_calibration.csv");
+    calibration_save_best(session, "heuristic_best_params.ini");
+    
+    calibration_destroy_session(session);
+    free(ranges);
+}
+
+// ========================================================================
+// EXAMPLE 3: Optimize HBT Hybrid Against Balanced Rules
+// ========================================================================
+void example_optimize_hbt_vs_balanced(void)
+{
+    printf("\n=== Example 3: Optimize HBT vs Balanced Rules ===\n");
+    
+    CalibrationConfig config = {
+        .method = OPT_GENETIC_ALGORITHM,
+        .ga_population_size = 30,
+        .ga_generations = 15,
+        .ga_mutation_rate = 0.15f,
+        .ga_crossover_rate = 0.7f,
+        .games_per_evaluation = 100,
+        .random_seed = 99999,
+        .opponent_type = STRAT_BALANCED_RULES,
+        .verbose = true
+    };
+    
+    // Opponent uses default Balanced Rules params
+    ai_params_init_default(&config.opponent_params, STRAT_BALANCED_RULES);
+    
+    // Optimize multiple HBT parameters
+    ParamRanges* ranges = calibration_create_default_ranges(STRAT_HBT_HYBRID);
+    
+    // Aggression parameters
+    calibration_add_float_param(ranges, "behavior_aggression_base",
+                               0.2f, 0.8f, 0.1f, false);
+    calibration_add_float_param(ranges, "behavior_aggression_energy",
+                               0.001f, 0.01f, 0.001f, false);
+    
+    // Advantage weights
+    calibration_add_float_param(ranges, "weight_energy_advantage",
+                               0.5f, 2.0f, 0.1f, false);
+    calibration_add_float_param(ranges, "weight_cards_advantage",
+                               0.05f, 0.3f, 0.05f, false);
+    
+    // Defense threshold
+    calibration_add_float_param(ranges, "threshold_defense_beta",
+                               0.5f, 2.0f, 0.1f, false);
+    
+    CalibrationSession* session = calibration_create_session(&config, ranges);
+    calibration_run(session);
+    
+    calibration_print_results(session);
+    calibration_export_csv(session, "hbt_vs_balanced_calibration.csv");
+    calibration_save_best(session, "hbt_best_params.ini");
+    
+    calibration_destroy_session(session);
+    free(ranges);
+}
+
+// ========================================================================
+// EXAMPLE 4: Quick Grid Search on SimpleMC Simulation Count
+// ========================================================================
+void example_optimize_simplemc_simcount(void)
+{
+    printf("\n=== Example 4: Optimize SimpleMC Simulation Count ===\n");
+    
+    CalibrationConfig config = {
+        .method = OPT_GRID_SEARCH,
+        .grid_points_per_param = 6,
+        .games_per_evaluation = 50,  // Fewer games for faster results
+        .random_seed = 11111,
+        .opponent_type = STRAT_RANDOM,
+        .verbose = true
+    };
+    
+    ai_params_init_default(&config.opponent_params, STRAT_RANDOM);
+    
+    ParamRanges* ranges = calibration_create_default_ranges(STRAT_SIMPLE_MC);
+    
+    // Test simulation counts: 50, 100, 200, 500, 1000, 2000
+    calibration_add_int_param(ranges, "limit_max_simulations",
+                             50, 2000, 0);  // Step=0 for manual points
+    
+    CalibrationSession* session = calibration_create_session(&config, ranges);
+    calibration_run(session);
+    
+    calibration_print_results(session);
+    calibration_export_csv(session, "simplemc_simcount_calibration.csv");
+    
+    calibration_destroy_session(session);
+    free(ranges);
+}
+
+// ========================================================================
+// EXAMPLE 5: Load Parameters from File and Evaluate
+// ========================================================================
+void example_load_and_evaluate(void)
+{
+    printf("\n=== Example 5: Load and Evaluate Parameters ===\n");
+    
+    // Load HBT parameters from config file
+    AIParams hbt_params;
+    ai_params_init_default(&hbt_params, STRAT_HBT_HYBRID);
+    
+    if(ai_params_load_from_file(&hbt_params, "ai.ini") != 0) {
+        printf("Warning: Could not load ai.ini, using defaults\n");
+    }
+    
+    ai_params_print(&hbt_params);
+    
+    // Validate parameters
+    if(!ai_params_validate(&hbt_params)) {
+        printf("Error: Invalid parameters detected\n");
+        return;
+    }
+    
+    // Create simple config for evaluation
+    CalibrationConfig config = {
+        .games_per_evaluation = 1000,  // More games for accurate estimate
+        .random_seed = 42,
+        .opponent_type = STRAT_BALANCED_RULES,
+        .verbose = true
+    };
+    
+    ai_params_init_default(&config.opponent_params, STRAT_BALANCED_RULES);
+    
+    // Evaluate
+    GameContext* ctx = create_game_context(config.random_seed, NULL);
+    EvaluationResult result = calibration_evaluate(&hbt_params, &config, ctx);
+    destroy_game_context(ctx);
+    
+    // Print results
+    printf("\n=== Evaluation Results ===\n");
+    printf("Win Rate: %.2f%% (95%% CI: %.2f%% - %.2f%%)\n",
+           result.win_rate * 100,
+           result.win_rate_lower_95 * 100,
+           result.win_rate_upper_95 * 100);
+    printf("W/L/D: %d/%d/%d\n", result.wins, result.losses, result.draws);
+    printf("Avg Game Length: %.1f turns\n", result.avg_game_length);
+    printf("Avg Final Energy: %.1f\n", result.avg_final_energy);
+    printf("Evaluation Time: %.2f seconds\n", result.evaluation_time_sec);
+}
+
+// ========================================================================
+// MAIN FUNCTION - Run Examples
+// ========================================================================
+int main(int argc, char** argv)
+{
+    printf("Oracle AI Parameter Calibration Examples\n");
+    printf("=========================================\n");
+    
+    if(argc < 2) {
+        printf("\nUsage: %s <example_number>\n", argv[0]);
+        printf("  1 - Optimize Random strategy defense probability\n");
+        printf("  2 - Optimize Heuristic advantage weights\n");
+        printf("  3 - Optimize HBT Hybrid vs Balanced Rules\n");
+        printf("  4 - Optimize SimpleMC simulation count\n");
+        printf("  5 - Load parameters from file and evaluate\n");
+        return 1;
+    }
+    
+    int example = atoi(argv[1]);
+    
+    switch(example) {
+        case 1:
+            example_optimize_random_defense();
+            break;
+        case 2:
+            example_optimize_heuristic_weights();
+            break;
+        case 3:
+            example_optimize_hbt_vs_balanced();
+            break;
+        case 4:
+            example_optimize_simplemc_simcount();
+            break;
+        case 5:
+            example_load_and_evaluate();
+            break;
+        default:
+            printf("Invalid example number: %d\n", example);
+            return 1;
+    }
+    
+    return 0;
+}
+
+// ========================================================================
+// INTEGRATION NOTES
+// ========================================================================
+
+/*
+ * To integrate this into your existing code:
+ * 
+ * 1. Move AVERAGE_POWER_FOR_MULLIGAN to ai_params.h:
+ *    - Add it to each strategy's params struct
+ *    - Rename to "threshold_mulligan_power"
+ *    - Set default value to 4.98
+ * 
+ * 2. Modify your strategy functions to accept AIParams:
+ *    void random_attack_strategy(struct gamestate* gstate, 
+ *                                GameContext* ctx,
+ *                                AIParams* params);
+ * 
+ * 3. Update StrategySet to store parameters:
+ *    typedef struct {
+ *        AttackStrategyFunc attack_strategy[2];
+ *        DefenseStrategyFunc defense_strategy[2];
+ *        AIParams ai_params[2];  // Add this
+ *    } StrategySet;
+ * 
+ * 4. Load parameters at game start:
+ *    AIParams params;
+ *    ai_params_init_default(&params, STRAT_RANDOM);
+ *    ai_params_load_from_file(&params, "ai.ini");
+ *    set_player_params(strategies, PLAYER_A, &params);
+ * 
+ * 5. Access parameters in strategy:
+ *    float defend_prob = params->params.random.behavior_defend_prob;
+ *    if(genRand(&ctx->rng) < defend_prob) {
+ *        // Defend
+ *    }
+ * 
+ * 6. Run calibration:
+ *    ./oracle_calibrate 1  # Run example 1
+ *    # Results saved to random_best_params.ini
+ *    # Copy optimal values to ai.ini
+ */

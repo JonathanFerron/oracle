@@ -13,7 +13,7 @@
 #include "card_actions.h"
 #include "debug.h"
 
-extern MTRand MTwister_rand_struct;
+//extern MTRand MTwister_rand_struct;
 
 // Standalone Auto mode code
 int run_mode_stda_auto(config_t* cfg)

@@ -1,0 +1,163 @@
+# Oracle AI Configuration File
+# Format: key = value (one parameter per line)
+# Comments start with # or ;
+# Boolean values: true/false, yes/no, 1/0
+
+# ========================================================================
+# RANDOM STRATEGY
+# ========================================================================
+[Random]
+behavior_defend_prob = 0.47
+threshold_mulligan_power = 4.98
+enabled = true
+
+# ========================================================================
+# BALANCED RULES STRATEGY
+# ========================================================================
+[BalancedRules]
+# Resource target formulas
+# target_cash = slope * (opp_energy - 8) + intercept
+target_cash_slope = 0.2088        # 19/91
+target_cash_intercept = 8.0
+target_cards_slope = 0.0549       # 5/91
+target_cards_intercept = 3.0
+
+# Defense parameters
+threshold_defense_beta = 1.0      # Variance multiplier
+
+# Behavior
+behavior_late_game_aggro = 1.2    # Aggression boost in late game
+threshold_mulligan_power = 4.98
+
+enabled = true
+
+# ========================================================================
+# HEURISTIC STRATEGY
+# ========================================================================
+[Heuristic]
+# Advantage function: Adv = ε*Energy + γ*Cards + δ*Cash
+weight_energy_advantage = 1.0     # epsilon
+weight_cards_advantage = 0.15     # gamma
+weight_cash_advantage = 1.0       # delta
+
+# Dynamic adjustments
+weight_energy_critical_mult = 1.5 # Multiply ε when critical
+weight_cards_decay_rate = 0.01    # Decay γ as opp weakens
+weight_cash_decay_rate = 0.01     # Decay δ as opp weakens
+
+# Behavior
+threshold_mulligan_power = 4.98
+
+enabled = true
+
+# ========================================================================
+# HBT HYBRID STRATEGY (Heuristic-Balanced-Tactical)
+# ========================================================================
+[HBT_Hybrid]
+# From Balanced Rules
+target_cash_slope = 0.2088
+target_cash_intercept = 8.0
+target_cards_slope = 0.0549
+target_cards_intercept = 3.0
+threshold_defense_beta = 1.0
+
+# From Heuristic
+weight_energy_advantage = 1.0
+weight_cards_advantage = 0.15
+weight_cash_advantage = 1.0
+
+# From Tactical
+behavior_aggression_base = 0.5        # Base aggression factor
+behavior_aggression_energy = 0.003    # Per energy point advantage
+behavior_aggression_low_opp = 0.35    # Bonus when opp < 20 energy
+behavior_aggression_low_self = -0.4   # Penalty when self < 20 energy
+
+# Dynamic adjustments
+weight_energy_critical_mult = 1.5
+threshold_combo_min_bonus = 5
+
+# Behavior
+threshold_mulligan_power = 4.98
+
+enabled = true
+
+# ========================================================================
+# SIMPLE MONTE CARLO STRATEGY
+# ========================================================================
+[SimpleMC]
+# Simulation parameters
+limit_max_simulations = 100       # Sims per move
+
+# Rollout parameters
+rollout_random_depth = 5          # Use random after N moves
+rollout_use_heuristic = false     # Use heuristic instead of random
+
+# Move filtering
+threshold_combo_min_bonus = 5.0   # Min combo to consider
+limit_max_moves_to_eval = 30      # Max moves to evaluate
+
+# Behavior
+threshold_mulligan_power = 4.98
+
+enabled = true
+
+# ========================================================================
+# PROGRESSIVE MONTE CARLO STRATEGY
+# ========================================================================
+[ProgressiveMC]
+# Progressive pruning stages
+limit_stage1_simulations = 100    # Initial sims per move
+limit_stage2_simulations = 200    # After first prune
+limit_stage3_simulations = 400    # After second prune
+limit_stage4_simulations = 800    # Final stage
+
+# Pruning thresholds (keep top N^ratio moves)
+threshold_stage1_keep_ratio = 0.75  # Keep N^0.75 moves
+threshold_stage2_keep_ratio = 0.50  # Keep N^0.50 moves
+threshold_stage3_keep_ratio = 0.25  # Keep N^0.25 moves
+
+# Confidence-based pruning
+threshold_confidence_level = 1.96   # Z-score for 95% CI
+
+# Rollout parameters
+rollout_random_depth = 5
+rollout_use_heuristic = false
+
+# Behavior
+threshold_mulligan_power = 4.98
+
+enabled = true
+
+# ========================================================================
+# INFORMATION SET MCTS
+# ========================================================================
+[ISMCTS]
+# Search parameters
+limit_max_iterations = 1000       # Max MCTS iterations
+limit_max_time_ms = 5000          # Max time (milliseconds)
+
+# UCT/PUCT parameters
+search_exploration_constant = 1.414  # C in UCT (sqrt(2))
+search_use_puct = true            # Use PUCT instead of UCT
+
+# Prior probability (if using PUCT)
+prior_use_heuristic = true        # Use heuristic for priors
+weight_energy_advantage = 1.0     # For prior calculation
+weight_cards_advantage = 0.15
+weight_cash_advantage = 1.0
+
+# Rollout parameters
+rollout_random_depth = 5
+rollout_use_heuristic = true      # Better rollouts
+
+# Tree management
+search_reuse_tree = true          # Reuse between turns
+limit_max_tree_nodes = 10000      # Max nodes in memory
+
+# Information set handling
+limit_determinizations = 1        # Determinizations per iteration
+
+# Behavior
+threshold_mulligan_power = 4.98
+
+enabled = true

@@ -1,0 +1,182 @@
+// ai_calibration.h
+// AI parameter calibration and optimization framework
+
+#ifndef AI_CALIBRATION_H
+#define AI_CALIBRATION_H
+
+#include "ai_params.h"
+#include "game_types.h"
+#include "game_context.h"
+
+// ========================================================================
+// CALIBRATION CONFIGURATION
+// ========================================================================
+
+typedef enum {
+    OPT_GRID_SEARCH,        // Exhaustive grid search
+    OPT_RANDOM_SEARCH,      // Random parameter sampling
+    OPT_GENETIC_ALGORITHM,  // Evolutionary optimization
+    OPT_GRADIENT_DESCENT,   // Local gradient-based
+    OPT_BAYESIAN            // Bayesian optimization
+} OptimizationMethod;
+
+typedef struct {
+    OptimizationMethod method;
+    
+    // Grid search parameters
+    uint8_t grid_points_per_param;    // e.g., 5 points per parameter
+    
+    // Random search parameters
+    uint16_t random_samples;          // e.g., 100 random combinations
+    
+    // Genetic algorithm parameters
+    uint16_t ga_population_size;      // e.g., 50
+    uint16_t ga_generations;          // e.g., 20
+    float ga_mutation_rate;           // e.g., 0.1
+    float ga_crossover_rate;          // e.g., 0.7
+    
+    // Evaluation parameters
+    uint16_t games_per_evaluation;    // e.g., 100 games
+    uint32_t random_seed;             // For reproducibility
+    
+    // Opponent configuration
+    StrategyType opponent_type;       // Strategy to optimize against
+    AIParams opponent_params;         // Opponent's parameters
+    
+    // Output
+    char output_file[256];            // Save results to CSV
+    bool verbose;                     // Print progress
+} CalibrationConfig;
+
+// ========================================================================
+// PARAMETER RANGE SPECIFICATION
+// ========================================================================
+
+typedef struct {
+    float min;
+    float max;
+    float step;           // For grid search
+    bool log_scale;       // Use logarithmic spacing
+} FloatParamRange;
+
+typedef struct {
+    uint16_t min;
+    uint16_t max;
+    uint16_t step;
+} IntParamRange;
+
+// Container for all parameter ranges of a strategy
+typedef struct {
+    StrategyType type;
+    uint8_t num_params;
+    char param_names[20][64];  // Max 20 parameters
+    
+    union {
+        FloatParamRange float_range;
+        IntParamRange int_range;
+    } ranges[20];
+    
+    bool is_int[20];  // Track type for each parameter
+} ParamRanges;
+
+// ========================================================================
+// EVALUATION RESULTS
+// ========================================================================
+
+typedef struct {
+    AIParams params;              // Parameter configuration tested
+    
+    // Performance metrics
+    uint16_t wins;                // Games won
+    uint16_t losses;              // Games lost
+    uint16_t draws;               // Games drawn
+    float win_rate;               // wins / (wins + losses + draws)
+    
+    // Game statistics
+    float avg_game_length;        // Average turns per game
+    float avg_final_energy;       // Average energy when winning
+    
+    // Confidence intervals
+    float win_rate_lower_95;      // 95% CI lower bound
+    float win_rate_upper_95;      // 95% CI upper bound
+    
+    // Computational cost
+    float evaluation_time_sec;    // Time to evaluate
+} EvaluationResult;
+
+// ========================================================================
+// CALIBRATION SESSION
+// ========================================================================
+
+typedef struct {
+    CalibrationConfig config;
+    ParamRanges param_ranges;
+    
+    // Results tracking
+    EvaluationResult* results;    // Array of results
+    uint16_t num_evaluations;     // Number completed
+    uint16_t max_evaluations;     // Array capacity
+    
+    // Best found
+    EvaluationResult best_result;
+    bool has_best;
+    
+    // Progress tracking
+    uint16_t evaluations_completed;
+    uint16_t evaluations_total;
+} CalibrationSession;
+
+// ========================================================================
+// CALIBRATION FUNCTIONS
+// ========================================================================
+
+// Session management
+CalibrationSession* calibration_create_session(CalibrationConfig* config,
+                                               ParamRanges* ranges);
+void calibration_destroy_session(CalibrationSession* session);
+
+// Define parameter ranges for a strategy
+ParamRanges* calibration_create_default_ranges(StrategyType type);
+void calibration_add_float_param(ParamRanges* ranges, const char* name,
+                                 float min, float max, float step, 
+                                 bool log_scale);
+void calibration_add_int_param(ParamRanges* ranges, const char* name,
+                               uint16_t min, uint16_t max, uint16_t step);
+
+// Run optimization
+int calibration_run(CalibrationSession* session);
+
+// Individual optimization methods
+int calibration_grid_search(CalibrationSession* session);
+int calibration_random_search(CalibrationSession* session);
+int calibration_genetic_algorithm(CalibrationSession* session);
+
+// Evaluate a parameter configuration
+EvaluationResult calibration_evaluate(AIParams* params,
+                                      CalibrationConfig* config,
+                                      GameContext* ctx);
+
+// Results analysis
+void calibration_print_results(CalibrationSession* session);
+void calibration_export_csv(CalibrationSession* session, const char* filename);
+void calibration_save_best(CalibrationSession* session, const char* filename);
+
+// Statistical utilities
+void calibration_compute_confidence_interval(EvaluationResult* result);
+int calibration_compare_results(const void* a, const void* b); // For qsort
+
+// ========================================================================
+// HELPER FUNCTIONS
+// ========================================================================
+
+// Generate random parameter value in range
+float calibration_random_float_in_range(FloatParamRange* range, 
+                                       GameContext* ctx);
+uint16_t calibration_random_int_in_range(IntParamRange* range,
+                                        GameContext* ctx);
+
+// Apply parameter to AIParams struct
+void calibration_set_param_by_name(AIParams* params, const char* name,
+                                   float value);
+
+#endif // AI_CALIBRATION_H

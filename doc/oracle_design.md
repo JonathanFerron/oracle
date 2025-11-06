@@ -75,6 +75,7 @@
 ### What's Working ✅
 
 **Core Game Engine**:
+
 - 120-card deck with full attributes
 - Game state management (energy, cash, hands, decks)
 - Combat resolution with dice rolling
@@ -83,16 +84,19 @@
 - Card playing (champions, draw, cash)
 
 **AI Framework**:
+
 - Strategy function pointer system
 - Random strategy (functional baseline)
 
 **User Interface**:
+
 - Command-line argument parsing
 - CLI mode (human vs AI)
 - ANSI color output with UTF-8 symbols
 - Basic game display and input
 
 **Infrastructure**:
+
 - GameContext pattern for RNG and config
 - Debug macro system (compile-time)
 - Mersenne Twister RNG
@@ -101,19 +105,20 @@
 ### What's Missing ⚠️
 
 **Game Logic Gaps**:
+
 - Mulligan system (Player B, 2 cards)
 - Discard to 7 cards (end of turn)
 - Recall mechanic (draw/recall cards)
-- Phase transition validation
-- Win/draw condition detection
 
 **AI Strategies**:
+
 - Balanced rules AI
 - Heuristic AI
 - All Monte Carlo variants
 - MCTS implementations
 
 **Features**:
+
 - Save/load game state
 - Configuration file system
 - CSV export for simulations
@@ -132,7 +137,7 @@
 struct card {
     CardType card_type;
     uint8_t cost;
-    
+
     // Champion fields
     uint8_t champion_id;
     uint8_t defense_dice;        // d4, d6, d8, d12, d20
@@ -140,24 +145,25 @@ struct card {
     ChampionColor color;         // RED, INDIGO, ORANGE
     ChampionSpecies species;     // 15 species total
     ChampionOrder order;         // ORDER_A through ORDER_E
-    
+
     // Draw card fields
     uint8_t draw_num;            // 2 or 3
     uint8_t choose_num;          // For recall (future)
-    
+
     // Calculated efficiency values
     float expected_attack;
     float expected_defense;
     float attack_efficiency;
     float defense_efficiency;
     float power;                 // Overall card value
-    
+
     // Cash card fields
     uint8_t exchange_cash;       // 5 lunas
 };
 ```
 
 **Full Deck**: 120 cards total
+
 - 102 champions (34 per color, 5 orders, 15 species)
 - 9 draw-2 cards (cost 1)
 - 6 draw-3 cards (cost 2)
@@ -174,12 +180,12 @@ struct gamestate {
     uint16_t current_cash_balance[2];     // Luna for each player
     uint8_t current_energy[2];            // Health for each player
     bool someone_has_zero_energy;         // Game end flag
-    
+
     struct deck_stack deck[2];            // Draw piles (40 cards each)
     struct HDCLList hand[2];              // Cards in hand
     struct HDCLList discard[2];           // Discard piles
     struct HDCLList combat_zone[2];       // Cards in combat (max 3)
-    
+
     uint16_t turn;                        // Turn counter (1-based)
     GameStateEnum game_state;             // PLAYER_A_WINS, PLAYER_B_WINS, DRAW, ACTIVE
     TurnPhase turn_phase;                 // ATTACK or DEFENSE
@@ -188,6 +194,7 @@ struct gamestate {
 ```
 
 **Key Design Decisions**:
+
 - Separate deck/hand/discard/combat for each player
 - Stack for deck (LIFO), circular linked list for others
 - Turn counter includes both players (turn 1 = A attacks, turn 2 = B attacks)
@@ -196,11 +203,13 @@ struct gamestate {
 ### Data Structure Implementations
 
 **Deck Stack** (`deckstack.c`):
+
 - Fixed-size array (40 cards max)
 - LIFO operations (push/pop)
 - Used for draw pile only
 
 **Hand/Discard/Combat Circular Linked List** (`hdcll.c`):
+
 - Dynamic linked list
 - Insert at beginning (O(1))
 - Remove by value or index
@@ -317,7 +326,7 @@ void draw_1_card(struct gamestate* gstate, PlayerID player, GameContext* ctx) {
         shuffle_discard_and_form_deck(&gstate->discard[player], 
                                       &gstate->deck[player], ctx);
     }
-    
+
     // Draw top card from deck
     uint8_t card_idx = DeckStk_pop(&gstate->deck[player]);
     HDCLL_insertNodeAtBeginning(&gstate->hand[player], card_idx);
@@ -325,6 +334,7 @@ void draw_1_card(struct gamestate* gstate, PlayerID player, GameContext* ctx) {
 ```
 
 **Edge Cases**:
+
 - What if discard is also empty? (Game design question - should never happen?)
 - First player on turn 1 doesn't draw
 
@@ -366,12 +376,16 @@ free_strategy_set(strategies);
 ### Adding New Strategy
 
 1. Create `src/ai/strategy_name.c`
+
 2. Implement attack and defense functions with signature:
+   
    ```c
    void strategyname_attack_strategy(struct gamestate* gstate, GameContext* ctx);
    void strategyname_defense_strategy(struct gamestate* gstate, GameContext* ctx);
    ```
+
 3. Functions modify `gstate` directly (play cards, update combat zone)
+
 4. Register strategy in mode initialization
 
 ### Random Strategy Example
@@ -380,17 +394,17 @@ free_strategy_set(strategies);
 // In strat_random.c
 void random_attack_strategy(struct gamestate* gstate, GameContext* ctx) {
     PlayerID attacker = gstate->current_player;
-    
+
     // Build list of affordable cards
     uint8_t affordable[hand_size];
     uint8_t count = 0;
-    
+
     for each card in hand {
         if (card.cost <= cash_balance) {
             affordable[count++] = card_idx;
         }
     }
-    
+
     // Play random affordable card
     if (count > 0) {
         uint8_t chosen = RND_randn(count, ctx);
@@ -420,11 +434,13 @@ int calculate_combo_bonus(CombatCard *cards, int num_cards, DeckType deck_type);
 ```
 
 **Algorithm Priority** (Random Deck):
+
 1. Species matches (2+ same species)
 2. Order matches (2+ same order, no species match)
 3. Color matches (2+ same color, no species/order match)
 
 **Example**:
+
 - 3 Humans (same species): +16
 - 2 Humans + 1 Elf (same order A): +14
 - 2 Humans + 1 Hobbit (same color): +13
@@ -439,26 +455,28 @@ See `combo_bonus.c` for full decision tree.
 void resolve_combat(struct gamestate* gstate, GameContext* ctx) {
     int16_t total_attack = calculate_total_attack(gstate, attacker, ctx);
     int16_t total_defense = calculate_total_defense(gstate, defender, ctx);
-    
+
     int16_t damage = max(total_attack - total_defense, 0);
     gstate->current_energy[defender] -= damage;
-    
+
     if (gstate->current_energy[defender] == 0) {
         gstate->someone_has_zero_energy = true;
         gstate->game_state = (attacker == PLAYER_A) ? 
                              PLAYER_A_WINS : PLAYER_B_WINS;
     }
-    
+
     clear_combat_zones(gstate, ctx);
 }
 ```
 
 **Attack Calculation**:
+
 ```
 Total Attack = Σ(attack_base + RND_dn(defense_dice)) + combo_bonus
 ```
 
 **Defense Calculation**:
+
 ```
 Total Defense = Σ(RND_dn(defense_dice)) + combo_bonus
 ```
@@ -477,12 +495,14 @@ Total Defense = Σ(RND_dn(defense_dice)) + combo_bonus
 ### Features
 
 **Display**:
+
 - ANSI color codes (player names, card types, energy, lunas)
 - UTF-8 symbols (❤ energy, ☾ luna, ⚔ attack, 🛡 defense)
 - Card display with species, dice, cost
 - Game status (energy, lunas, hand size, deck size)
 
 **Commands**:
+
 - `cham 1 2 3` - Play champions at hand indices 1, 2, 3
 - `draw 2` - Play draw/recall card at index 2
 - `cash 1` - Play cash exchange card at index 1
@@ -492,6 +512,7 @@ Total Defense = Σ(RND_dn(defense_dice)) + combo_bonus
 - `exit` - Quit game
 
 **Input Handling**:
+
 - Parse command string
 - Validate card indices (1-based for user, convert to 0-based)
 - Check affordability (cost ≤ cash)
@@ -512,7 +533,7 @@ while (!game_over) {
         // AI plays
         strategies->attack_strategy[AI](gstate, ctx);
     }
-    
+
     // ... defense phase, combat, etc.
 }
 ```
@@ -579,11 +600,13 @@ oracle/
 **Target**: ≤500 lines actual code per file
 
 **Current Status**:
+
 - ✅ Most core files: <300 lines
 - ⚠️ stda_cli.c: 550 lines (needs split)
 - ⚠️ game_constants.c: 350 lines (mostly data, acceptable)
 
 **Refactoring Plan**:
+
 ```
 stda_cli.c (550 lines) → split into:
 ├── cli_display.c (~250 lines)  # Display functions
@@ -605,11 +628,13 @@ Client A  ←────────────────→  Server  ←─
 ```
 
 **Key Concepts**:
+
 - **Server**: Maintains full `GameState`, validates all actions
 - **Client**: Maintains `VisibleGameState`, sends actions, receives updates
 - **Protocol**: Action messages (text and binary), state sync messages
 
 **File Organization**:
+
 ```
 src/
 ├── shared/          # Types used by both client and server
@@ -632,6 +657,7 @@ SDL3 Event Loop
 ```
 
 **Modular Design**:
+
 ```
 src/gui/
 ├── gui_main.c           # SDL initialization, event loop
@@ -643,6 +669,7 @@ src/gui/
 ```
 
 **Asset Pipeline**:
+
 ```
 assets/
 ├── cards/artwork/       # 102 champion portraits
@@ -654,6 +681,7 @@ assets/
 ### Rating System Architecture (Phase 6)
 
 **Bradley-Terry Model**:
+
 ```
 Each player has:
 - Rating (1-99, displayed)
@@ -665,6 +693,7 @@ Keeper AI = benchmark at rating 50 (strength 1.0)
 ```
 
 **Integration**:
+
 ```c
 // After each match
 MatchResult result = {player1_id, player2_id, wins1, wins2, draws};
@@ -675,6 +704,7 @@ double win_prob = rating_win_probability(&rating_system, p1, p2);
 ```
 
 **Files**:
+
 ```
 src/rating/
 ├── rating.c/h           # Core Bradley-Terry logic
@@ -689,21 +719,25 @@ src/rating/
 ### Adding a New Module
 
 1. **Design Phase**:
+   
    - Write design notes in `ideas/`
    - Define public API in header file
    - Consider function size limits (30 lines)
 
 2. **Implementation Phase**:
+   
    - Create `.c` and `.h` files
    - Implement one function at a time
    - Keep functions short and focused
 
 3. **Integration Phase**:
+   
    - Update `Makefile`
    - Add to appropriate mode(s)
    - Update `DESIGN.md`
 
 4. **Testing Phase**:
+   
    - Write unit tests
    - Test integration with existing code
    - Run with valgrind (check leaks)
@@ -711,6 +745,7 @@ src/rating/
 ### Code Quality Checklist
 
 Before committing:
+
 - [ ] All functions ≤30 lines
 - [ ] All files ≤500 lines
 - [ ] No compiler warnings (-Wall -Wextra)
@@ -723,11 +758,12 @@ Before committing:
 ### Common Patterns
 
 **Error Handling**:
+
 ```c
 // Return bool for success/failure
 bool do_thing(Args* args) {
     if (!validate(args)) return false;
-    
+
     // Do the thing
     return true;
 }
@@ -740,6 +776,7 @@ if (!do_thing(&args)) {
 ```
 
 **Memory Management**:
+
 ```c
 // Functions that allocate must have matching free function
 Thing* create_thing(void);
@@ -752,6 +789,7 @@ free(t);
 ```
 
 **RNG Usage**:
+
 ```c
 // Always use GameContext, never global RNG
 uint8_t roll = RND_dn(6, ctx);  // Roll d6
@@ -800,10 +838,12 @@ uint8_t choice = RND_randn(n, ctx);  // Choose 0 to n-1
 ### Optimization Strategies
 
 **Don't Optimize Yet**: Current performance is acceptable for:
+
 - 10,000 game simulations in <5 minutes
 - Interactive CLI with instant response
 
 **Future Optimizations** (if needed):
+
 - Cache combo bonus for card combinations
 - Use memory pools for linked list nodes
 - Profile with gprof to find actual bottlenecks
@@ -815,13 +855,15 @@ uint8_t choice = RND_randn(n, ctx);  // Choose 0 to n-1
 ### Unit Tests
 
 Test individual functions in isolation:
+
 - `test_combo_bonus.c`: All combo scenarios
 - `test_combat.c`: Dice distribution, damage calculation
-- `test_turn_logic.c`: Phase transitions, turn counter
+- 
 
 ### Integration Tests
 
 Test modules working together:
+
 - Full game Random vs Random (should work without crashes)
 - Statistics (10,000 games should give ~50% win rate)
 - CLI mode (manual testing for now)
@@ -829,6 +871,7 @@ Test modules working together:
 ### System Tests
 
 Test complete workflows:
+
 - Automated simulation produces reasonable results
 - Interactive CLI allows full gameplay
 - Save/load preserves game state correctly (future)

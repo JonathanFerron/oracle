@@ -243,71 +243,9 @@
         </header>
         
         <div class="content">
-            <!-- Executive Summary -->
-            <div class="section">
-                <h2>Executive Summary</h2>
-                <div class="summary-box">
-                    <p>This is a <strong>well-structured card game implementation</strong> with clear separation of concerns. The codebase demonstrates good modularity, consistent naming conventions, and thoughtful organization. However, there are opportunities to improve maintainability, reduce coupling, and prepare for the ambitious future objectives outlined in TODO.md.</p>
-                </div>
-            </div>
-
-            <!-- Strengths -->
-            <div class="section">
-                <h2>✨ Strengths</h2>
-                
-                <h3>1. Excellent Module Organization</h3>
-                <ul class="strength-list">
-                    <li>Clear separation between game logic, AI strategies, and data structures</li>
-                    <li>Consistent file naming (<code class="inline-code">module.h</code> / <code class="inline-code">module.c</code> pairs)</li>
-                    <li>Well-documented module responsibilities</li>
-                </ul>
-                
-                <h3>2. Good Abstraction Layers</h3>
-                <ul class="strength-list">
-                    <li>Strategy pattern implementation allows easy AI swapping</li>
-                    <li>Combat logic cleanly separated from turn flow</li>
-                    <li>Card actions abstracted into dedicated module</li>
-                </ul>
-                
-                <h3>3. Type Safety</h3>
-                <ul class="strength-list">
-                    <li>Extensive use of enums for type-safe state representation</li>
-                    <li>Consistent use of fixed-width integers (<code class="inline-code">uint8_t</code>, <code class="inline-code">uint16_t</code>)</li>
-                </ul>
-                
-                <h3>4. Documentation</h3>
-                <ul class="strength-list">
-                    <li>Comprehensive documentation of game rules and mechanics</li>
-                    <li>Good inline comments explaining complex logic</li>
-                    <li>Detailed TODO with clear roadmap</li>
-                </ul>
-            </div>
-
+            
             <!-- Critical Issues -->
-            <div class="section">
-                <h2>🔴 Critical Issues</h2>
-                
-                <h3>1. Global State Management <span class="status-badge critical">🔴 CRITICAL</span></h3>
-                <p><strong>Problem:</strong> Multiple modules rely on global variables:</p>
-                <pre><code>// From multiple files:
-extern const bool debug_enabled;
-extern MTRand MTwister_rand_struct;</code></pre>
-                
-                <div class="recommendation-box">
-                    <strong>Recommendation:</strong> Create a context structure to pass state explicitly:
-                    <pre><code>// New: game_context.h
-typedef struct {
-    bool debug_enabled;
-    MTRand rng;
-    config_t* config;
-    // Future: network_context, ui_context, etc.
-} GameContext;
-
-// Pass context to functions that need it
-void play_turn(GameContext* ctx, struct gamestats* gstats, 
-               struct gamestate* gstate, StrategySet* strategies);</code></pre>
-                </div>
-                
+            <div class="section">                                
                 <h3>2. Memory Management Concerns <span class="status-badge critical">🔴 CRITICAL</span></h3>
                 <p><strong>Problem:</strong> Inconsistent memory ownership patterns:</p>
                 <pre><code>// card_actions.c - caller must free
@@ -421,10 +359,8 @@ if(genRand(&MTwister_rand_struct) > DEFENSE_PROBABILITY) return;</code></pre>
 } GameError;
 
 GameError DeckStk_pop_safe(struct deck_stack* deck, uint8_t* out);</code></pre>
-                </div>
+                </div>                
                 
-                <h3>3. Function Length <span class="status-badge excellent">✅ GOOD</span></h3>
-                <p>Most functions stay under 30 lines as specified. Excellent discipline!</p>
             </div>
 
             <!-- Module Reviews -->
@@ -477,8 +413,7 @@ GameError DeckStk_pop_safe(struct deck_stack* deck, uint8_t* out);</code></pre>
                     <h3><span class="priority">Priority 1</span> (Before adding more AI)</h3>
                     <ol>
                         <li>✅ <strong>Implement Action structure</strong> (TODO #3)</li>
-                        <li>✅ <strong>Add visibility system</strong> (TODO #2)</li>
-                        <li>🔧 <strong>Remove global state</strong> - Pass context explicitly</li>
+                        <li>✅ <strong>Add visibility system</strong> (TODO #2)</li>                        
                         <li>🔧 <strong>Document memory ownership</strong> - Add comments to allocation functions</li>
                     </ol>
                 </div>
@@ -515,27 +450,7 @@ GameError DeckStk_pop_safe(struct deck_stack* deck, uint8_t* out);</code></pre>
 ├── network/        # Future: server, client code
 ├── ui/             # Future: ui abstraction layer
 └── util/           # rnd, mtwister</code></pre>
-            </div>
-
-            <!-- Overall Grade -->
-            <div class="section">
-                <div class="grade-box">
-                    <div class="grade">B+</div>
-                    <h2 style="color: white; border: none; margin: 0;">Overall Assessment</h2>
-                    <p style="font-size: 1.1em; margin-top: 15px;">Solid foundation with clear vision. Well-structured and maintainable.</p>
-                </div>
-                
-                <h3>Key Strength</h3>
-                <p>✓ Modular design that allows incremental improvement without rewrites.</p>
-                
-                <h3>Key Risk</h3>
-                <p>⚠ Growing complexity without addressing global state will make testing and networking very difficult.</p>
-                
-                <h3>Final Recommendation</h3>
-                <div class="recommendation-box">
-                    <strong>Invest 1-2 weeks addressing Priority 1 items before implementing more AI strategies.</strong> This will pay dividends when you reach MCTS and network play. The TODO list is comprehensive and well-thought-out. The suggested Action structure and visibility system are exactly right for enabling advanced AI strategies.
-                </div>
-            </div>
+            </div>            
         </div>
     </div>
 </body>

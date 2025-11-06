@@ -1,0 +1,371 @@
+// ai_params.h
+// AI parameter structures and management
+// Each AI strategy has its own parameter struct with sensible defaults
+
+#ifndef AI_PARAMS_H
+#define AI_PARAMS_H
+
+#include <stdint.h>
+#include <stdbool.h>
+
+// ========================================================================
+// NAMING CONVENTION FOR AI PARAMETERS
+// ========================================================================
+// Format: {category}_{subcategory}_{parameter_name}
+//
+// Categories:
+//   - behavior_*    : Probability/threshold parameters (0.0-1.0)
+//   - target_*      : Resource target formulas
+//   - weight_*      : Advantage function weights
+//   - threshold_*   : Decision thresholds
+//   - limit_*       : Hard limits (integer counts)
+//   - rollout_*     : Monte Carlo simulation parameters
+//   - search_*      : Tree search parameters
+//   - prior_*       : Prior probability parameters (MCTS)
+//
+// Examples:
+//   - behavior_defend_prob        : Probability of defending
+//   - target_cash_slope           : Slope in cash target formula
+//   - weight_energy_advantage     : Weight for energy in advantage
+//   - threshold_mulligan_power    : Power threshold for mulligan
+//   - limit_max_simulations       : Maximum simulation count
+//   - rollout_random_depth        : Depth before random rollout
+// ========================================================================
+
+// Base strategy type enum
+typedef enum {
+    STRAT_RANDOM,
+    STRAT_BALANCED_RULES,
+    STRAT_HEURISTIC,
+    STRAT_HBT_HYBRID,
+    STRAT_SIMPLE_MC,
+    STRAT_PROGRESSIVE_MC,
+    STRAT_ISMCTS,
+    STRAT_COUNT
+} StrategyType;
+
+// Strategy name strings
+extern const char* STRATEGY_NAMES[STRAT_COUNT];
+
+// ========================================================================
+// RANDOM STRATEGY PARAMETERS
+// ========================================================================
+typedef struct {
+    // Behavior parameters
+    float behavior_defend_prob;           // Probability of defending (0.0-1.0)
+    float threshold_mulligan_power;       // Power threshold for mulligan
+    
+    // Meta parameters
+    bool enabled;
+    char description[64];
+} RandomParams;
+
+// Default values
+#define RANDOM_PARAMS_DEFAULT { \
+    .behavior_defend_prob = 0.47f, \
+    .threshold_mulligan_power = 4.98f, \
+    .enabled = true, \
+    .description = "Random AI with tunable defense rate" \
+}
+
+// ========================================================================
+// BALANCED RULES STRATEGY PARAMETERS
+// ========================================================================
+typedef struct {
+    // Resource target formulas: target = slope * (opp_energy - 8) + intercept
+    float target_cash_slope;              // Cash target formula slope
+    float target_cash_intercept;          // Cash target formula intercept
+    float target_cards_slope;             // Cards target formula slope
+    float target_cards_intercept;         // Cards target formula intercept
+    
+    // Defense parameters
+    float threshold_defense_beta;         // Variance multiplier for defense
+    
+    // Behavior parameters
+    float behavior_late_game_aggro;       // Aggression boost in late game
+    float threshold_mulligan_power;       // Power threshold for mulligan
+    
+    // Meta parameters
+    bool enabled;
+    char description[64];
+} BalancedRulesParams;
+
+#define BALANCED_RULES_PARAMS_DEFAULT { \
+    .target_cash_slope = 0.2088f,         /* 19/91 */ \
+    .target_cash_intercept = 8.0f, \
+    .target_cards_slope = 0.0549f,        /* 5/91 */ \
+    .target_cards_intercept = 3.0f, \
+    .threshold_defense_beta = 1.0f, \
+    .behavior_late_game_aggro = 1.2f, \
+    .threshold_mulligan_power = 4.98f, \
+    .enabled = true, \
+    .description = "Balanced rules with resource management" \
+}
+
+// ========================================================================
+// HEURISTIC STRATEGY PARAMETERS
+// ========================================================================
+typedef struct {
+    // Advantage function weights
+    float weight_energy_advantage;        // Weight for energy delta (epsilon)
+    float weight_cards_advantage;         // Weight for cards delta (gamma)
+    float weight_cash_advantage;          // Weight for cash delta (delta)
+    
+    // Dynamic weight adjustments
+    float weight_energy_critical_mult;    // Energy weight multiplier in critical
+    float weight_cards_decay_rate;        // Cards weight decay as opp weakens
+    float weight_cash_decay_rate;         // Cash weight decay as opp weakens
+    
+    // Behavior parameters
+    float threshold_mulligan_power;       // Power threshold for mulligan
+    
+    // Meta parameters
+    bool enabled;
+    char description[64];
+} HeuristicParams;
+
+#define HEURISTIC_PARAMS_DEFAULT { \
+    .weight_energy_advantage = 1.0f, \
+    .weight_cards_advantage = 0.15f, \
+    .weight_cash_advantage = 1.0f, \
+    .weight_energy_critical_mult = 1.5f, \
+    .weight_cards_decay_rate = 0.01f, \
+    .weight_cash_decay_rate = 0.01f, \
+    .threshold_mulligan_power = 4.98f, \
+    .enabled = true, \
+    .description = "Heuristic with 1-move lookahead" \
+}
+
+// ========================================================================
+// HBT HYBRID STRATEGY PARAMETERS
+// ========================================================================
+typedef struct {
+    // Combines Balanced + Heuristic + Tactical
+    
+    // From Balanced Rules
+    float target_cash_slope;
+    float target_cash_intercept;
+    float target_cards_slope;
+    float target_cards_intercept;
+    float threshold_defense_beta;
+    
+    // From Heuristic
+    float weight_energy_advantage;
+    float weight_cards_advantage;
+    float weight_cash_advantage;
+    
+    // From Tactical
+    float behavior_aggression_base;       // Base aggression factor
+    float behavior_aggression_energy;     // Aggression per energy advantage
+    float behavior_aggression_low_opp;    // Bonus when opp low energy
+    float behavior_aggression_low_self;   // Penalty when self low energy
+    
+    // Dynamic adjustments
+    float weight_energy_critical_mult;
+    float threshold_combo_min_bonus;      // Min bonus to consider combo
+    
+    // Behavior parameters
+    float threshold_mulligan_power;
+    
+    // Meta parameters
+    bool enabled;
+    char description[64];
+} HBTHybridParams;
+
+#define HBT_HYBRID_PARAMS_DEFAULT { \
+    .target_cash_slope = 0.2088f, \
+    .target_cash_intercept = 8.0f, \
+    .target_cards_slope = 0.0549f, \
+    .target_cards_intercept = 3.0f, \
+    .threshold_defense_beta = 1.0f, \
+    .weight_energy_advantage = 1.0f, \
+    .weight_cards_advantage = 0.15f, \
+    .weight_cash_advantage = 1.0f, \
+    .behavior_aggression_base = 0.5f, \
+    .behavior_aggression_energy = 0.003f, \
+    .behavior_aggression_low_opp = 0.35f, \
+    .behavior_aggression_low_self = -0.4f, \
+    .weight_energy_critical_mult = 1.5f, \
+    .threshold_combo_min_bonus = 5, \
+    .threshold_mulligan_power = 4.98f, \
+    .enabled = true, \
+    .description = "HBT hybrid: Balanced + Heuristic + Tactical" \
+}
+
+// ========================================================================
+// SIMPLE MONTE CARLO STRATEGY PARAMETERS
+// ========================================================================
+typedef struct {
+    // Simulation counts
+    uint16_t limit_max_simulations;       // Simulations per move
+    
+    // Rollout parameters
+    uint8_t rollout_random_depth;         // Use random after N moves
+    bool rollout_use_heuristic;           // Use heuristic for rollouts
+    
+    // Move filtering
+    float threshold_combo_min_bonus;      // Min combo bonus to consider
+    uint8_t limit_max_moves_to_eval;      // Max moves to evaluate
+    
+    // Behavior parameters
+    float threshold_mulligan_power;
+    
+    // Meta parameters
+    bool enabled;
+    char description[64];
+} SimpleMCParams;
+
+#define SIMPLE_MC_PARAMS_DEFAULT { \
+    .limit_max_simulations = 100, \
+    .rollout_random_depth = 5, \
+    .rollout_use_heuristic = false, \
+    .threshold_combo_min_bonus = 5.0f, \
+    .limit_max_moves_to_eval = 30, \
+    .threshold_mulligan_power = 4.98f, \
+    .enabled = true, \
+    .description = "Simple Monte Carlo with fixed simulations" \
+}
+
+// ========================================================================
+// PROGRESSIVE MC STRATEGY PARAMETERS
+// ========================================================================
+typedef struct {
+    // Progressive pruning stages
+    uint16_t limit_stage1_simulations;    // Initial sims per move
+    uint16_t limit_stage2_simulations;    // Stage 2 sims
+    uint16_t limit_stage3_simulations;    // Stage 3 sims
+    uint16_t limit_stage4_simulations;    // Final stage sims
+    
+    // Pruning thresholds
+    float threshold_stage1_keep_ratio;    // Keep top N^0.75
+    float threshold_stage2_keep_ratio;    // Keep top N^0.5
+    float threshold_stage3_keep_ratio;    // Keep top N^0.25
+    
+    // Confidence-based pruning
+    float threshold_confidence_level;     // Confidence for CI (e.g., 1.96)
+    
+    // Rollout parameters
+    uint8_t rollout_random_depth;
+    bool rollout_use_heuristic;
+    
+    // Behavior parameters
+    float threshold_mulligan_power;
+    
+    // Meta parameters
+    bool enabled;
+    char description[64];
+} ProgressiveMCParams;
+
+#define PROGRESSIVE_MC_PARAMS_DEFAULT { \
+    .limit_stage1_simulations = 100, \
+    .limit_stage2_simulations = 200, \
+    .limit_stage3_simulations = 400, \
+    .limit_stage4_simulations = 800, \
+    .threshold_stage1_keep_ratio = 0.75f, \
+    .threshold_stage2_keep_ratio = 0.50f, \
+    .threshold_stage3_keep_ratio = 0.25f, \
+    .threshold_confidence_level = 1.96f, \
+    .rollout_random_depth = 5, \
+    .rollout_use_heuristic = false, \
+    .threshold_mulligan_power = 4.98f, \
+    .enabled = true, \
+    .description = "Progressive MC with staged pruning" \
+}
+
+// ========================================================================
+// INFORMATION SET MCTS PARAMETERS
+// ========================================================================
+typedef struct {
+    // Search parameters
+    uint16_t limit_max_iterations;        // Max MCTS iterations
+    uint16_t limit_max_time_ms;           // Max time in milliseconds
+    
+    // UCT/PUCT parameters
+    float search_exploration_constant;    // C in UCT formula (sqrt(2) typical)
+    bool search_use_puct;                 // Use PUCT instead of UCT
+    
+    // Prior probability parameters
+    bool prior_use_heuristic;             // Use heuristic for priors
+    float weight_energy_advantage;        // For prior calculation
+    float weight_cards_advantage;
+    float weight_cash_advantage;
+    
+    // Rollout parameters
+    uint8_t rollout_random_depth;
+    bool rollout_use_heuristic;
+    
+    // Tree management
+    bool search_reuse_tree;               // Reuse tree between turns
+    uint16_t limit_max_tree_nodes;        // Max nodes in tree
+    
+    // Information set handling
+    uint8_t limit_determinizations;       // Determinizations per iteration
+    
+    // Behavior parameters
+    float threshold_mulligan_power;
+    
+    // Meta parameters
+    bool enabled;
+    char description[64];
+} ISMCTSParams;
+
+#define ISMCTS_PARAMS_DEFAULT { \
+    .limit_max_iterations = 1000, \
+    .limit_max_time_ms = 5000, \
+    .search_exploration_constant = 1.414f, /* sqrt(2) */ \
+    .search_use_puct = true, \
+    .prior_use_heuristic = true, \
+    .weight_energy_advantage = 1.0f, \
+    .weight_cards_advantage = 0.15f, \
+    .weight_cash_advantage = 1.0f, \
+    .rollout_random_depth = 5, \
+    .rollout_use_heuristic = true, \
+    .search_reuse_tree = true, \
+    .limit_max_tree_nodes = 10000, \
+    .limit_determinizations = 1, \
+    .threshold_mulligan_power = 4.98f, \
+    .enabled = true, \
+    .description = "Information Set MCTS" \
+}
+
+// ========================================================================
+// UNIFIED AI PARAMETERS CONTAINER
+// ========================================================================
+typedef struct {
+    StrategyType type;
+    
+    union {
+        RandomParams random;
+        BalancedRulesParams balanced;
+        HeuristicParams heuristic;
+        HBTHybridParams hbt;
+        SimpleMCParams simple_mc;
+        ProgressiveMCParams progressive_mc;
+        ISMCTSParams ismcts;
+    } params;
+} AIParams;
+
+// ========================================================================
+// PARAMETER MANAGEMENT FUNCTIONS
+// ========================================================================
+
+// Initialize with defaults
+void ai_params_init_default(AIParams* ai_params, StrategyType type);
+
+// Load from config file
+int ai_params_load_from_file(AIParams* ai_params, const char* filename);
+
+// Save to config file
+int ai_params_save_to_file(const AIParams* ai_params, const char* filename);
+
+// Get parameter by name (for generic access)
+float ai_params_get_float(const AIParams* ai_params, const char* param_name);
+int ai_params_set_float(AIParams* ai_params, const char* param_name, float value);
+
+// Print parameters to stdout
+void ai_params_print(const AIParams* ai_params);
+
+// Validate parameters (check ranges)
+bool ai_params_validate(const AIParams* ai_params);
+
+#endif // AI_PARAMS_H

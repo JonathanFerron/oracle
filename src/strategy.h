@@ -11,7 +11,7 @@
 typedef void (*AttackStrategyFunc)(struct gamestate* gstate, GameContext* ctx);
 typedef void (*DefenseStrategyFunc)(struct gamestate* gstate, GameContext* ctx);
 
-// Strategy set for both players: TODO, split this so that a Strategy Set contains the strategy of only one player, and hence for AI against AI play, we will need 2 strategy set struct.
+// Strategy set for both players
 typedef struct
 { AttackStrategyFunc attack_strategy[2];   // One for each player
   DefenseStrategyFunc defense_strategy[2]; // One for each player

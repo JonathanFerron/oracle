@@ -151,6 +151,8 @@ int parse_options(int argc, char** argv, config_t* cfg)
   cfg->language = LANG_EN;
   cfg->use_random_seed = true;
   cfg->prng_seed = 0;
+  cfg->player_types[PLAYER_A] = INTERACTIVE_PLAYER;
+  cfg->player_types[PLAYER_B] = AI_PLAYER;
 
   while((opt = getopt_long_only(argc, argv,
                                 "hvVn:i:o:u::p::asltgSCLTGA:", 

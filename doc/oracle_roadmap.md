@@ -9,20 +9,10 @@
 ## Current Status
 
 **Active Work**: Phase 2 - Turn Logic & Game Loop Completion  
-**Recent Completion**: Phase 1 - Core Foundation (100%)
-
-### What's Working Now
-- ✅ Full 120-card deck with all champion attributes
-- ✅ Combo bonus calculator (random/monochrome/custom decks)
-- ✅ Combat resolution with dice rolling
-- ✅ Basic game state management
-- ✅ Random AI strategy (functional baseline)
-- ✅ CLI mode with color output and UTF-8 symbols
-- ✅ Command-line argument parsing framework
-- ✅ GameContext pattern for testability
 
 ### What Needs Work
-- ⚠️ Turn logic incomplete (phase transitions, mulligan)
+
+- ⚠️ Turn logic incomplete (mulligan)
 - ⚠️ Automated simulation mode needs refactoring
 - ⚠️ No save/load functionality
 - ⚠️ Limited AI strategies (only random implemented)
@@ -32,6 +22,7 @@
 ## Long-Term Vision
 
 ### Research Goals
+
 1. **AI Development**: Progress from random → rule-based → Monte Carlo → MCTS
 2. **Rating System**: Implement Bradley-Terry model to measure AI strength objectively
 3. **Architecture**: Clean client/server separation for future multiplayer
@@ -39,6 +30,7 @@
 5. **Cross-Platform**: Terminal (ncurses), desktop (SDL3), mobile (future)
 
 ### Learning Objectives
+
 - Advanced AI techniques (MCTS, information sets)
 - Network programming patterns
 - Statistical modeling (rating systems)
@@ -49,51 +41,28 @@
 
 ## Development Phases
 
-### Phase 1: Core Foundation ✅ COMPLETE
-
-**Status**: All critical components implemented and working
-
-#### 1.1 Data Structures ✅
-- [x] Card structure with all 120 cards
-- [x] Game state structure
-- [x] Deck management (stack-based)
-- [x] Hand/discard/combat zone (circular linked lists)
-- [x] GameContext pattern for RNG and config
-
-#### 1.2 Combat System ✅
-- [x] Combo bonus calculator (all deck types)
-- [x] Combat resolver with dice rolling
-- [x] Damage application
-- [x] Combat zone management
-
-#### 1.3 Basic Infrastructure ✅
-- [x] Command-line parsing (cmdline.c)
-- [x] Debug macro system (debug.h)
-- [x] Mersenne Twister RNG
-- [x] Color terminal output (CLI)
-
----
-
-### Phase 2: Complete Game Loop ⚠️ IN PROGRESS
+### Complete Game Loop ⚠️ IN PROGRESS
 
 **Status**: Core logic exists, needs refinement and testing
 
 #### 2.1 Turn Logic
+
 - [x] Basic turn structure (begin/attack/defense/end)
 - [x] Card drawing mechanics
 - [x] Luna collection
-- [ ] **Phase transition validation** [CURRENT FOCUS]
 - [ ] **Mulligan system** (Player B, 2 cards max)
-- [ ] **Discard to 7 cards** (end of turn)
-- [ ] Win condition detection
+- [ ] - [ ] **Discard to 7 cards** (end of turn)
+- [x] Win condition detection
 
 #### 2.2 Deck Management
+
 - [x] Shuffle and deal
 - [x] Draw from deck
 - [x] Reshuffle discard when deck empty
 - [ ] Edge case testing (empty deck, empty hand)
 
 #### 2.3 Card Actions
+
 - [x] Play champion cards
 - [x] Play draw/recall cards
 - [x] Play cash exchange cards
@@ -105,11 +74,12 @@
 
 ---
 
-### Phase 3: Standalone Modes
+### Standalone Modes
 
 **Status**: Partial implementation, needs completion
 
 #### 3.1 Automated Simulation Mode (stda.auto) ⚠️
+
 - [x] Basic simulation loop
 - [x] Random vs Random testing
 - [x] Win statistics
@@ -120,16 +90,18 @@
 - [ ] Support for multiple deck types
 
 #### 3.2 Interactive CLI Mode (stda.cli) ⚠️
+
 - [x] Human vs AI gameplay
 - [x] Command parsing (cham, draw, cash, pass)
 - [x] Color output with symbols
 - [ ] **Mulligan UI** for Player B
 - [ ] **Discard UI** at end of turn
 - [ ] Better error messages
-- [ ] Game state display improvements
+- [x] Game state display improvements
 - [ ] Save/load game state
 
 #### 3.3 Text UI Mode (stda.tui) 📋 PLANNED
+
 - [ ] ncurses-based full-screen UI
 - [ ] Real-time game board display
 - [ ] Scrolling message log
@@ -139,11 +111,12 @@
 
 ---
 
-### Phase 4: Basic AI Development
+### Basic AI Development
 
 **Status**: Foundation ready, implementation pending
 
-#### 4.1 Balanced Rules AI 📋
+#### Balanced Rules AI 📋
+
 - [x] Strategy framework (function pointers)
 - [ ] **Attack heuristics** (when to play champions vs draw)
 - [ ] **Defense heuristics** (when to defend vs decline)
@@ -153,7 +126,44 @@
 
 **Reference**: See `src/strat_balancedrules1.c` for design notes
 
-#### 4.2 Heuristic AI 📋
+Notes on adding AI strategy to player_config.c and stda_cli.c:
+
+```c
+// In player_config.c - get_ai_strategies()
+// When new strategy implemented, remove the warning:
+if(choice == 2) // Balanced strategy now available
+{
+    return AI_STRATEGY_BALANCED;
+}
+```
+
+```c
+// In stda_cli.c - initialize_cli_game()
+// Map AIStrategyType to actual function pointers:
+PlayerConfig* pconfig = (PlayerConfig*)cfg->player_config;
+
+for(int i = 0; i < 2; i++)
+{
+    if(cfg->player_types[i] == AI_PLAYER)
+    {
+        switch(pconfig->ai_strategies[i])
+        {
+            case AI_STRATEGY_RANDOM:
+                set_player_strategy(strategies, i,
+                    random_attack_strategy, random_defense_strategy);
+                break;
+            case AI_STRATEGY_BALANCED:
+                set_player_strategy(strategies, i,
+                    balanced_attack_strategy, balanced_defense_strategy);
+                break;
+            // Add other strategies as implemented
+        }
+    }
+}
+``` 
+
+#### Heuristic AI 📋
+
 - [ ] Power heuristic for cards (offensive/defensive value)
 - [ ] Advantage function (energy + cards + cash)
 - [ ] 1-move lookahead evaluation
@@ -162,7 +172,8 @@
 
 **Reference**: See `src/strat_heuristic1.c` for approach
 
-#### 4.3 Hybrid AI 📋
+#### Hybrid AI 📋
+
 - [ ] Combine Balanced + Heuristic
 - [ ] Situational decision logic (early/mid/late game)
 - [ ] Leading vs trailing tactics
@@ -175,6 +186,7 @@
 **Status**: Specification complete, implementation pending
 
 #### 5.1 CSV Export System 📋
+
 - [ ] Per-game detail export
 - [ ] Summary statistics export
 - [ ] Simparam string generation (deck_stratA_stratB_params)
@@ -184,6 +196,7 @@
 **Specification**: See `ideas/sim_export_spec.md`
 
 #### 5.2 Interactive Simulation UI (stda.sim) 📋
+
 - [ ] ncurses-based results display
 - [ ] Live progress updates
 - [ ] Parameter adjustment UI
@@ -192,6 +205,7 @@
 - [ ] Mode switching (sim ↔ tui)
 
 #### 5.3 Configuration System 📋
+
 - [ ] INI-style config file parser
 - [ ] Default configuration
 - [ ] Per-user config (~/.oraclerc)
@@ -207,6 +221,7 @@
 **Status**: Complete specification, ready for implementation
 
 #### 6.1 Bradley-Terry Implementation 📋
+
 - [ ] Core rating calculations (rating.c)
 - [ ] Adaptive learning rate (A function)
 - [ ] Keeper benchmark (rating = 50)
@@ -217,6 +232,7 @@
 **Specification**: See `ideas/rating system/rating system BT v2/`
 
 #### 6.2 Rating Integration 📋
+
 - [ ] Per-player rating tracking
 - [ ] Automatic updates after matches
 - [ ] Leaderboard display
@@ -225,6 +241,7 @@
 - [ ] Confidence intervals
 
 #### 6.3 Calibration Tools 📋
+
 - [ ] Heuristic parameter optimization
 - [ ] Non-champion card power values
 - [ ] Strategy strength measurement
@@ -237,6 +254,7 @@
 **Status**: Design notes exist, major research component
 
 #### 7.1 Simple Monte Carlo 📋
+
 - [ ] Action enumeration (get all legal moves)
 - [ ] Random rollout to game end
 - [ ] Win rate per action
@@ -246,12 +264,14 @@
 **Reference**: See `src/strat_simplemc1.c`
 
 #### 7.2 Progressive Pruning MC 📋
+
 - [ ] Multi-stage rollouts (100/200/400/800)
 - [ ] Confidence-based pruning
 - [ ] Top-N retention
 - [ ] Early stopping criteria
 
 #### 7.3 UCB1 / PUCB1 📋
+
 - [ ] Upper confidence bound for exploration
 - [ ] Prior probability estimation
 - [ ] Exploration-exploitation balance
@@ -263,6 +283,7 @@
 **Status**: Advanced research goal, longest-term objective
 
 #### 8.1 MCTS Core 📋
+
 - [ ] Tree node structure
 - [ ] Selection (UCT)
 - [ ] Expansion
@@ -272,18 +293,21 @@
 **Reference**: See `src/strat_ismcts1.c` for design notes
 
 #### 8.2 Information Set Handling 📋
+
 - [ ] Determinization (observer's view)
 - [ ] Hidden information management
 - [ ] Clone and randomize game state
 - [ ] Belief state tracking
 
 #### 8.3 Optimizations 📋
+
 - [ ] Tree reuse between turns
 - [ ] Transposition tables
 - [ ] RAVE (Rapid Action Value Estimation)
 - [ ] Parallelization (multi-threaded)
 
 #### 8.4 Neural Network Enhancement (Long-term) 🔮
+
 - [ ] Prior probability predictor
 - [ ] Value network
 - [ ] Policy network
@@ -296,6 +320,7 @@
 **Status**: Design complete, major refactoring required
 
 #### 9.1 Protocol Design 📋
+
 - [ ] Message types (action, gamestate, event)
 - [ ] Binary serialization
 - [ ] Text protocol (development/debugging)
@@ -305,6 +330,7 @@
 **Reference**: See DESIGN DOC section 6
 
 #### 9.2 Server Implementation 📋
+
 - [ ] Socket server (TCP)
 - [ ] Client connection management
 - [ ] Game room system
@@ -313,6 +339,7 @@
 - [ ] Broadcast system
 
 #### 9.3 Client Implementation 📋
+
 - [ ] Socket client
 - [ ] Local visible state tracking
 - [ ] Action submission
@@ -320,6 +347,7 @@
 - [ ] Reconnection handling
 
 #### 9.4 Code Separation 📋
+
 - [ ] Extract shared types (sh_*.c/h)
 - [ ] Server-only logic (sr_*.c/h)
 - [ ] Client-only logic (cl_*.c/h)
@@ -332,6 +360,7 @@
 **Status**: Detailed plan exists, major undertaking
 
 #### 10.1 SDL3 Desktop GUI 📋
+
 - [ ] SDL3 setup (Windows/Linux)
 - [ ] Card rendering system
 - [ ] Font management
@@ -343,6 +372,7 @@
 **Specification**: See `ideas/gui/oracle_sdl3_gui_plan.md`
 
 #### 10.2 Asset Pipeline 📋
+
 - [ ] Champion artwork (102 cards)
 - [ ] Card frame templates
 - [ ] Species icons (15)
@@ -352,6 +382,7 @@
 - [ ] Asset generation tools (Python)
 
 #### 10.3 Mobile Platforms (Future) 🔮
+
 - [ ] iOS port (Xcode + SDL3)
 - [ ] Android port (NDK + SDL3)
 - [ ] Touch input
@@ -363,6 +394,7 @@
 ## Proposed File Structure Reorganization
 
 ### Current Issues
+
 - Mixed concerns in `src/` (game logic, UI, strategies, modes)
 - No clear client/server separation
 - Growing file count hard to navigate
@@ -475,6 +507,7 @@ oracle/
 ```
 
 ### Migration Plan
+
 1. **Phase 1**: Create new directory structure (empty)
 2. **Phase 2**: Move files incrementally (one module at a time)
 3. **Phase 3**: Update Makefile for new paths
@@ -489,18 +522,21 @@ oracle/
 ## Research Questions to Explore
 
 ### AI Development
+
 - What's the minimum number of MCTS rollouts for good play?
 - How much does combo bonus affect optimal strategy?
 - Can rule-based AI approach MCTS performance?
 - What's the skill ceiling with perfect information?
 
 ### Game Balance
+
 - Are all three deck types (random/mono/custom) balanced?
 - Do certain species/orders dominate?
 - Is the mulligan rule fair?
 - What's the optimal starting cash amount?
 
 ### System Design
+
 - Best way to serialize game state for network play?
 - How to handle reconnection in multiplayer?
 - Efficient card representation for GUI rendering?
@@ -511,18 +547,21 @@ oracle/
 ## Success Criteria
 
 ### Short-Term (Current Phase)
+
 - [ ] Can simulate 10,000 games without crashes
 - [ ] Human can play full game via CLI
 - [ ] Random AI vs Random AI produces ~50% win rate
 - [ ] All game rules correctly implemented
 
 ### Medium-Term (Phases 4-6)
+
 - [ ] At least 3 different AI strategies working
 - [ ] Rating system accurately ranks AI strength
 - [ ] CSV export generates usable data for R/Python analysis
 - [ ] TUI mode provides good user experience
 
 ### Long-Term (Phases 7-10)
+
 - [ ] ISMCTS AI demonstrably stronger than rule-based
 - [ ] Network multiplayer works reliably
 - [ ] Cross-platform GUI runs on Windows/Linux/macOS
@@ -533,6 +572,7 @@ oracle/
 ## Contributing (to yourself, future self!)
 
 ### Before Starting a Module
+
 1. Read relevant DESIGN.md section
 2. Check TODO.md for current status
 3. Review any design notes in `ideas/`
@@ -540,6 +580,7 @@ oracle/
 5. Keep functions under 30 lines
 
 ### After Completing a Module
+
 1. Update TODO.md checkboxes
 2. Add entry to CHANGELOG (future)
 3. Update DESIGN.md if architecture changed
@@ -547,6 +588,7 @@ oracle/
 5. Push to GitHub for backup
 
 ### When Stuck
+
 1. Write design notes in `ideas/`
 2. Implement simplest version that works
 3. Refactor later (but not too much later)

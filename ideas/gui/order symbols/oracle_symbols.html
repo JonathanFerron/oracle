@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oracle Order Symbols</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            margin-bottom: 1rem;
+        }
+        
+        .download-all-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        
+        .download-all-btn:hover {
+            background: #059669;
+        }
+        
+        .symbols-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .symbol-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .symbol-card:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-4px);
+        }
+        
+        .symbol-preview {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+        
+        .symbol-preview svg {
+            width: 128px;
+            height: 128px;
+        }
+        
+        .symbol-info h3 {
+            color: white;
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .symbol-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 1rem;
+        }
+        
+        .unicode {
+            font-size: 2rem;
+        }
+        
+        .color-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .download-btn {
+            width: 100%;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        
+        .download-btn:hover {
+            background: #2563eb;
+        }
+        
+        .info-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 2rem;
+            color: white;
+            margin-bottom: 2rem;
+        }
+        
+        .info-section h2 {
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+        }
+        
+        .unicode-list {
+            background: #1f2937;
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: monospace;
+        }
+        
+        .unicode-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.5rem 0;
+        }
+        
+        .unicode-char {
+            font-size: 1.5rem;
+            width: 3rem;
+        }
+        
+        .unicode-code {
+            color: #10b981;
+        }
+        
+        .unicode-desc {
+            opacity: 0.8;
+        }
+        
+        .species-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        
+        .species-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        
+        .species-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .species-header span {
+            font-size: 1.5rem;
+        }
+        
+        .species-header strong {
+            font-size: 1.1rem;
+        }
+        
+        .species-list {
+            font-size: 0.875rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Oracle Order Symbols</h1>
+            <p>Simple SVG line art for CLI, TUI, GUI, and physical cards (6mm size)</p>
+            <button class="download-all-btn" onclick="downloadAll()">📥 Download All SVGs</button>
+        </div>
+
+        <div class="symbols-grid" id="symbolsGrid"></div>
+
+        <div class="info-section">
+            <h2>Unicode Characters for CLI/TUI</h2>
+            <div class="unicode-list">
+                <div class="unicode-item">
+                    <span class="unicode-char">☀</span>
+                    <code class="unicode-code">U+2600</code>
+                    <span class="unicode-desc">Order A - Dawn Light</span>
+                </div>
+                <div class="unicode-item">
+                    <span class="unicode-char">🍃</span>
+                    <code class="unicode-code">U+1F343</code>
+                    <span class="unicode-desc">Order B - Verdant Light</span>
+                </div>
+                <div class="unicode-item">
+                    <span class="unicode-char">🔥</span>
+                    <code class="unicode-code">U+1F525</code>
+                    <span class="unicode-desc">Order C - Ember Light</span>
+                </div>
+                <div class="unicode-item">
+                    <span class="unicode-char">⭐</span>
+                    <code class="unicode-code">U+2B50</code>
+                    <span class="unicode-desc">Order D - Eternal Light</span>
+                </div>
+                <div class="unicode-item">
+                    <span class="unicode-char">🌙</span>
+                    <code class="unicode-code">U+1F319</code>
+                    <span class="unicode-desc">Order E - Moonlight</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h2>Implementation Notes</h2>
+            <p style="margin-bottom: 0.75rem;"><strong>Physical Cards:</strong> SVGs scale perfectly to 6mm (approximately 17 pixels at 72 DPI or 23 pixels at 96 DPI)</p>
+            <p style="margin-bottom: 0.75rem;"><strong>Line Width:</strong> stroke-width="4-5" in 100x100 viewBox = clean lines at small sizes</p>
+            <p style="margin-bottom: 0.75rem;"><strong>Colors:</strong> Customizable via stroke attribute - match to your card color scheme</p>
+            <p style="margin-bottom: 0.75rem;"><strong>Format:</strong> Plain SVG with no dependencies - works everywhere</p>
+            <p><strong>CLI/TUI:</strong> Use the Unicode characters shown above (may need UTF-8 terminal support)</p>
+        </div>
+
+        <div class="info-section">
+            <h2>Species by Order Reference</h2>
+            <div class="species-grid">
+                <div class="species-card">
+                    <div class="species-header">
+                        <span>☀</span>
+                        <strong>Order A - Dawn Light</strong>
+                    </div>
+                    <div class="species-list">Human, Elf, Dwarf</div>
+                </div>
+                <div class="species-card">
+                    <div class="species-header">
+                        <span>🍃</span>
+                        <strong>Order B - Verdant Light</strong>
+                    </div>
+                    <div class="species-list">Hobbit, Faun, Centaur</div>
+                </div>
+                <div class="species-card">
+                    <div class="species-header">
+                        <span>🔥</span>
+                        <strong>Order C - Ember Light</strong>
+                    </div>
+                    <div class="species-list">Orc, Goblin, Minotaur</div>
+                </div>
+                <div class="species-card">
+                    <div class="species-header">
+                        <span>⭐</span>
+                        <strong>Order D - Eternal Light</strong>
+                    </div>
+                    <div class="species-list">Dragon, Cyclops, Fairy</div>
+                </div>
+                <div class="species-card">
+                    <div class="species-header">
+                        <span>🌙</span>
+                        <strong>Order E - Moonlight</strong>
+                    </div>
+                    <div class="species-list">Aven, Koatl, Lycan</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const symbols = {
+            sun: {
+                name: 'Order A - Dawn Light',
+                unicode: '☀',
+                color: '#FFA500',
+                svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <line x1="50" y1="10" x2="50" y2="25" stroke="#FFA500" stroke-width="4" stroke-linecap="round"/>
+  <line x1="50" y1="75" x2="50" y2="90" stroke="#FFA500" stroke-width="4" stroke-linecap="round"/>
+  <line x1="10" y1="50" x2="25" y2="50" stroke="#FFA500" stroke-width="4" stroke-linecap="round"/>
+  <line x1="75" y1="50" x2="90" y2="50" stroke="#FFA500" stroke-width="4" stroke-linecap="round"/>
+  <line x1="21" y1="21" x2="32" y2="32" stroke="#FFA500" stroke-width="4" stroke-linecap="round"/>
+  <line x1="68" y1="68" x2="79" y2="79" stroke="#FFA500" stroke-width="4" stroke-linecap="round"/>
+  <line x1="79" y1="21" x2="68" y2="32" stroke="#FFA500" stroke-width="4" stroke-linecap="round"/>
+  <line x1="32" y1="68" x2="21" y2="79" stroke="#FFA500" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="50" cy="50" r="18" fill="none" stroke="#FFA500" stroke-width="4"/>
+</svg>`
+            },
+            leaf: {
+                name: 'Order B - Verdant Light',
+                unicode: '🍃',
+                color: '#228B22',
+                svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <path d="M 50 15 Q 70 30 75 50 Q 70 70 50 85 Q 30 70 25 50 Q 30 30 50 15 Z" 
+        fill="none" stroke="#228B22" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="50" y1="15" x2="50" y2="85" stroke="#228B22" stroke-width="3"/>
+  <line x1="50" y1="30" x2="35" y2="40" stroke="#228B22" stroke-width="2"/>
+  <line x1="50" y1="30" x2="65" y2="40" stroke="#228B22" stroke-width="2"/>
+  <line x1="50" y1="50" x2="30" y2="55" stroke="#228B22" stroke-width="2"/>
+  <line x1="50" y1="50" x2="70" y2="55" stroke="#228B22" stroke-width="2"/>
+  <line x1="50" y1="70" x2="35" y2="72" stroke="#228B22" stroke-width="2"/>
+  <line x1="50" y1="70" x2="65" y2="72" stroke="#228B22" stroke-width="2"/>
+</svg>`
+            },
+            flame: {
+                name: 'Order C - Ember Light',
+                unicode: '🔥',
+                color: '#DC143C',
+                svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <path d="M 50 15 Q 60 30 65 45 Q 68 60 65 70 Q 60 80 50 85 Q 40 80 35 70 Q 32 60 35 45 Q 40 30 50 15 Z" 
+        fill="none" stroke="#DC143C" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 50 30 Q 56 40 58 52 Q 58 62 50 70 Q 42 62 42 52 Q 44 40 50 30 Z" 
+        fill="none" stroke="#FF6347" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M 50 15 Q 48 10 50 5" fill="none" stroke="#DC143C" stroke-width="2" stroke-linecap="round"/>
+</svg>`
+            },
+            star: {
+                name: 'Order D - Eternal Light',
+                unicode: '⭐',
+                color: '#9932CC',
+                svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <path d="M 50 10 L 55 45 L 90 50 L 55 55 L 50 90 L 45 55 L 10 50 L 45 45 Z" 
+        fill="none" stroke="#9932CC" stroke-width="4" stroke-linejoin="miter"/>
+  <path d="M 50 30 L 60 50 L 50 70 L 40 50 Z" 
+        fill="none" stroke="#9932CC" stroke-width="2"/>
+</svg>`
+            },
+            moon: {
+                name: 'Order E - Moonlight',
+                unicode: '🌙',
+                color: '#028eb5',
+                svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <path d="M 30 10 C 15 20, 10 40, 10 50 C 10 60, 15 80, 30 90" 
+        fill="none" stroke="#028eb5" stroke-width="5" stroke-linecap="round"/>
+  <path d="M 30 10 C 50 25, 60 40, 60 50 C 60 60, 50 75, 30 90" 
+        fill="none" stroke="#028eb5" stroke-width="5" stroke-linecap="round"/>
+</svg>`
+            }
+        };
+
+        function renderSymbols() {
+            const grid = document.getElementById('symbolsGrid');
+            
+            Object.entries(symbols).forEach(([key, symbol]) => {
+                const card = document.createElement('div');
+                card.className = 'symbol-card';
+                card.innerHTML = `
+                    <div class="symbol-preview">
+                        ${symbol.svg}
+                    </div>
+                    <div class="symbol-info">
+                        <h3>${symbol.name}</h3>
+                        <div class="symbol-meta">
+                            <span class="unicode">${symbol.unicode}</span>
+                            <span class="color-badge" style="background-color: ${symbol.color}">${symbol.color}</span>
+                        </div>
+                        <button class="download-btn" onclick="downloadSVG('${key}')">📥 Download SVG</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function downloadSVG(key) {
+            const symbol = symbols[key];
+            const blob = new Blob([symbol.svg], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `order_${key}.svg`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadAll() {
+            Object.keys(symbols).forEach((key, index) => {
+                setTimeout(() => downloadSVG(key), 100 * index);
+            });
+        }
+
+        renderSymbols();
+    </script>
+</body>
+</html>

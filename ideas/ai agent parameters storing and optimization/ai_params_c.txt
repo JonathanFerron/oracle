@@ -1,0 +1,410 @@
+// ai_params.c
+// AI parameter management implementation
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include "ai_params.h"
+
+#define MAX_LINE_LEN 256
+
+// Strategy name strings
+const char* STRATEGY_NAMES[STRAT_COUNT] = {
+    "Random",
+    "BalancedRules",
+    "Heuristic",
+    "HBT_Hybrid",
+    "SimpleMC",
+    "ProgressiveMC",
+    "ISMCTS"
+};
+
+// Initialize with default values
+void ai_params_init_default(AIParams* ai_params, StrategyType type)
+{
+    ai_params->type = type;
+    
+    switch(type) {
+        case STRAT_RANDOM: {
+            RandomParams defaults = RANDOM_PARAMS_DEFAULT;
+            ai_params->params.random = defaults;
+            break;
+        }
+        case STRAT_BALANCED_RULES: {
+            BalancedRulesParams defaults = BALANCED_RULES_PARAMS_DEFAULT;
+            ai_params->params.balanced = defaults;
+            break;
+        }
+        case STRAT_HEURISTIC: {
+            HeuristicParams defaults = HEURISTIC_PARAMS_DEFAULT;
+            ai_params->params.heuristic = defaults;
+            break;
+        }
+        case STRAT_HBT_HYBRID: {
+            HBTHybridParams defaults = HBT_HYBRID_PARAMS_DEFAULT;
+            ai_params->params.hbt = defaults;
+            break;
+        }
+        case STRAT_SIMPLE_MC: {
+            SimpleMCParams defaults = SIMPLE_MC_PARAMS_DEFAULT;
+            ai_params->params.simple_mc = defaults;
+            break;
+        }
+        case STRAT_PROGRESSIVE_MC: {
+            ProgressiveMCParams defaults = PROGRESSIVE_MC_PARAMS_DEFAULT;
+            ai_params->params.progressive_mc = defaults;
+            break;
+        }
+        case STRAT_ISMCTS: {
+            ISMCTSParams defaults = ISMCTS_PARAMS_DEFAULT;
+            ai_params->params.ismcts = defaults;
+            break;
+        }
+        default:
+            fprintf(stderr, "Unknown strategy type: %d\n", type);
+    }
+}
+
+// Trim whitespace
+static char* trim(char* str)
+{
+    char* end;
+    while(isspace((unsigned char)*str)) str++;
+    if(*str == 0) return str;
+    end = str + strlen(str) - 1;
+    while(end > str && isspace((unsigned char)*end)) end--;
+    end[1] = '\0';
+    return str;
+}
+
+// Parse boolean
+static bool parse_bool(const char* value)
+{
+    if(strcasecmp(value, "true") == 0 ||
+       strcasecmp(value, "yes") == 0 ||
+       strcasecmp(value, "1") == 0)
+        return true;
+    return false;
+}
+
+// Parse strategy type from section name
+static StrategyType parse_strategy_type(const char* section)
+{
+    for(int i = 0; i < STRAT_COUNT; i++) {
+        if(strcasecmp(section, STRATEGY_NAMES[i]) == 0)
+            return (StrategyType)i;
+    }
+    return STRAT_COUNT; // Invalid
+}
+
+// Set parameter by name (macros to reduce repetition)
+#define SET_FLOAT_PARAM(struct_name, param) \
+    if(strcmp(key, #param) == 0) { \
+        ai_params->params.struct_name.param = atof(value); \
+        return; \
+    }
+
+#define SET_UINT16_PARAM(struct_name, param) \
+    if(strcmp(key, #param) == 0) { \
+        ai_params->params.struct_name.param = (uint16_t)atoi(value); \
+        return; \
+    }
+
+#define SET_UINT8_PARAM(struct_name, param) \
+    if(strcmp(key, #param) == 0) { \
+        ai_params->params.struct_name.param = (uint8_t)atoi(value); \
+        return; \
+    }
+
+#define SET_BOOL_PARAM(struct_name, param) \
+    if(strcmp(key, #param) == 0) { \
+        ai_params->params.struct_name.param = parse_bool(value); \
+        return; \
+    }
+
+// Set parameter for specific strategy type
+static void set_param_for_type(AIParams* ai_params, const char* key, 
+                               const char* value)
+{
+    switch(ai_params->type) {
+        case STRAT_RANDOM:
+            SET_FLOAT_PARAM(random, behavior_defend_prob)
+            SET_FLOAT_PARAM(random, threshold_mulligan_power)
+            SET_BOOL_PARAM(random, enabled)
+            break;
+            
+        case STRAT_BALANCED_RULES:
+            SET_FLOAT_PARAM(balanced, target_cash_slope)
+            SET_FLOAT_PARAM(balanced, target_cash_intercept)
+            SET_FLOAT_PARAM(balanced, target_cards_slope)
+            SET_FLOAT_PARAM(balanced, target_cards_intercept)
+            SET_FLOAT_PARAM(balanced, threshold_defense_beta)
+            SET_FLOAT_PARAM(balanced, behavior_late_game_aggro)
+            SET_FLOAT_PARAM(balanced, threshold_mulligan_power)
+            SET_BOOL_PARAM(balanced, enabled)
+            break;
+            
+        case STRAT_HEURISTIC:
+            SET_FLOAT_PARAM(heuristic, weight_energy_advantage)
+            SET_FLOAT_PARAM(heuristic, weight_cards_advantage)
+            SET_FLOAT_PARAM(heuristic, weight_cash_advantage)
+            SET_FLOAT_PARAM(heuristic, weight_energy_critical_mult)
+            SET_FLOAT_PARAM(heuristic, weight_cards_decay_rate)
+            SET_FLOAT_PARAM(heuristic, weight_cash_decay_rate)
+            SET_FLOAT_PARAM(heuristic, threshold_mulligan_power)
+            SET_BOOL_PARAM(heuristic, enabled)
+            break;
+            
+        case STRAT_HBT_HYBRID:
+            SET_FLOAT_PARAM(hbt, target_cash_slope)
+            SET_FLOAT_PARAM(hbt, target_cash_intercept)
+            SET_FLOAT_PARAM(hbt, target_cards_slope)
+            SET_FLOAT_PARAM(hbt, target_cards_intercept)
+            SET_FLOAT_PARAM(hbt, threshold_defense_beta)
+            SET_FLOAT_PARAM(hbt, weight_energy_advantage)
+            SET_FLOAT_PARAM(hbt, weight_cards_advantage)
+            SET_FLOAT_PARAM(hbt, weight_cash_advantage)
+            SET_FLOAT_PARAM(hbt, behavior_aggression_base)
+            SET_FLOAT_PARAM(hbt, behavior_aggression_energy)
+            SET_FLOAT_PARAM(hbt, behavior_aggression_low_opp)
+            SET_FLOAT_PARAM(hbt, behavior_aggression_low_self)
+            SET_FLOAT_PARAM(hbt, weight_energy_critical_mult)
+            SET_FLOAT_PARAM(hbt, threshold_combo_min_bonus)
+            SET_FLOAT_PARAM(hbt, threshold_mulligan_power)
+            SET_BOOL_PARAM(hbt, enabled)
+            break;
+            
+        case STRAT_SIMPLE_MC:
+            SET_UINT16_PARAM(simple_mc, limit_max_simulations)
+            SET_UINT8_PARAM(simple_mc, rollout_random_depth)
+            SET_BOOL_PARAM(simple_mc, rollout_use_heuristic)
+            SET_FLOAT_PARAM(simple_mc, threshold_combo_min_bonus)
+            SET_UINT8_PARAM(simple_mc, limit_max_moves_to_eval)
+            SET_FLOAT_PARAM(simple_mc, threshold_mulligan_power)
+            SET_BOOL_PARAM(simple_mc, enabled)
+            break;
+            
+        case STRAT_PROGRESSIVE_MC:
+            SET_UINT16_PARAM(progressive_mc, limit_stage1_simulations)
+            SET_UINT16_PARAM(progressive_mc, limit_stage2_simulations)
+            SET_UINT16_PARAM(progressive_mc, limit_stage3_simulations)
+            SET_UINT16_PARAM(progressive_mc, limit_stage4_simulations)
+            SET_FLOAT_PARAM(progressive_mc, threshold_stage1_keep_ratio)
+            SET_FLOAT_PARAM(progressive_mc, threshold_stage2_keep_ratio)
+            SET_FLOAT_PARAM(progressive_mc, threshold_stage3_keep_ratio)
+            SET_FLOAT_PARAM(progressive_mc, threshold_confidence_level)
+            SET_UINT8_PARAM(progressive_mc, rollout_random_depth)
+            SET_BOOL_PARAM(progressive_mc, rollout_use_heuristic)
+            SET_FLOAT_PARAM(progressive_mc, threshold_mulligan_power)
+            SET_BOOL_PARAM(progressive_mc, enabled)
+            break;
+            
+        case STRAT_ISMCTS:
+            SET_UINT16_PARAM(ismcts, limit_max_iterations)
+            SET_UINT16_PARAM(ismcts, limit_max_time_ms)
+            SET_FLOAT_PARAM(ismcts, search_exploration_constant)
+            SET_BOOL_PARAM(ismcts, search_use_puct)
+            SET_BOOL_PARAM(ismcts, prior_use_heuristic)
+            SET_FLOAT_PARAM(ismcts, weight_energy_advantage)
+            SET_FLOAT_PARAM(ismcts, weight_cards_advantage)
+            SET_FLOAT_PARAM(ismcts, weight_cash_advantage)
+            SET_UINT8_PARAM(ismcts, rollout_random_depth)
+            SET_BOOL_PARAM(ismcts, rollout_use_heuristic)
+            SET_BOOL_PARAM(ismcts, search_reuse_tree)
+            SET_UINT16_PARAM(ismcts, limit_max_tree_nodes)
+            SET_UINT8_PARAM(ismcts, limit_determinizations)
+            SET_FLOAT_PARAM(ismcts, threshold_mulligan_power)
+            SET_BOOL_PARAM(ismcts, enabled)
+            break;
+            
+        default:
+            break;
+    }
+}
+
+// Load parameters from INI file
+int ai_params_load_from_file(AIParams* ai_params, const char* filename)
+{
+    FILE* fp = fopen(filename, "r");
+    if(!fp) {
+        fprintf(stderr, "Error: cannot open AI config file '%s'\n", filename);
+        return 1;
+    }
+    
+    char line[MAX_LINE_LEN];
+    char section[64] = "";
+    StrategyType current_type = STRAT_COUNT;
+    bool found_section = false;
+    
+    while(fgets(line, sizeof(line), fp)) {
+        char* ptr = strchr(line, '\n');
+        if(ptr) *ptr = '\0';
+        
+        ptr = trim(line);
+        
+        // Skip empty lines and comments
+        if(*ptr == '\0' || *ptr == '#' || *ptr == ';')
+            continue;
+        
+        // Section header
+        if(*ptr == '[') {
+            ptr++;
+            char* end = strchr(ptr, ']');
+            if(!end) continue;
+            *end = '\0';
+            strncpy(section, trim(ptr), sizeof(section) - 1);
+            
+            current_type = parse_strategy_type(section);
+            if(current_type == ai_params->type) {
+                found_section = true;
+            }
+            continue;
+        }
+        
+        // Skip if not in the right section
+        if(!found_section || current_type != ai_params->type)
+            continue;
+        
+        // Key-value pair
+        char* key = ptr;
+        char* value = strchr(ptr, '=');
+        if(!value) continue;
+        
+        *value = '\0';
+        value++;
+        
+        key = trim(key);
+        value = trim(value);
+        
+        // Remove quotes
+        if(*value == '"' || *value == '\'') {
+            value++;
+            char* end = value + strlen(value) - 1;
+            if(*end == '"' || *end == '\'') *end = '\0';
+        }
+        
+        set_param_for_type(ai_params, key, value);
+    }
+    
+    fclose(fp);
+    return found_section ? 0 : 1;
+}
+
+// Save parameters to file
+int ai_params_save_to_file(const AIParams* ai_params, const char* filename)
+{
+    FILE* fp = fopen(filename, "w");
+    if(!fp) return 1;
+    
+    fprintf(fp, "# Oracle AI Parameters\n");
+    fprintf(fp, "# Auto-generated configuration file\n\n");
+    fprintf(fp, "[%s]\n", STRATEGY_NAMES[ai_params->type]);
+    
+    switch(ai_params->type) {
+        case STRAT_RANDOM:
+            fprintf(fp, "behavior_defend_prob = %.3f\n", 
+                   ai_params->params.random.behavior_defend_prob);
+            fprintf(fp, "threshold_mulligan_power = %.2f\n",
+                   ai_params->params.random.threshold_mulligan_power);
+            fprintf(fp, "enabled = %s\n", 
+                   ai_params->params.random.enabled ? "true" : "false");
+            break;
+            
+        case STRAT_BALANCED_RULES:
+            fprintf(fp, "target_cash_slope = %.4f\n", 
+                   ai_params->params.balanced.target_cash_slope);
+            fprintf(fp, "target_cash_intercept = %.1f\n",
+                   ai_params->params.balanced.target_cash_intercept);
+            fprintf(fp, "target_cards_slope = %.4f\n",
+                   ai_params->params.balanced.target_cards_slope);
+            fprintf(fp, "target_cards_intercept = %.1f\n",
+                   ai_params->params.balanced.target_cards_intercept);
+            fprintf(fp, "threshold_defense_beta = %.2f\n",
+                   ai_params->params.balanced.threshold_defense_beta);
+            fprintf(fp, "behavior_late_game_aggro = %.2f\n",
+                   ai_params->params.balanced.behavior_late_game_aggro);
+            fprintf(fp, "threshold_mulligan_power = %.2f\n",
+                   ai_params->params.balanced.threshold_mulligan_power);
+            fprintf(fp, "enabled = %s\n",
+                   ai_params->params.balanced.enabled ? "true" : "false");
+            break;
+            
+        // Add other cases similarly...
+        
+        default:
+            break;
+    }
+    
+    fclose(fp);
+    return 0;
+}
+
+// Print parameters to stdout
+void ai_params_print(const AIParams* ai_params)
+{
+    printf("\n=== AI Parameters: %s ===\n", 
+           STRATEGY_NAMES[ai_params->type]);
+    
+    switch(ai_params->type) {
+        case STRAT_RANDOM:
+            printf("  behavior_defend_prob: %.3f\n",
+                   ai_params->params.random.behavior_defend_prob);
+            printf("  threshold_mulligan_power: %.2f\n",
+                   ai_params->params.random.threshold_mulligan_power);
+            printf("  enabled: %s\n",
+                   ai_params->params.random.enabled ? "true" : "false");
+            printf("  description: %s\n",
+                   ai_params->params.random.description);
+            break;
+            
+        case STRAT_HBT_HYBRID:
+            printf("  Target formulas:\n");
+            printf("    target_cash = %.4f * (opp_energy - 8) + %.1f\n",
+                   ai_params->params.hbt.target_cash_slope,
+                   ai_params->params.hbt.target_cash_intercept);
+            printf("    target_cards = %.4f * (opp_energy - 8) + %.1f\n",
+                   ai_params->params.hbt.target_cards_slope,
+                   ai_params->params.hbt.target_cards_intercept);
+            printf("  Advantage weights:\n");
+            printf("    weight_energy: %.2f\n",
+                   ai_params->params.hbt.weight_energy_advantage);
+            printf("    weight_cards: %.2f\n",
+                   ai_params->params.hbt.weight_cards_advantage);
+            printf("    weight_cash: %.2f\n",
+                   ai_params->params.hbt.weight_cash_advantage);
+            printf("  description: %s\n",
+                   ai_params->params.hbt.description);
+            break;
+            
+        // Add other cases...
+        
+        default:
+            printf("  (parameters not shown)\n");
+    }
+    printf("\n");
+}
+
+// Validate parameters
+bool ai_params_validate(const AIParams* ai_params)
+{
+    bool valid = true;
+    
+    switch(ai_params->type) {
+        case STRAT_RANDOM:
+            if(ai_params->params.random.behavior_defend_prob < 0.0f ||
+               ai_params->params.random.behavior_defend_prob > 1.0f) {
+                fprintf(stderr, "Invalid behavior_defend_prob: %.3f\n",
+                       ai_params->params.random.behavior_defend_prob);
+                valid = false;
+            }
+            break;
+            
+        // Add validation for other types...
+        
+        default:
+            break;
+    }
+    
+    return valid;
+}
