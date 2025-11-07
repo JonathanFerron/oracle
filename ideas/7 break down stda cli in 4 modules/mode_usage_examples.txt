@@ -1,0 +1,218 @@
+// ========================================
+// Example 1: CLI Mode (Game Owns Loop)
+// ========================================
+
+void stda_game_loop_cli(GameConfig* cfg, GameContext* ctx,
+                        StrategySet* strategies) {
+    GameEngine* engine = engine_create(cfg);
+    
+    while (engine_get_phase(engine) != PHASE_GAME_OVER) {
+        // Step until needs input
+        engine_run_until_input(engine, ctx);
+        
+        // Display current state
+        display_game_state_cli(engine_get_state(engine));
+        
+        if (engine_needs_input(engine)) {
+            PlayerID player = engine_get_active_player(engine);
+            
+            if (is_human_player(player)) {
+                // BLOCKS here waiting for CLI input
+                Action* action = get_user_input_cli(
+                    engine_get_state(engine), engine_get_phase(engine));
+                engine_submit_action(engine, action);
+            } else {
+                // Get AI action
+                VisibleGameState vgs;
+                gamestate_get_visible(engine_get_state(engine), 
+                                     player, &vgs);
+                Action* action = get_strategy_action(
+                    strategies, &vgs, engine_get_phase(engine), ctx);
+                engine_submit_action(engine, action);
+            }
+            
+            // Move to resolve phase
+            advance_to_resolve_phase(engine);
+        }
+    }
+    
+    display_final_results_cli(engine_get_state(engine));
+    engine_destroy(engine);
+}
+
+// ========================================
+// Example 2: GUI Mode (UI Owns Loop)
+// ========================================
+
+typedef struct {
+    GameEngine* engine;
+    GameContext* ctx;
+    StrategySet* strategies;
+    SDL_Renderer* renderer;
+    FontManager* fonts;
+} GUIGameState;
+
+void run_gamegui_loop(GUIGameState* gui_state) {
+    uint64_t last_time = SDL_GetTicks();
+    bool running = true;
+    
+    while (running) {
+        uint64_t current_time = SDL_GetTicks();
+        float dt = (current_time - last_time) / 1000.0f;
+        last_time = current_time;
+        
+        // 1. Handle SDL events
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_EVENT_QUIT) {
+                running = false;
+            }
+            
+            handle_gui_input(&event, gui_state);
+        }
+        
+        // 2. Step game engine (non-blocking)
+        while (engine_step(gui_state->engine, gui_state->ctx)) {
+            // Keep stepping until needs input or AI turn
+        }
+        
+        // 3. Handle AI turns automatically
+        if (engine_needs_input(gui_state->engine)) {
+            PlayerID player = engine_get_active_player(gui_state->engine);
+            
+            if (!is_human_player(player)) {
+                // AI turn - get action immediately
+                VisibleGameState vgs;
+                gamestate_get_visible(
+                    engine_get_state(gui_state->engine), player, &vgs);
+                
+                Action* action = get_strategy_action(
+                    gui_state->strategies, &vgs,
+                    engine_get_phase(gui_state->engine), 
+                    gui_state->ctx);
+                
+                engine_submit_action(gui_state->engine, action);
+                advance_to_resolve_phase(gui_state->engine);
+            }
+            // If human, wait for UI input (handled in event loop)
+        }
+        
+        // 4. Update animations
+        update_animations(gui_state, dt);
+        
+        // 5. Render (always happens)
+        render_game_gui(gui_state);
+        
+        // Check if game over
+        if (engine_get_phase(gui_state->engine) == PHASE_GAME_OVER) {
+            running = false;
+        }
+        
+        SDL_Delay(16);
+    }
+}
+
+void handle_gui_input(SDL_Event* e, GUIGameState* gui_state) {
+    if (e->type != SDL_EVENT_MOUSE_BUTTON_DOWN) return;
+    
+    // Only process input if waiting for human player
+    if (!engine_needs_input(gui_state->engine)) return;
+    
+    PlayerID player = engine_get_active_player(gui_state->engine);
+    if (!is_human_player(player)) return;
+    
+    // Translate click to action
+    Action* action = translate_click_to_action(
+        e->button.x, e->button.y,
+        engine_get_state(gui_state->engine),
+        engine_get_phase(gui_state->engine));
+    
+    if (action) {
+        if (engine_submit_action(gui_state->engine, action)) {
+            advance_to_resolve_phase(gui_state->engine);
+        }
+    }
+}
+
+// ========================================
+// Example 3: Server Mode
+// ========================================
+
+void server_game_loop(ServerSession* session) {
+    GameEngine* engine = engine_create(session->config);
+    
+    while (engine_get_phase(engine) != PHASE_GAME_OVER) {
+        // Step until needs input
+        engine_run_until_input(engine, session->ctx);
+        
+        if (engine_needs_input(engine)) {
+            PlayerID player = engine_get_active_player(engine);
+            
+            // Send state to both clients
+            broadcast_visible_state(session, engine);
+            
+            // Wait for action from active player
+            Action* action = server_receive_action(
+                session, player, NETWORK_TIMEOUT);
+            
+            if (action) {
+                if (engine_submit_action(engine, action)) {
+                    advance_to_resolve_phase(engine);
+                    
+                    // Broadcast result
+                    broadcast_visible_state(session, engine);
+                }
+            }
+        }
+    }
+    
+    broadcast_game_over(session, engine);
+    engine_destroy(engine);
+}
+
+// ========================================
+// Example 4: Auto-simulation Mode
+// ========================================
+
+void run_simulation_batch(SimConfig* cfg, int num_games) {
+    GameContext ctx;
+    init_game_context(&ctx, cfg->seed);
+    
+    StrategySet strategies = create_strategy_set(cfg);
+    
+    for (int i = 0; i < num_games; i++) {
+        GameEngine* engine = engine_create(cfg->game_config);
+        
+        // Run entire game without any UI
+        while (engine_get_phase(engine) != PHASE_GAME_OVER) {
+            engine_run_turn(engine, &ctx, &strategies);
+        }
+        
+        // Record results
+        record_game_result(cfg->stats, engine_get_state(engine));
+        
+        engine_destroy(engine);
+    }
+    
+    export_simulation_results(cfg->stats, cfg->output_file);
+}
+
+// ========================================
+// Helper: Advance phase after action
+// ========================================
+
+void advance_to_resolve_phase(GameEngine* engine) {
+    switch (engine_get_phase(engine)) {
+        case PHASE_ATTACK_REQUEST:
+            engine->phase = PHASE_ATTACK_RESOLVE;
+            break;
+        case PHASE_DEFENSE_REQUEST:
+            engine->phase = PHASE_DEFENSE_RESOLVE;
+            break;
+        case PHASE_DISCARD_REQUEST:
+            engine->phase = PHASE_DISCARD_RESOLVE;
+            break;
+        default:
+            break;
+    }
+}

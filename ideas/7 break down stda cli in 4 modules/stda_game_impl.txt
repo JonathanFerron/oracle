@@ -1,0 +1,113 @@
+// roles/stda/stda_game.c
+// Non-blocking game loop implementation
+
+#include "stda_game.h"
+#include "core/turn_logic.h"
+#include "core/combat.h"
+#include "strategies/strategy.h"
+
+GameLoopContext* stda_init_game_gui(GameConfig* cfg) {
+    GameLoopContext* ctx = malloc(sizeof(GameLoopContext));
+    
+    ctx->game = create_game_state(cfg);
+    ctx->running = true;
+    ctx->waiting_for_input = false;
+    ctx->current_phase = ctx->game->phase;
+    ctx->active_player = ctx->game->active_player;
+    
+    return ctx;
+}
+
+// Process game logic (non-blocking)
+void stda_update_game_gui(GameLoopContext* ctx, float dt) {
+    if (!ctx->running) return;
+    
+    GameState* gs = ctx->game;
+    
+    // Check if game is over
+    if (is_game_over(gs)) {
+        ctx->running = false;
+        return;
+    }
+    
+    // If waiting for human input, do nothing
+    if (ctx->waiting_for_input) {
+        return;
+    }
+    
+    // If current player is AI, let AI decide
+    if (is_ai_player(gs, gs->active_player)) {
+        Action* ai_action = get_ai_action(gs, gs->active_player);
+        if (ai_action) {
+            process_action(gs, ai_action);
+            free_action(ai_action);
+        }
+    }
+    else {
+        // Human player - set waiting flag
+        ctx->waiting_for_input = true;
+    }
+    
+    // Update phase tracking
+    ctx->current_phase = gs->phase;
+    ctx->active_player = gs->active_player;
+}
+
+// UI submits action (called from event handler)
+bool stda_submit_action_gui(GameLoopContext* ctx, Action* action) {
+    if (!ctx->waiting_for_input) {
+        return false; // Not ready for input
+    }
+    
+    if (!validate_action(action, ctx->game)) {
+        return false; // Invalid action
+    }
+    
+    // Process action
+    process_action(ctx->game, action);
+    
+    // Clear waiting flag
+    ctx->waiting_for_input = false;
+    
+    return true;
+}
+
+// Query if waiting for player input
+bool stda_is_waiting_for_input(GameLoopContext* ctx, int player) {
+    if (!ctx->waiting_for_input) return false;
+    return ctx->game->active_player == player;
+}
+
+// Get current game state (for rendering)
+GameState* stda_get_game_state(GameLoopContext* ctx) {
+    return ctx->game;
+}
+
+void stda_cleanup_game_gui(GameLoopContext* ctx) {
+    free_game_state(ctx->game);
+    free(ctx);
+}
+
+// Legacy blocking CLI loop
+void stda_game_loop_cli(GameConfig* cfg) {
+    GameState* gs = create_game_state(cfg);
+    
+    while (!is_game_over(gs)) {
+        display_game_state_cli(gs);
+        
+        if (is_ai_player(gs, gs->active_player)) {
+            Action* ai_action = get_ai_action(gs, gs->active_player);
+            process_action(gs, ai_action);
+            free_action(ai_action);
+        }
+        else {
+            // BLOCKS here waiting for CLI input
+            Action* action = get_user_input_cli(gs);
+            process_action(gs, action);
+            free_action(action);
+        }
+    }
+    
+    display_final_results_cli(gs);
+    free_game_state(gs);
+}

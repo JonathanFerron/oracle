@@ -1,0 +1,41 @@
+// roles/stda/stda_game.h
+// Event-driven game loops for GUI modes
+
+#ifndef STDA_GAME_H
+#define STDA_GAME_H
+
+#include "core/game_types.h"
+#include "actions/action.h"
+
+// Game loop control structure
+typedef struct {
+    GameState* game;
+    bool running;
+    bool waiting_for_input;
+    GamePhase current_phase;
+    int active_player;
+} GameLoopContext;
+
+// Initialize game loop for GUI mode
+GameLoopContext* stda_init_game_gui(GameConfig* cfg);
+
+// Process one game update (non-blocking)
+void stda_update_game_gui(GameLoopContext* ctx, float dt);
+
+// Submit player action (called by UI)
+bool stda_submit_action_gui(GameLoopContext* ctx, Action* action);
+
+// Query if waiting for player input
+bool stda_is_waiting_for_input(GameLoopContext* ctx, int player);
+
+// Get current game state (for rendering)
+GameState* stda_get_game_state(GameLoopContext* ctx);
+
+// Cleanup
+void stda_cleanup_game_gui(GameLoopContext* ctx);
+
+// Legacy blocking loops for CLI/TUI
+void stda_game_loop_cli(GameConfig* cfg);
+void stda_game_loop_tui(GameConfig* cfg);
+
+#endif

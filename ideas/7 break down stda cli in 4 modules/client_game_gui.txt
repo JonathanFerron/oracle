@@ -1,0 +1,39 @@
+// roles/client/client_game.h
+// Event-driven client game loop
+
+#ifndef CLIENT_GAME_H
+#define CLIENT_GAME_H
+
+#include "visibility/visible_state.h"
+#include "actions/action.h"
+#include "network/protocol.h"
+
+typedef struct {
+    VisibleGameState* visible_state;
+    NetworkConnection* connection;
+    bool running;
+    bool waiting_for_input;
+    int my_player_id;
+    ActionQueue* pending_actions;
+} ClientGameContext;
+
+// Initialize client game
+ClientGameContext* client_init_game_gui(const char* server_addr,
+                                        int port);
+
+// Non-blocking update (polls network, processes messages)
+void client_update_game_gui(ClientGameContext* ctx, float dt);
+
+// Submit action to server
+bool client_submit_action_gui(ClientGameContext* ctx, Action* action);
+
+// Check if waiting for local player input
+bool client_is_waiting_for_input(ClientGameContext* ctx);
+
+// Get visible game state (for rendering)
+VisibleGameState* client_get_visible_state(ClientGameContext* ctx);
+
+// Cleanup
+void client_cleanup_game_gui(ClientGameContext* ctx);
+
+#endif

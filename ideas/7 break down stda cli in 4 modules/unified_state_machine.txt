@@ -1,0 +1,68 @@
+// core/game_engine.h
+// Unified state machine for both blocking and event-driven modes
+
+#ifndef GAME_ENGINE_H
+#define GAME_ENGINE_H
+
+#include "game_types.h"
+#include "actions/action.h"
+
+// Fine-grained game phases
+typedef enum {
+    PHASE_GAME_START,
+    PHASE_BEGIN_TURN,
+    PHASE_DRAW_CARD,
+    
+    PHASE_ATTACK_REQUEST,      // Waiting for attacker's action
+    PHASE_ATTACK_RESOLVE,      // Processing attack action
+    
+    PHASE_DEFENSE_REQUEST,     // Waiting for defender's action
+    PHASE_DEFENSE_RESOLVE,     // Processing defense action
+    
+    PHASE_COMBAT_RESOLVE,      // Calculate combat results
+    PHASE_COMBAT_DISPLAY,      // Show combat results (UI hook)
+    
+    PHASE_DISCARD_REQUEST,     // Waiting for discard choice
+    PHASE_DISCARD_RESOLVE,     // Process discard
+    
+    PHASE_END_TURN,
+    PHASE_GAME_OVER
+} GamePhase;
+
+// State machine context
+typedef struct {
+    GameState* game;
+    GamePhase phase;
+    Action* pending_action;     // Action being processed
+    bool waiting_for_input;     // TRUE if stuck at *_REQUEST phase
+    PlayerID active_player;     // Who needs to provide input
+} GameEngine;
+
+// Initialize engine
+GameEngine* engine_create(GameConfig* cfg);
+
+// Check if engine needs input
+bool engine_needs_input(GameEngine* engine);
+PlayerID engine_get_active_player(GameEngine* engine);
+
+// Submit action (validates and queues)
+bool engine_submit_action(GameEngine* engine, Action* action);
+
+// Advance state machine (non-blocking, returns FALSE if needs input)
+bool engine_step(GameEngine* engine, GameContext* ctx);
+
+// Run until needs input (for blocking modes)
+void engine_run_until_input(GameEngine* engine, GameContext* ctx);
+
+// Run complete turn (for standalone AI vs AI)
+void engine_run_turn(GameEngine* engine, GameContext* ctx,
+                     StrategySet* strategies);
+
+// Query current state
+GameState* engine_get_state(GameEngine* engine);
+GamePhase engine_get_phase(GameEngine* engine);
+
+// Cleanup
+void engine_destroy(GameEngine* engine);
+
+#endif

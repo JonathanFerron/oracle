@@ -138,8 +138,6 @@ discarter toutes les cartes jouées (on peut garder en 2 sections, une pour cham
 - **English:** "Moonlight"
 - **Spanish:** "Luz Lunar"
 - *Wild, instinctual, nocturnal hunting
-  
-  
 
 ## Game Overview
 
@@ -172,13 +170,13 @@ In Oracle, you command champions from the five Orders of Arcadia, using careful 
 
 ### Resources
 
-**Energy** (❤): 
+**Energy** (HP): 
 
 - Starting value: 99 for each player
 - Reduces when taking damage in combat
 - When a player reaches 0 Energy, they lose
 
-**Lunas** (☾): 
+**Lunas** (L): 
 
 - Starting value: 30 for each player
 - Currency used to play cards
@@ -850,14 +848,9 @@ Experiment with different starting values:
 - First player alternates each game
 - First to win 2 games wins the match
 
-### Variant 3: Draft Mode (Advanced)
+### Variant 3: Draft Modes (Advanced)
 
-For experienced players with 2 full decks:
-
-1. Shuffle all 240 cards together
-2. Each player draws 4 cards, picks 1, passes 3 to opponent
-3. Repeat until each player has 40 cards
-4. Play with drafted decks
+See the 3 draft formats proposed in the 'oracle_draft_format.md' document.
 
 ---
 
@@ -894,9 +887,7 @@ For experienced players with 2 full decks:
 ## Credits
 
 **Game Design**: Jonathan Ferron  
-**Version**: 2025.10  
+**Version**: 2025.11  
 **Project**: https://github.com/JonathanFerron/oracle
 
----
-
-*May the light of Arcadia guide your champions to victory!*
+*

@@ -1,0 +1,183 @@
+// core/game_engine.c
+// State machine implementation
+
+#include "game_engine.h"
+#include "turn_logic.h"
+#include "combat.h"
+#include "action_processor.h"
+
+GameEngine* engine_create(GameConfig* cfg) {
+    GameEngine* engine = malloc(sizeof(GameEngine));
+    engine->game = create_game_state(cfg);
+    engine->phase = PHASE_GAME_START;
+    engine->pending_action = NULL;
+    engine->waiting_for_input = false;
+    engine->active_player = PLAYER_A;
+    return engine;
+}
+
+bool engine_needs_input(GameEngine* engine) {
+    return engine->waiting_for_input;
+}
+
+PlayerID engine_get_active_player(GameEngine* engine) {
+    return engine->active_player;
+}
+
+bool engine_submit_action(GameEngine* engine, Action* action) {
+    if (!engine->waiting_for_input) {
+        return false; // Not ready for input
+    }
+    
+    if (!validate_action(action, engine->game)) {
+        return false; // Invalid action
+    }
+    
+    engine->pending_action = action;
+    engine->waiting_for_input = false;
+    return true;
+}
+
+// Core state machine step (non-blocking)
+bool engine_step(GameEngine* engine, GameContext* ctx) {
+    if (engine->waiting_for_input) {
+        return false; // Can't advance, need input
+    }
+    
+    GameState* gs = engine->game;
+    
+    switch (engine->phase) {
+        case PHASE_GAME_START:
+            execute_game_start(gs, ctx);
+            engine->phase = PHASE_BEGIN_TURN;
+            return true;
+            
+        case PHASE_BEGIN_TURN:
+            execute_begin_turn(gs, ctx);
+            engine->phase = PHASE_DRAW_CARD;
+            return true;
+            
+        case PHASE_DRAW_CARD:
+            if (should_draw_card(gs)) {
+                draw_1_card(gs, gs->current_player, ctx);
+            }
+            engine->phase = PHASE_ATTACK_REQUEST;
+            engine->active_player = gs->current_player;
+            engine->waiting_for_input = true;
+            return false; // Stop here, need input
+            
+        case PHASE_ATTACK_RESOLVE:
+            apply_action(gs, engine->pending_action, ctx);
+            free_action(engine->pending_action);
+            engine->pending_action = NULL;
+            
+            if (has_combat(gs)) {
+                engine->phase = PHASE_DEFENSE_REQUEST;
+                engine->active_player = 1 - gs->current_player;
+                engine->waiting_for_input = true;
+                return false;
+            } else {
+                engine->phase = PHASE_END_TURN;
+                return true;
+            }
+            
+        case PHASE_DEFENSE_RESOLVE:
+            apply_action(gs, engine->pending_action, ctx);
+            free_action(engine->pending_action);
+            engine->pending_action = NULL;
+            engine->phase = PHASE_COMBAT_RESOLVE;
+            return true;
+            
+        case PHASE_COMBAT_RESOLVE:
+            resolve_combat(gs, ctx);
+            engine->phase = PHASE_COMBAT_DISPLAY;
+            return true;
+            
+        case PHASE_COMBAT_DISPLAY:
+            // UI hook point (just advance)
+            if (gs->hand_size[gs->current_player] > 7) {
+                engine->phase = PHASE_DISCARD_REQUEST;
+                engine->active_player = gs->current_player;
+                engine->waiting_for_input = true;
+                return false;
+            }
+            engine->phase = PHASE_END_TURN;
+            return true;
+            
+        case PHASE_DISCARD_RESOLVE:
+            apply_action(gs, engine->pending_action, ctx);
+            free_action(engine->pending_action);
+            engine->pending_action = NULL;
+            engine->phase = PHASE_END_TURN;
+            return true;
+            
+        case PHASE_END_TURN:
+            execute_end_turn(gs, ctx);
+            if (is_game_over(gs)) {
+                engine->phase = PHASE_GAME_OVER;
+            } else {
+                engine->phase = PHASE_BEGIN_TURN;
+            }
+            return true;
+            
+        case PHASE_GAME_OVER:
+            return false; // Game complete
+    }
+    
+    return false;
+}
+
+// Run until needs input (for blocking modes)
+void engine_run_until_input(GameEngine* engine, GameContext* ctx) {
+    while (engine_step(engine, ctx)) {
+        // Keep stepping until blocked
+    }
+}
+
+// Complete turn with AI (for standalone)
+void engine_run_turn(GameEngine* engine, GameContext* ctx,
+                     StrategySet* strategies) {
+    while (engine->phase != PHASE_END_TURN && 
+           engine->phase != PHASE_GAME_OVER) {
+        
+        // Step until needs input
+        engine_run_until_input(engine, ctx);
+        
+        if (engine->waiting_for_input) {
+            // Get action from AI
+            VisibleGameState vgs;
+            gamestate_get_visible(engine->game, 
+                                 engine->active_player, &vgs);
+            
+            Action* action = get_strategy_action(
+                strategies, &vgs, engine->phase, ctx);
+            
+            engine_submit_action(engine, action);
+            
+            // Resolve action
+            if (engine->phase == PHASE_ATTACK_REQUEST) {
+                engine->phase = PHASE_ATTACK_RESOLVE;
+            } else if (engine->phase == PHASE_DEFENSE_REQUEST) {
+                engine->phase = PHASE_DEFENSE_RESOLVE;
+            } else if (engine->phase == PHASE_DISCARD_REQUEST) {
+                engine->phase = PHASE_DISCARD_RESOLVE;
+            }
+        }
+    }
+}
+
+GameState* engine_get_state(GameEngine* engine) {
+    return engine->game;
+}
+
+GamePhase engine_get_phase(GameEngine* engine) {
+    return engine->phase;
+}
+
+void engine_destroy(GameEngine* engine) {
+    if (engine->pending_action) {
+        free_action(engine->pending_action);
+    }
+    free_game_state(engine->game);
+    free(engine);
+}

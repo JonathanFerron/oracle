@@ -1,22 +1,23 @@
 # Oracle Development TODO
 
-**Quick Status**: Phase 2 in progress - completing turn logic and game loop
+**Quick Status**: In progress: completing turn logic and game loop
 
 ---
 
-## Current Sprint Focus
+## Current Focus
 
 **Complete Turn Logic Module** - Get full game loop working end-to-end
 
 Tasks:
 
-- [ ] Move player types into PlayerConfig and work on PRNG seed location
-- [ ] Implement mulligan system (Player B, 2 cards max)
-- [ ] Implement discard-to-7 system (end of turn)
-- [ ] Display Discard Pile in CLI Mode
-- [ ] Move from HDC Linked List to Fixed (variable sized, really) Arrays
-- [ ] Get Recall Card functionality to work in at least stda.cli mode (it's fine to just use the 'draw n cards' option for the Random AI engine given that this engine is not meant to be strong) 
-- [ ] Enhance display of combat results in stda.cli mode
+- [ ] 1. Move player types into PlayerConfig and work on PRNG seed location
+- [ ] 2. A Implement mulligan system (Player B, 2 cards max)
+- [ ] 2. B Implement discard-to-7 system (end of turn)
+- [ ] 3. Display Discard Pile in CLI Mode
+- [ ] 4. Move from HDC Linked List to Fixed (variable sized, really) Arrays
+- [ ] 5. Get Recall Card functionality to work in at least stda.cli mode (it's fine to just use the 'draw n cards' option for the Random AI engine given that this engine is not meant to be strong) 
+- [ ] 6. Enhance display of combat results in stda.cli mode
+- [ ] 7. Split the stda_cli.c source file into 4 modules as documented in '7 stda_cli Modularization Strategy.md'
 
 ---
 

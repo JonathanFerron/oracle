@@ -1,0 +1,145 @@
+// ui/gamegui/gamegui_display.c
+// Non-blocking GUI main loop
+
+#include <SDL3/SDL.h>
+#include "gamegui_display.h"
+#include "gamegui_input.h"
+#include "gamegui_callbacks.h"
+#include "roles/stda/stda_game.h"
+
+typedef struct {
+    SDL_Window* window;
+    SDL_Renderer* renderer;
+    FontManager* fonts;
+    TextureCache* textures;
+    GameLoopContext* game_ctx;
+    InputState input_state;
+    bool running;
+} GUIContext;
+
+// Initialize GUI subsystem
+GUIContext* init_gamegui(GameConfig* cfg) {
+    GUIContext* gui = malloc(sizeof(GUIContext));
+    
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+    gui->window = SDL_CreateWindow("Oracle", 1280, 720, 0);
+    gui->renderer = SDL_CreateRenderer(gui->window, NULL);
+    
+    gui->fonts = init_font_manager(1.0f);
+    gui->textures = create_texture_cache(gui->renderer, 256);
+    gui->game_ctx = stda_init_game_gui(cfg);
+    init_input_state(&gui->input_state);
+    gui->running = true;
+    
+    return gui;
+}
+
+// Main GUI loop (NON-BLOCKING)
+void run_gamegui_loop(GUIContext* gui) {
+    uint64_t last_time = SDL_GetTicks();
+    
+    while (gui->running) {
+        uint64_t current_time = SDL_GetTicks();
+        float dt = (current_time - last_time) / 1000.0f;
+        last_time = current_time;
+        
+        // 1. Process SDL events (immediate)
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (!handle_gui_event(&event, gui)) {
+                gui->running = false;
+            }
+        }
+        
+        // 2. Update game logic (non-blocking)
+        stda_update_game_gui(gui->game_ctx, dt);
+        
+        // 3. Update UI state (animations, hover, etc.)
+        update_gui_state(gui, dt);
+        
+        // 4. Render (always happens)
+        render_game_gui(gui);
+        
+        SDL_Delay(16); // ~60 FPS
+    }
+}
+
+// Handle SDL events and translate to actions
+bool handle_gui_event(SDL_Event* e, GUIContext* gui) {
+    GameState* gs = stda_get_game_state(gui->game_ctx);
+    
+    switch (e->type) {
+        case SDL_EVENT_QUIT:
+            return false;
+            
+        case SDL_EVENT_KEY_DOWN:
+            return handle_keyboard_input(e, gui, gs);
+            
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            return handle_mouse_click(e, gui, gs);
+            
+        case SDL_EVENT_MOUSE_MOTION:
+            handle_mouse_motion(e, gui, gs);
+            break;
+    }
+    
+    return true;
+}
+
+// Translate mouse click to game action
+bool handle_mouse_click(SDL_Event* e, GUIContext* gui, 
+                        GameState* gs) {
+    int x = (int)e->button.x;
+    int y = (int)e->button.y;
+    
+    // Check if waiting for this player's input
+    if (!stda_is_waiting_for_input(gui->game_ctx, PLAYER_A)) {
+        return true; // Not our turn, ignore
+    }
+    
+    // Determine what was clicked
+    ClickTarget target = get_click_target(x, y, gs);
+    
+    if (target.type == TARGET_CARD_IN_HAND) {
+        Action* action = create_select_card_action(target.index);
+        stda_submit_action_gui(gui->game_ctx, action);
+    }
+    else if (target.type == TARGET_PLAY_BUTTON) {
+        Action* action = create_play_cards_action();
+        stda_submit_action_gui(gui->game_ctx, action);
+    }
+    else if (target.type == TARGET_PASS_BUTTON) {
+        Action* action = create_pass_turn_action();
+        stda_submit_action_gui(gui->game_ctx, action);
+    }
+    
+    return true;
+}
+
+// Always render, never blocks
+void render_game_gui(GUIContext* gui) {
+    GameState* gs = stda_get_game_state(gui->game_ctx);
+    
+    SDL_SetRenderDrawColor(gui->renderer, 30, 30, 30, 255);
+    SDL_RenderClear(gui->renderer);
+    
+    // Render game board
+    render_game_board(gui->renderer, gs, gui->fonts, gui->textures);
+    
+    // Render UI overlay (energy, buttons, etc.)
+    render_ui_overlay(gui->renderer, gs, gui->fonts);
+    
+    // Render hover effects (if any)
+    if (gui->input_state.hovered_card >= 0) {
+        render_card_highlight(gui->renderer, 
+                             gui->input_state.hovered_card);
+    }
+    
+    SDL_RenderPresent(gui->renderer);
+}
+
+// Update UI animations and state
+void update_gui_state(GUIContext* gui, float dt) {
+    update_animations(&gui->input_state, dt);
+    update_tooltips(&gui->input_state, dt);
+}

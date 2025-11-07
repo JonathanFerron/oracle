@@ -1,0 +1,151 @@
+// ui/gamegui/gamegui_display.c
+// Unified GUI that works with both stda and client roles
+
+#include "gamegui_display.h"
+#include "roles/stda/stda_game.h"
+#include "roles/client/client_game.h"
+
+typedef enum {
+    GUI_MODE_STANDALONE,
+    GUI_MODE_CLIENT
+} GUIMode;
+
+typedef struct {
+    SDL_Window* window;
+    SDL_Renderer* renderer;
+    FontManager* fonts;
+    TextureCache* textures;
+    InputState input_state;
+    bool running;
+    
+    // Role-specific contexts (only one active)
+    GUIMode mode;
+    union {
+        GameLoopContext* stda_ctx;
+        ClientGameContext* client_ctx;
+    };
+} GUIContext;
+
+// Initialize for standalone mode
+GUIContext* init_gamegui_stda(GameConfig* cfg) {
+    GUIContext* gui = init_gui_base();
+    gui->mode = GUI_MODE_STANDALONE;
+    gui->stda_ctx = stda_init_game_gui(cfg);
+    return gui;
+}
+
+// Initialize for client mode
+GUIContext* init_gamegui_client(const char* server, int port) {
+    GUIContext* gui = init_gui_base();
+    gui->mode = GUI_MODE_CLIENT;
+    gui->client_ctx = client_init_game_gui(server, port);
+    return gui;
+}
+
+// Main loop (works for both modes)
+void run_gamegui_loop(GUIContext* gui) {
+    uint64_t last_time = SDL_GetTicks();
+    
+    while (gui->running) {
+        uint64_t current_time = SDL_GetTicks();
+        float dt = (current_time - last_time) / 1000.0f;
+        last_time = current_time;
+        
+        // Process SDL events
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (!handle_gui_event(&event, gui)) {
+                gui->running = false;
+            }
+        }
+        
+        // Update game (role-specific)
+        if (gui->mode == GUI_MODE_STANDALONE) {
+            stda_update_game_gui(gui->stda_ctx, dt);
+        } else {
+            client_update_game_gui(gui->client_ctx, dt);
+        }
+        
+        // Update UI animations
+        update_gui_state(gui, dt);
+        
+        // Render
+        render_game_gui(gui);
+        
+        SDL_Delay(16);
+    }
+}
+
+// Submit action (role-agnostic)
+bool submit_action_gui(GUIContext* gui, Action* action) {
+    if (gui->mode == GUI_MODE_STANDALONE) {
+        return stda_submit_action_gui(gui->stda_ctx, action);
+    } else {
+        return client_submit_action_gui(gui->client_ctx, action);
+    }
+}
+
+// Check if waiting for input (role-agnostic)
+bool is_waiting_for_my_input(GUIContext* gui) {
+    if (gui->mode == GUI_MODE_STANDALONE) {
+        return stda_is_waiting_for_input(gui->stda_ctx, PLAYER_A);
+    } else {
+        return client_is_waiting_for_input(gui->client_ctx);
+    }
+}
+
+// Get game state for rendering (role-agnostic)
+void* get_game_state_for_render(GUIContext* gui) {
+    if (gui->mode == GUI_MODE_STANDALONE) {
+        return stda_get_game_state(gui->stda_ctx);
+    } else {
+        return client_get_visible_state(gui->client_ctx);
+    }
+}
+
+// Event handler (unchanged from before)
+bool handle_gui_event(SDL_Event* e, GUIContext* gui) {
+    switch (e->type) {
+        case SDL_EVENT_QUIT:
+            return false;
+            
+        case SDL_EVENT_KEY_DOWN:
+            return handle_keyboard_input(e, gui);
+            
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            return handle_mouse_click(e, gui);
+            
+        case SDL_EVENT_MOUSE_MOTION:
+            handle_mouse_motion(e, gui);
+            break;
+    }
+    
+    return true;
+}
+
+// Mouse click handler (uses abstracted functions)
+bool handle_mouse_click(SDL_Event* e, GUIContext* gui) {
+    int x = (int)e->button.x;
+    int y = (int)e->button.y;
+    
+    // Check if we can accept input
+    if (!is_waiting_for_my_input(gui)) {
+        return true;
+    }
+    
+    // Get state (works for both GameState and VisibleGameState)
+    void* state = get_game_state_for_render(gui);
+    
+    ClickTarget target = get_click_target(x, y, state);
+    
+    if (target.type == TARGET_CARD_IN_HAND) {
+        Action* action = create_select_card_action(target.index);
+        submit_action_gui(gui, action);
+    }
+    else if (target.type == TARGET_PLAY_BUTTON) {
+        Action* action = create_play_cards_action();
+        submit_action_gui(gui, action);
+    }
+    
+    return true;
+}
