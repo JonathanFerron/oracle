@@ -147,16 +147,15 @@ typedef enum
 } game_mode_t;
 
 /* UI language codes */
-typedef enum {
-    LANG_EN = 0,  /* English (default) */
-    LANG_FR,      /* French */
-    LANG_ES       /* Spanish */
+typedef enum
+{ LANG_EN = 0,  /* English (default) */
+  LANG_FR,      /* French */
+  LANG_ES       /* Spanish */
 } ui_language_t;
 
 /* Player Type: interactive or AI */
 typedef enum
-{
-  INTERACTIVE_PLAYER = 0,
+{ INTERACTIVE_PLAYER = 0,
   AI_PLAYER = 1
 } PlayerType;
 
@@ -171,9 +170,8 @@ typedef struct
   ui_language_t language;
   uint32_t prng_seed;
   bool use_random_seed;
-  PlayerType player_types[2]; // first value is for playerA, second value is for playerB
   void* player_config;  /* PlayerConfig* - forward declaration avoidance */
- } config_t;
+} config_t;
 
 #include "game_constants.h"
 

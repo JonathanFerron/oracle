@@ -10,7 +10,7 @@
 
 Tasks:
 
-- [ ] 1. Move player types into PlayerConfig and work on PRNG seed location
+- [ ] 1. Work on PRNG seed location
 - [ ] 2. A Implement mulligan system (Player B, 2 cards max)
 - [ ] 2. B Implement discard-to-7 system (end of turn)
 - [ ] 3. Display Discard Pile in CLI Mode
@@ -18,6 +18,7 @@ Tasks:
 - [ ] 5. Get Recall Card functionality to work in at least stda.cli mode (it's fine to just use the 'draw n cards' option for the Random AI engine given that this engine is not meant to be strong) 
 - [ ] 6. Enhance display of combat results in stda.cli mode
 - [ ] 7. Split the stda_cli.c source file into 4 modules as documented in '7 stda_cli Modularization Strategy.md'
+  8. When playing cash card in interactive mode, ask user to select the champion card that they want to discard in exchange of 5 lunas instead of letting the AI decide automatically based on power heuristic
 
 ---
 

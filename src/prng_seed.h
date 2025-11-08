@@ -12,9 +12,9 @@
 #define MT_SEED_MAX 0xFFFFFFFFUL  /* Maximum valid seed for MT19937 */
 
 /* PRNG seed configuration structure */
-typedef struct {
-    uint32_t seed;
-    bool use_random;
+typedef struct
+{ uint32_t seed;
+  bool use_random;
 } prng_config_t;
 
 /* Initialize PRNG configuration with defaults */

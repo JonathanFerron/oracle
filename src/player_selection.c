@@ -13,33 +13,33 @@
 void display_player_selection_menu(config_t* cfg)
 { printf("\n" "=== %s ===" "\n",
          LOCALIZED_STRING("Player Configuration",
-                         "Configuration des joueurs",
-                         "Configuracion de jugadores"));
+                          "Configuration des joueurs",
+                          "Configuracion de jugadores"));
 
   printf("\n%s:\n",
          LOCALIZED_STRING("Select game mode",
-                         "Selectionnez le mode de jeu",
-                         "Selecciona el modo de juego"));
+                          "Selectionnez le mode de jeu",
+                          "Selecciona el modo de juego"));
 
   printf("  [1] %s\n",
          LOCALIZED_STRING("Human vs AI (default)",
-                         "Humain vs IA (par defaut)",
-                         "Humano vs IA (predeterminado)"));
+                          "Humain vs IA (par defaut)",
+                          "Humano vs IA (predeterminado)"));
 
   printf("  [2] %s\n",
          LOCALIZED_STRING("Human vs Human",
-                         "Humain vs Humain",
-                         "Humano vs Humano"));
+                          "Humain vs Humain",
+                          "Humano vs Humano"));
 
   printf("  [3] %s\n",
          LOCALIZED_STRING("AI vs AI",
-                         "IA vs IA",
-                         "IA vs IA"));
+                          "IA vs IA",
+                          "IA vs IA"));
 
   printf("\n%s [1]: ",
          LOCALIZED_STRING("Enter choice",
-                         "Entrez le choix",
-                         "Ingrese la opcion"));
+                          "Entrez le choix",
+                          "Ingrese la opcion"));
 }
 
 int get_player_type_choice(config_t* cfg)
@@ -62,34 +62,34 @@ int get_player_type_choice(config_t* cfg)
   if(choice < 1 || choice > 3)
   { printf("%s\n",
            LOCALIZED_STRING("Invalid choice. Using default (Human vs AI).",
-                           "Choix invalide. Utilisation par defaut (Humain vs IA).",
-                           "Opcion invalida. Usando predeterminado (Humano vs IA)."));
+                            "Choix invalide. Utilisation par defaut (Humain vs IA).",
+                            "Opcion invalida. Usando predeterminado (Humano vs IA)."));
     return 1;
   }
 
   return choice;
 }
 
-void apply_player_selection(config_t* cfg, int choice)
+void apply_player_selection(PlayerConfig* pconfig, config_t* cfg, int choice)
 { switch(choice)
   { case 1: // Human vs AI (default)
-      cfg->player_types[PLAYER_A] = INTERACTIVE_PLAYER;
-      cfg->player_types[PLAYER_B] = AI_PLAYER;
+      pconfig->player_types[PLAYER_A] = INTERACTIVE_PLAYER;
+      pconfig->player_types[PLAYER_B] = AI_PLAYER;
       break;
 
     case 2: // Human vs Human
-      cfg->player_types[PLAYER_A] = INTERACTIVE_PLAYER;
-      cfg->player_types[PLAYER_B] = INTERACTIVE_PLAYER;
+      pconfig->player_types[PLAYER_A] = INTERACTIVE_PLAYER;
+      pconfig->player_types[PLAYER_B] = INTERACTIVE_PLAYER;
       break;
 
     case 3: // AI vs AI
-      cfg->player_types[PLAYER_A] = AI_PLAYER;
-      cfg->player_types[PLAYER_B] = AI_PLAYER;
+      pconfig->player_types[PLAYER_A] = AI_PLAYER;
+      pconfig->player_types[PLAYER_B] = AI_PLAYER;
       break;
 
     default: // Should not reach here due to validation
-      cfg->player_types[PLAYER_A] = INTERACTIVE_PLAYER;
-      cfg->player_types[PLAYER_B] = AI_PLAYER;
+      pconfig->player_types[PLAYER_A] = INTERACTIVE_PLAYER;
+      pconfig->player_types[PLAYER_B] = AI_PLAYER;
       break;
   }
 }

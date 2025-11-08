@@ -5,9 +5,7 @@
 Modes are defined as **(role, ui)** tuples:
 
 - **Roles**: `stda` (standalone), `client`, `server`
-- **UIs**: `cli`, `tui`, `gamegui`, `auto`, `simtui`, `servercli`
-  - replace gamegui by simply 'gui'
-  - replace 'auto' by 'simauto'
+- **UIs**: `cli`, `tui`, `gui`, `simauto`, `simtui`, `servercli`
 
 ## Key Architectural Decisions
 
@@ -61,14 +59,14 @@ src/
 │   ├── debug.h               # Debug macros
 │   └── logger.c/h            # Logging system (future)
 │
-├── strategies/                # AI strategy implementations
-│   ├── strategy.c/h          # Strategy framework (function pointers)
-│   ├── strat_random.c/h      # Random AI
-│   ├── strat_balanced.c/h    # Balanced rules AI
-│   ├── strat_heuristic.c/h   # Heuristic AI
-│   ├── strat_hybrid.c/h      # Hybrid AI
-│   ├── strat_simplemc.c/h    # Simple Monte Carlo
-│   ├── strat_ismcts.c/h      # IS-MCTS
+├── ai_strat/                # AI strategy implementations
+│   ├── ai_strategy.c/h          # Strategy framework (function pointers)
+│   ├── aistrat_random.c/h      # Random AI
+│   ├── aistrat_balanced.c/h    # Balanced rules AI
+│   ├── aistrat_heuristic.c/h   # Heuristic AI
+│   ├── aistrat_hybrid.c/h      # Hybrid AI
+│   ├── aistrat_simplemc.c/h    # Simple Monte Carlo AI
+│   ├── aistrat_ismcts.c/h      # IS-MCTS AI
 │   └── ai_params.c/h         # AI parameter management
 │
 ├── deck_formats/              # Deck construction methods
@@ -78,7 +76,7 @@ src/
 │   ├── deck_solomon.c/h      # Solomon 7×7 draft
 │   ├── deck_draft12x8.c/h    # Draft 12×8
 │   ├── deck_draft123.c/h     # Draft 1-2-3
-│   └── draft_common.c/h      # Shared draft utilities
+│   └── deck_draft_common.c/h      # Shared draft utilities
 │
 ├── game_rules/                # Optional game depth additions
 │   ├── abilities.c/h         # Champion abilities (Berserker, Vampire)
@@ -89,14 +87,14 @@ src/
 │   ├── stda/
 │   │   ├── stda_main.c/h     # Standalone entry point dispatcher
 │   │   └── stda_game.c/h     # Standalone game loops (~380 lines)
-│   │                         # Functions: stda_game_loop_cli(), _tui(), _gamegui(), _auto(), _simtui()
+│   │                         # Functions: stda_game_loop_cli(), _tui(), _gui(), _simauto(), _simtui()
 │   │                         # Uses engine_run_until_input() for blocking modes
 │   │                         # Uses engine_step() for event-driven GUI
 │   │
 │   ├── client/
 │   │   ├── client_main.c/h   # Client entry point dispatcher
 │   │   ├── client_game.c/h   # Client game loops (network → engine)
-│   │   │                     # Functions: client_game_loop_cli(), _tui(), _gamegui()
+│   │   │                     # Functions: client_game_loop_cli(), _tui(), _gui()
 │   │   ├── client_state.c/h  # Visible state management
 │   │   └── client_network.c/h # Network communication
 │   │
@@ -126,24 +124,29 @@ src/
 │   │   ├── tui_callbacks.c/h # Event handlers (~200 lines)
 │   │   └── tui_windows.c/h   # Window management (helper)
 │   │
-│   ├── gamegui/               # Game GUI (SDL3 for gameplay)
-│   │   ├── gamegui_display.c/h    # SDL3 rendering coordinator (~350 lines)
-│   │   ├── gamegui_input.c/h      # SDL3 event handling (~250 lines)
-│   │   ├── gamegui_callbacks.c/h  # Event handlers (~200 lines)
+│   ├── gui/               # Game GUI (SDL3 for gameplay)
+│   │   ├── gui_display.c/h    # SDL3 rendering coordinator (~350 lines)
+│   │   ├── gui_input.c/h      # SDL3 event handling (~250 lines)
+│   │   ├── gui_callbacks.c/h  # Event handlers (~200 lines)
 │   │   ├── card_renderer.c/h      # Card compositing (helper)
 │   │   ├── font_manager.c/h       # Font loading (helper)
 │   │   ├── texture_cache.c/h      # Image caching (helper)
 │   │   └── layout.c/h             # Responsive layout (helper)
 │   │
-│   ├── auto/                  # Non-interactive CLI (automation)
-│   │   ├── auto_display.c/h  # Minimal output (progress, summary)
-│   │   └── auto_callbacks.c/h # Event handlers (logging only)
-│   │
-│   ├── simtui/                # Simulation TUI (ncurses visualization)
-│   │   ├── simtui_display.c/h     # Stats/graph rendering
-│   │   ├── simtui_input.c/h       # Control input (pause/resume/speed)
-│   │   ├── simtui_callbacks.c/h   # Event handlers
-│   │   └── stats_visualizer.c/h   # Real-time stats (helper)
+│   ├── simulation/                # Simulation and analysis
+│   │   ├── sim_engine.c/h        # core simulation engine
+│   │   ├── sim_export.c/h        # CSV export
+│   │   ├── sim_stats.c/h         # Statistics calculation
+│   │   │
+│   │   ├── simauto/                  # Non-interactive CLI (automation)
+│   │   │   ├── simauto_display.c/h  # Minimal output (progress, summary)
+│   │   │   └── simauto_callbacks.c/h # Event handlers (logging only)
+│   │   │
+│   │   └── simtui/                # Simulation TUI (ncurses visualization)
+│   │       ├── simtui_display.c/h     # Stats/graph rendering
+│   │       ├── simtui_input.c/h       # Control input (pause/resume/speed)
+│   │       ├── simtui_callbacks.c/h   # Event handlers
+│   │       └── simtui_stats_visualizer.c/h   # Real-time stats (helper)
 │   │
 │   └── servercli/             # Server admin CLI
 │       ├── servercli_display.c/h  # Server status formatting
@@ -156,7 +159,7 @@ src/
 │   ├── recall.c/h            # Recall card selection
 │   └── deck_builder.c/h      # Interactive deck building
 │
-├── actions/                   # Action system (for network/MCTS)
+├── actions/                   # Action system
 │   ├── action.c/h            # Action structures and creation
 │   ├── action_generator.c/h  # Generate legal moves
 │   ├── action_validator.c/h  # Validate actions
@@ -171,11 +174,6 @@ src/
 │   ├── serialization.c/h     # State serialization
 │   ├── socket_utils.c/h      # Socket wrappers
 │   └── crypto.c/h            # Authentication/checksums
-│
-├── simulation/                # Simulation and analysis
-│   ├── sim_engine.c/h        # Simulation runner
-│   ├── sim_export.c/h        # CSV export
-│   └── sim_stats.c/h         # Statistics calculation
 │
 ├── rating/                    # Bradley-Terry rating system
 │   ├── rating.c/h            # Core BT calculations
@@ -195,7 +193,7 @@ src/
 ├── platform/                  # Platform-specific code
 │   ├── platform_windows.c/h  # Windows-specific
 │   ├── platform_linux.c/h    # Linux-specific
-│   ├── platform_ios.m/h      # iOS-specific (Objective-C)
+│   ├── platform_ios.m/h      # iOS-specific
 │   └── platform_android.c/h  # Android-specific
 │
 └── main/                      # Entry point
@@ -258,7 +256,7 @@ void stda_game_loop_cli(config_t* cfg, GameContext* ctx, StrategySet* strategies
 }
 
 // Event-driven mode (GUI) - UI owns loop
-void run_gamegui_loop(GUIContext* gui) {
+void run_gui_loop(GUIContext* gui) {
     while (running) {
         handle_sdl_events();        // Non-blocking
         engine_step(engine, ctx);   // Non-blocking
@@ -315,8 +313,8 @@ void cli_on_card_drawn(PlayerID player, uint8_t card_id, void* ui_ctx) {
     cli_display_card_drawn(player_name, card);  // Display immediately
 }
 
-// ui/gamegui/gamegui_callbacks.c
-void gamegui_on_card_drawn(PlayerID player, uint8_t card_id, void* ui_ctx) {
+// ui/gui/gui_callbacks.c
+void gui_on_card_drawn(PlayerID player, uint8_t card_id, void* ui_ctx) {
     queue_card_draw_animation(player, card_id);  // Queue for rendering
 }
 
@@ -337,7 +335,7 @@ ui/<ui_name>/
 └── <ui>_callbacks.c/h # Event handlers (~180-200 lines)
 ```
 
-**Non-interactive UIs** (auto, simtui) have only display and callbacks.
+**Non-interactive UIs** (simauto, simtui) have only display and callbacks.
 
 ### 5. Role Orchestration
 
@@ -424,8 +422,8 @@ Network → Action* → Validate → engine_submit_action()
 | --------- | ---- | ------ | ------ | -------------- |
 | cli       | ✓    | ✓      | ✗      | Game owns      |
 | tui       | ✓    | ✓      | ✗      | Game owns      |
-| gamegui   | ✓    | ✓      | ✗      | UI owns        |
-| auto      | ✓    | ✗      | ✗      | Game owns      |
+| gui       | ✓    | ✓      | ✗      | UI owns        |
+| simauto   | ✓    | ✗      | ✗      | Game owns      |
 | simtui    | ✓    | ✗      | ✗      | Game owns      |
 | servercli | ✗    | ✗      | ✓      | Game owns      |
 
@@ -459,10 +457,10 @@ int run_stda_mode(UIType ui, GameConfig* cfg) {
             return run_mode_stda_cli(cfg);  // Blocking loop
         case UI_TUI:
             return run_mode_stda_tui(cfg);  // Blocking loop
-        case UI_GAMEGUI:
-            return run_mode_stda_gamegui(cfg);  // Event-driven loop
-        case UI_AUTO:
-            return run_mode_stda_auto(cfg);  // Fast batch loop
+        case UI_GUI:
+            return run_mode_stda_gui(cfg);  // Event-driven loop
+        case UI_SIMAUTO:
+            return run_mode_stda_simauto(cfg);  // Fast batch loop
         case UI_SIMTUI:
             return run_mode_stda_simtui(cfg);  // Blocking with visualization
     }
@@ -562,29 +560,6 @@ static Action* get_ai_action(GameEngine* engine, PlayerID player,
 
 ---
 
-## File Size Compliance
-
-All modules respect the coding guidelines:
-
-- ≤35 lines per function (documentation/comments excluded)
-- ≤100 lines per function (firm limit)
-- ≤500 lines per file (ideal: ≤400)
-- ≤1000 lines per file (firm limit)
-
-### Typical Module Sizes
-
-| Module Type        | Typical Size | Examples                                        |
-| ------------------ | ------------ | ----------------------------------------------- |
-| Core Engine        | 250-350      | game_engine.c, turn_logic.c, combat.c           |
-| UI Display         | 300-400      | cli_display.c, tui_display.c, gamegui_display.c |
-| UI Input           | 250-300      | cli_input.c, tui_input.c, gamegui_input.c       |
-| UI Callbacks       | 150-200      | cli_callbacks.c, tui_callbacks.c                |
-| Role Orchestration | 300-400      | stda_game.c, client_game.c, server_game.c       |
-| Action System      | 300-400      | action_processor.c, action_validator.c          |
-| Helper Modules     | 150-250      | font_manager.c, texture_cache.c                 |
-
----
-
 ## Benefits of This Architecture
 
 ### 1. Code Reuse
@@ -626,7 +601,7 @@ All modules respect the coding guidelines:
 
 ## Migration Strategy
 
-### Phase 1: Core Engine (~2-3 weeks)
+### Phase 1: Core Engine
 
 1. Create `core/game_engine.c` with pollable state machine
 2. Extract phase logic from `turn_logic.c`
@@ -634,7 +609,7 @@ All modules respect the coding guidelines:
 4. Implement `engine_step()` and `engine_run_until_input()`
 5. Test with existing game loop
 
-### Phase 2: Action System (~2 weeks)
+### Phase 2: Action System
 
 1. Define `Action` structures in `actions/action.h`
 2. Implement action creators in `actions/action.c`
@@ -642,14 +617,14 @@ All modules respect the coding guidelines:
 4. Implement `apply_action()` in `actions/action_processor.c`
 5. Test action validation and execution
 
-### Phase 3: Callback System (~1-2 weeks)
+### Phase 3: Callback System
 
 1. Define `UICallbacks` interface in `ui/shared/ui_callbacks.h`
 2. Thread callback context through engine functions
 3. Fire callbacks at appropriate points
 4. Test with mock callbacks
 
-### Phase 4: CLI Refactoring (~2-3 weeks)
+### Phase 4: CLI Refactoring
 
 1. Extract display functions to `ui/cli/cli_display.c`
 2. Extract input parsing to `ui/cli/cli_input.c`
@@ -657,23 +632,23 @@ All modules respect the coding guidelines:
 4. Refactor orchestration in `roles/stda/stda_game.c`
 5. Test full CLI mode
 
-### Phase 5: Verification (~1 week)
+### Phase 5: Verification
 
 1. Verify all modes still work
 2. Performance testing
 3. Integration testing
 4. Update documentation
 
-### Phase 6: TUI Implementation (~2-3 weeks)
+### Phase 6: TUI Implementation
 
 1. Create `ui/tui/` with ncurses versions
 2. Reuse callback patterns
 3. Test with same engine
 
-### Phase 7: GUI Foundation (~4-6 weeks)
+### Phase 7: GUI Foundation
 
 1. Implement event-driven loop in `roles/stda/stda_game.c`
-2. Create SDL3 display/input in `ui/gamegui/`
+2. Create SDL3 display/input in `ui/gui/`
 3. Verify engine works in both blocking and event-driven modes
 4. Implement GUI callbacks
 

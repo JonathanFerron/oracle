@@ -68,11 +68,11 @@ void play_stda_auto_game(uint16_t initial_cash, struct gamestats* gstats,
   apply_mulligan(&gstate, ctx);
 
   DEBUG_PRINT("Game started with %d A, %d B cash; %d A, %d B energy\n",
-           gstate.current_cash_balance[PLAYER_A],
-           gstate.current_cash_balance[PLAYER_B],
-           gstate.current_energy[PLAYER_A],
-           gstate.current_energy[PLAYER_B]);
-  
+              gstate.current_cash_balance[PLAYER_A],
+              gstate.current_cash_balance[PLAYER_B],
+              gstate.current_energy[PLAYER_A],
+              gstate.current_energy[PLAYER_B]);
+
 
   gstate.turn = 0;
 
@@ -85,10 +85,10 @@ void play_stda_auto_game(uint16_t initial_cash, struct gamestats* gstats,
     gstate.game_state = DRAW;
 
   DEBUG_PRINT("Game ended at round %.4u, turn %.4u, winner is %s\n",
-           (uint16_t)((gstate.turn-1) * 0.5)+1,
-           gstate.turn,
-           GAME_STATE_NAMES[gstate.game_state]);
-  
+              (uint16_t)((gstate.turn-1) * 0.5)+1,
+              gstate.turn,
+              GAME_STATE_NAMES[gstate.game_state]);
+
 
   record_final_stats(gstats, &gstate); // need to pass cfg pointer to provide game mode information
 

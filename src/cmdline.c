@@ -12,33 +12,36 @@
 
 /* Parse language code from string */
 static ui_language_t parse_language(const char* lang_str)
-{ if (!lang_str || *lang_str == '\0')
+{ if(!lang_str || *lang_str == '\0')
   { return LANG_EN;  /* Default to English */
   }
-  
+
   /* Convert to lowercase for case-insensitive comparison */
   char lower[3] = {0};
   int i;
-  for (i = 0; i < 2 && lang_str[i]; i++)
-  { lower[i] = tolower(lang_str[i]);
-  }
+  for(i = 0; i < 2 && lang_str[i]; i++)
+    lower[i] = tolower(lang_str[i]);
   lower[i] = '\0';
-  
-  if (strcmp(lower, "en") == 0) return LANG_EN;
-  if (strcmp(lower, "fr") == 0) return LANG_FR;
-  if (strcmp(lower, "es") == 0) return LANG_ES;
-  
+
+  if(strcmp(lower, "en") == 0) return LANG_EN;
+  if(strcmp(lower, "fr") == 0) return LANG_FR;
+  if(strcmp(lower, "es") == 0) return LANG_ES;
+
   fprintf(stderr, "Warning: Unknown language '%s', using English\n", lang_str);
   return LANG_EN;
 }
 
 /* Get language name for display */
 static const char* get_language_name(ui_language_t lang)
-{ switch (lang)
-  { case LANG_EN: return "English";
-    case LANG_FR: return "French";
-    case LANG_ES: return "Spanish";
-    default: return "English";
+{ switch(lang)
+  { case LANG_EN:
+      return "English";
+    case LANG_FR:
+      return "French";
+    case LANG_ES:
+      return "Spanish";
+    default:
+      return "English";
   }
 }
 
@@ -151,11 +154,9 @@ int parse_options(int argc, char** argv, config_t* cfg)
   cfg->language = LANG_EN;
   cfg->use_random_seed = true;
   cfg->prng_seed = 0;
-  cfg->player_types[PLAYER_A] = INTERACTIVE_PLAYER;
-  cfg->player_types[PLAYER_B] = AI_PLAYER;
 
   while((opt = getopt_long_only(argc, argv,
-                                "hvVn:i:o:u::p::asltgSCLTGA:", 
+                                "hvVn:i:o:u::p::asltgSCLTGA:",
                                 long_options, &option_index)) != -1)
   { switch(opt)
     { case 'h':
@@ -182,18 +183,15 @@ int parse_options(int argc, char** argv, config_t* cfg)
         break;
       case 'u':
         cfg->language = parse_language(optarg);
-        if (cfg->verbose)
-        { printf("UI language set to: %s\n", get_language_name(cfg->language));
-        }
+        if(cfg->verbose)
+          printf("UI language set to: %s\n", get_language_name(cfg->language));
         break;
       case 'p':
         cfg->use_random_seed = false;
-        if (optarg)
-        { parse_seed_arg(optarg, &cfg->prng_seed);
-        }
+        if(optarg)
+          parse_seed_arg(optarg, &cfg->prng_seed);
         else
-        { cfg->prng_seed = M_TWISTER_SEED;
-        }
+          cfg->prng_seed = M_TWISTER_SEED;
         break;
       case 'a':
         cfg->mode = MODE_STDA_AUTO;
@@ -242,15 +240,15 @@ int parse_options(int argc, char** argv, config_t* cfg)
   }
 
   /* Initialize PRNG seed */
-  if (cfg->use_random_seed)
+  if(cfg->use_random_seed)
   { cfg->prng_seed = generate_random_seed();
-    if (cfg->verbose)
-    { printf("Using random PRNG seed: %u (0x%08X)\n", 
+    if(cfg->verbose)
+    { printf("Using random PRNG seed: %u (0x%08X)\n",
              cfg->prng_seed, cfg->prng_seed);
     }
   }
   else
-  { if (cfg->verbose)
+  { if(cfg->verbose)
     { printf("Using specified PRNG seed: %u (0x%08X)\n",
              cfg->prng_seed, cfg->prng_seed);
     }

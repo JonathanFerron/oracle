@@ -48,10 +48,10 @@ int16_t calculate_total_attack(struct gamestate* gstate, PlayerID player, GameCo
     combat_cards[i].order = fullDeck[card_idx].order;
 
     DEBUG_PRINT(" Attack card %u: D%u+%u, cost %u\n",
-             card_idx,
-             fullDeck[card_idx].defense_dice,
-             fullDeck[card_idx].attack_base,
-             fullDeck[card_idx].cost);    
+                card_idx,
+                fullDeck[card_idx].defense_dice,
+                fullDeck[card_idx].attack_base,
+                fullDeck[card_idx].cost);
 
     current = current->next;
   }
@@ -88,10 +88,10 @@ int16_t calculate_total_defense(struct gamestate* gstate, PlayerID player, GameC
     combat_cards[i].order = fullDeck[card_idx].order;
 
     DEBUG_PRINT(" Defense card %u: D%u, cost %u\n",
-             card_idx,
-             fullDeck[card_idx].defense_dice,
-             fullDeck[card_idx].cost);
-    
+                card_idx,
+                fullDeck[card_idx].defense_dice,
+                fullDeck[card_idx].cost);
+
 
     current = current->next;
   }
@@ -119,7 +119,7 @@ void apply_combat_damage(struct gamestate* gstate, int16_t total_attack,
 
   DEBUG_PRINT(" Damage dealt: %d\n", total_damage);
   DEBUG_PRINT(" Defender energy after: %u\n", gstate->current_energy[defender]);
-  
+
   // Check for game end
   if(gstate->current_energy[defender] == 0)
   { gstate->someone_has_zero_energy = true;

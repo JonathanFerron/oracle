@@ -99,9 +99,9 @@ void play_cash_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx,
     uint8_t cash_received = fullDeck[card_idx].exchange_cash;
     gstate->current_cash_balance[player] += cash_received;
 
-    
+
     DEBUG_PRINT(" Exchanged champion card %u for %u lunas\n",             champion_to_exchange, cash_received);
-    
+
   }
 
   // Move cash card to discard

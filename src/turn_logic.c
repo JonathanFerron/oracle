@@ -38,8 +38,8 @@ void begin_of_turn(struct gamestate* gstate, GameContext* ctx)
     draw_1_card(gstate, gstate->current_player, ctx);
 
   DEBUG_PRINT(" Begin round %.4u, turn %.4u\n",
-           (uint16_t)((gstate->turn-1) * 0.5)+1, gstate->turn);
-  
+              (uint16_t)((gstate->turn-1) * 0.5)+1, gstate->turn);
+
 } // begin_of_turn
 
 void attack_phase(struct gamestate* gstate, StrategySet* strategies, GameContext* ctx)
@@ -66,10 +66,10 @@ void end_of_turn(struct gamestate* gstate, GameContext* ctx)
   change_current_player(gstate);
 
   DEBUG_PRINT(" End round %.4u, turn %.4u\n",
-           (uint16_t)((gstate->turn-2) * 0.5)+1, gstate->turn-1);
+              (uint16_t)((gstate->turn-2) * 0.5)+1, gstate->turn-1);
   DEBUG_PRINT(" Turn ended: %d A, %d B cash; %d A, %d B energy\n",
-           gstate->current_cash_balance[PLAYER_A],
-           gstate->current_cash_balance[PLAYER_B],
-           gstate->current_energy[PLAYER_A],
-           gstate->current_energy[PLAYER_B]);
+              gstate->current_cash_balance[PLAYER_A],
+              gstate->current_cash_balance[PLAYER_B],
+              gstate->current_energy[PLAYER_A],
+              gstate->current_energy[PLAYER_B]);
 } // end_of_turn
