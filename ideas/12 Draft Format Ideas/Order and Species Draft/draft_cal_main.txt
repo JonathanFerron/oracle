@@ -1,0 +1,128 @@
+// draft_calibration_main.c
+// Main program for Order/Species Draft calibration simulation
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include "draft_types.h"
+#include "draft_champion.h"
+#include "draft_pile.h"
+#include "draft_simulation.h"
+#include "draft_output.h"
+#include "mtwister.h"
+
+// Parse command line arguments
+static void parse_arguments(int argc, char* argv[], 
+                           int* n1, int* n2, uint32_t* seed)
+{
+    for (int i = 1; i < argc; i++) {
+        if (strncmp(argv[i], "--n1=", 5) == 0) {
+            *n1 = atoi(argv[i] + 5);
+        }
+        else if (strncmp(argv[i], "--n2=", 5) == 0) {
+            *n2 = atoi(argv[i] + 5);
+        }
+        else if (strncmp(argv[i], "--seed=", 7) == 0) {
+            *seed = (uint32_t)atol(argv[i] + 7);
+        }
+        else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+            printf("Usage: %s [options]\n", argv[0]);
+            printf("Options:\n");
+            printf("  --n1=NUM     Outer loop iterations (default: 5000)\n");
+            printf("  --n2=NUM     Inner loop iterations (default: 500)\n");
+            printf("  --seed=NUM   Random seed (default: current time)\n");
+            printf("  --help, -h   Show this help message\n");
+            exit(0);
+        }
+    }
+}
+
+int main(int argc, char* argv[])
+{
+    // Default parameters
+    int n1 = 5000;
+    int n2 = 500;
+    uint32_t seed = (uint32_t)time(NULL);
+    
+    // Parse command line arguments
+    parse_arguments(argc, argv, &n1, &n2, &seed);
+    
+    // Print configuration
+    printf("========================================\n");
+    printf("Order/Species Draft Calibration Sim\n");
+    printf("========================================\n");
+    printf("Configuration:\n");
+    printf("  n1 (outer loop): %d\n", n1);
+    printf("  n2 (inner loop): %d\n", n2);
+    printf("  Random seed: %u\n", seed);
+    printf("  Target runtime: ~10 minutes\n");
+    printf("========================================\n\n");
+    
+    // Initialize random number generator
+    MTRand rng = seedRand(seed);
+    
+    // Allocate results tables (35 rows x 12 columns)
+    int (*order_results)[12] = calloc(35, sizeof(int[12]));
+    int (*species_results)[12] = calloc(35, sizeof(int[12]));
+    
+    if (!order_results || !species_results) {
+        fprintf(stderr, "ERROR: Failed to allocate results tables\n");
+        return 1;
+    }
+    
+    // Run Order Draft simulation
+    printf("=== ORDER DRAFT SIMULATION ===\n");
+    time_t start_time = time(NULL);
+    
+    run_simulation(PILE_METHOD_ORDER, n1, n2, order_results, &rng);
+    
+    time_t order_time = time(NULL) - start_time;
+    printf("Order Draft completed in %ld seconds\n\n", order_time);
+    
+    // Generate output filename with parameters
+    char order_filename[256];
+    snprintf(order_filename, sizeof(order_filename),
+             "order_draft_calibration_n1_%d_n2_%d_seed_%u.csv",
+             n1, n2, seed);
+    
+    write_results_table(order_filename, order_results, n1, n2, seed, 
+                       "Order Draft");
+    printf("Results written to: %s\n\n", order_filename);
+    
+    // Run Species Draft simulation
+    printf("=== SPECIES DRAFT SIMULATION ===\n");
+    start_time = time(NULL);
+    
+    run_simulation(PILE_METHOD_SPECIES, n1, n2, species_results, &rng);
+    
+    time_t species_time = time(NULL) - start_time;
+    printf("Species Draft completed in %ld seconds\n\n", species_time);
+    
+    // Generate output filename with parameters
+    char species_filename[256];
+    snprintf(species_filename, sizeof(species_filename),
+             "species_draft_calibration_n1_%d_n2_%d_seed_%u.csv",
+             n1, n2, seed);
+    
+    write_results_table(species_filename, species_results, n1, n2, seed,
+                       "Species Draft");
+    printf("Results written to: %s\n\n", species_filename);
+    
+    // Print summary
+    printf("========================================\n");
+    printf("SIMULATION COMPLETE\n");
+    printf("========================================\n");
+    printf("Total runtime: %ld seconds\n", order_time + species_time);
+    printf("\nNext steps:\n");
+    printf("1. Review CSV files for optimal n values\n");
+    printf("2. Goal 1: Find n where failures <= %.0f%%\n", 20.0);
+    printf("3. Goal 2: Find n where failures <= %.0f%%\n", 1.0);
+    printf("========================================\n");
+    
+    // Clean up
+    free(order_results);
+    free(species_results);
+    
+    return 0;
+}

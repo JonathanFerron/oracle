@@ -1,0 +1,104 @@
+// draft_output.c
+// Results table output to CSV
+
+#include <stdio.h>
+#include <time.h>
+#include "draft_output.h"
+
+// Write results table to CSV file
+void write_results_table(const char* filename, int results[][12],
+                        int n1, int n2, uint32_t seed,
+                        const char* format_name)
+{
+    FILE* fp = fopen(filename, "w");
+    if (!fp) {
+        fprintf(stderr, "ERROR: Could not open file %s for writing\n",
+                filename);
+        return;
+    }
+    
+    // Write metadata as comments
+    time_t now = time(NULL);
+    fprintf(fp, "# %s Calibration Results\n", format_name);
+    fprintf(fp, "# Generated: %s", ctime(&now));
+    fprintf(fp, "# Parameters: n1=%d, n2=%d, seed=%u\n", n1, n2, seed);
+    fprintf(fp, "# Goal 1 threshold: %.0f%% (failures <= %d)\n",
+            20.0, (int)(n1 * 0.20));
+    fprintf(fp, "# Goal 2 threshold: %.0f%% (failures <= %d)\n",
+            1.0, (int)(n1 * 0.01));
+    fprintf(fp, "#\n");
+    
+    // Write column headers
+    fprintf(fp, "n,");
+    fprintf(fp, "Goal1_Random_min,");
+    fprintf(fp, "Goal1_Random_avg-2sd,");
+    fprintf(fp, "Goal1_Random_avg-1sd,");
+    fprintf(fp, "Goal1_Random_avg,");
+    fprintf(fp, "Goal1_Greedy_L/S,");
+    fprintf(fp, "Goal1_Greedy_S/L,");
+    fprintf(fp, "Goal2_Random_min,");
+    fprintf(fp, "Goal2_Random_avg-2sd,");
+    fprintf(fp, "Goal2_Random_avg-1sd,");
+    fprintf(fp, "Goal2_Random_avg,");
+    fprintf(fp, "Goal2_Greedy_L/S,");
+    fprintf(fp, "Goal2_Greedy_S/L\n");
+    
+    // Write data rows
+    for (int n = 0; n <= 34; n++) {
+        fprintf(fp, "%d", n);
+        for (int col = 0; col < 12; col++) {
+            fprintf(fp, ",%d", results[n][col]);
+        }
+        fprintf(fp, "\n");
+    }
+    
+    fclose(fp);
+}
+
+// Print summary statistics
+void print_summary(int results[][12], int n1, const char* format_name)
+{
+    printf("\n=== %s Draft Summary ===\n", format_name);
+    
+    int goal1_threshold = (int)(n1 * 0.20);
+    int goal2_threshold = (int)(n1 * 0.01);
+    
+    printf("Goal 1 threshold (20%%): %d failures\n", goal1_threshold);
+    printf("Goal 2 threshold (1%%): %d failures\n\n", goal2_threshold);
+    
+    // Find optimal n values
+    printf("Optimal n values (meeting both goals):\n");
+    bool found_any = false;
+    
+    for (int n = 0; n <= 34; n++) {
+        bool meets_goal1 = true;
+        bool meets_goal2 = true;
+        
+        // Check Goal 1 columns (0-5)
+        for (int col = 0; col < 6; col++) {
+            if (results[n][col] > goal1_threshold) {
+                meets_goal1 = false;
+                break;
+            }
+        }
+        
+        // Check Goal 2 columns (6-11)
+        for (int col = 6; col < 12; col++) {
+            if (results[n][col] > goal2_threshold) {
+                meets_goal2 = false;
+                break;
+            }
+        }
+        
+        if (meets_goal1 && meets_goal2) {
+            printf("  n = %d\n", n);
+            found_any = true;
+        }
+    }
+    
+    if (!found_any) {
+        printf("  (none found - format may not be viable)\n");
+    }
+    
+    printf("\n");
+}

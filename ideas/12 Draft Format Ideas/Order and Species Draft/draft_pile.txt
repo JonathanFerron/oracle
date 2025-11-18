@@ -1,0 +1,137 @@
+// draft_pile.c
+// Pile creation and manipulation
+
+#include <stdlib.h>
+#include <string.h>
+#include "draft_pile.h"
+
+// Create piles sorted by Order (5 piles)
+Pile* sort_by_order(SimplifiedChampion* champions, int num_champions)
+{
+    Pile* piles = malloc(5 * sizeof(Pile));
+    if (!piles) return NULL;
+    
+    // Initialize 5 empty piles
+    for (int i = 0; i < 5; i++) {
+        piles[i].cards = malloc(30 * sizeof(SimplifiedChampion*));
+        if (!piles[i].cards) {
+            for (int j = 0; j < i; j++) free(piles[j].cards);
+            free(piles);
+            return NULL;
+        }
+        piles[i].count = 0;
+        piles[i].capacity = 30;
+        piles[i].identifier = i;
+    }
+    
+    // Sort champions into piles
+    for (int i = 0; i < num_champions; i++) {
+        int order = champions[i].order_id;
+        piles[order].cards[piles[order].count++] = &champions[i];
+    }
+    
+    return piles;
+}
+
+// Create piles sorted by Species (15 piles)
+Pile* sort_by_species(SimplifiedChampion* champions, int num_champions)
+{
+    Pile* piles = malloc(15 * sizeof(Pile));
+    if (!piles) return NULL;
+    
+    // Initialize 15 empty piles
+    for (int i = 0; i < 15; i++) {
+        piles[i].cards = malloc(10 * sizeof(SimplifiedChampion*));
+        if (!piles[i].cards) {
+            for (int j = 0; j < i; j++) free(piles[j].cards);
+            free(piles);
+            return NULL;
+        }
+        piles[i].count = 0;
+        piles[i].capacity = 10;
+        piles[i].identifier = i;
+    }
+    
+    // Sort champions into piles
+    for (int i = 0; i < num_champions; i++) {
+        int species = champions[i].species_id;
+        piles[species].cards[piles[species].count++] = &champions[i];
+    }
+    
+    return piles;
+}
+
+// Find largest pile in available piles
+int find_largest_pile(Pile* piles, int* available, int num_available)
+{
+    int max_idx = available[0];
+    int max_count = piles[available[0]].count;
+    
+    for (int i = 1; i < num_available; i++) {
+        int idx = available[i];
+        if (piles[idx].count > max_count) {
+            max_count = piles[idx].count;
+            max_idx = idx;
+        }
+    }
+    
+    return max_idx;
+}
+
+// Find smallest pile in available piles
+int find_smallest_pile(Pile* piles, int* available, int num_available)
+{
+    int min_idx = available[0];
+    int min_count = piles[available[0]].count;
+    
+    for (int i = 1; i < num_available; i++) {
+        int idx = available[i];
+        if (piles[idx].count < min_count) {
+            min_count = piles[idx].count;
+            min_idx = idx;
+        }
+    }
+    
+    return min_idx;
+}
+
+// Select random pile from available piles
+int select_random_pile(int* available, int num_available, MTRand* rng)
+{
+    int choice = genRandLong(rng) % num_available;
+    return available[choice];
+}
+
+// Free pile array
+void free_piles(Pile* piles, int num_piles)
+{
+    for (int i = 0; i < num_piles; i++) {
+        free(piles[i].cards);
+    }
+    free(piles);
+}
+
+// Create deep copy of piles
+Pile* copy_piles(Pile* src, int num_piles)
+{
+    Pile* dst = malloc(num_piles * sizeof(Pile));
+    if (!dst) return NULL;
+    
+    for (int i = 0; i < num_piles; i++) {
+        dst[i].capacity = src[i].capacity;
+        dst[i].count = src[i].count;
+        dst[i].identifier = src[i].identifier;
+        
+        dst[i].cards = malloc(src[i].capacity * sizeof(SimplifiedChampion*));
+        if (!dst[i].cards) {
+            for (int j = 0; j < i; j++) free(dst[j].cards);
+            free(dst);
+            return NULL;
+        }
+        
+        memcpy(dst[i].cards, src[i].cards, 
+               src[i].count * sizeof(SimplifiedChampion*));
+    }
+    
+    return dst;
+}

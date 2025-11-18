@@ -1,0 +1,54 @@
+// draft_types.h
+// Type definitions for draft calibration simulation
+
+#ifndef DRAFT_TYPES_H
+#define DRAFT_TYPES_H
+
+#include <stdint.h>
+
+// Simplified champion for simulation purposes
+typedef struct {
+    uint8_t species_id;  // 0-14 (15 species)
+    uint8_t order_id;    // 0-4 (5 orders)
+    uint8_t color_id;    // 0-2 (3 colors)
+} SimplifiedChampion;
+
+// Pile structure
+typedef struct {
+    SimplifiedChampion** cards;  // Array of pointers to champions
+    int count;                   // Number of cards in pile
+    int capacity;                // Allocated capacity
+    int identifier;              // Order ID (0-4) or Species ID (0-14)
+} Pile;
+
+// Draft pool for a player
+typedef struct {
+    SimplifiedChampion** cards;  // Array of pointers to drafted champions
+    int count;                   // Number of cards drafted
+    int capacity;                // Allocated capacity
+} Draft;
+
+// Pile method enum
+typedef enum {
+    PILE_METHOD_ORDER,    // 5 piles by Order
+    PILE_METHOD_SPECIES   // 15 piles by Species
+} PileMethod;
+
+// Selection strategy enum
+typedef enum {
+    STRATEGY_RANDOM,           // Both players select randomly
+    STRATEGY_GREEDY_LARGE_SMALL,  // A picks largest, B picks smallest
+    STRATEGY_GREEDY_SMALL_LARGE   // A picks smallest, B picks largest
+} SelectionStrategy;
+
+// Strategy column indices
+typedef enum {
+    COL_RANDOM_MIN = 0,
+    COL_RANDOM_AVG_2SD,
+    COL_RANDOM_AVG_1SD,
+    COL_RANDOM_AVG,
+    COL_GREEDY_LS,
+    COL_GREEDY_SL
+} ColumnIndex;
+
+#endif // DRAFT_TYPES_H

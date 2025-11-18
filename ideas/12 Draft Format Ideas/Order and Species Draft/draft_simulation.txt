@@ -1,0 +1,209 @@
+// draft_simulation.c
+// Main simulation logic
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "draft_simulation.h"
+#include "draft_champion.h"
+#include "draft_pile.h"
+#include "draft_draft.h"
+#include "draft_statistics.h"
+
+// Print progress indicator
+static void print_progress(int n, int iteration, int n1)
+{
+    if (iteration % 100 == 0) {
+        printf("  n=%2d: %5d/%d iterations (%.1f%%)\n",
+               n, iteration, n1, 100.0 * iteration / n1);
+        fflush(stdout);
+    }
+}
+
+// Check Goal 1 failures (min_draft < 34)
+static void check_goal1_failures(int min_draft, int* random_min_drafts,
+                                 int n2, int goal1_failures[6])
+{
+    // Random strategy statistics
+    int stat_min = minimum(random_min_drafts, n2);
+    double stat_avg = average(random_min_drafts, n2);
+    double stat_sd = standard_deviation(random_min_drafts, n2);
+    double stat_avg_1sd = stat_avg - stat_sd;
+    double stat_avg_2sd = stat_avg - 2.0 * stat_sd;
+    
+    if (stat_min < 34) {
+        goal1_failures[COL_RANDOM_MIN]++;
+    }
+    if (stat_avg_2sd < 34) {
+        goal1_failures[COL_RANDOM_AVG_2SD]++;
+    }
+    if (stat_avg_1sd < 34) {
+        goal1_failures[COL_RANDOM_AVG_1SD]++;
+    }
+    if (stat_avg < 34) {
+        goal1_failures[COL_RANDOM_AVG]++;
+    }
+}
+
+// Check Goal 2 failures (max_draft > 68)
+static void check_goal2_failures(int max_draft, int* random_max_drafts,
+                                 int n2, int goal2_failures[6])
+{
+    // Random strategy statistics
+    int stat_max = maximum(random_max_drafts, n2);
+    double stat_avg = average(random_max_drafts, n2);
+    double stat_sd = standard_deviation(random_max_drafts, n2);
+    double stat_avg_1sd = stat_avg + stat_sd;
+    double stat_avg_2sd = stat_avg + 2.0 * stat_sd;
+    
+    if (stat_max > 68) {
+        goal2_failures[COL_RANDOM_MIN]++;
+    }
+    if (stat_avg_2sd > 68) {
+        goal2_failures[COL_RANDOM_AVG_2SD]++;
+    }
+    if (stat_avg_1sd > 68) {
+        goal2_failures[COL_RANDOM_AVG_1SD]++;
+    }
+    if (stat_avg > 68) {
+        goal2_failures[COL_RANDOM_AVG]++;
+    }
+}
+
+// Test random strategy with n2 iterations
+static void test_random_strategy(Pile* piles, int num_piles,
+                                 int* random_min_drafts,
+                                 int* random_max_drafts,
+                                 int n2, MTRand* rng)
+{
+    for (int sim = 0; sim < n2; sim++) {
+        Pile* piles_copy = copy_piles(piles, num_piles);
+        Draft draft_a = create_draft();
+        Draft draft_b = create_draft();
+        
+        simulate_pile_selection(piles_copy, num_piles, STRATEGY_RANDOM,
+                               &draft_a, &draft_b, rng);
+        
+        int min_draft = (draft_a.count < draft_b.count) ? 
+                        draft_a.count : draft_b.count;
+        int max_draft = (draft_a.count > draft_b.count) ?
+                        draft_a.count : draft_b.count;
+        
+        random_min_drafts[sim] = min_draft;
+        random_max_drafts[sim] = max_draft;
+        
+        free_draft(&draft_a);
+        free_draft(&draft_b);
+        free_piles(piles_copy, num_piles);
+    }
+}
+
+// Test greedy strategy (deterministic)
+static void test_greedy_strategy(Pile* piles, int num_piles,
+                                SelectionStrategy strategy,
+                                int* min_draft, int* max_draft,
+                                MTRand* rng)
+{
+    Pile* piles_copy = copy_piles(piles, num_piles);
+    Draft draft_a = create_draft();
+    Draft draft_b = create_draft();
+    
+    simulate_pile_selection(piles_copy, num_piles, strategy,
+                           &draft_a, &draft_b, rng);
+    
+    *min_draft = (draft_a.count < draft_b.count) ?
+                 draft_a.count : draft_b.count;
+    *max_draft = (draft_a.count > draft_b.count) ?
+                 draft_a.count : draft_b.count;
+    
+    free_draft(&draft_a);
+    free_draft(&draft_b);
+    free_piles(piles_copy, num_piles);
+}
+
+// Run complete simulation for one pile method
+void run_simulation(PileMethod method, int n1, int n2,
+                   int results[][12], MTRand* rng)
+{
+    int num_piles = (method == PILE_METHOD_ORDER) ? 5 : 15;
+    const char* method_name = (method == PILE_METHOD_ORDER) ?
+                             "Order" : "Species";
+    
+    printf("Simulating %s Draft (n1=%d, n2=%d)\n", method_name, n1, n2);
+    printf("Number of piles: %d\n\n", num_piles);
+    
+    // Allocate temporary arrays for random strategy
+    int* random_min_drafts = malloc(n2 * sizeof(int));
+    int* random_max_drafts = malloc(n2 * sizeof(int));
+    
+    if (!random_min_drafts || !random_max_drafts) {
+        fprintf(stderr, "ERROR: Failed to allocate memory\n");
+        return;
+    }
+    
+    // Iterate over buffer sizes n = 0 to 34
+    for (int n = 0; n <= 34; n++) {
+        int goal1_failures[6] = {0};
+        int goal2_failures[6] = {0};
+        
+        // Run n1 outer iterations
+        for (int iteration = 0; iteration < n1; iteration++) {
+            print_progress(n, iteration, n1);
+            
+            // Setup: generate and shuffle deck
+            SimplifiedChampion* full_deck = generate_102_champion_deck();
+            shuffle_champion_deck(full_deck, 102, rng);
+            
+            // Extract draft pool (bottom 102-n cards)
+            SimplifiedChampion* draft_pool = full_deck + n;
+            int draft_pool_size = 102 - n;
+            
+            // Sort into piles
+            Pile* piles = (method == PILE_METHOD_ORDER) ?
+                         sort_by_order(draft_pool, draft_pool_size) :
+                         sort_by_species(draft_pool, draft_pool_size);
+            
+            // Test Strategy 1: Random
+            test_random_strategy(piles, num_piles, random_min_drafts,
+                               random_max_drafts, n2, rng);
+            
+            check_goal1_failures(0, random_min_drafts, n2, goal1_failures);
+            check_goal2_failures(0, random_max_drafts, n2, goal2_failures);
+            
+            // Test Strategy 2: Greedy Large/Small
+            int min_ls, max_ls;
+            test_greedy_strategy(piles, num_piles,
+                               STRATEGY_GREEDY_LARGE_SMALL,
+                               &min_ls, &max_ls, rng);
+            
+            if (min_ls < 34) goal1_failures[COL_GREEDY_LS]++;
+            if (max_ls > 68) goal2_failures[COL_GREEDY_LS]++;
+            
+            // Test Strategy 3: Greedy Small/Large
+            int min_sl, max_sl;
+            test_greedy_strategy(piles, num_piles,
+                               STRATEGY_GREEDY_SMALL_LARGE,
+                               &min_sl, &max_sl, rng);
+            
+            if (min_sl < 34) goal1_failures[COL_GREEDY_SL]++;
+            if (max_sl > 68) goal2_failures[COL_GREEDY_SL]++;
+            
+            // Cleanup
+            free_piles(piles, num_piles);
+            free_champion_deck(full_deck);
+        }
+        
+        // Record results for this n value
+        for (int col = 0; col < 6; col++) {
+            results[n][col] = goal1_failures[col];
+            results[n][col + 6] = goal2_failures[col];
+        }
+        
+        printf("  n=%2d: Complete\n", n);
+    }
+    
+    free(random_min_drafts);
+    free(random_max_drafts);
+    
+    printf("\n%s Draft simulation complete!\n\n", method_name);
+}

@@ -1,0 +1,52 @@
+notes oracle
+
+Variant : Draft and Pass (1-2-3) Deck (Advanced)
+For experienced players with 2 full decks:
+Shuffle all 240 cards together
+Each player draws 6 cards at the same time, picks 1, passes remaining 5 to opponent
+Each player picks 1 card among the 5 received from opponent and passes back remaining 4 to opponent
+Each player picks 1 card among the 4 received from opponent and then discard remaining 3 cards
+Repeat 20 times in total until each player has 60 cards
+Each player builds a deck of 40 cards from their 60 drafted cards
+Play with drafted decks
+
+I would consider that this approach would on average create a deck of 40 cards that is stronger than a random deck, weaker than a custom deck (unless one player is extremely lucky), and likely stronger than a monochrome deck if the player is experienced with this Draft Deck format. I would therefore keep non-zero color combos for it, but reduce the combo bonuses nonetheless from the random deck bonuses:
+
+Priority 1: Species Matches
+
+2 of same species: +7
+3 of same species: +12
+2 of same species + 1 of same Order: +9
+2 of same species + 1 of same Color: +8
+
+Priority 2: Order Matches (If no species match)
+
+2 of same Order: +4
+3 of same Order: +6
+2 of same Order + 1 of same Color: +5
+
+Priority 3: Color Matches (If no species or Order match)
+
+2 of same Color: +3
+3 of same Color: +4
+
+Note: Only the highest applicable bonus is applied (bonuses don't stack).
+
+Test via simulated AI vs AI gameplay with smart, combo aware AI engines, what is the effect of the proposed combos for the draft deck format on the game duration, and reduce the combo bonuses if the game is too short.
+
+variant: Soloman Draft: 
+Shuffle one deck of 120 cards and deal 7 cards face up in center. Player A picks 2 cards, player B picks 3 and then hands the 6th and 7th cards to player A. Do this again, with player B going first. Repeat until each person has 49 cards. Finally, each player secretly discards down to a deck size of 40 each.
+
+variant: Draft-and-Pass 6x8: 
+Shuffle one deck of 120 cards and deal 6 piles of 8 cards (total of 48) in front of each player. Each player picks up their first pile, chooses one card, then passes to the next player. Each player then chooses one card from the 7 passed to them, and passes on to the next player again. This process repeats until the first pile is gone. Repeat five more times with the remaining piles. Each player will then have 48 cards. Finally, each player secretly discards down to a deck size of 40 each.
+
+ascii art fonts:
+terrace
+amc tube
+banner
+basic
+colossal
+dos rebel
+Nancyj-Improved
+roman
+univers

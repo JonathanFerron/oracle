@@ -18,7 +18,7 @@
 // Standalone Auto mode code
 int run_mode_stda_auto(config_t* cfg)
 { // Create game context
-  GameContext* ctx = create_game_context(cfg->prng_seed, cfg);
+  GameContext* ctx = create_game_context(cfg);
   if(ctx == NULL)
   { fprintf(stderr, "Failed to create game context\n");
     return EXIT_FAILURE;

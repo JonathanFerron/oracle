@@ -1,0 +1,17 @@
+// draft_output.h
+// Results table output to CSV
+
+#ifndef DRAFT_OUTPUT_H
+#define DRAFT_OUTPUT_H
+
+#include <stdint.h>
+
+// Write results table to CSV file
+void write_results_table(const char* filename, int results[][12],
+                        int n1, int n2, uint32_t seed,
+                        const char* format_name);
+
+// Print summary statistics
+void print_summary(int results[][12], int n1, const char* format_name);
+
+#endif // DRAFT_OUTPUT_H

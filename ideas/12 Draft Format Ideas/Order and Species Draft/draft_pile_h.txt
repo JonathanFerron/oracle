@@ -1,0 +1,23 @@
+// draft_pile.h
+// Pile creation and manipulation
+
+#ifndef DRAFT_PILE_H
+#define DRAFT_PILE_H
+
+#include "draft_types.h"
+#include "mtwister.h"
+
+// Sort champions into piles
+Pile* sort_by_order(SimplifiedChampion* champions, int num_champions);
+Pile* sort_by_species(SimplifiedChampion* champions, int num_champions);
+
+// Pile selection helpers
+int find_largest_pile(Pile* piles, int* available, int num_available);
+int find_smallest_pile(Pile* piles, int* available, int num_available);
+int select_random_pile(int* available, int num_available, MTRand* rng);
+
+// Pile management
+void free_piles(Pile* piles, int num_piles);
+Pile* copy_piles(Pile* src, int num_piles);
+
+#endif // DRAFT_PILE_H

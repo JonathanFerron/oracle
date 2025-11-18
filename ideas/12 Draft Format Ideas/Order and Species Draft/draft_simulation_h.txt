@@ -1,0 +1,15 @@
+// draft_simulation.h
+// Main simulation logic
+
+#ifndef DRAFT_SIMULATION_H
+#define DRAFT_SIMULATION_H
+
+#include "draft_types.h"
+#include "mtwister.h"
+
+// Run complete simulation for one pile method
+// Results array: [35][12] - 35 rows for n=0..34, 12 columns for failures
+void run_simulation(PileMethod method, int n1, int n2,
+                   int results[][12], MTRand* rng);
+
+#endif // DRAFT_SIMULATION_H

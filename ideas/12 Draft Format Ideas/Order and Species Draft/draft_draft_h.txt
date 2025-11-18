@@ -1,0 +1,20 @@
+// draft_draft.h
+// Draft pile selection simulation
+
+#ifndef DRAFT_DRAFT_H
+#define DRAFT_DRAFT_H
+
+#include "draft_types.h"
+#include "mtwister.h"
+
+// Draft management
+Draft create_draft(void);
+void add_pile_to_draft(Draft* draft, Pile* pile);
+void free_draft(Draft* draft);
+
+// Simulate pile selection
+void simulate_pile_selection(Pile* piles, int num_piles,
+                            SelectionStrategy strategy,
+                            Draft* draft_a, Draft* draft_b, MTRand* rng);
+
+#endif // DRAFT_DRAFT_H

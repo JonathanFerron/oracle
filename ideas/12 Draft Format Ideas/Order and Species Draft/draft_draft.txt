@@ -1,0 +1,127 @@
+// draft_draft.c
+// Draft pile selection simulation
+
+#include <stdlib.h>
+#include <stdbool.h>
+#include "draft_draft.h"
+#include "draft_pile.h"
+
+// Initialize empty draft
+Draft create_draft(void)
+{
+    Draft draft;
+    draft.cards = malloc(102 * sizeof(SimplifiedChampion*));
+    draft.count = 0;
+    draft.capacity = 102;
+    return draft;
+}
+
+// Add all cards from pile to draft
+void add_pile_to_draft(Draft* draft, Pile* pile)
+{
+    for (int i = 0; i < pile->count; i++) {
+        draft->cards[draft->count++] = pile->cards[i];
+    }
+}
+
+// Free draft structure
+void free_draft(Draft* draft)
+{
+    free(draft->cards);
+    draft->cards = NULL;
+    draft->count = 0;
+}
+
+// Select pile based on strategy and player
+static int select_pile_for_player(Pile* piles, int* available, 
+                                  int num_available, SelectionStrategy strategy,
+                                  bool is_player_a, MTRand* rng)
+{
+    switch (strategy) {
+        case STRATEGY_RANDOM:
+            return select_random_pile(available, num_available, rng);
+            
+        case STRATEGY_GREEDY_LARGE_SMALL:
+            if (is_player_a) {
+                return find_largest_pile(piles, available, num_available);
+            } else {
+                return find_smallest_pile(piles, available, num_available);
+            }
+            
+        case STRATEGY_GREEDY_SMALL_LARGE:
+            if (is_player_a) {
+                return find_smallest_pile(piles, available, num_available);
+            } else {
+                return find_largest_pile(piles, available, num_available);
+            }
+            
+        default:
+            return available[0];
+    }
+}
+
+// Remove pile index from available list
+static void remove_from_available(int* available, int* num_available, 
+                                  int pile_idx)
+{
+    for (int i = 0; i < *num_available; i++) {
+        if (available[i] == pile_idx) {
+            // Shift remaining elements
+            for (int j = i; j < *num_available - 1; j++) {
+                available[j] = available[j + 1];
+            }
+            (*num_available)--;
+            return;
+        }
+    }
+}
+
+// Simulate pile selection process
+void simulate_pile_selection(Pile* piles, int num_piles, 
+                            SelectionStrategy strategy,
+                            Draft* draft_a, Draft* draft_b, MTRand* rng)
+{
+    // Create available piles list
+    int* available = malloc(num_piles * sizeof(int));
+    int num_available = num_piles;
+    
+    for (int i = 0; i < num_piles; i++) {
+        available[i] = i;
+    }
+    
+    bool is_first_pick = true;
+    
+    while (num_available > 0) {
+        if (is_first_pick) {
+            // Player A picks 1
+            int selected = select_pile_for_player(piles, available, 
+                                                 num_available, strategy,
+                                                 true, rng);
+            add_pile_to_draft(draft_a, &piles[selected]);
+            remove_from_available(available, &num_available, selected);
+            
+            is_first_pick = false;
+        }
+        else {
+            // Player B picks 2
+            for (int pick = 0; pick < 2 && num_available > 0; pick++) {
+                int selected = select_pile_for_player(piles, available,
+                                                     num_available, strategy,
+                                                     false, rng);
+                add_pile_to_draft(draft_b, &piles[selected]);
+                remove_from_available(available, &num_available, selected);
+            }
+            
+            // Player A picks 2
+            for (int pick = 0; pick < 2 && num_available > 0; pick++) {
+                int selected = select_pile_for_player(piles, available,
+                                                     num_available, strategy,
+                                                     true, rng);
+                add_pile_to_draft(draft_a, &piles[selected]);
+                remove_from_available(available, &num_available, selected);
+            }
+        }
+    }
+    
+    free(available);
+}

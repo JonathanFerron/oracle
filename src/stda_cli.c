@@ -637,7 +637,7 @@ int run_mode_stda_cli(config_t* cfg)
   get_ai_strategies(cfg, &pconfig);
 
   /* Create game context (needed for random assignment) */
-  GameContext* ctx = create_game_context(cfg->prng_seed, cfg);
+  GameContext* ctx = create_game_context(cfg);
   if(ctx == NULL)
   { fprintf(stderr, "%s\n",
             LOCALIZED_STRING("Failed to create game context",

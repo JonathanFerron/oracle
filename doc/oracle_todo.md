@@ -10,15 +10,23 @@
 
 Tasks:
 
-- [ ] 1. Work on PRNG seed location
-- [ ] 2. A Implement mulligan system (Player B, 2 cards max)
-- [ ] 2. B Implement discard-to-7 system (end of turn)
-- [ ] 3. Display Discard Pile in CLI Mode
-- [ ] 4. Move from HDC Linked List to Fixed (variable sized, really) Arrays
-- [ ] 5. Get Recall Card functionality to work in at least stda.cli mode (it's fine to just use the 'draw n cards' option for the Random AI engine given that this engine is not meant to be strong) 
-- [ ] 6. Enhance display of combat results in stda.cli mode
-- [ ] 7. Split the stda_cli.c source file into 4 modules as documented in '7 stda_cli Modularization Strategy.md'
-  8. When playing cash card in interactive mode, ask user to select the champion card that they want to discard in exchange of 5 lunas instead of letting the AI decide automatically based on power heuristic
+- Mulligan and discard functionalities
+  
+  A Implement mulligan system (Player B, 2 cards max)
+  
+  B Implement discard-to-7 system (end of turn)
+
+- Display Discard Pile in CLI Mode
+
+- Move from HDC Linked List to Fixed (variable sized, really) Arrays
+
+- Get Recall Card functionality to work in at least stda.cli mode (it's fine to just use the 'draw n cards' option for the Random AI engine given that this engine is not meant to be strong) 
+
+- Enhance display of combat results in stda.cli mode
+
+- Split the stda_cli.c source file into 4 modules as documented in '7 stda_cli Modularization Strategy.md'
+
+- When playing cash card in interactive mode, ask user to select the champion card that they want to discard in exchange of 5 lunas instead of letting the AI decide automatically based on power heuristic
 
 ---
 
@@ -35,11 +43,11 @@ Tasks:
 - [x] end_of_turn()
 - [x] Card drawing (skip first player, first turn)
 - [x] Luna collection
-- [ ] **Mulligan system** [NEXT]
+- [ ] **Mulligan system**
   - [ ] UI for Player B (2 cards max)
   - [ ] Power-based selection heuristic
   - [ ] Integration with CLI/TUI modes
-- [ ] **Discard to 7 cards** [NEXT]
+- [ ] **Discard to 7 cards**
   - [ ] UI for attacker at end of turn
   - [ ] Power-based selection heuristic
   - [ ] Edge case: exactly 7 cards (do nothing)
@@ -65,7 +73,7 @@ Tasks:
 
 ### AI Strategies (src/ai/)
 
-#### #### Balanced Rules Strategy
+#### Balanced Rules Strategy
 
 - [ ] In stda.cli mode, when AI against AI play is selected, use 'AI strategy name + (A or B)' as the player name instead of asking for player 1's name and not asking for player 2
 - [ ] Design decision framework (see strat_balancedrules1.c notes)
@@ -112,7 +120,7 @@ Tasks:
 - [x] Win statistics
 - [x] Histogram generation
 - [x] GameContext integration
-- [ ] **Refactor**: Extract simulation.c module
+- [ ] **Refactor**: Extract simulation.c module (part of the 'improve source code folder structure' folder under 'ideas')
 - [ ] Support multiple deck types (currently hardcoded random)
 - [ ] Better statistics:
   - [ ] Confidence intervals

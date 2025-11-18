@@ -246,7 +246,7 @@
             
             <!-- Critical Issues -->
             <div class="section">                                
-                <h3>2. Memory Management Concerns <span class="status-badge critical">🔴 CRITICAL</span></h3>
+                <h3>Memory Management Concerns</h3>
                 <p><strong>Problem:</strong> Inconsistent memory ownership patterns:</p>
                 <pre><code>// card_actions.c - caller must free
 uint8_t* hand_array = HDCLL_toArray(&gstate->hand[player]);
@@ -254,14 +254,11 @@ uint8_t* hand_array = HDCLL_toArray(&gstate->hand[player]);
 free(hand_array);  // Easy to forget!</code></pre>
                 
                 <div class="recommendation-box">
-                    <strong>Best Option:</strong> Use stack allocation where possible:
-                    <pre><code>// For bounded collections, use fixed arrays
-void get_hand_snapshot(struct HDCLList* hand, 
-                       uint8_t out[40], 
-                       uint8_t* out_size);</code></pre>
+                    <strong>Best Option:</strong> 
+                    <pre><code>// use fixed arrays</code></pre>
                 </div>
                 
-                <h3>3. Config Structure Scattered <span class="status-badge warning">🟡 WARNING</span></h3>
+                <h3>Config Structure Scattered</h3>
                 <p><strong>Problem:</strong> Configuration handling split between multiple files</p>
                 <ul class="issue-list">
                     <li><code class="inline-code">cmdline.c</code> - parsing</li>
@@ -276,9 +273,9 @@ void get_hand_snapshot(struct HDCLList* hand,
 
             <!-- Architecture Recommendations -->
             <div class="section">
-                <h2>🏗️ Architecture Recommendations</h2>
+                <h2>Architecture Recommendations</h2>
                 
-                <h3>1. Prepare for Client-Server Split <span class="status-badge good">🟢 IMPORTANT</span></h3>
+                <h3>Prepare for Client-Server Split</h3>
                 <p>Current code is monolithic. Start preparing for separation:</p>
                 <pre><code>// New: game_server.h
 typedef struct GameServer GameServer;
@@ -296,7 +293,7 @@ void client_receive_state(GameClient* cli, VisibleGameState* state);
 Action client_get_action(GameClient* cli);  // AI or human input
 void client_destroy(GameClient* cli);</code></pre>
                 
-                <h3>2. Action Structure (TODO Item #3) <span class="status-badge good">🟢 IMPORTANT</span></h3>
+                <h3>Action Structure</h3>
                 <pre><code>// action.h
 typedef enum {
     ACTION_PLAY_CHAMPIONS,
@@ -318,7 +315,7 @@ typedef struct {
 bool action_is_legal(const Action* action, const VisibleGameState* state);
 void action_apply(Action* action, struct gamestate* gstate);</code></pre>
                 
-                <h3>3. Visibility System (TODO Item #2) <span class="status-badge good">🟢 IMPORTANT</span></h3>
+                <h3>Visibility System</h3>
                 <p>Critical for AI and multiplayer:</p>
                 <pre><code>// visibility.h
 typedef enum {
@@ -337,9 +334,9 @@ typedef struct {
 
             <!-- Code Quality Issues -->
             <div class="section">
-                <h2>📊 Code Quality Issues</h2>
+                <h2>Code Quality Issues</h2>
                 
-                <h3>1. Magic Numbers <span class="status-badge warning">🟡</span></h3>
+                <h3>Magic Numbers</h3>
                 <pre><code>// stda_auto.c - BAD
 if(genRand(&MTwister_rand_struct) > 0.47) return;
 
@@ -347,7 +344,7 @@ if(genRand(&MTwister_rand_struct) > 0.47) return;
 #define DEFENSE_PROBABILITY 0.47  // Tunable strategy parameter
 if(genRand(&MTwister_rand_struct) > DEFENSE_PROBABILITY) return;</code></pre>
                 
-                <h3>2. Error Handling Inconsistency <span class="status-badge warning">🟡</span></h3>
+                <h3>Error Handling Inconsistency</h3>
                 <div class="recommendation-box">
                     <strong>Recommendation:</strong> Consistent error enum:
                     <pre><code>typedef enum {
@@ -363,94 +360,19 @@ GameError DeckStk_pop_safe(struct deck_stack* deck, uint8_t* out);</code></pre>
                 
             </div>
 
-            <!-- Module Reviews -->
-            <div class="section">
-                <h2>🔍 Specific Module Reviews</h2>
-                
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Module</th>
-                            <th>Status</th>
-                            <th>Comments</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><code class="inline-code">combo_bonus.c</code></td>
-                            <td><span class="status-badge excellent">✅ Excellent</span></td>
-                            <td>Clean, well-tested, single responsibility. No changes needed.</td>
-                        </tr>
-                        <tr>
-                            <td><code class="inline-code">card_actions.c</code></td>
-                            <td><span class="status-badge warning">🟡 Good</span></td>
-                            <td>Improve memory safety with array handling.</td>
-                        </tr>
-                        <tr>
-                            <td><code class="inline-code">strat_random.c</code></td>
-                            <td><span class="status-badge excellent">✅ Excellent</span></td>
-                            <td>Good example of strategy pattern. Clean interface.</td>
-                        </tr>
-                        <tr>
-                            <td><code class="inline-code">turn_logic.c</code></td>
-                            <td><span class="status-badge warning">🟡 Good</span></td>
-                            <td>Consider phase state machine for MCTS support.</td>
-                        </tr>
-                        <tr>
-                            <td><code class="inline-code">hdcll.c</code></td>
-                            <td><span class="status-badge warning">🟡 Consider</span></td>
-                            <td>Works but fixed arrays might be simpler for card game.</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
             <!-- Action Items -->
             <div class="section">
-                <h2>⚡ Immediate Action Items</h2>
-                
-                <div class="action-items">
-                    <h3><span class="priority">Priority 1</span> (Before adding more AI)</h3>
-                    <ol>
-                        <li>✅ <strong>Implement Action structure</strong> (TODO #3)</li>
-                        <li>✅ <strong>Add visibility system</strong> (TODO #2)</li>                        
-                        <li>🔧 <strong>Document memory ownership</strong> - Add comments to allocation functions</li>
-                    </ol>
-                </div>
+                <h2>Action Items</h2>
                 
                 <div class="action-items" style="background: #e3f2fd; border-color: #2196f3;">
-                    <h3><span class="priority" style="color: #1976d2;">Priority 2</span> (Enables better AI)</h3>
+                    
                     <ol start="5">
-                        <li>✅ <strong>Create get_available_moves()</strong> function</li>
-                        <li>✅ <strong>Implement game state cloning</strong> for MCTS</li>
-                        <li>🔧 <strong>Add phase state machine</strong> for cleaner turn flow</li>
+                        <li><strong>Create get_available_moves()</strong> function</li>
+                        <li><strong>Implement game state cloning</strong> for MCTS</li>
+                        <li><strong>Add phase state machine</strong> for cleaner turn flow</li>
                     </ol>
                 </div>
-                
-                <div class="action-items" style="background: #f3e5f5; border-color: #9c27b0;">
-                    <h3><span class="priority" style="color: #7b1fa2;">Priority 3</span> (Code quality)</h3>
-                    <ol start="8">
-                        <li>🔧 <strong>Consolidate config management</strong></li>
-                        <li>🔧 <strong>Replace magic numbers with constants</strong></li>
-                        <li>🔧 <strong>Expand test coverage</strong></li>
-                    </ol>
-                </div>
-            </div>
-
-            <!-- File Organization -->
-            <div class="section">
-                <h2>📁 File Organization Suggestion</h2>
-                <p>Consider reorganizing as complexity grows:</p>
-                <pre><code>src/
-├── core/           # game_types, game_constants, game_state
-├── engine/         # turn_logic, combat, card_actions
-├── data/           # deckstack, hdcll
-├── ai/             # strategy, strat_*.c
-├── modes/          # stda_auto, stda_cli, future modes
-├── network/        # Future: server, client code
-├── ui/             # Future: ui abstraction layer
-└── util/           # rnd, mtwister</code></pre>
-            </div>            
+            </div>         
         </div>
     </div>
 </body>

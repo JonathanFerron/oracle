@@ -53,8 +53,6 @@
 
 ---
 
-
-
 ## Development Phases
 
 ### Complete Game Loop ⚠️ IN PROGRESS
@@ -97,8 +95,6 @@
 - Game rules require interactive player choice in CLI/TUI modes
 
 **Impact:** High - Feature works in one mode but missing in interactive modes where player agency is critical
-
-
 
 ## Discard-to-7 Implementation Exists But Not Integrated in CLI
 

@@ -1,0 +1,53 @@
+// draft_statistics.c
+// Statistical calculations
+
+#include <math.h>
+#include "draft_statistics.h"
+
+// Calculate minimum value in array
+int minimum(int* values, int count)
+{
+    int min = values[0];
+    for (int i = 1; i < count; i++) {
+        if (values[i] < min) {
+            min = values[i];
+        }
+    }
+    return min;
+}
+
+// Calculate maximum value in array
+int maximum(int* values, int count)
+{
+    int max = values[0];
+    for (int i = 1; i < count; i++) {
+        if (values[i] > max) {
+            max = values[i];
+        }
+    }
+    return max;
+}
+
+// Calculate average of array
+double average(int* values, int count)
+{
+    double sum = 0.0;
+    for (int i = 0; i < count; i++) {
+        sum += values[i];
+    }
+    return sum / count;
+}
+
+// Calculate standard deviation
+double standard_deviation(int* values, int count)
+{
+    double avg = average(values, count);
+    double sum_sq_diff = 0.0;
+    
+    for (int i = 0; i < count; i++) {
+        double diff = values[i] - avg;
+        sum_sq_diff += diff * diff;
+    }
+    
+    return sqrt(sum_sq_diff / count);
+}

@@ -1,0 +1,22 @@
+// draft_champion.h
+// Champion deck generation and manipulation
+
+#ifndef DRAFT_CHAMPION_H
+#define DRAFT_CHAMPION_H
+
+#include "draft_types.h"
+#include "mtwister.h"
+
+// Generate 102-champion deck
+SimplifiedChampion* generate_102_champion_deck(void);
+
+// Shuffle champion deck using Fisher-Yates
+void shuffle_champion_deck(SimplifiedChampion* deck, int n, MTRand* rng);
+
+// Create deep copy of champion array
+SimplifiedChampion* copy_champion_array(SimplifiedChampion* src, int count);
+
+// Free champion deck
+void free_champion_deck(SimplifiedChampion* deck);
+
+#endif // DRAFT_CHAMPION_H

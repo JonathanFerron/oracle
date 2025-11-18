@@ -1,0 +1,104 @@
+# Makefile for Oracle Draft Calibration Simulation
+
+# Compiler and flags
+CC = gcc
+CFLAGS = -Wall -Wextra -O2 -std=c11 -I./src
+LDFLAGS = -lm
+
+# Directories
+SRC_DIR = src
+OBJ_DIR = obj
+BIN_DIR = bin
+
+# Source files
+SOURCES = draft_calibration_main.c \
+          draft_champion.c \
+          draft_pile.c \
+          draft_draft.c \
+          draft_statistics.c \
+          draft_simulation.c \
+          draft_output.c \
+          mtwister.c
+
+# Object files
+OBJECTS = $(patsubst %.c,$(OBJ_DIR)/%.o,$(SOURCES))
+
+# Executable
+TARGET = $(BIN_DIR)/draft_calibration
+
+# Default target
+all: directories $(TARGET)
+
+# Create directories if they don't exist
+directories:
+	@mkdir -p $(OBJ_DIR)
+	@mkdir -p $(BIN_DIR)
+
+# Link object files to create executable
+$(TARGET): $(OBJECTS)
+	$(CC) $(OBJECTS) -o $(TARGET) $(LDFLAGS)
+	@echo "Build complete: $(TARGET)"
+
+# Compile source files to object files
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.o
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Individual object file rules
+$(OBJ_DIR)/draft_calibration_main.o: $(SRC_DIR)/draft_calibration_main.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/draft_champion.o: $(SRC_DIR)/draft_champion.c $(SRC_DIR)/draft_champion.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/draft_pile.o: $(SRC_DIR)/draft_pile.c $(SRC_DIR)/draft_pile.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/draft_draft.o: $(SRC_DIR)/draft_draft.c $(SRC_DIR)/draft_draft.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/draft_statistics.o: $(SRC_DIR)/draft_statistics.c $(SRC_DIR)/draft_statistics.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/draft_simulation.o: $(SRC_DIR)/draft_simulation.c $(SRC_DIR)/draft_simulation.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/draft_output.o: $(SRC_DIR)/draft_output.c $(SRC_DIR)/draft_output.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/mtwister.o: $(SRC_DIR)/mtwister.c $(SRC_DIR)/mtwister.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Clean build artifacts
+clean:
+	rm -rf $(OBJ_DIR) $(BIN_DIR)
+	rm -f *.csv
+	@echo "Clean complete"
+
+# Run with default parameters
+run: $(TARGET)
+	./$(TARGET)
+
+# Run with custom parameters (example)
+run-quick: $(TARGET)
+	./$(TARGET) --n1=1000 --n2=200
+
+run-full: $(TARGET)
+	./$(TARGET) --n1=10000 --n2=1000
+
+# Show help
+help:
+	@echo "Oracle Draft Calibration Makefile"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all        - Build the executable (default)"
+	@echo "  clean      - Remove build artifacts and CSV files"
+	@echo "  run        - Build and run with default parameters"
+	@echo "  run-quick  - Build and run quick test (n1=1000, n2=200)"
+	@echo "  run-full   - Build and run full simulation (n1=10000, n2=1000)"
+	@echo "  help       - Show this help message"
+	@echo ""
+	@echo "Usage:"
+	@echo "  make"
+	@echo "  ./bin/draft_calibration --n1=5000 --n2=500 --seed=42"
+
+.PHONY: all clean run run-quick run-full help directories

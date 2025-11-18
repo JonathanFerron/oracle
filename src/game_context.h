@@ -14,7 +14,7 @@ typedef struct
 } GameContext;
 
 // Context management functions
-GameContext* create_game_context(uint32_t seed, config_t* cfg);
+GameContext* create_game_context(config_t* cfg);
 void destroy_game_context(GameContext* ctx);
 
 #endif // GAME_CONTEXT_H

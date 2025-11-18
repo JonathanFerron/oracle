@@ -250,7 +250,7 @@ typedef struct {
 
 ```c
 // Initialize once at program start
-GameContext* ctx = create_game_context(cfg->prng_seed, cfg);
+GameContext* ctx = create_game_context(cfg);
 
 // Pass to all game functions
 setup_game(initial_cash, &gstate, ctx);
@@ -653,7 +653,6 @@ Total Defense = Σ(RND_dn(defense_dice)) + combo_bonus
 **Display**:
 
 - ANSI color codes (player names, card types, energy, lunas)
-- UTF-8 symbols (❤ energy, ☾ luna, ⚔ attack, 🛡 defense)
 - Card display with species, dice, cost
 - Game status (energy, lunas, hand size, deck size)
 - Localization support (English, French, Spanish)
@@ -1562,34 +1561,6 @@ default_numsim = 1000
 ---
 
 ## Appendix: Code Metrics
-
-### Current File Sizes (lines of actual code)
-
-**Within Guidelines** (≤500):
-
-- `main.c`: ~60
-- `cmdline.c`: ~200
-- `prng_seed.c`: ~100
-- `game_constants.c`: ~350 (mostly data)
-- `game_state.c`: ~40
-- `card_actions.c`: ~185
-- `combat.c`: ~130
-- `combo_bonus.c`: ~175
-- `turn_logic.c`: ~70
-- `strategy.c`: ~20
-- `strat_random.c`: ~70
-- `stda_auto.c`: ~280
-- `player_config.c`: ~350
-- `player_selection.c`: ~70
-- `deckstack.c`: ~65
-- `hdcll.c`: ~170
-- `rnd.c`: ~40
-- `mtwister.c`: ~65
-- `game_context.c`: ~15
-
-**Needs Refactoring**:
-
-- `stda_cli.c`: ~800 ⚠️ (target: split into 3 files)
 
 ### Function Length Compliance
 

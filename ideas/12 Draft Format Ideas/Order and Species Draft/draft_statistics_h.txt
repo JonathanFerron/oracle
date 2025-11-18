@@ -1,0 +1,13 @@
+// draft_statistics.h
+// Statistical calculations
+
+#ifndef DRAFT_STATISTICS_H
+#define DRAFT_STATISTICS_H
+
+// Statistical functions
+int minimum(int* values, int count);
+int maximum(int* values, int count);
+double average(int* values, int count);
+double standard_deviation(int* values, int count);
+
+#endif // DRAFT_STATISTICS_H

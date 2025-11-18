@@ -4,12 +4,18 @@
 #include "game_context.h"
 #include "mtwister.h"
 #include <stdlib.h>
+#include <stdio.h>
 
-GameContext* create_game_context(uint32_t seed, config_t* cfg) // TODO: i believe that the seed parameter could just be pulled from the cfg struct, provided it is set properly before calling this function.
-{ GameContext* ctx = (GameContext*)malloc(sizeof(GameContext));
+GameContext* create_game_context(config_t* cfg)
+{     if (cfg == NULL) {
+        fprintf(stderr, "Error: config required for GameContext\n");
+        return NULL;
+    }
+    
+  GameContext* ctx = (GameContext*)malloc(sizeof(GameContext));
   if(ctx == NULL) return NULL;
 
-  ctx->rng = seedRand(seed);
+  ctx->rng = seedRand(cfg->prng_seed);
   ctx->config = cfg;
 
   return ctx;
