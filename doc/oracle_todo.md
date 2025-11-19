@@ -10,7 +10,9 @@
 
 Tasks:
 
-- Mulligan and discard functionalities
+- Move from HDC Linked List to Fixed (variable sized, really) Arrays
+  
+  Mulligan and discard functionalities
   
   A Implement mulligan system (Player B, 2 cards max)
   
@@ -18,7 +20,7 @@ Tasks:
 
 - Display Discard Pile in CLI Mode
 
-- Move from HDC Linked List to Fixed (variable sized, really) Arrays
+- 
 
 - Get Recall Card functionality to work in at least stda.cli mode (it's fine to just use the 'draw n cards' option for the Random AI engine given that this engine is not meant to be strong) 
 
