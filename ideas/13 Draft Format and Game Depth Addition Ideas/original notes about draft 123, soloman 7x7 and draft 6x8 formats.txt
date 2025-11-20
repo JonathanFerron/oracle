@@ -1,5 +1,3 @@
-notes oracle
-
 Variant : Draft and Pass (1-2-3) Deck (Advanced)
 For experienced players with 2 full decks:
 Shuffle all 240 cards together
@@ -39,14 +37,3 @@ Shuffle one deck of 120 cards and deal 7 cards face up in center. Player A picks
 
 variant: Draft-and-Pass 6x8: 
 Shuffle one deck of 120 cards and deal 6 piles of 8 cards (total of 48) in front of each player. Each player picks up their first pile, chooses one card, then passes to the next player. Each player then chooses one card from the 7 passed to them, and passes on to the next player again. This process repeats until the first pile is gone. Repeat five more times with the remaining piles. Each player will then have 48 cards. Finally, each player secretly discards down to a deck size of 40 each.
-
-ascii art fonts:
-terrace
-amc tube
-banner
-basic
-colossal
-dos rebel
-Nancyj-Improved
-roman
-univers

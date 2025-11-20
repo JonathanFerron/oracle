@@ -32,8 +32,6 @@ So no changes needed there - the guide's patterns will work with the current sig
 
 ---
 
-
-
 ### 3. **Updated Example Locations**
 
 Some functions have grown slightly or changed line numbers. The **patterns themselves are still correct**, but when applying them, developers should search by function name rather than relying on specific line numbers mentioned in the guide.
@@ -72,12 +70,6 @@ The guide was well-designed to be resilient to minor code evolution. The **core 
 
 The migration should proceed smoothly following the existing guide! 🎯
 
-
-
-
-
-
-
 # Specialized Collections Migration Guide
 
 ## Part 1: New Code to Create
@@ -98,7 +90,7 @@ The migration should proceed smoothly following the existing guide! 🎯
 // Hand Collection (max 10 cards in practice, but allow margin)
 // ============================================================================
 typedef struct {
-    uint8_t cards[15];  // Allow some margin beyond typical max of 10
+    uint8_t cards[12];  // Allow some margin beyond max of 10
     uint8_t size;
 } Hand;
 
@@ -157,7 +149,7 @@ void Hand_init(Hand* hand) {
 }
 
 void Hand_add(Hand* hand, uint8_t card) {
-    if (hand->size < 15) {
+    if (hand->size < 12) {
         hand->cards[hand->size++] = card;
     }
 }
@@ -716,7 +708,7 @@ After each pattern group:
 git add src/card_collection.h src/card_collection.c
 git commit -m "feat: Add specialized card collections (Hand, CombatZone, Discard)
 
-- Add Hand struct (max 15 cards) with init/add/remove/clear/get/contains
+- Add Hand struct (max 12 cards) with init/add/remove/clear/get/contains
 - Add CombatZone struct (max 3 cards) with init/add/remove/clear/get
 - Add Discard struct (max 40 cards) with init/add/remove/clear/get
 - Manual implementation (no macros) for code readability
@@ -814,7 +806,7 @@ Changes:
 - Hand_remove for removing from hand
 - Discard_remove for removing from discard
 - Returns bool for success/failure (ignored for now)
-- O(n) removal but with max 10-15 cards is negligible
+- O(n) removal but with max 10-12 cards is negligible
 
 Files: card_actions.c, stda_auto.c"
 ```
