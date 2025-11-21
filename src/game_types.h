@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "deckstack.h"
-#include "hdcll.h"
+#include "card_collection.h"
 
 // Player identification
 typedef enum
@@ -120,9 +120,9 @@ struct gamestate
   bool someone_has_zero_energy;
 
   struct deck_stack deck[2];
-  struct HDCLList hand[2];
-  struct HDCLList discard[2];
-  struct HDCLList combat_zone[2];
+  Hand hand[2];
+  Discard discard[2];
+  CombatZone combat_zone[2];
 
   uint16_t turn;
   GameStateEnum game_state;

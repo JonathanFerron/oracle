@@ -115,8 +115,8 @@
                 s = R / (100 - R)<br><br>
                 <strong>Strength to Rating:</strong><br>
                 R = 100 × s / (s + 1)<br><br>
-                <strong>Win Probability vs Keeper:</strong><br>
-                P(beat Keeper) = s / (s + 1) = R / 100
+                <strong>Win Probability vs Borealis:</strong><br>
+                P(beat Borealis) = s / (s + 1) = R / 100
             </div>
 
             <div class="key-insight">
@@ -164,8 +164,8 @@
                     <tr>
                         <th>Rating (R)</th>
                         <th>Strength (s)</th>
-                        <th>Win % vs Keeper</th>
-                        <th>Strength Ratio to Keeper</th>
+                        <th>Win % vs Borealis</th>
+                        <th>Strength Ratio to Borealis</th>
                         <th>Rating Change per Point</th>
                     </tr>
                 </thead>
@@ -301,8 +301,8 @@
 
         ratings.forEach(rating => {
             const strength = ratingToStrength(rating);
-            const winProb = rating; // Direct relationship for Keeper
-            const strengthRatio = strength / 1.0; // Keeper has s=1.0
+            const winProb = rating; // Direct relationship for Borealis
+            const strengthRatio = strength / 1.0; // Borealis has s=1.0
             
             // Calculate sensitivity (strength change per rating point)
             const strengthPlus1 = ratingToStrength(rating + 1);
@@ -364,8 +364,8 @@
             {desc: "Slight favorite", p1: 55, p2: 50},
             {desc: "Clear favorite", p1: 65, p2: 50},
             {desc: "Heavy favorite", p1: 75, p2: 50},
-            {desc: "Beginner vs Keeper", p1: 20, p2: 50},
-            {desc: "Expert vs Keeper", p1: 80, p2: 50},
+            {desc: "Beginner vs Borealis", p1: 20, p2: 50},
+            {desc: "Expert vs Borealis", p1: 80, p2: 50},
             {desc: "Two beginners", p1: 25, p2: 20},
             {desc: "Two experts", p1: 85, p2: 80}
         ];
@@ -494,7 +494,7 @@
             data: {
                 labels: fullRatings,
                 datasets: [{
-                    label: 'Win % vs Keeper',
+                    label: 'Win % vs Borealis',
                     data: fullRatings.map(r => r),
                     borderColor: '#fc8181',
                     backgroundColor: 'rgba(252, 129, 129, 0.1)',
@@ -509,7 +509,7 @@
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Win Probability vs Keeper (Linear by Design)',
+                        text: 'Win Probability vs Borealis (Linear by Design)',
                         font: {size: 14}
                     }
                 },
