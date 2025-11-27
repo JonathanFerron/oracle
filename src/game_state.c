@@ -37,19 +37,19 @@ void setup_game(uint16_t initial_cash, struct gamestate* gstate, GameContext* ct
   }
 
   // Initialize hands, combat zones, and discards
-  HDCLL_initialize(&gstate->hand[PLAYER_A]);
-  HDCLL_initialize(&gstate->hand[PLAYER_B]);
-  HDCLL_initialize(&gstate->discard[PLAYER_A]);
-  HDCLL_initialize(&gstate->discard[PLAYER_B]);
-  HDCLL_initialize(&gstate->combat_zone[PLAYER_A]);
-  HDCLL_initialize(&gstate->combat_zone[PLAYER_B]);
+  Hand_init(&gstate->hand[PLAYER_A]);
+  Hand_init(&gstate->hand[PLAYER_B]);
+  Discard_init(&gstate->discard[PLAYER_A]);
+  Discard_init(&gstate->discard[PLAYER_B]);
+  CombatZone_init(&gstate->combat_zone[PLAYER_A]);
+  CombatZone_init(&gstate->combat_zone[PLAYER_B]);
 
   // Draw initial hands (6 cards each)
   for(i = 0; i < INITAL_HAND_SIZE_DEFAULT; i++)
   { uint8_t cardindex = DeckStk_pop(&gstate->deck[PLAYER_A]);
-    HDCLL_insertNodeAtBeginning(&gstate->hand[PLAYER_A], cardindex);
+    Hand_add(&gstate->hand[PLAYER_A], cardindex);
     cardindex = DeckStk_pop(&gstate->deck[PLAYER_B]);
-    HDCLL_insertNodeAtBeginning(&gstate->hand[PLAYER_B], cardindex);
+    Hand_add(&gstate->hand[PLAYER_B], cardindex);
   }
 
 } // setup_game

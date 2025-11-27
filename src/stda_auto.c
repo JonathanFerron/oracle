@@ -94,13 +94,7 @@ void play_stda_auto_game(uint16_t initial_cash, struct gamestats* gstats,
 
   // Free heap memory
   DeckStk_emptyOut(&gstate.deck[PLAYER_A]);
-  DeckStk_emptyOut(&gstate.deck[PLAYER_B]);
-  HDCLL_emptyOut(&gstate.combat_zone[PLAYER_A]);
-  HDCLL_emptyOut(&gstate.combat_zone[PLAYER_B]);
-  HDCLL_emptyOut(&gstate.hand[PLAYER_A]);
-  HDCLL_emptyOut(&gstate.hand[PLAYER_B]);
-  HDCLL_emptyOut(&gstate.discard[PLAYER_A]);
-  HDCLL_emptyOut(&gstate.discard[PLAYER_B]);
+  DeckStk_emptyOut(&gstate.deck[PLAYER_B]);  
 } // play_game
 
 void apply_mulligan(struct gamestate* gstate, GameContext* ctx)
@@ -137,8 +131,8 @@ void apply_mulligan(struct gamestate* gstate, GameContext* ctx)
       current = current->next;
     }
 
-    HDCLL_removeNodeByValue(&gstate->hand[PLAYER_B], card_with_lowest_power);
-    HDCLL_insertNodeAtBeginning(&gstate->discard[PLAYER_B], card_with_lowest_power);
+    Hand_remove(&gstate->hand[PLAYER_B], card_with_lowest_power);
+    Discard_add(&gstate->discard[PLAYER_B], card_with_lowest_power);
     nbr_cards_left_to_mulligan--;
   }
 

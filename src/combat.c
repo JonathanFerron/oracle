@@ -133,14 +133,16 @@ void clear_combat_zones(struct gamestate* gstate, GameContext* ctx)
   PlayerID defender = 1 - gstate->current_player;
 
   // Move attacker's cards to discard
-  while(gstate->combat_zone[attacker].size > 0)
-  { uint8_t card_idx = HDCLL_removeNodeFromBeginning(&gstate->combat_zone[attacker]);
-    HDCLL_insertNodeAtBeginning(&gstate->discard[attacker], card_idx);
-  }
+  for (uint8_t i = 0; i < gstate->combat_zone[attacker].size; i++)
+  { uint8_t card_idx = gstate->combat_zone[attacker].cards[i];
+    Discard_add(&gstate->discard[attacker], card_idx);
+   }
+  CombatZone_clear(&gstate->combat_zone[attacker]);
 
   // Move defender's cards to discard
-  while(gstate->combat_zone[defender].size > 0)
-  { uint8_t card_idx = HDCLL_removeNodeFromBeginning(&gstate->combat_zone[defender]);
-    HDCLL_insertNodeAtBeginning(&gstate->discard[defender], card_idx);
-  }
+  for (uint8_t i = 0; i < gstate->combat_zone[defender].size; i++)
+  { uint8_t card_idx = gstate->combat_zone[defender].cards[i];
+    Discard_add(&gstate->discard[defender], card_idx);
+   }
+  CombatZone_clear(&gstate->combat_zone[defender]);
 }

@@ -50,10 +50,10 @@ void play_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx, Game
 
 void play_champion(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx)
 { // Add to combat zone
-  HDCLL_insertNodeAtBeginning(&gstate->combat_zone[player], card_idx);
+  CombatZone_add(&gstate->combat_zone[player], card_idx);
 
   // Remove from hand
-  HDCLL_removeNodeByValue(&gstate->hand[player], card_idx);
+  Hand_remove(&gstate->hand[player], card_idx);
 
   // Pay cost
   gstate->current_cash_balance[player] -= fullDeck[card_idx].cost;
@@ -63,7 +63,7 @@ void play_champion(struct gamestate* gstate, PlayerID player, uint8_t card_idx, 
 
 void play_draw_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx)
 { // Remove from hand
-  HDCLL_removeNodeByValue(&gstate->hand[player], card_idx);
+  Hand_remove(&gstate->hand[player], card_idx);
 
   // Pay cost
   gstate->current_cash_balance[player] -= fullDeck[card_idx].cost;
@@ -76,13 +76,13 @@ void play_draw_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx,
     draw_1_card(gstate, player, ctx);
 
   // Move the draw card to discard
-  HDCLL_insertNodeAtBeginning(&gstate->discard[player], card_idx);
+  Discard_add(&gstate->discard[player], card_idx);
 }
 
 
 void play_cash_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx)
 { // Remove cash card from hand
-  HDCLL_removeNodeByValue(&gstate->hand[player], card_idx);
+  Hand_remove(&gstate->hand[player], card_idx);
 
   // Pay cost (0 for cash cards)
   gstate->current_cash_balance[player] -= fullDeck[card_idx].cost;  // we could consider removing this line of code as long as we can always assume that the cost will be 0
@@ -92,8 +92,8 @@ void play_cash_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx,
 
   if(champion_to_exchange != 0)
   { // Remove champion from hand and place in discard
-    HDCLL_removeNodeByValue(&gstate->hand[player], champion_to_exchange);
-    HDCLL_insertNodeAtBeginning(&gstate->discard[player], champion_to_exchange);
+    Hand_remove(&gstate->hand[player], champion_to_exchange);
+    Discard_add(&gstate->discard[player], champion_to_exchange);
 
     // Collect cash
     uint8_t cash_received = fullDeck[card_idx].exchange_cash;
@@ -105,7 +105,7 @@ void play_cash_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx,
   }
 
   // Move cash card to discard
-  HDCLL_insertNodeAtBeginning(&gstate->discard[player], card_idx);
+  Discard_add(&gstate->discard[player], card_idx);
 }
 
 void draw_1_card(struct gamestate* gstate, PlayerID player, GameContext* ctx)
@@ -115,7 +115,7 @@ void draw_1_card(struct gamestate* gstate, PlayerID player, GameContext* ctx)
   }
 
   uint8_t cardindex = DeckStk_pop(&gstate->deck[player]);
-  HDCLL_insertNodeAtBeginning(&gstate->hand[player], cardindex);
+  Hand_add(&gstate->hand[player], cardindex);
 
   DEBUG_PRINT(" Drew card index %u from player %u deck\n", cardindex, player);
 }
@@ -162,9 +162,9 @@ void discard_to_7_cards(struct gamestate* gstate, GameContext* ctx)
     }
 
     // Discard it
-    HDCLL_removeNodeByValue(&gstate->hand[gstate->current_player],
+    Hand_remove(&gstate->hand[gstate->current_player],
                             card_with_lowest_power);
-    HDCLL_insertNodeAtBeginning(&gstate->discard[gstate->current_player],
+    Discard_add(&gstate->discard[gstate->current_player],
                                 card_with_lowest_power);
   }
 }

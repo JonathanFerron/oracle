@@ -394,6 +394,8 @@ uint8_t card_idx = CombatZone_get(&gstate->combat_zone[player], 0);
 
 ---
 
+# <mark>Rendu ici</mark>
+
 ### Pattern 6: Direct Iteration (No Array Conversion)
 
 **Find:** Pattern like this:

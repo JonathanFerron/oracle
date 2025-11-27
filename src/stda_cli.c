@@ -592,13 +592,7 @@ static struct gamestate* initialize_cli_game(uint16_t initial_cash,
 static void cleanup_cli_game(struct gamestate* gstate, StrategySet* strategies,
                              GameContext* ctx)
 { DeckStk_emptyOut(&gstate->deck[PLAYER_A]);
-  DeckStk_emptyOut(&gstate->deck[PLAYER_B]);
-  HDCLL_emptyOut(&gstate->combat_zone[PLAYER_A]);
-  HDCLL_emptyOut(&gstate->combat_zone[PLAYER_B]);
-  HDCLL_emptyOut(&gstate->hand[PLAYER_A]);
-  HDCLL_emptyOut(&gstate->hand[PLAYER_B]);
-  HDCLL_emptyOut(&gstate->discard[PLAYER_A]);
-  HDCLL_emptyOut(&gstate->discard[PLAYER_B]);
+  DeckStk_emptyOut(&gstate->deck[PLAYER_B]);  
 
   free(gstate);
   free_strategy_set(strategies);
