@@ -14,12 +14,12 @@ void play_draw_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx,
 void play_cash_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx);
 
 // Helper functions for card management
-int has_champion_in_hand(struct HDCLList* hand);
-uint8_t select_champion_for_cash_exchange(struct HDCLList* hand);
+int has_champion_in_hand(Hand* hand);
+uint8_t select_champion_for_cash_exchange(Hand* hand);
 
 // Game action functions
 void draw_1_card(struct gamestate* gstate, PlayerID player, GameContext* ctx);
-void shuffle_discard_and_form_deck(struct HDCLList* discard, struct deck_stack* deck, GameContext* ctx);
+void shuffle_discard_and_form_deck(Discard* discard, struct deck_stack* deck, GameContext* ctx);
 void discard_to_7_cards(struct gamestate* gstate, GameContext* ctx);
 
 #endif // CARD_ACTIONS_H

@@ -92,7 +92,7 @@ void play_stda_auto_game(uint16_t initial_cash, struct gamestats* gstats,
 
   record_final_stats(gstats, &gstate); // need to pass cfg pointer to provide game mode information
 
-  // Free heap memory
+  // Free heap memory - No cleanup needed for fixed arrays
   DeckStk_emptyOut(&gstate.deck[PLAYER_A]);
   DeckStk_emptyOut(&gstate.deck[PLAYER_B]);  
 } // play_game
@@ -101,14 +101,13 @@ void apply_mulligan(struct gamestate* gstate, GameContext* ctx)
 { uint8_t max_nbr_cards_to_mulligan = 2;
 
   // Count cards to mulligan
-  struct LLNode* current = gstate->hand[PLAYER_B].head;
   uint8_t nbr_cards_to_mulligan = 0;
 
   for(uint8_t i = 0; (i < gstate->hand[PLAYER_B].size) &&
       (nbr_cards_to_mulligan < max_nbr_cards_to_mulligan); i++)
-  { if(fullDeck[current->data].power < AVERAGE_POWER_FOR_MULLIGAN)
+  { uint8_t card_idx = gstate->hand[PLAYER_B].cards[i];
+    if(fullDeck[card_idx].power < AVERAGE_POWER_FOR_MULLIGAN)
       nbr_cards_to_mulligan++;
-    current = current->next;
   }
 
   DEBUG_PRINT("Number of cards to mulligan: %u\n", nbr_cards_to_mulligan);
@@ -121,14 +120,13 @@ void apply_mulligan(struct gamestate* gstate, GameContext* ctx)
   while(nbr_cards_left_to_mulligan > 0)
   { minpower = 100.0;
     card_with_lowest_power = 0;
-    current = gstate->hand[PLAYER_B].head;
 
     for(uint8_t i = 0; i < gstate->hand[PLAYER_B].size; i++)
-    { if(fullDeck[current->data].power < minpower)
-      { minpower = fullDeck[current->data].power;
-        card_with_lowest_power = current->data;
+    { uint8_t card_idx = gstate->hand[PLAYER_B].cards[i];
+      if(fullDeck[card_idx].power < minpower)
+      { minpower = fullDeck[card_idx].power;
+        card_with_lowest_power = card_idx;
       }
-      current = current->next;
     }
 
     Hand_remove(&gstate->hand[PLAYER_B], card_with_lowest_power);

@@ -8,34 +8,31 @@
 #include "rnd.h"
 #include "debug.h"
 
-int has_champion_in_hand(struct HDCLList* hand)
-{ struct LLNode* current = hand->head;
-  for(uint8_t i = 0; i < hand->size; i++)
-  { if(fullDeck[current->data].card_type == CHAMPION_CARD)
+int has_champion_in_hand(Hand* hand)
+{ for(uint8_t i = 0; i < hand->size; i++)
+  { if(fullDeck[hand->cards[i]].card_type == CHAMPION_CARD)
       return true;
-    current = current->next;
   }
   return false;
 }
 
 // note that this code could be moved to the strategy, similar to how the mulligan function should be moved there as well
-uint8_t select_champion_for_cash_exchange(struct HDCLList* hand)
-{ struct LLNode* current = hand->head;
-  float min_power = 100.0;
+uint8_t select_champion_for_cash_exchange(Hand* hand)
+{ float min_power = 100.0;
   uint8_t champion_to_exchange = 0;
 
   for(uint8_t i = 0; i < hand->size; i++)
-  { if(fullDeck[current->data].card_type == CHAMPION_CARD)
-    { if(fullDeck[current->data].power < min_power)
-      { min_power = fullDeck[current->data].power;
-        champion_to_exchange = current->data;
+  { if(fullDeck[hand->cards[i]].card_type == CHAMPION_CARD)
+    { if(fullDeck[hand->cards[i]].power < min_power)
+      { min_power = fullDeck[hand->cards[i]].power;
+        champion_to_exchange = hand->cards[i];
       }
     }
-    current = current->next;
   }
 
   return champion_to_exchange;
 }
+
 
 void play_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx)
 { CardType type = fullDeck[card_idx].card_type;
@@ -100,7 +97,7 @@ void play_cash_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx,
     gstate->current_cash_balance[player] += cash_received;
 
 
-    DEBUG_PRINT(" Exchanged champion card %u for %u lunas\n",             champion_to_exchange, cash_received);
+    DEBUG_PRINT(" Exchanged champion card %u for %u lunas\n", champion_to_exchange, cash_received);
 
   }
 
@@ -120,25 +117,20 @@ void draw_1_card(struct gamestate* gstate, PlayerID player, GameContext* ctx)
   DEBUG_PRINT(" Drew card index %u from player %u deck\n", cardindex, player);
 }
 
-void shuffle_discard_and_form_deck(struct HDCLList* discard, struct deck_stack* deck, GameContext* ctx)
-{ uint8_t* A = HDCLL_toArray(discard); // this allocates memory on the heap for array A, make sure to free() it
-  uint8_t n = discard->size;
+void shuffle_discard_and_form_deck(Discard* discard, struct deck_stack* deck, GameContext* ctx)
+{ uint8_t n = discard->size;
 
   DEBUG_PRINT(" Discard size: %u\n", n);
 
-  // Shuffle the card indices
-  RND_partial_shuffle(A, n, n, ctx);
+  // Shuffle the card indices directly in the discard array
+  RND_partial_shuffle(discard->cards, n, n, ctx);
 
   // Push to deck
   for(uint8_t i = 0; i < n; i++)
-    DeckStk_push(deck, A[i]);
-
-  // Free heap memory
-  free(A);
+    DeckStk_push(deck, discard->cards[i]);
 
   // Empty the discard
-  for(uint8_t i = 0; i < n; i++)
-    HDCLL_removeNodeFromBeginning(discard);
+  Discard_clear(discard);
 }
 
 void discard_to_7_cards(struct gamestate* gstate, GameContext* ctx)
@@ -151,14 +143,13 @@ void discard_to_7_cards(struct gamestate* gstate, GameContext* ctx)
   { // Find card with lowest power
     minpower = 100.0;
     card_with_lowest_power = 0;
-    struct LLNode* current = gstate->hand[gstate->current_player].head;
 
     for(uint8_t i = 0; i < gstate->hand[gstate->current_player].size; i++)
-    { if(fullDeck[current->data].power < minpower)
-      { minpower = fullDeck[current->data].power;
-        card_with_lowest_power = current->data;
+    { uint8_t card_idx = gstate->hand[gstate->current_player].cards[i];
+      if(fullDeck[card_idx].power < minpower)
+      { minpower = fullDeck[card_idx].power;
+        card_with_lowest_power = card_idx;
       }
-      current = current->next;
     }
 
     // Discard it
@@ -168,5 +159,4 @@ void discard_to_7_cards(struct gamestate* gstate, GameContext* ctx)
                                 card_with_lowest_power);
   }
 }
-
 

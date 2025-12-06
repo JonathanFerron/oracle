@@ -39,15 +39,13 @@
 
 ---
 
-## File Size Targets Violated**
+## File Size Targets Violated
 
 **Contradiction:**
 
 - Design guideline: "Maximum 500 lines per source file (ideally ≤400)"
 - **Violations:**
   - `stda_cli.c`: 550 lines
-  - TODO.md says "split needed" but provides no timeline
-  - Makefile and doc/file_listing.md still reference it as single file
 
 **Impact:** Low-Medium - Code organization debt
 
@@ -91,7 +89,6 @@
 - `stda_auto.c` has a working `apply_mulligan()` implementation (lines 109-149) with power-based heuristic
 - **But:** This is hardcoded for automated simulation only
 - `stda_cli.c` line 485: TODO comment "add here the logic to perform the mulligan for player B" but no implementation
-- `doc/file_listing.md` describes mulligan as if it's fully integrated across all modes
 - Game rules require interactive player choice in CLI/TUI modes
 
 **Impact:** High - Feature works in one mode but missing in interactive modes where player agency is critical
@@ -110,7 +107,7 @@
 
 ---
 
-## **Recall Mechanic **
+## Recall Mechanic
 
 **Contradiction:**
 
@@ -124,7 +121,7 @@
 
 ---
 
-## ### Standalone Modes
+## Standalone Modes
 
 **Status**: Partial implementation, needs completion
 
@@ -516,7 +513,6 @@ oracle/
 │   │
 │   ├── data/              # Data structures
 │   │   ├── deckstack.c/h
-│   │   ├── hdcll.c/h
 │   │   └── types.h
 │   │
 │   ├── cmdline.c/h        # Command-line parsing

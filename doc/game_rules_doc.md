@@ -586,26 +586,18 @@ The first player (Player A) does NOT draw a card at the start of turn 1. This he
 **Cost 0** (12 champions per color):
 
 - Defense: d4+0, d6+0, d4+1
-- Lowest power but free to play
-- Good for early game or filling combo slots
 
 **Cost 1** (17 champions per color):
 
 - Defense: d8+0, d6+1, d4+2, d8+1, d6+2, d4+3, d12+0, d4+4, d8+2, d6+3, d6+4, d12+1, d4+5, d8+3
-- Most diverse tier
-- Good value for cost
 
 **Cost 2** (9 champions per color):
 
 - Defense: d8+4, d6+5, d12+2, d4+6, d8+5, d6+6, d12+3, d20+0, d12+4, d8+6
-- High power, expensive
-- Best for mid-to-late game
 
 **Cost 3** (5 champions per color):
 
 - Defense: d20+1, d12+5, d20+2, d12+6, d20+3, d20+4, d20+5
-- Most powerful champions
-- Requires significant luna investment
 
 ### Defense Dice Values
 
@@ -701,13 +693,12 @@ The first player (Player A) does NOT draw a card at the start of turn 1. This he
 
 - Playing 2-3 low-cost champions with combo often beats 1 high-cost champion
 - Combo bonuses apply to both attack AND defense
-- A d4+0 champion is valuable if it completes a combo
 
 ### Card Value Assessment
 
 **High Priority**:
 
-- Champions with good cost-to-power ratio (d8+1 for 1 luna)
+- Champions with good attack or defense to cost ratio
 - Champions that match your hand for combos
 - Draw cards when hand is small
 
@@ -719,7 +710,7 @@ The first player (Player A) does NOT draw a card at the start of turn 1. This he
 **Low Priority**:
 
 - Champions you can't afford soon
-- Duplicate species when you already have 2-3
+- Duplicate species when you already have 3
 
 ### Timing
 
@@ -733,7 +724,6 @@ The first player (Player A) does NOT draw a card at the start of turn 1. This he
 
 - Deploy 2-champion combos regularly
 - Balance attacking and defending
-- Start using 2-cost champions
 
 **Late Game** (Turns 26+):
 
@@ -822,7 +812,7 @@ A: No, only the highest applicable combo bonus is used.
 A: Yes, attacker and defender choose independently how many champions to play (1-3).
 
 **Q: What if both players run out of cards completely?**  
-A: This should never happen with proper shuffling of discard pile when deck empties.
+A: This will never happenas discard piles are shuffled when deck empties.
 
 **Q: Does the Exchange card have to be used immediately?**  
 A: You choose when to play it, but once played, you must exchange a champion immediately.

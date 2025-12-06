@@ -25,8 +25,8 @@ This project serves as a testbed for AI development, progressing from simple to 
 - ✅ **Random strategy** (baseline)
 - 🚧 **Balanced rules-based AI** (in development)
 - 📋 **Heuristic evaluation AI**
-- 📋 **Monte Carlo methods**
-- 📋 **Information Set MCTS** (advanced)
+- 📋 **Monte Carlo methods AI**
+- 📋 **Information Set MCTS AI** (advanced)
 
 Includes a Bradley-Terry rating system for objective AI strength measurement.
 

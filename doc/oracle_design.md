@@ -185,9 +185,9 @@ struct gamestate {
     bool someone_has_zero_energy;         // Game end flag
 
     struct deck_stack deck[2];            // Draw piles (40 cards each)
-    struct HDCLList hand[2];              // Cards in hand
-    struct HDCLList discard[2];           // Discard piles
-    struct HDCLList combat_zone[2];       // Cards in combat (max 3)
+    Hand hand[2];
+    Discard discard[2];
+    CombatZone combat_zone[2];
 
     uint16_t turn;                        // Turn counter (1-based)
     GameStateEnum game_state;             // PLAYER_A_WINS, PLAYER_B_WINS, DRAW, ACTIVE
@@ -211,21 +211,15 @@ struct gamestate {
 - LIFO operations (push/pop)
 - Used for draw pile only
 
-**Hand/Discard/Combat Circular Linked List** (`hdcll.c`):
 
-- Dynamic linked list
-- Insert at beginning (O(1))
-- Remove by value or index
-- Convert to array for iteration
-- Size tracked in list structure
 
-**⚠️ Planned Refactoring**: Replace HDCLL with fixed-size arrays
+**Fixed-size arrays**
 
 - Hand: max 15 cards
 - CombatZone: max 3 cards
 - Discard: max 40 cards
-- Eliminates heap allocations in game loop
-- Reduces memory per gamestate by 53% (240 → 112 bytes)
+  
+  
 
 ---
 
@@ -319,7 +313,6 @@ oracle/
 │   │
 │   ├── Data Structures
 │   │   ├── deckstack.c/h         # Fixed-size stack
-│   │   └── hdcll.c/h             # Circular linked list
 │   │
 │   ├── Build System
 │   │   ├── cmdline.c/h           # Command-line parsing
@@ -401,7 +394,7 @@ rnd.c
 ### Module Responsibilities
 
 - **Data Layer**: `game_types.h`, `game_constants.h/c` - Core data structures and game data
-- **Data Structures**: `deckstack.h/c`, `hdcll.h/c` - Specialized collections
+- **Data Structures**: `deckstack.h/c` - Specialized collections
 - **Game Logic**: `card_actions.h/c`, `combat.h/c`, `combo_bonus.h/c` - Core game mechanics
 - **Flow Control**: `turn_logic.h/c`, `game_state.h/c` - Game loop and lifecycle
 - **AI Framework**: `strategy.h/c` - Strategy abstraction
@@ -479,14 +472,9 @@ DEFENSE Phase:
 ```c
 void draw_1_card(struct gamestate* gstate, PlayerID player, GameContext* ctx) {
     // If deck empty, shuffle discard to form new deck
-    if (DeckStk_isEmpty(&gstate->deck[player])) {
-        shuffle_discard_and_form_deck(&gstate->discard[player], 
-                                      &gstate->deck[player], ctx);
-    }
-
+   
     // Draw top card from deck
-    uint8_t card_idx = DeckStk_pop(&gstate->deck[player]);
-    HDCLL_insertNodeAtBeginning(&gstate->hand[player], card_idx);
+   
 }
 ```
 
@@ -1017,14 +1005,7 @@ Some functions have responsibilities that could be better separated:
   - **Impact**: Low - Works fine but violates separation of concerns
   - **Resolution**: Move to strategy modules when implementing smarter AIs
 
-**3. HDCLL Memory Management**
 
-Current linked list implementation requires heap allocations:
-
-- `HDCLL_toArray()` allocates memory that must be freed by caller
-- Multiple allocation/free cycles during game loop
-- **Impact**: Low for current use, could matter for MCTS with thousands of simulations
-- **Resolution**: Planned migration to fixed-size arrays (see ideas/4)
 
 ### Architectural Boundaries
 

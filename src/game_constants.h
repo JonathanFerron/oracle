@@ -13,6 +13,7 @@
 #define INITIAL_CASH_DEFAULT 30
 #define INITIAL_ENERGY_DEFAULT 99
 #define INITAL_HAND_SIZE_DEFAULT 6
+// add here a define for the max hand size for the end of turn discard
 #define M_TWISTER_SEED 1337UL
 
 #define oraclemin(a,b) ({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })

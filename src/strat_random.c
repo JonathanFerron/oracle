@@ -18,10 +18,9 @@ void random_attack_strategy(struct gamestate* gstate, GameContext* ctx)
   uint8_t count = 0;
 
   bool has_champions = has_champion_in_hand(&gstate->hand[attacker]);
-  uint8_t* hand_array = HDCLL_toArray(&gstate->hand[attacker]);  // this allocates memory on the heap for array hand_array, make sure to free() it
 
   for(uint8_t i = 0; i < gstate->hand[attacker].size; i++)
-  { uint8_t card_idx = hand_array[i];
+  { uint8_t card_idx = gstate->hand[attacker].cards[i];
 
     if(fullDeck[card_idx].cost <= gstate->current_cash_balance[attacker])
     { // Skip cash cards if no champions available (in the hand)
@@ -30,7 +29,6 @@ void random_attack_strategy(struct gamestate* gstate, GameContext* ctx)
       affordable[count++] = card_idx;
     }
   }
-  free(hand_array);
 
   if(count == 0) return;
 
@@ -51,16 +49,13 @@ void random_defense_strategy(struct gamestate* gstate, GameContext* ctx)
   uint8_t affordable[gstate->hand[defender].size];
   uint8_t count = 0;
 
-  uint8_t* hand_array = HDCLL_toArray(&gstate->hand[defender]); // this allocates memory on the heap for array hand_array, make sure to free() it
-
   for(uint8_t i = 0; i < gstate->hand[defender].size; i++)
-  { uint8_t card_idx = hand_array[i];
+  { uint8_t card_idx = gstate->hand[defender].cards[i];
 
     if(fullDeck[card_idx].card_type == CHAMPION_CARD &&
        fullDeck[card_idx].cost <= gstate->current_cash_balance[defender])
       affordable[count++] = card_idx;
   }
-  free(hand_array);
 
   if(count == 0) return;
 

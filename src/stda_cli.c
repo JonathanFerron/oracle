@@ -76,10 +76,9 @@ void display_player_prompt(PlayerID player, struct gamestate* gstate,
 
 void display_player_hand(PlayerID player, struct gamestate* gstate, config_t* cfg)
 { printf("\n%s\n", LOCALIZED_STRING("Your hand:", "Votre main:", "Tu mano:"));
-  uint8_t* hand_array = HDCLL_toArray(&gstate->hand[player]);
 
   for(uint8_t i = 0; i < gstate->hand[player].size; i++)
-  { uint8_t card_idx = hand_array[i];
+  { uint8_t card_idx = gstate->hand[player].cards[i];
     const struct card* c = &fullDeck[card_idx];
 
     if(c->card_type == CHAMPION_CARD)
@@ -103,7 +102,6 @@ void display_player_hand(PlayerID player, struct gamestate* gstate, config_t* cf
              c->cost);
     }
   }
-  free(hand_array);
 }
 
 // display attacker's champions in combat
@@ -116,13 +114,11 @@ void display_attack_state(struct gamestate* gstate, config_t* cfg)
                                   "Champions de l'attaquant au combat:",
                                   "Campeones del atacante en combate:"));
 
-  struct LLNode* current = gstate->combat_zone[gstate->current_player].head;
-
   for(uint8_t i = 0; i < gstate->combat_zone[gstate->current_player].size; i++)
-  { const struct card* c = &fullDeck[current->data];
+  { uint8_t card_idx = gstate->combat_zone[gstate->current_player].cards[i];
+    const struct card* c = &fullDeck[card_idx];
     printf("  - %s (D%d+%d)\n", CHAMPION_SPECIES_NAMES[c->species],
            c->defense_dice, c->attack_base);
-    current = current->next;
   }
 }
 
@@ -221,17 +217,15 @@ int validate_and_play_champions(struct gamestate* gstate, PlayerID player,
 { if(count <= 0) return NO_ACTION;
 
   int total_cost = 0;
-  uint8_t* hand_array = HDCLL_toArray(&gstate->hand[player]);
 
   for(int i = 0; i < count; i++)
-  { uint8_t card_idx = hand_array[indices[i]];
+  { uint8_t card_idx = gstate->hand[player].cards[indices[i]];
     if(fullDeck[card_idx].card_type != CHAMPION_CARD)
     { printf(RED "%s %d %s\n" RESET,
              LOCALIZED_STRING("Error: Card", "Erreur: Carte", "Error: Carta"),
              indices[i] + 1,
              LOCALIZED_STRING("is not a champion", "n'est pas un champion",
                               "no es un campeon"));
-      free(hand_array);
       return NO_ACTION;
     }
     total_cost += fullDeck[card_idx].cost;
@@ -246,14 +240,12 @@ int validate_and_play_champions(struct gamestate* gstate, PlayerID player,
            total_cost,
            LOCALIZED_STRING("have", "avoir", "tienes"),
            gstate->current_cash_balance[player]);
-    free(hand_array);
     return NO_ACTION;
   }
 
   for(int i = count - 1; i >= 0; i--)
-    play_champion(gstate, player, hand_array[indices[i]], ctx);
+    play_champion(gstate, player, gstate->hand[player].cards[indices[i]], ctx);
 
-  free(hand_array);
   printf(GREEN ICON_SUCCESS " %s %d %s\n" RESET,
          LOCALIZED_STRING("Played", "Joue", "Jugado"),
          count,
@@ -277,9 +269,7 @@ int handle_draw_command(struct gamestate* gstate, PlayerID player,
     return NO_ACTION;
   }
 
-  uint8_t* hand_array = HDCLL_toArray(&gstate->hand[player]);
-  uint8_t card_idx = hand_array[idx - 1];
-  free(hand_array);
+  uint8_t card_idx = gstate->hand[player].cards[idx - 1];
 
   if(fullDeck[card_idx].card_type != DRAW_CARD)
   { printf(RED "%s\n" RESET,
@@ -316,9 +306,7 @@ int handle_cash_command(struct gamestate* gstate, PlayerID player,
     return NO_ACTION;
   }
 
-  uint8_t* hand_array = HDCLL_toArray(&gstate->hand[player]);
-  uint8_t card_idx = hand_array[idx - 1];
-  free(hand_array);
+  uint8_t card_idx = gstate->hand[player].cards[idx - 1];
 
   if(fullDeck[card_idx].card_type != CASH_CARD)
   { printf(RED "%s\n" RESET,

@@ -10,17 +10,13 @@
 
 Tasks:
 
-- Move from HDC Linked List to Fixed (variable sized, really) Arrays
+- Mulligan and discard functionalities
   
-  Mulligan and discard functionalities
+      A Implement mulligan system (Player B, 2 cards max)
   
-  A Implement mulligan system (Player B, 2 cards max)
-  
-  B Implement discard-to-7 system (end of turn)
+      B Implement discard-to-7 system (end of turn)
 
 - Display Discard Pile in CLI Mode
-
-- 
 
 - Get Recall Card functionality to work in at least stda.cli mode (it's fine to just use the 'draw n cards' option for the Random AI engine given that this engine is not meant to be strong) 
 
@@ -463,9 +459,7 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 
 - [ ] Describe bug here
 
-### Potential Issues ⚠️
 
-- [ ] Memory leak in HDCLL_toArray: replace the HDCLL with fixed arrays
 
 ---
 

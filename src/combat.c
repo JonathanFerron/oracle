@@ -29,14 +29,13 @@ void resolve_combat(struct gamestate* gstate, GameContext* ctx)
 
 int16_t calculate_total_attack(struct gamestate* gstate, PlayerID player, GameContext* ctx)
 { int16_t total = 0;
-  struct LLNode* current = gstate->combat_zone[player].head;
 
   // Build CombatCard array for combo calculation
   uint8_t num_cards = gstate->combat_zone[player].size;
   CombatCard combat_cards[3];
 
   for(uint8_t i = 0; i < num_cards; i++)
-  { uint8_t card_idx = current->data;
+  { uint8_t card_idx = gstate->combat_zone[player].cards[i];
 
     // Add base attack + dice roll
     total += fullDeck[card_idx].attack_base +
@@ -52,8 +51,6 @@ int16_t calculate_total_attack(struct gamestate* gstate, PlayerID player, GameCo
                 fullDeck[card_idx].defense_dice,
                 fullDeck[card_idx].attack_base,
                 fullDeck[card_idx].cost);
-
-    current = current->next;
   }
 
   // Add combo bonus (assuming DECK_RANDOM for now)
@@ -68,16 +65,16 @@ int16_t calculate_total_attack(struct gamestate* gstate, PlayerID player, GameCo
   return total;
 }
 
+
 int16_t calculate_total_defense(struct gamestate* gstate, PlayerID player, GameContext* ctx)
 { int16_t total = 0;
-  struct LLNode* current = gstate->combat_zone[player].head;
 
   // Build CombatCard array for combo calculation
   uint8_t num_cards = gstate->combat_zone[player].size;
   CombatCard combat_cards[3];
 
   for(uint8_t i = 0; i < num_cards; i++)
-  { uint8_t card_idx = current->data;
+  { uint8_t card_idx = gstate->combat_zone[player].cards[i];
 
     // Add dice roll only (no base for defense)
     total += RND_dn(fullDeck[card_idx].defense_dice, ctx);
@@ -91,9 +88,6 @@ int16_t calculate_total_defense(struct gamestate* gstate, PlayerID player, GameC
                 card_idx,
                 fullDeck[card_idx].defense_dice,
                 fullDeck[card_idx].cost);
-
-
-    current = current->next;
   }
 
   // Add combo bonus (assuming DECK_RANDOM for now)
@@ -105,6 +99,7 @@ int16_t calculate_total_defense(struct gamestate* gstate, PlayerID player, GameC
 
   return total;
 }
+
 
 void apply_combat_damage(struct gamestate* gstate, int16_t total_attack,
                          int16_t total_defense, GameContext* ctx)
