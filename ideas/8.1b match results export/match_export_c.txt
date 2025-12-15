@@ -1,0 +1,401 @@
+/* match_export.c
+ * Implementation of match export system
+ */
+
+#include "match_export.h"
+#include "game_constants.h"
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <errno.h>
+
+#ifdef _WIN32
+#include <direct.h>
+#define mkdir(path, mode) _mkdir(path)
+#endif
+
+/* Global export state */
+static bool g_export_enabled = true;
+
+/* Player type strings */
+static const char* PLAYER_TYPE_STRINGS[] = {
+    "HUMAN",
+    "AI_RANDOM",
+    "AI_BALANCED",
+    "AI_HEURISTIC",
+    "AI_HBT",
+    "AI_SIMPLE_MC",
+    "AI_PROGRESSIVE_MC",
+    "AI_ISMCTS"
+};
+
+/* ========== Initialization ========== */
+
+MatchExporter* match_export_init(const char* mode) {
+    return match_export_init_custom(
+        "oracle_matches/matches_master.csv",
+        "oracle_matches/players",
+        "oracle_matches/calibration"
+    );
+}
+
+MatchExporter* match_export_init_custom(
+    const char* master_path,
+    const char* player_dir,
+    const char* calibration_dir
+) {
+    MatchExporter* exporter = malloc(sizeof(MatchExporter));
+    if (!exporter) return NULL;
+    
+    strncpy(exporter->master_file, master_path, MAX_FILENAME - 1);
+    exporter->export_enabled = g_export_enabled;
+    exporter->verbose = false;
+    
+    /* Ensure directories exist */
+    match_ensure_directory("oracle_matches");
+    match_ensure_directory(player_dir);
+    match_ensure_directory(calibration_dir);
+    
+    /* Ensure master file has header */
+    match_write_csv_header(master_path);
+    
+    return exporter;
+}
+
+void match_export_cleanup(MatchExporter* exporter) {
+    if (exporter) {
+        free(exporter);
+    }
+}
+
+/* ========== Match Recording ========== */
+
+void match_generate_id(char* match_id, size_t max_len) {
+    time_t now = time(NULL);
+    struct tm* t = localtime(&now);
+    static uint16_t counter = 0;
+    
+    snprintf(match_id, max_len, "%04d%02d%02d_%02d%02d%02d_%04u",
+             t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
+             t->tm_hour, t->tm_min, t->tm_sec,
+             counter++);
+}
+
+MatchRecord* match_create_record(
+    const GameState* gs,
+    const config_t* cfg,
+    const char* mode
+) {
+    MatchRecord* record = malloc(sizeof(MatchRecord));
+    if (!record) return NULL;
+    
+    /* Generate match ID */
+    match_generate_id(record->match_id, MAX_MATCH_ID);
+    
+    /* Timestamp */
+    record->timestamp = time(NULL);
+    strncpy(record->mode, mode, sizeof(record->mode) - 1);
+    
+    /* Player info - extract from cfg */
+    PlayerConfig* pconfig = (PlayerConfig*)cfg->player_config;
+    
+    strncpy(record->player_a_name, pconfig->player_names[PLAYER_A],
+            MAX_PLAYER_NAME - 1);
+    strncpy(record->player_b_name, pconfig->player_names[PLAYER_B],
+            MAX_PLAYER_NAME - 1);
+    
+    /* Determine player types */
+    record->player_a_type = (cfg->player_types[PLAYER_A] == INTERACTIVE_PLAYER)
+        ? PLAYER_TYPE_HUMAN
+        : PLAYER_TYPE_AI_RANDOM; /* TODO: Get actual AI type */
+    
+    record->player_b_type = (cfg->player_types[PLAYER_B] == INTERACTIVE_PLAYER)
+        ? PLAYER_TYPE_HUMAN
+        : PLAYER_TYPE_AI_RANDOM; /* TODO: Get actual AI type */
+    
+    /* Get strategy descriptions */
+    match_get_strategy_desc(cfg, PLAYER_A,
+                          record->player_a_strategy, MAX_STRATEGY_DESC);
+    match_get_strategy_desc(cfg, PLAYER_B,
+                          record->player_b_strategy, MAX_STRATEGY_DESC);
+    
+    /* Game configuration */
+    strncpy(record->deck_type, "RANDOM", sizeof(record->deck_type) - 1);
+    record->initial_cash = INITIAL_CASH_DEFAULT;
+    record->rng_seed = cfg->prng_seed;
+    
+    /* Outcome */
+    if (gs->game_state == PLAYER_A_WINS) {
+        strncpy(record->winner, "PLAYER_A", sizeof(record->winner) - 1);
+    } else if (gs->game_state == PLAYER_B_WINS) {
+        strncpy(record->winner, "PLAYER_B", sizeof(record->winner) - 1);
+    } else {
+        strncpy(record->winner, "DRAW", sizeof(record->winner) - 1);
+    }
+    
+    record->turns_played = gs->turn;
+    record->rounds_played = (gs->turn + 1) / 2;
+    
+    /* Final state */
+    record->final_energy_a = gs->current_energy[PLAYER_A];
+    record->final_energy_b = gs->current_energy[PLAYER_B];
+    record->final_cash_a = gs->current_cash_balance[PLAYER_A];
+    record->final_cash_b = gs->current_cash_balance[PLAYER_B];
+    record->final_hand_size_a = gs->hand[PLAYER_A].size;
+    record->final_hand_size_b = gs->hand[PLAYER_B].size;
+    
+    /* Statistics - would need to be tracked during gameplay */
+    record->total_damage_a = 0; /* TODO: Track during game */
+    record->total_damage_b = 0;
+    record->champions_played_a = 0;
+    record->champions_played_b = 0;
+    record->draw_cards_a = 0;
+    record->draw_cards_b = 0;
+    record->mulligan_count_b = 0;
+    
+    return record;
+}
+
+bool match_export_record(
+    MatchExporter* exporter,
+    const MatchRecord* record
+) {
+    if (!exporter || !exporter->export_enabled) return true;
+    
+    bool success = true;
+    
+    /* Export to master log */
+    success &= match_append_to_master(record, exporter->master_file);
+    
+    /* Export to player histories */
+    success &= match_append_to_player_history(
+        record, record->player_a_name, "oracle_matches/players");
+    success &= match_append_to_player_history(
+        record, record->player_b_name, "oracle_matches/players");
+    
+    /* Export to calibration if AI was involved */
+    if (record->player_a_type != PLAYER_TYPE_HUMAN ||
+        record->player_b_type != PLAYER_TYPE_HUMAN) {
+        success &= match_append_to_calibration(
+            record, "oracle_matches/calibration");
+    }
+    
+    if (exporter->verbose) {
+        match_print_summary(record);
+    }
+    
+    return success;
+}
+
+/* ========== File Management ========== */
+
+bool match_append_to_master(
+    const MatchRecord* record,
+    const char* filepath
+) {
+    FILE* fp = fopen(filepath, "a");
+    if (!fp) {
+        fprintf(stderr, "Failed to open master log: %s\n", filepath);
+        return false;
+    }
+    
+    char timestamp_str[32];
+    match_format_timestamp(record->timestamp, timestamp_str, 32);
+    
+    fprintf(fp,
+        "%s,%s,%s,%s,%s,\"%s\",%s,%s,\"%s\",%s,%u,%u,%s,%u,%u,"
+        "%d,%d,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u\n",
+        record->match_id,
+        timestamp_str,
+        record->mode,
+        record->player_a_name,
+        match_get_player_type_string(record->player_a_type),
+        record->player_a_strategy,
+        record->player_b_name,
+        match_get_player_type_string(record->player_b_type),
+        record->player_b_strategy,
+        record->deck_type,
+        record->initial_cash,
+        record->rng_seed,
+        record->winner,
+        record->turns_played,
+        record->rounds_played,
+        record->final_energy_a,
+        record->final_energy_b,
+        record->final_cash_a,
+        record->final_cash_b,
+        record->final_hand_size_a,
+        record->final_hand_size_b,
+        record->total_damage_a,
+        record->total_damage_b,
+        record->champions_played_a,
+        record->champions_played_b,
+        record->draw_cards_a,
+        record->draw_cards_b,
+        record->mulligan_count_b
+    );
+    
+    fclose(fp);
+    return true;
+}
+
+bool match_append_to_player_history(
+    const MatchRecord* record,
+    const char* player_name,
+    const char* player_dir
+) {
+    char filepath[MAX_FILENAME];
+    snprintf(filepath, MAX_FILENAME, "%s/%s_history.csv",
+             player_dir, player_name);
+    
+    /* Ensure file has header */
+    bool file_exists = (access(filepath, F_OK) == 0);
+    if (!file_exists) {
+        match_write_csv_header(filepath);
+    }
+    
+    /* Write record */
+    return match_append_to_master(record, filepath);
+}
+
+bool match_append_to_calibration(
+    const MatchRecord* record,
+    const char* calibration_dir
+) {
+    /* Determine calibration file based on AI opponent */
+    PlayerType ai_type = (record->player_a_type != PLAYER_TYPE_HUMAN)
+        ? record->player_a_type
+        : record->player_b_type;
+    
+    const char* ai_name = match_get_player_type_string(ai_type);
+    
+    char filepath[MAX_FILENAME];
+    snprintf(filepath, MAX_FILENAME, "%s/vs_%s.csv",
+             calibration_dir, ai_name);
+    
+    /* Ensure file has header */
+    bool file_exists = (access(filepath, F_OK) == 0);
+    if (!file_exists) {
+        match_write_csv_header(filepath);
+    }
+    
+    return match_append_to_master(record, filepath);
+}
+
+/* ========== Utilities ========== */
+
+const char* match_get_player_type_string(PlayerType type) {
+    if (type < 0 || type >= sizeof(PLAYER_TYPE_STRINGS) / sizeof(char*)) {
+        return "UNKNOWN";
+    }
+    return PLAYER_TYPE_STRINGS[type];
+}
+
+void match_get_strategy_desc(
+    const config_t* cfg,
+    PlayerID player,
+    char* output,
+    size_t max_len
+) {
+    if (cfg->player_types[player] == INTERACTIVE_PLAYER) {
+        strncpy(output, "HUMAN", max_len - 1);
+    } else {
+        /* TODO: Get actual strategy description from AIParams */
+        strncpy(output, "RANDOM", max_len - 1);
+    }
+}
+
+void match_format_timestamp(time_t timestamp, char* output, size_t max_len) {
+    struct tm* t = localtime(&timestamp);
+    strftime(output, max_len, "%Y-%m-%dT%H:%M:%S", t);
+}
+
+bool match_ensure_directory(const char* path) {
+    struct stat st = {0};
+    
+    if (stat(path, &st) == -1) {
+        if (mkdir(path, 0755) != 0) {
+            fprintf(stderr, "Failed to create directory: %s\n", path);
+            return false;
+        }
+    }
+    return true;
+}
+
+bool match_write_csv_header(const char* filepath) {
+    /* Check if file already exists */
+    FILE* test = fopen(filepath, "r");
+    if (test) {
+        fclose(test);
+        return true; /* Already has header */
+    }
+    
+    FILE* fp = fopen(filepath, "w");
+    if (!fp) return false;
+    
+    fprintf(fp,
+        "match_id,timestamp,mode,"
+        "player_a_name,player_a_type,player_a_strategy,"
+        "player_b_name,player_b_type,player_b_strategy,"
+        "deck_type,initial_cash,rng_seed,"
+        "winner,turns_played,rounds_played,"
+        "final_energy_a,final_energy_b,"
+        "final_cash_a,final_cash_b,"
+        "final_hand_size_a,final_hand_size_b,"
+        "total_damage_a,total_damage_b,"
+        "champions_played_a,champions_played_b,"
+        "draw_cards_a,draw_cards_b,"
+        "mulligan_count_b\n"
+    );
+    
+    fclose(fp);
+    return true;
+}
+
+void match_print_summary(const MatchRecord* record) {
+    printf("\n=== Match Exported ===\n");
+    printf("Match ID: %s\n", record->match_id);
+    printf("%s (%s) vs %s (%s)\n",
+           record->player_a_name,
+           match_get_player_type_string(record->player_a_type),
+           record->player_b_name,
+           match_get_player_type_string(record->player_b_type));
+    printf("Winner: %s\n", record->winner);
+    printf("Duration: %u turns (%u rounds)\n",
+           record->turns_played, record->rounds_played);
+    printf("======================\n\n");
+}
+
+/* ========== Integration Helpers ========== */
+
+bool match_export_from_gamestate(
+    const GameState* gs,
+    const config_t* cfg,
+    const char* mode
+) {
+    if (!g_export_enabled) return true;
+    
+    MatchExporter* exporter = match_export_init(mode);
+    if (!exporter) return false;
+    
+    MatchRecord* record = match_create_record(gs, cfg, mode);
+    if (!record) {
+        match_export_cleanup(exporter);
+        return false;
+    }
+    
+    bool success = match_export_record(exporter, record);
+    
+    free(record);
+    match_export_cleanup(exporter);
+    
+    return success;
+}
+
+void match_export_set_enabled(bool enabled) {
+    g_export_enabled = enabled;
+}
+
+bool match_export_is_enabled(void) {
+    return g_export_enabled;
+}

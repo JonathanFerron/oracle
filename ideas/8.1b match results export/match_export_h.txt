@@ -1,0 +1,183 @@
+/* match_export.h
+ * Match result export system for interactive play modes
+ * Exports to CSV for player progress tracking and AI calibration
+ */
+
+#ifndef MATCH_EXPORT_H
+#define MATCH_EXPORT_H
+
+#include "game_types.h"
+#include "game_state.h"
+#include <stdio.h>
+#include <time.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+/* Maximum lengths for strings */
+#define MAX_PLAYER_NAME 64
+#define MAX_STRATEGY_DESC 128
+#define MAX_MATCH_ID 32
+#define MAX_FILENAME 256
+
+/* Player type classifications */
+typedef enum {
+    PLAYER_TYPE_HUMAN,
+    PLAYER_TYPE_AI_RANDOM,
+    PLAYER_TYPE_AI_BALANCED,
+    PLAYER_TYPE_AI_HEURISTIC,
+    PLAYER_TYPE_AI_HBT,
+    PLAYER_TYPE_AI_SIMPLE_MC,
+    PLAYER_TYPE_AI_PROGRESSIVE_MC,
+    PLAYER_TYPE_AI_ISMCTS
+} PlayerType;
+
+/* Match record structure */
+typedef struct {
+    /* Match identification */
+    char match_id[MAX_MATCH_ID];
+    time_t timestamp;
+    char mode[16];                      /* stda_cli, stda_tui, etc. */
+    
+    /* Player A info */
+    char player_a_name[MAX_PLAYER_NAME];
+    PlayerType player_a_type;
+    char player_a_strategy[MAX_STRATEGY_DESC];
+    
+    /* Player B info */
+    char player_b_name[MAX_PLAYER_NAME];
+    PlayerType player_b_type;
+    char player_b_strategy[MAX_STRATEGY_DESC];
+    
+    /* Game configuration */
+    char deck_type[16];                 /* RANDOM, MONOCHROME, CUSTOM */
+    uint16_t initial_cash;
+    uint32_t rng_seed;
+    
+    /* Outcome */
+    char winner[16];                    /* PLAYER_A, PLAYER_B, DRAW */
+    uint16_t turns_played;
+    uint16_t rounds_played;
+    
+    /* Final state */
+    int16_t final_energy_a;
+    int16_t final_energy_b;
+    uint16_t final_cash_a;
+    uint16_t final_cash_b;
+    uint8_t final_hand_size_a;
+    uint8_t final_hand_size_b;
+    
+    /* Game statistics */
+    uint16_t total_damage_a;
+    uint16_t total_damage_b;
+    uint16_t champions_played_a;
+    uint16_t champions_played_b;
+    uint16_t draw_cards_a;
+    uint16_t draw_cards_b;
+    uint8_t mulligan_count_b;
+} MatchRecord;
+
+/* Match exporter context */
+typedef struct {
+    char master_file[MAX_FILENAME];
+    char player_a_file[MAX_FILENAME];
+    char player_b_file[MAX_FILENAME];
+    char calibration_file[MAX_FILENAME];
+    bool export_enabled;
+    bool verbose;
+} MatchExporter;
+
+/* ========== Initialization ========== */
+
+/* Initialize exporter with default paths */
+MatchExporter* match_export_init(const char* mode);
+
+/* Initialize with custom paths */
+MatchExporter* match_export_init_custom(
+    const char* master_path,
+    const char* player_dir,
+    const char* calibration_dir
+);
+
+/* Cleanup exporter */
+void match_export_cleanup(MatchExporter* exporter);
+
+/* ========== Match Recording ========== */
+
+/* Generate unique match ID */
+void match_generate_id(char* match_id, size_t max_len);
+
+/* Create match record from game state */
+MatchRecord* match_create_record(
+    const GameState* gs,
+    const config_t* cfg,
+    const char* mode
+);
+
+/* Export match to all relevant files */
+bool match_export_record(
+    MatchExporter* exporter,
+    const MatchRecord* record
+);
+
+/* ========== File Management ========== */
+
+/* Append match to master log */
+bool match_append_to_master(
+    const MatchRecord* record,
+    const char* filepath
+);
+
+/* Append match to player history */
+bool match_append_to_player_history(
+    const MatchRecord* record,
+    const char* player_name,
+    const char* player_dir
+);
+
+/* Append match to AI calibration file */
+bool match_append_to_calibration(
+    const MatchRecord* record,
+    const char* calibration_dir
+);
+
+/* ========== Utilities ========== */
+
+/* Get player type string */
+const char* match_get_player_type_string(PlayerType type);
+
+/* Get strategy description from config */
+void match_get_strategy_desc(
+    const config_t* cfg,
+    PlayerID player,
+    char* output,
+    size_t max_len
+);
+
+/* Format timestamp to ISO 8601 */
+void match_format_timestamp(time_t timestamp, char* output, size_t max_len);
+
+/* Create directory if it doesn't exist */
+bool match_ensure_directory(const char* path);
+
+/* Write CSV header if file doesn't exist */
+bool match_write_csv_header(const char* filepath);
+
+/* Print match summary to console */
+void match_print_summary(const MatchRecord* record);
+
+/* ========== Integration Helpers ========== */
+
+/* Quick export from interactive mode */
+bool match_export_from_gamestate(
+    const GameState* gs,
+    const config_t* cfg,
+    const char* mode
+);
+
+/* Enable/disable export globally */
+void match_export_set_enabled(bool enabled);
+
+/* Check if export is enabled */
+bool match_export_is_enabled(void);
+
+#endif /* MATCH_EXPORT_H */

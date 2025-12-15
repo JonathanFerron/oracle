@@ -2,7 +2,34 @@
    Display Functions
    ======================================================================== */
 
-// display player prompt with status
+#include <stdio.h>
+#include "cli_display.h"
+#include "game_constants.h"
+#include "localization.h"
+#include "player_config.h"
+
+/* ANSI color codes */
+#define RESET   "\033[0m"
+#define RED     "\033[31m"
+#define GREEN   "\033[32m"
+#define YELLOW  "\033[33m"
+#define BLUE    "\033[34m"
+#define MAGENTA "\033[35m"
+#define CYAN    "\033[36m"
+#define GRAY    "\033[38;2;128;128;128m"
+#define BOLD_WHITE   "\033[1;37m"
+#define COLOR_P1     "\033[1;36m"
+#define COLOR_P2     "\033[1;33m"
+#define COLOR_ENERGY MAGENTA
+#define COLOR_LUNA   CYAN
+
+/* Visual indicators */
+#define ICON_PROMPT ">"
+
+/* ========================================================================
+   Basic Display Functions
+   ======================================================================== */
+
 void display_player_prompt(PlayerID player, struct gamestate* gstate,
                            int is_defense, config_t* cfg)
 { const char* player_color = (player == PLAYER_A) ? COLOR_P1 : COLOR_P2;
@@ -53,7 +80,6 @@ void display_player_hand(PlayerID player, struct gamestate* gstate, config_t* cf
   }
 }
 
-// display attacker's champions in combat
 void display_attack_state(struct gamestate* gstate, config_t* cfg)
 { printf("\n" RED "=== %s ===" RESET "\n",
          LOCALIZED_STRING("Combat! You are being attacked",
@@ -93,7 +119,7 @@ void display_game_status(struct gamestate* gstate, config_t* cfg)
          gstate->hand[PLAYER_B].size,
          LOCALIZED_STRING("Deck", "Paquet", "Mazo"),
          gstate->deck[PLAYER_B].top + 1);
-} // display_game_status
+}
 
 void display_cli_help(int is_defense, config_t* cfg)
 { printf("\n" BOLD_WHITE "=== %s ===" RESET "\n",
@@ -130,4 +156,87 @@ void display_cli_help(int is_defense, config_t* cfg)
          LOCALIZED_STRING("Show this help", "Afficher cette aide", "Mostrar esta ayuda"));
   printf("  exit            - %s\n\n",
          LOCALIZED_STRING("Quit game", "Quitter le jeu", "Salir del juego"));
+}
+
+/* ========================================================================
+   New Display Functions
+   ======================================================================== */
+
+void display_turn_header(PlayerID player, PlayerID opponent,
+                        struct gamestate* gstate, config_t* cfg)
+{ PlayerConfig* pconfig = (PlayerConfig*)cfg->player_config;
+  const char* player_name = pconfig->player_names[player];
+  const char* opponent_name = pconfig->player_names[opponent];
+
+  printf("\n=== %s's %s (%s %d, %s %d) ===\n",
+         player_name,
+         LOCALIZED_STRING("Turn", "Tour", "Turno"),
+         LOCALIZED_STRING("Turn", "Tour", "Turno"),
+         gstate->turn,
+         LOCALIZED_STRING("Round", "Manche", "Ronda"),
+         (uint16_t)((gstate->turn - 1) * 0.5 + 1));
+
+  printf("\n=== %s (%s) ===\n",
+         opponent_name,
+         LOCALIZED_STRING("Defender", "Defenseur", "Defensor"));
+}
+
+void display_game_summary(struct gamestate* gstate, config_t* cfg)
+{ PlayerConfig* pconfig = (PlayerConfig*)cfg->player_config;
+
+  printf("\n" BOLD_WHITE "=== %s ===" RESET "\n",
+         LOCALIZED_STRING("Game Over", "Fin du jeu", "Juego terminado"));
+
+  const char* winner_name = NULL;
+
+  switch(gstate->game_state)
+  { case PLAYER_A_WINS:
+      winner_name = pconfig->player_names[PLAYER_A];
+      printf(GREEN "%s %s!\n" RESET,
+             winner_name,
+             LOCALIZED_STRING("wins", "gagne", "gana"));
+      break;
+
+    case PLAYER_B_WINS:
+      winner_name = pconfig->player_names[PLAYER_B];
+      printf(GREEN "%s %s!\n" RESET,
+             winner_name,
+             LOCALIZED_STRING("wins", "gagne", "gana"));
+      break;
+
+    case DRAW:
+      printf(YELLOW "%s\n" RESET,
+             LOCALIZED_STRING("Game ended in a draw",
+                              "Partie terminee par un match nul",
+                              "Juego termino en empate"));
+      break;
+
+    default:
+      break;
+  }
+
+  /* Display final statistics */
+  printf("\n%s:\n",
+         LOCALIZED_STRING("Final Status", "Statut final", "Estado final"));
+
+  for(int i = 0; i < 2; i++)
+  { PlayerID pid = (PlayerID)i;
+    const char* name = pconfig->player_names[pid];
+    const char* pos = (pid == PLAYER_A) ? "A" : "B";
+    const char* color = (pid == PLAYER_A) ? COLOR_P1 : COLOR_P2;
+
+    printf("  %s%s (%s)" RESET ": " COLOR_ENERGY "HP:%d" RESET
+           " " COLOR_LUNA "L:%d" RESET " %s:%d\n",
+           color, name, pos,
+           gstate->current_energy[pid],
+           gstate->current_cash_balance[pid],
+           LOCALIZED_STRING("Cards", "Cartes", "Cartas"),
+           gstate->hand[pid].size);
+  }
+
+  printf("\n%s: %d (%s: %d)\n",
+         LOCALIZED_STRING("Total turns", "Tours totaux", "Turnos totales"),
+         gstate->turn,
+         LOCALIZED_STRING("Rounds", "Manches", "Rondas"),
+         (uint16_t)((gstate->turn - 1) * 0.5 + 1));
 }
