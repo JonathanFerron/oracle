@@ -53,6 +53,11 @@ int parse_champion_indices(char* input, uint8_t* indices, int max_count,
   return count;
 }
 
+/* Comparison function for qsort - descending order */
+static int compare_desc(const void* a, const void* b)
+{ return (*(uint8_t*)b - *(uint8_t*)a);
+}
+
 int validate_and_play_champions(struct gamestate* gstate, PlayerID player,
                                 uint8_t* indices, int count, GameContext* ctx,
                                 config_t* cfg)
@@ -85,7 +90,13 @@ int validate_and_play_champions(struct gamestate* gstate, PlayerID player,
     return NO_ACTION;
   }
 
-  for(int i = count - 1; i >= 0; i--)
+  /* CRITICAL FIX: Sort indices in descending order before removal
+     This ensures we remove from highest index to lowest, preventing
+     index invalidation as cards shift in the array */
+  qsort(indices, count, sizeof(uint8_t), compare_desc);
+
+  /* Now remove cards from highest to lowest index */
+  for(int i = 0; i < count; i++)
     play_champion(gstate, player, gstate->hand[player].cards[indices[i]], ctx);
 
   printf(GREEN ICON_SUCCESS " %s %d %s\n" RESET,

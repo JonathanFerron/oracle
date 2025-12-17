@@ -5,6 +5,8 @@
 #include "game_context.h"
 #include "strategy.h"
 
+#define EXIT_SIGNAL -1
+
 /* Game phase handlers */
 int handle_interactive_attack(struct gamestate* gstate,
                               PlayerID player, GameContext* ctx, config_t* cfg);

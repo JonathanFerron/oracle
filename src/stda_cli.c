@@ -90,6 +90,16 @@ static int run_game_loop(struct gamestate* gstate, StrategySet* strategies,
   while(gstate->turn < MAX_NUMBER_OF_TURNS &&
         !gstate->someone_has_zero_energy)
   { int result = execute_game_turn(gstate, strategies, ctx, cfg);
+    
+    /* Check for EXIT_SIGNAL and break out of game loop */
+    if(result == EXIT_SIGNAL)
+    { printf("\n%s\n",
+             LOCALIZED_STRING("Game exited by player",
+                              "Jeu quitté par le joueur",
+                              "Juego cerrado por el jugador"));
+      return EXIT_SUCCESS;  /* Clean exit */
+    }
+    
     if(result == EXIT_FAILURE) return EXIT_FAILURE;
 
     if(gstate->someone_has_zero_energy) break;

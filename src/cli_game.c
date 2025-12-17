@@ -19,7 +19,6 @@
 #include "player_config.h"
 
 #define MAX_COMMAND_LEN 256
-#define EXIT_SIGNAL -1
 #define NO_ACTION 0
 
 /* ANSI color codes */
@@ -39,14 +38,12 @@ int handle_interactive_attack(struct gamestate* gstate,
   int action_taken = NO_ACTION;
 
   PlayerConfig* pconfig = (PlayerConfig*)cfg->player_config;
-  const char* player_name = pconfig->player_names[player];
+  //const char* player_name = pconfig->player_names[player];
   PlayerID opponent = 1 - player;
   const char* opponent_name = pconfig->player_names[opponent];
 
   while(!action_taken && !gstate->someone_has_zero_energy)
-  { printf("\n=== %s's %s (%s %d, %s %d) ===\n",
-           player_name,
-           LOCALIZED_STRING("Turn", "Tour", "Turno"),
+  { printf("\n=== (%s %d, %s %d) ===\n",           
            LOCALIZED_STRING("Turn", "Tour", "Turno"),
            gstate->turn,
            LOCALIZED_STRING("Round", "Manche", "Ronda"),
@@ -85,13 +82,11 @@ int handle_interactive_defense(struct gamestate* gstate,
 { char input_buffer[MAX_COMMAND_LEN];
 
   PlayerConfig* pconfig = (PlayerConfig*)cfg->player_config;
-  const char* player_name = pconfig->player_names[player];
+  //const char* player_name = pconfig->player_names[player];
   PlayerID opponent = 1 - player;
   const char* opponent_name = pconfig->player_names[opponent];
 
-  printf("\n=== %s's %s (%s %d, %s %d) ===\n",
-         player_name,
-         LOCALIZED_STRING("Turn", "Tour", "Turno"),
+  printf("\n=== (%s %d, %s %d) ===\n",         
          LOCALIZED_STRING("Turn", "Tour", "Turno"),
          gstate->turn,
          LOCALIZED_STRING("Round", "Manche", "Ronda"),
@@ -108,6 +103,17 @@ int handle_interactive_defense(struct gamestate* gstate,
 
   printf("\n\n");
   display_player_prompt(player, gstate, 1, cfg);
+  
+  /* Check if defender has any cards before showing hand/prompt
+     If hand is empty, automatically pass (take damage) */
+  if(gstate->hand[player].size == 0)
+  { printf("\n%s\n",
+           LOCALIZED_STRING("No cards in hand - taking damage without defending",
+                            "Aucune carte en main - prendre des degats sans defendre",
+                            "No hay cartas en mano - recibir dano sin defender"));
+    return EXIT_SUCCESS;
+  }
+  
   display_player_hand(player, gstate, cfg);
   printf("\n%s\n" ICON_PROMPT " ",
          LOCALIZED_STRING("Defend: 'cham <indices>' (e.g., 'cham 1 2') or 'pass' to take damage",
