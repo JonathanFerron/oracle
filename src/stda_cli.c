@@ -21,6 +21,8 @@
 #include "localization.h"
 #include "player_selection.h"
 #include "player_config.h"
+#include "card_actions.h"
+#include "stda_auto.h"
 
 /* ANSI color codes */
 #define RESET   "\033[0m"
@@ -83,9 +85,9 @@ static void display_configuration_summary(PlayerConfig* pconfig, config_t* cfg)
 
 static int run_game_loop(struct gamestate* gstate, StrategySet* strategies,
                         GameContext* ctx, config_t* cfg)
-{ printf("\n=== %s ===\n",
+{ /*printf("\n=== %s ===\n",
          LOCALIZED_STRING("Game Start", "Début du jeu", "Inicio del juego"));
-  gstate->turn = 0;
+  gstate->turn = 0;*/
 
   while(gstate->turn < MAX_NUMBER_OF_TURNS &&
         !gstate->someone_has_zero_energy)
@@ -105,6 +107,15 @@ static int run_game_loop(struct gamestate* gstate, StrategySet* strategies,
     if(gstate->someone_has_zero_energy) break;
 
     collect_1_luna(gstate);
+    
+    /* Discard-to-7 phase */
+    PlayerConfig* pconfig = (PlayerConfig*)cfg->player_config;
+    if (pconfig->player_types[gstate->current_player] == INTERACTIVE_PLAYER) {
+        handle_interactive_discard_to_7(gstate, ctx, cfg);
+    } else {
+        discard_to_7_cards(gstate, ctx);
+    }
+    
     change_current_player(gstate);
   }
 
@@ -163,6 +174,18 @@ int run_mode_stda_cli(config_t* cfg)
 
   /* Display player configuration summary */
   display_configuration_summary(&pconfig, cfg);
+
+  /* Display game start */
+  printf("\n=== %s ===\n",
+         LOCALIZED_STRING("Game Start", "Début du jeu", "Inicio del juego"));
+  gstate->turn = 0;
+
+  /* Mulligan phase for Player B */
+  if (pconfig.player_types[PLAYER_B] == INTERACTIVE_PLAYER) {
+      handle_interactive_mulligan(gstate, ctx, cfg);
+  } else {
+      apply_mulligan(gstate, ctx);
+  }
 
   /* Run main game loop */
   int result = run_game_loop(gstate, strategies, ctx, cfg);

@@ -1,28 +1,20 @@
 # Oracle Development TODO
 
-**Quick Status**: In progress: completing turn logic and game loop
+**Quick Status**: In progress: completing miscellaneous actions / commands in interactive mode (recall, combat results details, discard pile inspection, cash card functionality)
 
 ---
 
 ## Current Focus
 
-**Complete Turn Logic Module** - Get full game loop working end-to-end
+**Complete Turn Logic Module** - Get full game loop working end-to-end in interactive mode with all the rules
 
 Tasks:
-
-- Mulligan and discard functionalities
-  
-      A Implement mulligan system (Player B, 2 cards max)
-  
-      B Implement discard-to-7 system (end of turn)
 
 - Display Discard Pile in CLI Mode
 
 - Get Recall Card functionality to work in at least stda.cli mode (it's fine to just use the 'draw n cards' option for the Random AI engine given that this engine is not meant to be strong) 
 
 - Enhance display of combat results in stda.cli mode
-
-- Split the stda_cli.c source file into 4 modules as documented in '7 stda_cli Modularization Strategy.md'
 
 - When playing cash card in interactive mode, ask user to select the champion card that they want to discard in exchange of 5 lunas instead of letting the AI decide automatically based on power heuristic
 
@@ -48,70 +40,7 @@ Tasks:
 
 ### Prepare for Client-Server Split
 
-Current code is monolithic. Start preparing for separation:
-
-```c
-// New: game_server.h
-typedef struct GameServer GameServer;
-
-GameServer* server_create(uint16_t initial_cash);
-void server_apply_action(GameServer* srv, PlayerID player, Action* action);
-VisibleGameState server_get_view(GameServer* srv, PlayerID observer);
-void server_destroy(GameServer* srv);
-
-// New: game_client.h  
-typedef struct GameClient GameClient;
-
-GameClient* client_create(PlayerID player_id);
-void client_receive_state(GameClient* cli, VisibleGameState* state);
-Action client_get_action(GameClient* cli);  // AI or human input
-void client_destroy(GameClient* cli);
-```
-
-### Action Structure
-
-```c
-// action.h
-typedef enum {
-    ACTION_PLAY_CHAMPIONS,
-    ACTION_PLAY_DRAW_CARD,
-    ACTION_PLAY_CASH_CARD,
-    ACTION_PASS,
-    ACTION_DEFEND,
-    ACTION_DISCARD
-} ActionType;
-
-typedef struct {
-    ActionType type;
-    uint8_t num_cards;
-    uint8_t card_indices[3];
-    uint8_t draw_or_recall;
-} Action;
-
-// Clean interface
-bool action_is_legal(const Action* action, const VisibleGameState* state);
-void action_apply(Action* action, struct gamestate* gstate);
-```
-
-### Visibility System
-
-Critical for AI and multiplayer:
-
-```c
-// visibility.h
-typedef enum {
-    CARD_VISIBLE,
-    CARD_KNOWN_IN_OPPONENT_HAND,
-    CARD_HIDDEN,
-    CARD_KNOWN_IN_OWN_DECK,
-    CARD_KNOWN_IN_OPPONENT_DECK
-} CardVisibility;
-
-typedef struct {
-    struct gamestate base;
-    CardVisibility visibility[2][FULL_DECK_SIZE];
-} GameStateWithVisibility;
-```
+Current code is monolithic. Start preparing for separation. See notes in 'ideas/game engine refactoring for GUI and network support'
 
 ---
 
@@ -150,39 +79,12 @@ GameError DeckStk_pop_safe(struct deck_stack* deck, uint8_t* out);
 
 ### Core Game Logic (src/core/)
 
-#### Turn Logic ⚠️ IN PROGRESS
+#### Card Actions ⚠️ IN PROGRESS
 
-- [x] Basic turn structure (turn_logic.c)
-- [x] begin_of_turn()
-- [x] attack_phase()
-- [x] defense_phase()
-- [x] end_of_turn()
-- [x] Card drawing (skip first player, first turn)
-- [x] Luna collection
-- [ ] **Mulligan system**
-  - [ ] UI for Player B (2 cards max)
-  - [ ] Power-based selection heuristic
-  - [ ] Integration with CLI/TUI modes
-- [ ] **Discard to 7 cards**
-  - [ ] UI for attacker at end of turn
-  - [ ] Power-based selection heuristic
-  - [ ] Edge case: exactly 7 cards (do nothing)
-- [x] Win condition detection (energy = 0)
-- [x] Draw condition (max turns exceeded)
-
-#### Card Actions ⚠️
-
-- [x] play_card() dispatcher
-- [x] play_champion()
-- [x] play_draw_card()
-- [x] play_cash_card()
-- [x] draw_1_card()
-- [x] shuffle_discard_and_form_deck()
 - [ ] **Recall mechanic** (draw/recall cards)
   - [ ] recall_champion() function
   - [ ] UI for choosing which champion to recall
   - [ ] Validation (champion must be in discard)
-- [ ] Improve cost validation
 - [ ] Better error handling
 
 ---
@@ -231,11 +133,6 @@ GameError DeckStk_pop_safe(struct deck_stack* deck, uint8_t* out);
 
 #### Automated Simulation (stda_auto.c) ⚠️
 
-- [x] Basic simulation loop
-- [x] Random vs Random testing
-- [x] Win statistics
-- [x] Histogram generation
-- [x] GameContext integration
 - [ ] **Refactor**: Extract simulation.c module (part of the 'improve source code folder structure' folder under 'ideas')
 - [ ] Support multiple deck types (currently hardcoded random)
 - [ ] Better statistics:
@@ -247,15 +144,6 @@ GameError DeckStk_pop_safe(struct deck_stack* deck, uint8_t* out);
 
 #### CLI Mode (stda_cli.c) ⚠️
 
-- [ ] **Mulligan UI** (Player B)
-  - [ ] Display hand with power values
-  - [ ] Prompt for cards to discard
-  - [ ] Validation (max 2 cards)
-- [ ] **Discard UI** (end of turn if hand > 7)
-  - [ ] Display hand
-  - [ ] Prompt for cards to discard
-  - [ ] Validation (discard down to exactly 7)
-- [ ] Better game state display
 - [ ] Show combat results clearly
 - [ ] Save/load game state
 
@@ -320,10 +208,6 @@ See `ideas/tui/` for full implementation plan
 - [ ] Add DeckStk_size() helper
 - [ ] Add DeckStk_peek_at(index) for debugging
 
-#### Circular Linked List ✅
-
-- [ ] Replace with fixed arrays
-
 ---
 
 ## New Features to Add
@@ -375,48 +259,15 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 
 ## Testing & Quality
 
-### Unit Tests 📋
-
-- [ ] test_combat.c
-  - [ ] Test dice rolling distribution
-  - [ ] Test damage calculation
-  - [ ] Test combo bonuses in combat
-- [ ] test_turn_logic.c
-  - [ ] Test phase transitions
-  - [ ] Test turn counter
-  - [ ] Test player switching
-- [ ] test_card_actions.c
-  - [ ] Test all card types
-  - [ ] Test cost validation
-  - [ ] Test draw mechanics
-- [ ] test_gamestate.c
-  - [ ] Test initialization
-  - [ ] Test deck shuffling
-  - [ ] Test hand dealing
-- [ ] test_protocol.c (for future network code)
-
-### Integration Tests 📋
-
-- [ ] Full game Human vs AI (manual testing)
-  - [ ] All phases work correctly
-  - [ ] UI is responsive
-  - [ ] Error handling works
-- [ ] Simulation batch tests
-  - [ ] Statistics are correct
-  - [ ] CSV export works
-
 ### Performance Tests 📋
 
-- [ ] 10,000 game simulation (should complete in <5 min)
 - [ ] Memory leak detection (valgrind)
 - [ ] Profile hot paths (gprof)
-- [ ] Optimize combo_bonus if needed
 
 ### Code Quality 📋
 
 - [ ] Run with -Wall -Wextra (fix all warnings)
 - [ ] Check with cppcheck
-- [ ] Run with valgrind (no leaks)
 - [ ] Format with astyle (consistent style)
 - [ ] Review all functions >35 lines (refactor)
 - [ ] Review all files >500 lines (split if needed)
@@ -459,8 +310,6 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 
 - [ ] Describe bug here
 
-
-
 ---
 
 ## Action Items (preparation for client / server approach and MCTS)
@@ -475,7 +324,6 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 
 ### Refactoring Needed 🔧
 
-- [ ] stda_cli.c exceeds 500 line limit
 - [ ] stda_auto.c mixes simulation logic with presentation
 - [ ] card_actions.c needs better error handling
 - [ ] gamestate.c setup_game() is too long
@@ -500,22 +348,6 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 
 ## Ideas / Future Exploration
 
-### Gameplay Variants 🎮
-
-- [ ] Different starting energy (not just 99)
-- [ ] Different starting cash (not just 30)
-- [ ] Best-of-N match mode
-- [ ] Tournament mode (bracket)
-- [ ] Survival mode (AI gauntlet)
-
-### Analysis Tools 📊
-
-- [ ] Replay system (record actions, replay later)
-- [ ] Position analysis (evaluate game state)
-- [ ] Opening book (common early game patterns)
-- [ ] Card usage statistics (which cards win most)
-- [ ] Combo occurrence frequency
-
 ### AI Experiments 🤖
 
 - [ ] Parameter sweep (find optimal values)
@@ -526,12 +358,7 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 
 ### Network Features 🌐
 
-- [ ] Lobby system
-- [ ] Chat
-- [ ] Friend list
 - [ ] Matchmaking by rating
-- [ ] Spectator mode
-- [ ] Game replay streaming
 
 ---
 
@@ -569,36 +396,9 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 
 *Target: <500 lines per file, <30 lines per function*
 
-Current status (approximate):
-
-- ✅ game_constants.c: ~350 lines (mostly data)
-- ✅ combat.c: ~100 lines
-- ✅ turn_logic.c: ~80 lines
-- ✅ card_actions.c: ~150 lines
-- ⚠️ stda_auto.c: ~280 lines (split needed)
-- ⚠️ stda_cli.c: ~550 lines (OVER LIMIT - split needed)
-- ✅ strat_random.c: ~60 lines
-- ✅ combo_bonus.c: ~200 lines
-
 ---
 
 ## Notes for Future
-
-### When Implementing Mulligan
-
-- Only Player B can mulligan
-- Max 2 cards
-- Use power heuristic (< AVERAGE_POWER_FOR_MULLIGAN)
-- Draw replacement cards immediately
-- Integrate with CLI/TUI input
-
-### When Implementing Discard to 7
-
-- Only at end of attacker's turn
-- Only if hand > 7 cards
-- Use power heuristic (discard lowest)
-- Must discard down to exactly 7
-- Integrate with CLI/TUI input
 
 ### When Implementing Recall
 
@@ -610,7 +410,7 @@ Current status (approximate):
 
 ### When Starting Network Code
 
-- Read DESIGN.md section 6 thoroughly
+- Read DESIGN.md thoroughly
 - Start with text protocol (easier to debug)
 - Implement binary protocol later
 - Test with localhost first
@@ -626,5 +426,4 @@ Current status (approximate):
 
 ---
 
-*Last Updated: November 2025*  
-*Next Review: When Turn Logic implementation in CLI mode is completed*
+*Last Updated: December 2025*

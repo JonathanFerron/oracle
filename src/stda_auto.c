@@ -97,6 +97,7 @@ void play_stda_auto_game(uint16_t initial_cash, struct gamestats* gstats,
   DeckStk_emptyOut(&gstate.deck[PLAYER_B]);  
 } // play_game
 
+// TODO: look at moving the automated (AI) apply_mulligan() function to the strategy code instead as that's where it really belongs: this implementation is based on the power heuristic
 void apply_mulligan(struct gamestate* gstate, GameContext* ctx)
 { uint8_t max_nbr_cards_to_mulligan = 2;
 

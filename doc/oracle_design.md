@@ -109,8 +109,6 @@
 
 **Game Logic Gaps**:
 
-- Mulligan system (interactive player)
-- Discard to 7 cards (interactive player)
 - Recall mechanic (draw/recall cards)
 
 **AI Strategies**:
@@ -1014,9 +1012,7 @@ Some functions have responsibilities that could be better separated:
 | Concern             | Current Location | Future Location   | Rationale                                               |
 | ------------------- | ---------------- | ----------------- | ------------------------------------------------------- |
 | Player types        | `config_t`       | `PlayerConfig`    | Player-specific data belongs together                   |
-| PRNG seed           | `config_t`       | ✅ Stays in config | It's a configuration setting                            |
-| Mulligan logic      | `stda_auto.c`    | Strategy modules  | Different strategies need different mulligan approaches |
-| Discard-to-7 logic  | `card_actions.c` | Strategy modules  | Same reasoning as mulligan                              |
+| PRNG seed           | `config_t`       | ✅ Stays in config | It's a configuration setting                           |
 | Cash card selection | `card_actions.c` | Strategy modules  | Strategy decision, not game rule                        |
 
 ### Design Patterns in Use
@@ -1552,9 +1548,7 @@ default_numsim = 1000
 
 - Display functions (formatting-heavy, acceptable)
 - Data initialization (mostly assignments, acceptable)
-- Mulligan/discard logic (needs refactoring to strategy modules)
 
 ---
 
-*Last Updated: November 2025*  
-*Next Review: After CLI refactoring and Balanced AI implementation*
+*Last Updated: December 2025* 

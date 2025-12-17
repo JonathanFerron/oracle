@@ -71,12 +71,13 @@ Working features:
 - ✅ Random AI strategy
 - ✅ CLI interactive mode
 - ✅ Automated simulation
+- ✅️ Mulligan system for interactive player
+- ✅ Discard-to-7 mechanic for interactive player
 
 In development:
 
-- ⚠️ Mulligan system for interactive player
-- ⚠️ Discard-to-7 mechanic for interactive player
-- ⚠️ Balanced AI strategy
+- ⚠️ Various AI strategies
+- ️️⚠️ TUI mode
 
 ## 🤝 Contributing
 

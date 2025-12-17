@@ -8,11 +8,10 @@
 
 ## Current Status
 
-**Active Work**: Phase 2 - Turn Logic & Game Loop Completion  
+**Active Work**: Turn Logic & Game Loop Completion  
 
 ### What Needs Work
 
-- ⚠️ Turn logic incomplete (mulligan)
 - ⚠️ Automated simulation mode needs refactoring
 - ⚠️ No save/load functionality
 - ⚠️ Limited AI strategies (only random implemented)
@@ -57,53 +56,11 @@
 
 **Status**: Core logic exists, needs refinement and testing
 
-#### 2.1 Turn Logic
+#### Card Actions
 
-- [x] Basic turn structure (begin/attack/defense/end)
-- [x] Card drawing mechanics
-- [x] Luna collection
-- [ ] **Mulligan system** (Player B, 2 cards max)
-- [ ] - [ ] **Discard to 7 cards** (end of turn)
-- [x] Win condition detection
-
-#### 2.2 Deck Management
-
-- [x] Shuffle and deal
-- [x] Draw from deck
-- [x] Reshuffle discard when deck empty
-- [ ] Edge case testing (empty deck, empty hand)
-
-#### 2.3 Card Actions
-
-- [x] Play champion cards
-- [x] Play draw/recall cards
-- [x] Play cash exchange cards
+- [ ] Play draw/recall cards
+- [ ] Play cash exchange cards
 - [ ] Recall mechanic (draw/recall cards)
-- [ ] Proper cost validation
-
-**Blockers**: None  
-**Next**: Implement mulligan system, then validate full game loop with tests
-
-## Mulligan Implementation
-
-- `stda_auto.c` has a working `apply_mulligan()` implementation (lines 109-149) with power-based heuristic
-- **But:** This is hardcoded for automated simulation only
-- `stda_cli.c` line 485: TODO comment "add here the logic to perform the mulligan for player B" but no implementation
-- Game rules require interactive player choice in CLI/TUI modes
-
-**Impact:** High - Feature works in one mode but missing in interactive modes where player agency is critical
-
-## Discard-to-7 Implementation Exists But Not Integrated in CLI
-
-**Contradiction:**
-
-- `card_actions.c` has `discard_to_7_cards()` fully implemented (lines 138-162) with power-based heuristic
-- `turn_logic.c` line 73 calls it in `end_of_turn()`
-- **But:** This is automated via power heuristic - no player choice
-- `stda_cli.c` line 487: TODO "add here the functionality to discard to 7 cards"
-- Game rules state player must choose which cards to discard
-
-**Impact:** High - Automated implementation removes player agency in interactive mode
 
 ---
 
@@ -125,29 +82,18 @@
 
 **Status**: Partial implementation, needs completion
 
-#### 3.1 Automated Simulation Mode (stda.auto) ⚠️
+#### Automated Simulation Mode (stda.auto) ⚠️
 
-- [x] Basic simulation loop
-- [x] Random vs Random testing
-- [x] Win statistics
-- [x] Histogram generation
 - [ ] **Refactor simulation engine** (extract from stda_auto.c)
 - [ ] Better statistics (confidence intervals, effect size)
 - [ ] Export to CSV (see sim_export_spec.md)
 - [ ] Support for multiple deck types
 
-#### 3.2 Interactive CLI Mode (stda.cli) ⚠️
+#### Interactive CLI Mode (stda.cli) ⚠️
 
-- [x] Human vs AI gameplay
-- [x] Command parsing (cham, draw, cash, pass)
-- [x] Color output with symbols
-- [ ] **Mulligan UI** for Player B
-- [ ] **Discard UI** at end of turn
-- [ ] Better error messages
-- [x] Game state display improvements
 - [ ] Save/load game state
 
-#### 3.3 Text UI Mode (stda.tui) 📋 PLANNED
+#### Text UI Mode (stda.tui) 📋 PLANNED
 
 - [ ] ncurses-based full-screen UI
 - [ ] Real-time game board display
@@ -166,7 +112,6 @@ Cash Card Selection**: `select_champion_for_cash_exchange()` is in `card_actions
 
 #### Balanced Rules AI 📋
 
-- [x] Strategy framework (function pointers)
 - [ ] **Attack heuristics** (when to play champions vs draw)
 - [ ] **Defense heuristics** (when to defend vs decline)
 - [ ] **Card selection** (which cards to play)
@@ -230,11 +175,11 @@ for(int i = 0; i < 2; i++)
 
 ---
 
-### Phase 5: Simulation & Analysis Tools
+### Simulation & Analysis Tools
 
 **Status**: Specification complete, implementation pending
 
-#### 5.1 CSV Export System 📋
+#### CSV Export System 📋
 
 - [ ] Per-game detail export
 - [ ] Summary statistics export
@@ -244,7 +189,7 @@ for(int i = 0; i < 2; i++)
 
 **Specification**: See `ideas/sim_export_spec.md`
 
-#### 5.2 Interactive Simulation UI (stda.sim) 📋
+#### Interactive Simulation UI (stda.sim) 📋
 
 - [ ] ncurses-based results display
 - [ ] Live progress updates
@@ -253,7 +198,7 @@ for(int i = 0; i < 2; i++)
 - [ ] Export commands
 - [ ] Mode switching (sim ↔ tui)
 
-#### 5.3 Configuration System 📋
+#### Configuration System 📋
 
 - [ ] INI-style config file parser
 - [ ] Default configuration
@@ -265,11 +210,11 @@ for(int i = 0; i < 2; i++)
 
 ---
 
-### Phase 6: Rating System
+### Rating System
 
 **Status**: Complete specification, ready for implementation
 
-#### 6.1 Bradley-Terry Implementation 📋
+#### Bradley-Terry Implementation 📋
 
 - [ ] Core rating calculations (rating.c)
 - [ ] Adaptive learning rate (A function)
@@ -280,7 +225,7 @@ for(int i = 0; i < 2; i++)
 
 **Specification**: See `ideas/rating system/rating system BT v2/`
 
-#### 6.2 Rating Integration 📋
+#### Rating Integration 📋
 
 - [ ] Per-player rating tracking
 - [ ] Automatic updates after matches
@@ -289,7 +234,7 @@ for(int i = 0; i < 2; i++)
 - [ ] Historical rating graphs
 - [ ] Confidence intervals
 
-#### 6.3 Calibration Tools 📋
+#### Calibration Tools 📋
 
 - [ ] Heuristic parameter optimization
 - [ ] Non-champion card power values
@@ -298,11 +243,11 @@ for(int i = 0; i < 2; i++)
 
 ---
 
-### Phase 7: Advanced AI (Monte Carlo)
+### Advanced AI (Monte Carlo)
 
 **Status**: Design notes exist, major research component
 
-#### 7.1 Simple Monte Carlo 📋
+#### Simple Monte Carlo 📋
 
 - [ ] Action enumeration (get all legal moves)
 - [ ] Random rollout to game end
@@ -312,14 +257,14 @@ for(int i = 0; i < 2; i++)
 
 **Reference**: See `src/strat_simplemc1.c`
 
-#### 7.2 Progressive Pruning MC 📋
+#### Progressive Pruning MC 📋
 
 - [ ] Multi-stage rollouts (100/200/400/800)
 - [ ] Confidence-based pruning
 - [ ] Top-N retention
 - [ ] Early stopping criteria
 
-#### 7.3 UCB1 / PUCB1 📋
+#### UCB1 / PUCB1 📋
 
 - [ ] Upper confidence bound for exploration
 - [ ] Prior probability estimation
@@ -327,11 +272,11 @@ for(int i = 0; i < 2; i++)
 
 ---
 
-### Phase 8: Information Set MCTS
+### Information Set MCTS
 
 **Status**: Advanced research goal, longest-term objective
 
-#### 8.1 MCTS Core 📋
+#### MCTS Core 📋
 
 - [ ] Tree node structure
 - [ ] Selection (UCT)
@@ -341,21 +286,21 @@ for(int i = 0; i < 2; i++)
 
 **Reference**: See `src/strat_ismcts1.c` for design notes
 
-#### 8.2 Information Set Handling 📋
+#### Information Set Handling 📋
 
 - [ ] Determinization (observer's view)
 - [ ] Hidden information management
 - [ ] Clone and randomize game state
 - [ ] Belief state tracking
 
-#### 8.3 Optimizations 📋
+#### Optimizations 📋
 
 - [ ] Tree reuse between turns
 - [ ] Transposition tables
 - [ ] RAVE (Rapid Action Value Estimation)
 - [ ] Parallelization (multi-threaded)
 
-#### 8.4 Neural Network Enhancement (Long-term) 🔮
+#### Neural Network Enhancement (Long-term) 🔮
 
 - [ ] Prior probability predictor
 - [ ] Value network
@@ -364,11 +309,11 @@ for(int i = 0; i < 2; i++)
 
 ---
 
-### Phase 9: Client/Server Architecture
+### Client/Server Architecture
 
 **Status**: Design complete, major refactoring required
 
-#### 9.1 Protocol Design 📋
+#### Protocol Design 📋
 
 - [ ] Message types (action, gamestate, event)
 - [ ] Binary serialization
@@ -376,9 +321,9 @@ for(int i = 0; i < 2; i++)
 - [ ] Action serialization
 - [ ] State serialization (visible only)
 
-**Reference**: See DESIGN DOC section 6
+**Reference**: See DESIGN DOC
 
-#### 9.2 Server Implementation 📋
+#### Server Implementation 📋
 
 - [ ] Socket server (TCP)
 - [ ] Client connection management
@@ -387,7 +332,7 @@ for(int i = 0; i < 2; i++)
 - [ ] Action validation
 - [ ] Broadcast system
 
-#### 9.3 Client Implementation 📋
+#### Client Implementation 📋
 
 - [ ] Socket client
 - [ ] Local visible state tracking
@@ -395,7 +340,7 @@ for(int i = 0; i < 2; i++)
 - [ ] State sync
 - [ ] Reconnection handling
 
-#### 9.4 Code Separation 📋
+#### Code Separation 📋
 
 - [ ] Extract shared types (sh_*.c/h)
 - [ ] Server-only logic (sr_*.c/h)
@@ -404,11 +349,11 @@ for(int i = 0; i < 2; i++)
 
 ---
 
-### Phase 10: Cross-Platform GUI
+### Cross-Platform GUI
 
 **Status**: Detailed plan exists, major undertaking
 
-#### 10.1 SDL3 Desktop GUI 📋
+#### SDL3 Desktop GUI 📋
 
 - [ ] SDL3 setup (Windows/Linux)
 - [ ] Card rendering system
@@ -420,7 +365,7 @@ for(int i = 0; i < 2; i++)
 
 **Specification**: See `ideas/gui/oracle_sdl3_gui_plan.md`
 
-#### 10.2 Asset Pipeline 📋
+#### Asset Pipeline 📋
 
 - [ ] Champion artwork (102 cards)
 - [ ] Card frame templates
@@ -430,7 +375,7 @@ for(int i = 0; i < 2; i++)
 - [ ] Font selection
 - [ ] Asset generation tools (Python)
 
-#### 10.3 Mobile Platforms (Future) 🔮
+#### Mobile Platforms (Future) 🔮
 
 - [ ] iOS port (Xcode + SDL3)
 - [ ] Android port (NDK + SDL3)
@@ -594,21 +539,12 @@ oracle/
 
 ## Success Criteria
 
-### Short-Term (Current Phase)
-
-- [ ] Can simulate 10,000 games without crashes
-- [ ] Human can play full game via CLI
-- [ ] Random AI vs Random AI produces ~50% win rate
-- [ ] All game rules correctly implemented
-
-### Medium-Term (Phases 4-6)
-
 - [ ] At least 3 different AI strategies working
 - [ ] Rating system accurately ranks AI strength
 - [ ] CSV export generates usable data for R/Python analysis
 - [ ] TUI mode provides good user experience
 
-### Long-Term (Phases 7-10)
+### Longer-Term
 
 - [ ] ISMCTS AI demonstrably stronger than rule-based
 - [ ] Network multiplayer works reliably
@@ -617,7 +553,7 @@ oracle/
 
 ---
 
-## Contributing (to yourself, future self!)
+## Contributing
 
 ### Before Starting a Module
 
@@ -655,5 +591,4 @@ oracle/
 
 ---
 
-*Last Updated: November 2024*  
-*Next Review: When Phase 2 completes*
+*Last Updated: December 2025*

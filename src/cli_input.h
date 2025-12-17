@@ -25,5 +25,14 @@ int process_attack_command(char* input_buffer, struct gamestate* gstate,
 
 int process_defense_command(char* input_buffer, struct gamestate* gstate,
                            PlayerID player, GameContext* ctx, config_t* cfg);
+                           
+// Card selection input helpers
+int parse_card_indices_with_validation(char* input, uint8_t* indices,
+                                       int max_count, int hand_size,
+                                       config_t* cfg);
+
+void discard_and_draw_cards(struct gamestate* gstate, PlayerID player,
+                            uint8_t* indices, int count,
+                            bool draw_replacements, GameContext* ctx);                           
 
 #endif // CLI_INPUT_H

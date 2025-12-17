@@ -26,5 +26,12 @@ struct gamestate* initialize_cli_game(uint16_t initial_cash,
 
 void cleanup_cli_game(struct gamestate* gstate, StrategySet* strategies,
                      GameContext* ctx);
+                     
+// Mulligan and discard handlers
+int handle_interactive_mulligan(struct gamestate* gstate,
+                               GameContext* ctx, config_t* cfg);
+
+int handle_interactive_discard_to_7(struct gamestate* gstate,
+                                   GameContext* ctx, config_t* cfg);
 
 #endif // CLI_GAME_H

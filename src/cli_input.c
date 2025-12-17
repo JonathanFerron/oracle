@@ -16,14 +16,6 @@
 #define ACTION_TAKEN 1
 #define NO_ACTION 0
 
-/* ANSI color codes */
-#define RESET   "\033[0m"
-#define RED     "\033[31m"
-#define GREEN   "\033[32m"
-#define YELLOW  "\033[33m"
-
-/* Visual indicators */
-#define ICON_SUCCESS "[OK]"
 
 /* ========================================================================
    Input Parsing and Validation Functions
@@ -275,4 +267,79 @@ int process_defense_command(char* input_buffer, struct gamestate* gstate,
   }
 
   return NO_ACTION;
+}
+
+/* ========================================================================
+   Card Selection Input Helpers 
+   ======================================================================== */
+
+// Parse multiple card indices with duplicate detection
+int parse_card_indices_with_validation(char* input, uint8_t* indices,
+                                       int max_count, int hand_size,
+                                       config_t* cfg)
+{
+    int count = 0;
+    char* token = strtok(input, " ");
+
+    while (token != NULL && count < max_count) {
+        int idx = atoi(token);
+        if (idx < 1 || idx > hand_size) {
+            printf(RED "%s %d (%s 1-%d)\n" RESET,
+                   LOCALIZED_STRING("Error: Invalid card number",
+                                   "Erreur: Numero invalide",
+                                   "Error: Numero invalido"),
+                   idx,
+                   LOCALIZED_STRING("must be", "doit etre", "debe ser"),
+                   hand_size);
+            return -1;
+        }
+
+        // Check for duplicates
+        for (int i = 0; i < count; i++) {
+            if (indices[i] == (idx - 1)) {
+                printf(RED "%s %d\n" RESET,
+                       LOCALIZED_STRING("Error: Duplicate card number",
+                                       "Erreur: Numero en double",
+                                       "Error: Numero duplicado"),
+                       idx);
+                return -1;
+            }
+        }
+
+        indices[count++] = idx - 1;
+        token = strtok(NULL, " ");
+    }
+
+    return count;
+}
+
+// Discard selected cards and optionally draw replacements
+void discard_and_draw_cards(struct gamestate* gstate, PlayerID player,
+                            uint8_t* indices, int count, 
+                            bool draw_replacements, GameContext* ctx)
+{
+    // Sort indices descending to avoid index shifting issues
+    for (int i = 0; i < count - 1; i++) {
+        for (int j = i + 1; j < count; j++) {
+            if (indices[i] < indices[j]) {
+                uint8_t temp = indices[i];
+                indices[i] = indices[j];
+                indices[j] = temp;
+            }
+        }
+    }
+
+    // Discard cards from highest index to lowest
+    for (int i = 0; i < count; i++) {
+        uint8_t card_idx = gstate->hand[player].cards[indices[i]];
+        Hand_remove(&gstate->hand[player], card_idx);
+        Discard_add(&gstate->discard[player], card_idx);
+    }
+
+    // Draw replacement cards if requested
+    if (draw_replacements) {
+        for (int i = 0; i < count; i++) {
+            draw_1_card(gstate, player, ctx);
+        }
+    }
 }

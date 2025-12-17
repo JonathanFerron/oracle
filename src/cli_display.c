@@ -8,24 +8,6 @@
 #include "localization.h"
 #include "player_config.h"
 
-/* ANSI color codes */
-#define RESET   "\033[0m"
-#define RED     "\033[31m"
-#define GREEN   "\033[32m"
-#define YELLOW  "\033[33m"
-#define BLUE    "\033[34m"
-#define MAGENTA "\033[35m"
-#define CYAN    "\033[36m"
-#define GRAY    "\033[38;2;128;128;128m"
-#define BOLD_WHITE   "\033[1;37m"
-#define COLOR_P1     "\033[1;36m"
-#define COLOR_P2     "\033[1;33m"
-#define COLOR_ENERGY MAGENTA
-#define COLOR_LUNA   CYAN
-
-/* Visual indicators */
-#define ICON_PROMPT ">"
-
 /* ========================================================================
    Basic Display Functions
    ======================================================================== */
@@ -239,4 +221,155 @@ void display_game_summary(struct gamestate* gstate, config_t* cfg)
          gstate->turn,
          LOCALIZED_STRING("Rounds", "Manches", "Rondas"),
          (uint16_t)((gstate->turn - 1) * 0.5 + 1));
+}
+
+/* ========================================================================
+   Card Display with Power
+   ======================================================================== */
+
+void display_card_with_power(uint8_t card_idx, int display_num, 
+                             int show_power, config_t* cfg)
+{
+    const struct card* c = &fullDeck[card_idx];
+
+    if (c->card_type == CHAMPION_CARD) {
+        const char* color = (c->color == COLOR_INDIGO) ? BLUE :
+                           (c->color == COLOR_ORANGE) ? YELLOW : RED;
+        if (show_power) {
+            printf("  [%d] %s%s" RESET " (D%d+%d, " CYAN "L%d" RESET 
+                   ", pwr:%.1f)\n",
+                   display_num, color, CHAMPION_SPECIES_NAMES[c->species],
+                   c->defense_dice, c->attack_base, c->cost, c->power);
+        } else {
+            printf("  [%d] %s%s" RESET " (D%d+%d, " CYAN "L%d" RESET ")\n",
+                   display_num, color, CHAMPION_SPECIES_NAMES[c->species],
+                   c->defense_dice, c->attack_base, c->cost);
+        }
+    }
+    else if (c->card_type == DRAW_CARD) {
+        const char* label = LOCALIZED_STRING("Draw", "Piocher", "Robar");
+        if (show_power) {
+            printf("  [%d] " GREEN "%s %d" RESET " (" CYAN "L%d" RESET 
+                   ", pwr:%.1f)\n",
+                   display_num, label, c->draw_num, c->cost, c->power);
+        } else {
+            printf("  [%d] " GREEN "%s %d" RESET " (" CYAN "L%d" RESET ")\n",
+                   display_num, label, c->draw_num, c->cost);
+        }
+    }
+    else if (c->card_type == CASH_CARD) {
+        const char* label = LOCALIZED_STRING("Exchange for", 
+                                             "Echanger pour", 
+                                             "Cambiar por");
+        if (show_power) {
+            printf("  [%d] " GRAY "%s %d lunas" RESET 
+                   " (" CYAN "L%d" RESET ", pwr:%.1f)\n",
+                   display_num, label, c->exchange_cash, c->cost, c->power);
+        } else {
+            printf("  [%d] " GRAY "%s %d lunas" RESET 
+                   " (" CYAN "L%d" RESET ")\n",
+                   display_num, label, c->exchange_cash, c->cost);
+        }
+    }
+}
+
+/* ========================================================================
+   Mulligan Display
+   ======================================================================== */
+
+void display_mulligan_prompt(struct gamestate* gstate, 
+                             PlayerID player, config_t* cfg)
+{
+    printf("\n" YELLOW "=== %s ===" RESET "\n",
+           LOCALIZED_STRING("Mulligan Phase (Player B)",
+                           "Phase de Mulligan (Joueur B)",
+                           "Fase de Mulligan (Jugador B)"));
+
+    printf("%s\n",
+           LOCALIZED_STRING("You may discard up to 2 cards and draw replacements.",
+                           "Vous pouvez defausser jusqu'a 2 cartes et en piocher.",
+                           "Puedes descartar hasta 2 cartas y robar reemplazos."));
+
+    printf("Tip: %s %.2f\n\n",
+           LOCALIZED_STRING("Consider discarding cards with power <",
+                           "Envisagez de defausser les cartes avec pouvoir <",
+                           "Considera descartar cartas con poder <"),
+           AVERAGE_POWER_FOR_MULLIGAN);
+
+    printf("%s:\n",
+           LOCALIZED_STRING("Your starting hand",
+                           "Votre main initiale",
+                           "Tu mano inicial"));
+
+    for (uint8_t i = 0; i < gstate->hand[player].size; i++) {
+        display_card_with_power(gstate->hand[player].cards[i], i + 1, 1, cfg);
+    }
+
+    printf("\n%s:\n",
+           LOCALIZED_STRING("Commands",
+                           "Commandes",
+                           "Comandos"));
+    printf("  mull <indices>  - %s\n",
+           LOCALIZED_STRING("Mulligan 1-2 cards (e.g., 'mull 1 3')",
+                           "Defausser 1-2 cartes (ex: 'mull 1 3')",
+                           "Descartar 1-2 cartas (ej: 'mull 1 3')"));
+    printf("  pass            - %s\n",
+           LOCALIZED_STRING("Keep current hand",
+                           "Garder la main actuelle",
+                           "Mantener mano actual"));
+    printf("  help            - %s\n\n%s ",
+           LOCALIZED_STRING("Show this help",
+                           "Afficher cette aide",
+                           "Mostrar ayuda"),
+           ICON_PROMPT);
+}
+
+/* ========================================================================
+   Discard-to-7 Display
+   ======================================================================== */
+
+void display_discard_prompt(struct gamestate* gstate,
+                            PlayerID player, config_t* cfg)
+{
+    int excess = gstate->hand[player].size - 7;
+
+    printf("\n" YELLOW "=== %s ===" RESET "\n",
+           LOCALIZED_STRING("Discard Phase",
+                           "Phase de Defausse",
+                           "Fase de Descarte"));
+
+    printf("%s %d %s. %s %d %s.\n",
+           LOCALIZED_STRING("You have", "Vous avez", "Tienes"),
+           gstate->hand[player].size,
+           LOCALIZED_STRING("cards", "cartes", "cartas"),
+           LOCALIZED_STRING("You must discard", "Vous devez defausser", 
+                           "Debes descartar"),
+           excess,
+           LOCALIZED_STRING(excess > 1 ? "cards" : "card",
+                           excess > 1 ? "cartes" : "carte",
+                           excess > 1 ? "cartas" : "carta"));
+
+    printf("Tip: %s\n\n",
+           LOCALIZED_STRING("Consider discarding lowest power cards",
+                           "Envisagez de defausser les cartes faibles",
+                           "Considera descartar las cartas mas debiles"));
+
+    printf("%s:\n",
+           LOCALIZED_STRING("Your hand", "Votre main", "Tu mano"));
+
+    for (uint8_t i = 0; i < gstate->hand[player].size; i++) {
+        display_card_with_power(gstate->hand[player].cards[i], i + 1, 1, cfg);
+    }
+
+    printf("\n%s:\n",
+           LOCALIZED_STRING("Commands", "Commandes", "Comandos"));
+    printf("  disc <indices>  - %s\n",
+           LOCALIZED_STRING("Discard cards (e.g., 'disc 2 5')",
+                           "Defausser cartes (ex: 'disc 2 5')",
+                           "Descartar cartas (ej: 'disc 2 5')"));
+    printf("  help            - %s\n\n%s ",
+           LOCALIZED_STRING("Show this help",
+                           "Afficher cette aide",
+                           "Mostrar ayuda"),
+           ICON_PROMPT);
 }

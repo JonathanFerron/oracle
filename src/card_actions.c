@@ -16,7 +16,7 @@ int has_champion_in_hand(Hand* hand)
   return false;
 }
 
-// note that this code could be moved to the strategy, similar to how the mulligan function should be moved there as well
+// TODO: this code should be moved to the strategy, similar to how the mulligan function should be moved there as well: this implementation is based on the power heuristic
 uint8_t select_champion_for_cash_exchange(Hand* hand)
 { float min_power = 100.0;
   uint8_t champion_to_exchange = 0;
@@ -133,6 +133,9 @@ void shuffle_discard_and_form_deck(Discard* discard, struct deck_stack* deck, Ga
   Discard_clear(discard);
 }
 
+// TODO: this function should be moved to the strategy code as it is an AI agent method that could vary from one AI implementation to another. This implementation uses power heuristics that would
+// likely be good enough for the random, balanced, value based, combo aware (Borealis benchmark agent), greedy power and heuristic AI agent, and could be improved upon for the 
+// more advanced AI agents (Monte Carlo based ones and perhaps also the 2 ply HBT one)
 void discard_to_7_cards(struct gamestate* gstate, GameContext* ctx)
 { if(gstate->hand[gstate->current_player].size <= 7) return;
 
