@@ -7,8 +7,7 @@
 #include "player_selection.h"
 #include "localization.h"
 #include "player_config.h"
-
-#define MAX_INPUT_LEN 10
+#include "cli_constants.h"
 
 void display_player_selection_menu(config_t* cfg)
 { printf("\n" "=== %s ===" "\n",
@@ -43,7 +42,7 @@ void display_player_selection_menu(config_t* cfg)
 }
 
 int get_player_type_choice(config_t* cfg)
-{ char input[MAX_INPUT_LEN];
+{ char input[MAX_INPUT_LEN_SHORT];
 
   if(fgets(input, sizeof(input), stdin) == NULL)
     return 1; // Default to Human vs AI

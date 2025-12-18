@@ -9,6 +9,7 @@
 #include "cli_game.h"
 #include "cli_display.h"
 #include "cli_input.h"
+#include "cli_constants.h"
 #include "game_constants.h"
 #include "strategy.h"
 #include "strat_random.h"
@@ -18,9 +19,6 @@
 #include "localization.h"
 #include "player_config.h"
 #include "card_actions.h" // TODO: this is only temporary as the AI agent fall back implementation of discard to 7 cards should be located in the AI code instead (e.g. strat_random.h)
-
-#define MAX_COMMAND_LEN 256
-#define NO_ACTION 0
 
 /* ========================================================================
    Game Phase Handlers

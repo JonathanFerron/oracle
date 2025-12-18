@@ -9,9 +9,6 @@
 #include "game_context.h"
 #include "debug.h"
 
-#define max(a,b) ({ typeof (a) _a = (a); typeof (b) _b = (b); _a > _b ? _a : _b; })
-#define min(a,b) ({ typeof (a) _a = (a); typeof (b) _b = (b); _a < _b ? _a : _b; })
-
 void resolve_combat(struct gamestate* gstate, GameContext* ctx)
 { PlayerID attacker = gstate->current_player;
   PlayerID defender = 1 - gstate->current_player;
@@ -105,11 +102,11 @@ void apply_combat_damage(struct gamestate* gstate, int16_t total_attack,
                          int16_t total_defense, GameContext* ctx)
 { PlayerID defender = 1 - gstate->current_player;
 
-  int16_t total_damage = max(total_attack - total_defense, 0);
+  int16_t total_damage = oraclemax(total_attack - total_defense, 0);
 
   DEBUG_PRINT(" Defender energy before: %u\n", gstate->current_energy[defender]);
 
-  gstate->current_energy[defender] -= min((uint8_t)total_damage,
+  gstate->current_energy[defender] -= oraclemin((uint8_t)total_damage,
                                           gstate->current_energy[defender]);
 
   DEBUG_PRINT(" Damage dealt: %d\n", total_damage);

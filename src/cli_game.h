@@ -4,8 +4,7 @@
 #include "game_types.h"
 #include "game_context.h"
 #include "strategy.h"
-
-#define EXIT_SIGNAL -1
+#include "cli_constants.h"
 
 /* Game phase handlers */
 int handle_interactive_attack(struct gamestate* gstate,

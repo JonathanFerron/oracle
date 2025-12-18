@@ -8,8 +8,7 @@
 #include "player_config.h"
 #include "localization.h"
 #include "rnd.h"
-
-#define MAX_INPUT_LEN 64
+#include "cli_constants.h"
 
 void init_player_config(PlayerConfig* pconfig)
 { // Default player types (Human vs AI)
@@ -46,7 +45,7 @@ static void trim_whitespace(char* str)
 }
 
 void get_player_names(config_t* cfg, PlayerConfig* pconfig)
-{ char input[MAX_INPUT_LEN];
+{ char input[MAX_INPUT_LEN_MEDIUM];
 
   // Get Player 1 name
   printf("\n%s [%s]: ",
@@ -129,7 +128,7 @@ static void display_ai_strategy_menu(ui_language_t lang)
 }
 
 static AIStrategyType get_ai_strategy_choice(ui_language_t lang)
-{ char input[MAX_INPUT_LEN];
+{ char input[MAX_INPUT_LEN_SHORT];
 
   printf("\n%s [1]: ",
          LOCALIZED_STRING_L(lang,
@@ -194,7 +193,7 @@ void get_ai_strategies(config_t* cfg, PlayerConfig* pconfig)
 }
 
 void get_player_assignment(PlayerConfig* pconfig, config_t* cfg)
-{ char input[MAX_INPUT_LEN];
+{ char input[MAX_INPUT_LEN_SHORT];
 
   printf("\n=== %s ===\n",
          LOCALIZED_STRING_L(cfg->language,

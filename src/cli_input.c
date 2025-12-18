@@ -8,14 +8,10 @@
 
 #include "cli_input.h"
 #include "cli_display.h"
+#include "cli_constants.h"
 #include "game_constants.h"
 #include "card_actions.h"
 #include "localization.h"
-
-#define EXIT_SIGNAL -1
-#define ACTION_TAKEN 1
-#define NO_ACTION 0
-
 
 /* ========================================================================
    Input Parsing and Validation Functions

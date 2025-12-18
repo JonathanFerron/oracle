@@ -12,6 +12,7 @@
 #include "turn_logic.h"
 #include "card_actions.h"
 #include "debug.h"
+#include "stats_constants.h"
 
 //extern MTRand MTwister_rand_struct;
 
@@ -169,40 +170,30 @@ void record_final_stats(struct gamestats* gstats, struct gamestate* gstate) // n
     Printout changes: The output section is updated to properly label and display the results for the special underflow and overflow bins.
 */
 
-// Hardcoded histogram parameters
-#define NUM_BINS 27
-#define BIN_WIDTH 4
-#define MIN_VALUE 20
-
-// Define indices for the special bins
-#define UNDERFLOW_BIN 0
-#define OVERFLOW_BIN (NUM_BINS + 1)
-#define TOTAL_BINS (NUM_BINS + 2)
-
 // Function to create a histogram array from unsigned int data
 void createHistogram(uint16_t data[], uint16_t data_size, uint16_t histogram_array[])
 { // Initialize the histogram array with zeros
-  for(uint16_t i = 0; i < TOTAL_BINS; i++)
+  for(uint16_t i = 0; i < HISTOGRAM_TOTAL_BINS; i++)
     histogram_array[i] = 0;
 
   // Define the upper boundary of the standard bins
-  uint16_t max_valid_value = MIN_VALUE + (NUM_BINS * BIN_WIDTH);
+  uint16_t max_valid_value = HISTOGRAM_MIN_VALUE + (HISTOGRAM_NUM_BINS * HISTOGRAM_BIN_WIDTH);
 
   // Process each data point
   for(uint16_t i = 0; i < data_size; i++)
   { uint16_t value = data[i];
 
-    if(value < MIN_VALUE)
+    if(value < HISTOGRAM_MIN_VALUE)
     { // Assign to the underflow bin
-      histogram_array[UNDERFLOW_BIN]++;
+      histogram_array[HISTOGRAM_UNDERFLOW_BIN]++;
     }
     else if(value >= max_valid_value)
     { // Assign to the overflow bin
-      histogram_array[OVERFLOW_BIN]++;
+      histogram_array[HISTOGRAM_OVERFLOW_BIN]++;
     }
     else
     { // Calculate the bin index for standard bins
-      uint8_t bin_index = (value - MIN_VALUE) / BIN_WIDTH;
+      uint8_t bin_index = (value - HISTOGRAM_MIN_VALUE) / HISTOGRAM_BIN_WIDTH;
       // The standard bins start at index 1
       histogram_array[bin_index + 1]++;
     }
@@ -229,22 +220,22 @@ void present_results(struct gamestats* gstats)
 
   // compute and display histogram
   { // Array to store the histogram counts. Size is total number of bins.
-    uint16_t histogram[TOTAL_BINS];
+    uint16_t histogram[HISTOGRAM_TOTAL_BINS];
 
     // Create the histogram
     createHistogram(gstats->game_end_turn_number, gstats->simnum, histogram);
 
     // Print the histogram results
-    printf("\nHistogram with %d bins, each with a width of %d, starting from %u:\n", NUM_BINS, BIN_WIDTH, MIN_VALUE);
-    printf("Bin (<%3u): %d\n", MIN_VALUE, histogram[UNDERFLOW_BIN]);
+    printf("\nHistogram with %d bins, each with a width of %d, starting from %u:\n", HISTOGRAM_NUM_BINS, HISTOGRAM_BIN_WIDTH, HISTOGRAM_MIN_VALUE);
+    printf("Bin (<%3u): %d\n", HISTOGRAM_MIN_VALUE, histogram[HISTOGRAM_UNDERFLOW_BIN]);
 
-    for(uint8_t i = 0; i < NUM_BINS; i++)
-    { uint16_t bin_start = MIN_VALUE + (i * BIN_WIDTH);
-      uint16_t bin_end = bin_start + BIN_WIDTH - 1;
+    for(uint8_t i = 0; i < HISTOGRAM_NUM_BINS; i++)
+    { uint16_t bin_start = HISTOGRAM_MIN_VALUE + (i * HISTOGRAM_BIN_WIDTH);
+      uint16_t bin_end = bin_start + HISTOGRAM_BIN_WIDTH - 1;
       printf("Bin [%3u - %3u]: %d\n", bin_start, bin_end, histogram[i + 1]);
     }
 
-    printf("Bin (>=%3u): %d\n", MIN_VALUE + (NUM_BINS * BIN_WIDTH), histogram[OVERFLOW_BIN]);
+    printf("Bin (>=%3u): %d\n", HISTOGRAM_MIN_VALUE + (HISTOGRAM_NUM_BINS * HISTOGRAM_BIN_WIDTH), histogram[HISTOGRAM_OVERFLOW_BIN]);
   } // histogram section
 
 } // present_results
