@@ -5,9 +5,9 @@
 #include "combat.h"
 #include "combo_bonus.h"
 #include "game_constants.h"
-#include "rnd.h"
+#include "../util/rnd.h"
 #include "game_context.h"
-#include "debug.h"
+#include "../util/debug.h"
 
 void resolve_combat(struct gamestate* gstate, GameContext* ctx)
 { PlayerID attacker = gstate->current_player;

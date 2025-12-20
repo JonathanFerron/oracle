@@ -5,8 +5,8 @@
 
 #include "card_actions.h"
 #include "game_constants.h"
-#include "rnd.h"
-#include "debug.h"
+#include "../util/rnd.h"
+#include "../util/debug.h"
 
 int has_champion_in_hand(Hand* hand)
 { for(uint8_t i = 0; i < hand->size; i++)

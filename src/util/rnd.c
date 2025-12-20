@@ -1,7 +1,7 @@
 #include <stdint.h>
 
 #include "rnd.h"
-#include "game_context.h"
+#include "../core/game_context.h"
 #include "mtwister.h"
 
 // Global variables (keep to a minimum)

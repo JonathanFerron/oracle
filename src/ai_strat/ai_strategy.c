@@ -1,7 +1,7 @@
 // strategy.c
 // Strategy function pointer framework implementation
 
-#include "strategy.h"
+#include "ai_strategy.h"
 #include <stdlib.h>
 
 StrategySet* create_strategy_set(void)

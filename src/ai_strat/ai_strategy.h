@@ -4,8 +4,8 @@
 #ifndef STRATEGY_H
 #define STRATEGY_H
 
-#include "game_types.h"
-#include "game_context.h"
+#include "../core/game_types.h"
+#include "../core/game_context.h"
 
 // Strategy function pointer types
 typedef void (*AttackStrategyFunc)(struct gamestate* gstate, GameContext* ctx);

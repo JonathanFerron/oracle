@@ -5,7 +5,7 @@
 #define GAME_STATE_H
 
 #include "game_types.h"
-#include "strategy.h"
+#include "../ai_strat/ai_strategy.h"
 
 // Game initialization and management
 void setup_game(uint16_t initial_cash, struct gamestate* gstate, GameContext* ctx);

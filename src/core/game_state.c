@@ -5,8 +5,8 @@
 
 #include "game_state.h"
 #include "game_constants.h"
-#include "rnd.h"
-#include "deckstack.h"
+#include "../util/rnd.h"
+#include "../structures/deckstack.h"
 #include "game_context.h"
 
 void setup_game(uint16_t initial_cash, struct gamestate* gstate, GameContext* ctx)

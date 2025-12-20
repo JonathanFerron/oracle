@@ -3,10 +3,10 @@
 #include <stdlib.h>
 
 #include "ai_strat_random.h"
-#include "../card_actions.h"
-#include "../game_constants.h"
-#include "../rnd.h"
-#include "../mtwister.h"
+#include "../core/card_actions.h"
+#include "../core/game_constants.h"
+#include "../util/rnd.h"
+#include "../util/mtwister.h"
 
 void random_attack_strategy(struct gamestate* gstate, GameContext* ctx)
 { PlayerID attacker = gstate->current_player;

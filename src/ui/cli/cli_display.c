@@ -4,9 +4,9 @@
 
 #include <stdio.h>
 #include "cli_display.h"
-#include "game_constants.h"
-#include "localization.h"
-#include "player_config.h"
+#include "../../core/game_constants.h"
+#include "../shared/localization.h"
+#include "../shared/player_config.h"
 
 /* ========================================================================
    Basic Display Functions

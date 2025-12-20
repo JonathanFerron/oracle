@@ -7,7 +7,7 @@
 #include "player_selection.h"
 #include "localization.h"
 #include "player_config.h"
-#include "cli_constants.h"
+#include "../cli/cli_constants.h"
 
 void display_player_selection_menu(config_t* cfg)
 { printf("\n" "=== %s ===" "\n",

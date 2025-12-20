@@ -10,15 +10,15 @@
 #include "cli_display.h"
 #include "cli_input.h"
 #include "cli_constants.h"
-#include "game_constants.h"
-#include "strategy.h"
-#include "strat_random.h"
-#include "game_state.h"
-#include "turn_logic.h"
-#include "combat.h"
-#include "localization.h"
-#include "player_config.h"
-#include "card_actions.h" // TODO: this is only temporary as the AI agent fall back implementation of discard to 7 cards should be located in the AI code instead (e.g. strat_random.h)
+#include "../../core/game_constants.h"
+#include "../../ai_strat/ai_strategy.h"
+#include "../../ai_strat/ai_strat_random.h"
+#include "../../core/game_state.h"
+#include "../../core/turn_logic.h"
+#include "../../core/combat.h"
+#include "../shared/localization.h"
+#include "../shared/player_config.h"
+#include "../../core/card_actions.h" // TODO: this is only temporary as the AI agent fall back implementation of discard to 7 cards should be located in the AI code instead (e.g. strat_random.h)
 
 /* ========================================================================
    Game Phase Handlers

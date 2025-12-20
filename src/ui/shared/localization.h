@@ -5,7 +5,7 @@
 #ifndef LOCALIZATION_H
 #define LOCALIZATION_H
 
-#include "game_types.h"
+#include "../../core/game_types.h"
 
 /* Macro for context-sensitive localized strings */
 #define LOCALIZED_STRING(en, fr, es) \

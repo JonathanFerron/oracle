@@ -1,8 +1,8 @@
 #ifndef CLI_INPUT_H
 #define CLI_INPUT_H
 
-#include "game_types.h"
-#include "game_context.h"
+#include "../../core/game_types.h"
+#include "../../core/game_context.h"
 
 /* Input parsing and validation */
 int parse_champion_indices(char* input, uint8_t* indices, int max_count,

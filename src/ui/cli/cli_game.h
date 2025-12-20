@@ -1,9 +1,9 @@
 #ifndef CLI_GAME_H
 #define CLI_GAME_H
 
-#include "game_types.h"
-#include "game_context.h"
-#include "strategy.h"
+#include "../../core/game_types.h"
+#include "../../core/game_context.h"
+#include "../../ai_strat/ai_strategy.h"
 #include "cli_constants.h"
 
 /* Game phase handlers */

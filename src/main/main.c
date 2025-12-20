@@ -6,14 +6,14 @@
 #include <string.h>
 #include "main.h"
 #include "cmdline.h"
-#include "game_constants.h"
-#include "game_state.h"
-#include "strategy.h"
-#include "strat_random.h"
-#include "mtwister.h"
-#include "prng_seed.h"
-#include "stda_auto.h"
-#include "stda_cli.h"
+#include "../core/game_constants.h"
+#include "../core/game_state.h"
+#include "../ai_strat/ai_strategy.h"
+#include "../ai_strat/ai_strat_random.h"
+#include "../util/mtwister.h"
+#include "../util/prng_seed.h"
+#include "../roles/stda/stda_auto.h"
+#include "../roles/stda/stda_cli.h"
 
 /* Main entry point */
 int main(int argc, char** argv)

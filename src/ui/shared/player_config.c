@@ -7,8 +7,8 @@
 #include <stdlib.h>
 #include "player_config.h"
 #include "localization.h"
-#include "rnd.h"
-#include "cli_constants.h"
+#include "../../util/rnd.h"
+#include "../cli/cli_constants.h"
 
 void init_player_config(PlayerConfig* pconfig)
 { // Default player types (Human vs AI)

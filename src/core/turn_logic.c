@@ -6,7 +6,7 @@
 #include "card_actions.h"
 #include "combat.h"
 #include "game_context.h"
-#include "debug.h"
+#include "../util/debug.h"
 #include "game_state.h"
 
 void play_turn(struct gamestats* gstats, struct gamestate* gstate,

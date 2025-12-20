@@ -8,7 +8,7 @@
 #include <getopt.h>
 #include <ctype.h>
 #include "main.h"
-#include "prng_seed.h"
+#include "../util/prng_seed.h"
 
 /* Parse language code from string */
 static ui_language_t parse_language(const char* lang_str)

@@ -2,8 +2,8 @@
 #define STDA_AUTO_H
 
 #include <string.h>
-#include "game_types.h"
-#include "strategy.h"
+#include "../../core/game_types.h"
+#include "../../ai_strat/ai_strategy.h"
 
 
 /* Run mode functions */

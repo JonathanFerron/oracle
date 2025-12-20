@@ -1,7 +1,7 @@
 #ifndef CLI_DISPLAY_H
 #define CLI_DISPLAY_H
 
-#include "game_types.h"
+#include "../../core/game_types.h"
 
 /* ANSI color codes */
 #define RESET   "\033[0m"

@@ -1,7 +1,7 @@
 #ifndef GAME_CONTEXT_H
 #define GAME_CONTEXT_H
 
-#include "mtwister.h"
+#include "../util/mtwister.h"
 #include "game_types.h"
 
 // Forward declaration

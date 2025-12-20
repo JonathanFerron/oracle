@@ -92,6 +92,10 @@ $(OLDBUILDDIR)/%.o: $(OLDSRCDIR)/%.$(SRCEXT)
 format:
 	astyle --project --suffix=none --recursive "*.c,*.h"
 
+test_stda_auto:
+	@./bin/oracle.exe -sa -p | diff -w -B - bin/expectedresults.txt && \
+	    echo "✓ Test PASSED" || (echo "✗ Test FAILED"; exit 1)
+
 # Help target
 .PHONY: help
 help:

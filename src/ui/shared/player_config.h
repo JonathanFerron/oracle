@@ -4,8 +4,8 @@
 #ifndef PLAYER_CONFIG_H
 #define PLAYER_CONFIG_H
 
-#include "game_types.h"
-#include "game_context.h"
+#include "../../core/game_types.h"
+#include "../../core/game_context.h"
 
 #define MAX_PLAYER_NAME_LEN 32
 #define MAX_STRATEGY_NAME_LEN 32

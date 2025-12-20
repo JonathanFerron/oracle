@@ -9,9 +9,9 @@
 #include "cli_input.h"
 #include "cli_display.h"
 #include "cli_constants.h"
-#include "game_constants.h"
-#include "card_actions.h"
-#include "localization.h"
+#include "../../core/game_constants.h"
+#include "../../core/card_actions.h"
+#include "../shared/localization.h"
 
 /* ========================================================================
    Input Parsing and Validation Functions

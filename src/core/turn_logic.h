@@ -5,7 +5,7 @@
 #define TURN_LOGIC_H
 
 #include "game_types.h"
-#include "strategy.h"
+#include "../ai_strat/ai_strategy.h"
 
 // Main turn function
 void play_turn(struct gamestats* gstats, struct gamestate* gstate,

@@ -6,8 +6,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "deckstack.h"
-#include "card_collection.h"
+#include "../structures/deckstack.h"
+#include "../structures/card_collection.h"
 
 // Player identification
 typedef enum

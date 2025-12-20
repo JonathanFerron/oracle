@@ -2,7 +2,7 @@
 // Game context implementation
 
 #include "game_context.h"
-#include "mtwister.h"
+#include "../util/mtwister.h"
 #include <stdlib.h>
 #include <stdio.h>
 

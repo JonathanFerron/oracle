@@ -7,7 +7,7 @@
 
 #include <stdbool.h>
 #include "version.h"
-#include "game_types.h"
+#include "../core/game_types.h"
 
 /* Utility functions */
 void cleanup_config(config_t* cfg);

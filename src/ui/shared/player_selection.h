@@ -4,7 +4,7 @@
 #ifndef PLAYER_SELECTION_H
 #define PLAYER_SELECTION_H
 
-#include "game_types.h"
+#include "../../core/game_types.h"
 #include "player_config.h"
 
 // Display player selection menu and get user choice

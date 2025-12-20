@@ -17,7 +17,7 @@
 #endif
 
 #include "prng_seed.h"
-#include "game_constants.h"
+#include "../core/game_constants.h"
 
 void prng_config_init(prng_config_t* config)
 { config->seed = 0;

@@ -3,15 +3,15 @@
 #include <string.h>
 
 #include "stda_auto.h"
-#include "game_types.h"
-#include "mtwister.h"
-#include "game_constants.h"
-#include "strategy.h"
-#include "ai_strat/ai_strat_random.h"
-#include "game_state.h"
-#include "turn_logic.h"
-#include "card_actions.h"
-#include "debug.h"
+#include "../../core/game_types.h"
+#include "../../util/mtwister.h"
+#include "../../core/game_constants.h"
+#include "../../ai_strat/ai_strategy.h"
+#include "../../ai_strat/ai_strat_random.h"
+#include "../../core/game_state.h"
+#include "../../core/turn_logic.h"
+#include "../../core/card_actions.h"
+#include "../../util/debug.h"
 #include "stats_constants.h"
 
 //extern MTRand MTwister_rand_struct;

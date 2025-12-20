@@ -1,7 +1,7 @@
 #ifndef __RND_H
 #define __RND_H
 
-#include "game_context.h"
+#include "../core/game_context.h"
 
 uint8_t RND_randn(uint8_t n, GameContext* ctx);
 uint8_t RND_dn(uint8_t n, GameContext* ctx);
