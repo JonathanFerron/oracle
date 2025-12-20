@@ -7,7 +7,7 @@
 #include "mtwister.h"
 #include "game_constants.h"
 #include "strategy.h"
-#include "strat_random.h"
+#include "ai_strat/ai_strat_random.h"
 #include "game_state.h"
 #include "turn_logic.h"
 #include "card_actions.h"
