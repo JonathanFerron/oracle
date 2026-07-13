@@ -2,6 +2,7 @@
 *.geany
 *.zip
 *.exe
+/bin/oracle
 *.o
 *.xls
 *.xlsx
