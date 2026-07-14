@@ -1,5 +1,13 @@
 # TUI Integration Guide
 
+**Status (2026-07-14): superseded by the real implementation.** Milestone 1 (ncurses
+display skeleton, AI-vs-AI, responsive layout) is done — see `src/ui/tui/tui_render.c/h`,
+`src/roles/stda/stda_tui.c/h`, and `doc/changelog.md`. This guide and the other files in
+this folder (flat includes, linked-list hand traversal, single `tui.c`) predate that work
+and the CLI split; keep them for the original *intent* (integration points, TAB-toggle
+play/command idea) but don't copy their code directly. Milestone 2 (human interaction,
+`TAB` play/command modes) is still open — see `doc/oracle_todo.md`.
+
 ## Files to Add to Your Project
 
 Add these new files to your `src/` directory:

@@ -14,6 +14,7 @@
 #include "../util/prng_seed.h"
 #include "../roles/stda/stda_auto.h"
 #include "../roles/stda/stda_cli.h"
+#include "../roles/stda/stda_tui.h"
 
 /* Main entry point */
 int main(int argc, char** argv)
@@ -92,10 +93,6 @@ int main(int argc, char** argv)
 
 int run_mode_stda_sim(config_t* cfg)
 { printf("Standalone simulation (ncurses) mode not yet implemented...\n");
-  return EXIT_SUCCESS;
-}
-int run_mode_stda_tui(config_t* cfg)
-{ printf("Standalone TUI mode (ncurses) not yet implemented...\n");
   return EXIT_SUCCESS;
 }
 int run_mode_stda_gui(config_t* cfg)

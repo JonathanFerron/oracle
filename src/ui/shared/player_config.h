@@ -56,4 +56,10 @@ const char* get_strategy_display_name(AIStrategyType strategy,
                                       ui_language_t lang);
 const char* get_player_display_name(PlayerID player, PlayerConfig* pconfig);
 
+// AI agent shorthand lookup for the `-A`/`--ai` CLI option (lowercase
+// letters/digits, <=10 chars each; see doc/changelog.md for the full list).
+// Returns AI_STRATEGY_COUNT if `shorthand` matches none.
+AIStrategyType parse_ai_strategy_shorthand(const char* shorthand);
+void print_ai_agent_shorthand_list(config_t* cfg);
+
 #endif // PLAYER_CONFIG_H

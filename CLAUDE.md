@@ -25,9 +25,10 @@ Run modes (see `src/main/cmdline.c` for the full option table; both single-lette
 ./bin/oracle --stda.auto --numsim=1000     # automated AI vs AI simulation
 ./bin/oracle --stda.cli                    # interactive CLI (human vs AI, etc.)
 ./bin/oracle -sa -p -n 5                   # short forms: auto mode, fixed default seed, 5 games
+./bin/oracle --stda.tui                    # ncurses TUI (Milestone 1: AI-vs-AI display skeleton)
 ```
 
-Other modes (`stda.sim/.tui/.gui`, `server`, `client.*`) are wired into `main.c`'s dispatch switch but currently just print "not yet implemented" — see `src/main/main.c`.
+Other modes (`stda.sim/.gui`, `server`, `client.*`) are wired into `main.c`'s dispatch switch but currently just print "not yet implemented" — see `src/main/main.c`. `stda.tui` is real as of 2026-07-14 (Milestone 1 only — see below).
 
 ### Tests
 
@@ -49,10 +50,11 @@ There is no other automated test runner yet; most other validation is manual pla
 
 - `core/` — game engine: `game_types.h` (all enums/structs — start here), `game_constants.c/h` (the 120-card deck, `fullDeck[]`), `game_state.c` (setup/init), `card_actions.c` (play/draw/discard), `combat.c` (combat resolution), `combo_bonus.c` (combo bonus math), `turn_logic.c` (turn/phase orchestration), `game_context.c/h` (see GameContext pattern below).
 - `ai_strat/` — AI strategies as function pointers (`ai_strategy.h`); only `ai_strat_random` is functional today, the rest (`balancedrules1`, `heuristic1`, `simplemc1`, `ismcts1`) are design stubs.
-- `roles/stda/` — "standalone" mode entry points: `stda_auto.c` (batch simulation + stats/histogram), `stda_cli.c` (interactive game loop glue).
+- `roles/stda/` — "standalone" mode entry points: `stda_auto.c` (batch simulation + stats/histogram), `stda_cli.c` (interactive game loop glue), `stda_tui.c` (TUI mode entry point + AI-vs-AI game loop, Milestone 1 only — no human interaction yet).
 - `ui/cli/` — CLI presentation split into `cli_display.c` (core status/turn rendering), `cli_action_display.c` (action-flow/card-selection rendering: mulligan, discard, recall, cash exchange, combat breakdown), `cli_input.c` (parsing/validation), `cli_game.c` (loop wiring).
 - `ui/shared/` — `player_config.c`/`player_selection.c` (player type/name/strategy setup), `localization.h` (EN/FR/ES macro-based i18n).
-- `ui/gui/`, `ui/tui/`, `ui/simulation/` — not implemented yet; contain only planning `.txt` notes.
+- `ui/tui/` — `tui_render.c/h`: ncurses window layout + all drawing for `stda.tui` mode (Milestone 1: display-only skeleton, responsive to terminal size, see `ideas/3 tui/`). Deliberately keeps `<ncurses.h>` out of its header (see "ncurses/ChampionColor collision" below) and exposes `tui_get_input()`/`tui_input_is_quit()`/`tui_input_is_resize()` so callers never need `<ncurses.h>` directly.
+- `ui/gui/`, `ui/simulation/` — not implemented yet; contain only planning `.txt` notes.
 - `structures/` — `deckstack.c` (fixed-size LIFO array for draw piles), `card_collection.c` (fixed-size collection used for hand/discard/combat zone).
 - `util/` — `mtwister.c` (Mersenne Twister PRNG), `rnd.c` (dice/roll wrappers), `prng_seed.c` (secure seed generation/parsing), `debug.h` (compile-time debug macros).
 - `main/` — `main.c` (mode dispatch), `cmdline.c` (getopt_long_only-based arg parsing → `config_t`).
@@ -83,7 +85,9 @@ AI strategies are attack/defense function pointer pairs (`AttackStrategyFunc`/`D
 
 - `select_champion_for_cash_exchange()` (AI-only heuristic) used to return card index `0` as a "not found" sentinel, ambiguous with champion index 0 being a real selection. Fixed to use `UINT8_MAX` as the sentinel instead — this changed `stda_auto`'s RNG-dependent play sequence (different hand state after the fix fires), so `bin/expectedresults.txt` was regenerated at the same time. If you ever see `-a -p` diverge from that file again, first check whether it's a deliberate behavior change (regenerate the baseline, documented in the commit) versus an actual regression (fix your change instead).
 - Config is scattered across `cmdline.c` (parsing), `main.c` (cleanup), `stda_auto.c`/`stda_cli.c` (usage) rather than centralized.
-- Client/server and GUI/TUI modes are placeholders only (see `main.c` dispatch — they just print a message).
+- Client/server and GUI modes are still placeholders only (see `main.c` dispatch — they just print a message); `stda.tui` is real as of 2026-07-14 but Milestone 1 only (AI-vs-AI display skeleton, no human interaction — see `doc/changelog.md`).
+- **ncurses' `COLOR_RED`/`COLOR_GREEN`/etc. `#define`s collide with this codebase's own `ChampionColor` enum** (`COLOR_RED`/`COLOR_INDIGO`/`COLOR_ORANGE`, `game_types.h`) — only `COLOR_RED` actually overlaps, but it's enough to silently corrupt the enum if `<ncurses.h>` is included before `game_types.h` in the same translation unit. `tui_render.h` avoids this by never including `<ncurses.h>` (it forward-declares `WINDOW` as an opaque `struct _win_st*`); `tui_render.c` includes `game_types.h` first, then `<ncurses.h>`, then immediately `#undef COLOR_RED`, and uses its own `NC_RED`/`NC_GREEN`/etc. constants (plain POSIX curses color numbers) for `init_pair()` instead of ncurses' macros. Keep this pattern if any other file ever needs both ncurses and `ChampionColor` together.
+- `setup_game()` (`game_state.c`) does not initialize `gstate->turn_phase`/`player_to_move` — only `begin_of_turn()` (the first thing `play_turn()`/`attack_phase()` call) does. The CLI never notices because it always runs `begin_of_turn()` before displaying anything; `stda_tui.c`'s `tui_setup()` draws once before the first `play_turn()` call, so it explicitly sets both fields itself (found via a valgrind uninitialized-read report during TUI M1 verification).
 
 ## Code style
 
@@ -102,7 +106,7 @@ AI strategies are attack/defense function pointer pairs (`AttackStrategyFunc`/`D
 ## Other directories
 
 - `doc/` — design docs (`oracle_design.md`, may lag actual code structure — verify against `src/` when in doubt), `oracle_roadmap.md`, `oracle_todo.md`, `game_rules_doc.md` (full rules).
-- `ideas/` — numbered folders of design explorations/proposals and **prototypes**, not yet implemented and not canonical. Useful for intent/rationale on planned features (recall, drafting formats, client/server, GUI, rating system), but don't copy its conventions into real code — port the *intent*, re-fit to current structure/includes/naming/GameContext. Known mismatches: `ideas/3 tui/` (renumbered from `ideas/13 tui/`, then `ideas/1 tui/`, across subsequent reorgs) uses flat includes (`#include "game_types.h"`) and calls the file `tui.c`, whereas the real module will be `stda_tui.c` under `src/roles/stda/` with pathed includes (`#include "../core/game_types.h"`); prototype code there predates both the CLI split (`cli_display.c`/`cli_input.c`/`cli_game.c`) and the linked-list → fixed-array migration for hands/decks.
+- `ideas/` — numbered folders of design explorations/proposals and **prototypes**, not yet implemented and not canonical. Useful for intent/rationale on planned features (recall, drafting formats, client/server, GUI, rating system), but don't copy its conventions into real code — port the *intent*, re-fit to current structure/includes/naming/GameContext. Known mismatches: `ideas/3 tui/`'s `oracle_tui_impl.txt` prototype uses flat includes (`#include "game_types.h"`) and calls the file `tui.c`, and predates both the CLI split (`cli_display.c`/`cli_input.c`/`cli_game.c`) and the linked-list → fixed-array migration for hands/decks — it's now superseded by the real `src/ui/tui/tui_render.c/h` + `src/roles/stda/stda_tui.c` (Milestone 1, 2026-07-14).
 - `oldsrc/` — pre-refactor implementation, kept only for `make oldcode` regression comparisons. Don't extend it.
 - `aicalibsrc/` — planning notes for AI-agent parameter calibration tooling, not yet implemented.
 - `testsrc/` — unit tests (`test_combo_bonus.c`, `test_recall.c`, `test_cash_exchange.c`, all current, see Tests section above) plus `cli_scripts/`, canned interactive-CLI input scripts for manual regression checks.
@@ -119,4 +123,4 @@ AI strategies are attack/defense function pointer pairs (`AttackStrategyFunc`/`D
 - **No premature optimization.** Current perf is fine (10k sims < 5 min). No memory pools, caching, or PGO unless profiling (gprof) shows a real bottleneck.
 - **Network/client-server** is designed but not built — don't scaffold `sh_`/`sr_`/`cl_`/`pr_`-style modules unless explicitly asked.
 - **SDL3 GUI** is long-horizon — ignore unless the task is specifically about it.
-- **AI strategies beyond Random are stubs.** CLI/config menus list Balanced/Heuristic/Hybrid/Monte Carlo/IS-MCTS as "not yet implemented" and fall back to Random. Current active work is finishing turn logic in interactive (CLI) mode.
+- **AI strategies beyond Random are stubs.** CLI/config menus list Balanced/Heuristic/Hybrid/Monte Carlo/IS-MCTS as "not yet implemented" and fall back to Random. Current active work is TUI Milestone 2 (human interaction: `TAB`-toggled play/command modes, card play, recall, cash exchange, mulligan, discard-to-7 — see `doc/oracle_todo.md`); TUI Milestone 1 (display skeleton) is done (`doc/changelog.md`).

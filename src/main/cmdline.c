@@ -9,6 +9,7 @@
 #include <ctype.h>
 #include "main.h"
 #include "../util/prng_seed.h"
+#include "../ui/shared/player_config.h"
 
 /* Parse language code from string */
 static ui_language_t parse_language(const char* lang_str)
@@ -70,7 +71,13 @@ void print_usage(const char* prog)
   printf("  -L,  -cl, --client.cli        Client command line interface\n");
   printf("  -T,  -ct, --client.tui        Client text UI mode\n");
   printf("  -G,  -cg, --client.gui        Client graphical UI mode\n");
-  printf("  -A,  -ai, --ai AGENT          AI agent client mode\n");
+  printf("  -A,  -ai, --ai=[AGENT]        AI agent client mode [default: lists agents]\n");
+  printf("                                Argument must be attached (-A<agent> or\n");
+  printf("                                --ai=<agent>), not space-separated\n\n");
+  printf("Examples:\n");
+  printf("  %s -a -p                      Automated AI vs AI, fixed default seed\n", prog);
+  printf("  %s -l -u=fr                   Interactive CLI, French UI\n", prog);
+  printf("  %s -t -u=fr                   Text UI (ncurses), French UI\n", prog);
 }
 
 /* Print version information */
@@ -104,7 +111,7 @@ int parse_options(int argc, char** argv, config_t* cfg)
     {"L",          no_argument,       0, 'L'},
     {"T",          no_argument,       0, 'T'},
     {"G",          no_argument,       0, 'G'},
-    {"A",          required_argument, 0, 'A'},
+    {"A",          optional_argument, 0, 'A'},
     /* Two letter options */
     {"he",         no_argument,       0, 'h'},
     {"vb",         no_argument,       0, 'v'},
@@ -124,7 +131,7 @@ int parse_options(int argc, char** argv, config_t* cfg)
     {"cl",         no_argument,       0, 'L'},
     {"ct",         no_argument,       0, 'T'},
     {"cg",         no_argument,       0, 'G'},
-    {"ai",         required_argument, 0, 'A'},
+    {"ai",         optional_argument, 0, 'A'},
     /* Long form options */
     {"help",       no_argument,       0, 'h'},
     {"verbose",    no_argument,       0, 'v'},
@@ -156,7 +163,7 @@ int parse_options(int argc, char** argv, config_t* cfg)
   cfg->prng_seed = 0;
 
   while((opt = getopt_long_only(argc, argv,
-                                "hvVn:i:o:u::p::asltgSCLTGA:",
+                                "hvVn:i:o:u::p::asltgSCLTGA::",
                                 long_options, &option_index)) != -1)
   { switch(opt)
     { case 'h':
@@ -224,6 +231,12 @@ int parse_options(int argc, char** argv, config_t* cfg)
         cfg->mode = MODE_CLIENT_GUI;
         break;
       case 'A':
+        if(parse_ai_strategy_shorthand(optarg) == AI_STRATEGY_COUNT)
+        { if(optarg)
+            fprintf(stderr, "Error: unknown AI agent '%s'\n\n", optarg);
+          print_ai_agent_shorthand_list(cfg);
+          return optarg ? 1 : -1;
+        }
         cfg->mode = MODE_CLIENT_AI;
         cfg->ai_agent = strdup(optarg);
         break;

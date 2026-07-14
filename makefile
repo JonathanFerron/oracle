@@ -11,7 +11,7 @@ BINDIR := bin
 TARGET := $(BINDIR)/oracle
 SRCEXT := c
 INCEXT := h
-LIBS := -lm
+LIBS := -lm -lncursesw
 #LIBS=-pthread -lncursesw -lpanelw -lformw -lmenuw
 
 

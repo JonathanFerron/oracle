@@ -1,6 +1,6 @@
 # Oracle Development TODO
 
-**Quick Status**: Turn-logic interactive-mode commands (recall, combat results details, discard pile inspection, cash card functionality) and the source folder structure cleanup (pragmatic pass) are complete -- see `doc/changelog.md`. Deciding next feature area (see "Next Up" below).
+**Quick Status**: Turn-logic interactive-mode commands (recall, combat results details, discard pile inspection, cash card functionality), the source folder structure cleanup (pragmatic pass), and TUI Milestone 1 (ncurses display skeleton) are complete -- see `doc/changelog.md`. TUI Milestone 2 (human interaction) is next (see "Next Up" below).
 
 ---
 
@@ -24,7 +24,13 @@ folder noted:
 - `config/` -- configuration file system (`ideas/7 config file/`)
 - `platform/` -- if/when platform-specific code (beyond the current `#ifdef _WIN32` blocks) grows enough to warrant its own directory
 
-1. **TUI mode** (`ideas/3 tui/`) -- may need to pull in part of **game engine refactoring for GUI/network support** (`ideas/2 game engine refactoring for GUI and network support/`) first, specifically the clean state-machine / UI-callback groundwork, so the TUI isn't built directly on top of the CLI-specific display/input functions.
+1. **TUI mode Milestone 2** (human interaction) -- see the "TUI Mode (stda_tui.c)" checklist
+   below for the concrete breakdown. Milestone 1 (display skeleton) is done
+   (`doc/changelog.md`, 2026-07-14) without needing any of `ideas/2 game engine
+   refactoring for GUI and network support/`'s engine rewrite; Milestone 2 may need a
+   *minimal* slice of it (a display/input callback seam), scoped down from the full
+   Action-struct/`VisibleGameState`/client-server rewrite, to let CLI and TUI share the
+   interactive turn orchestration instead of duplicating it.
 2. **First "non-dumb" AI strategy** (`ideas/A1 ai agent value based/`) -- implement agents in `A1 -> A2 -> A3 -> A4` order first: the rating system (`ideas/5/`) needs the Borealis benchmark agent (`ideas/A4 ai agent combo aware`), which itself needs A1-A3 to exist for comparison, so this order isn't just "easiest first" -- it's a real dependency.
 
    **CLI menu is now stub-synced (2026-07-14)**: `display_ai_strategy_menu()`/`get_ai_strategy_choice()`/`get_strategy_display_name()` in `src/ui/shared/player_config.c` and the `AIStrategyType` enum now list all 11 planned agents (`A1`-`A11`, skipping `A2` since parameter storing/optimization is calibration tooling, not an agent) as "not yet implemented" stub menu entries, in `ideas/A#` order, each with a comment cross-referencing its `ideas/A#` folder. `A4`'s menu entry is explicitly labeled "Combo Aware [Borealis benchmark]" so it's identifiable in the CLI. The former "Hybrid" entry is confirmed to be `A7` (tactical+HBT: **H**euristics+**B**alanced+**T**actical) and is now labeled "Hybrid (HBT)". **Remaining work per agent**: as each strategy is actually implemented (attack/defense functions in `src/ai_strat/`), wire its menu choice through to the real strategy functions instead of falling back to Random.
@@ -162,28 +168,97 @@ Combat results display is complete -- see `doc/changelog.md`.
 
 - [ ] Save/load game state
 
-#### TUI Mode (stda_tui.c) 📋
+#### TUI Mode (stda_tui.c)
 
-See `ideas/3 tui/` for full implementation plan
+**Milestone 1 (ncurses display skeleton) is done** -- see `doc/changelog.md`
+(2026-07-14). `src/ui/tui/tui_render.c/h` + `src/roles/stda/stda_tui.c/h`; AI-vs-AI only,
+one turn advances per keypress, layout matches `Template TUI Game Interface.pdf` /
+`Gabarit Interface de Jeu Version Texte.xlsx` and is fully responsive (any terminal size
+>= 100x30, `KEY_RESIZE`-aware). See `ideas/3 tui/` for the original design intent (its
+code prototype is superseded).
 
-- [ ] ncurses initialization
-- [ ] Window layout:
-  - [ ] Game area (left)
-  - [ ] Console/log (right)
-  - [ ] Status bar (bottom)
-  - [ ] Command input (bottom)
-- [ ] Display functions:
-  - [ ] Player info (energy, lunas, hand size)
-  - [ ] Hand display (with colors)
-  - [ ] Combat zone
-  - [ ] Deck/discard counts
-- [ ] Input handling:
-  - [ ] Keyboard shortcuts
-  - [ ] Command mode
-  - [ ] Mouse support (maybe)
-- [ ] Message log system
-- [ ] Help overlay
-- [ ] Mode switching (TUI ↔ SIM)
+- [x] ncurses initialization
+- [x] Window layout: play area (left), info column split into shortcuts/message-box
+      /console panels (right), top+bottom status bars, command line (bottom, inert)
+- [x] Display functions: player info (energy, lunas), hand display (with colors, hidden
+      for opponent), combat zone, deck/discard counts
+- [x] Message log system (scrolling console)
+
+**Milestone 2 (human interaction) -- not started. This is the next step.**
+
+### Milestone 2 handout (read this first in a fresh session)
+
+**Where M1 left off**: `stda.tui` (`-t`/`--stda.tui`) renders a full, responsive,
+mirrored-table ncurses layout for a live game, but it's **AI-vs-AI only** --
+`src/roles/stda/stda_tui.c`'s loop calls `play_turn()` (the same whole-turn function
+`stda_auto.c` uses) once per keypress, so there is no human player, no card
+selection, and the `> ` command line at the bottom is a dead placeholder. All of
+this is done and verified (`doc/changelog.md` has 4 dated 2026-07-14 entries
+covering it) -- don't re-litigate the layout, colors, centering, discard-corner
+grid, or console wrapping; those are settled. M2 is purely about wiring up
+**interaction**.
+
+**The goal**: let a human play a real game against an AI opponent inside the TUI,
+using the same rules/features the interactive CLI (`stda.cli`) already supports.
+
+**Why this is harder than it sounds**: the CLI's interactive logic
+(`src/ui/cli/cli_game.c`, `cli_input.c`) is tightly coupled to blocking
+`fgets`/line-based `printf` -- e.g. `handle_interactive_attack()`,
+`handle_recall_choice()`, `prompt_champion_exchange()` all read a whole line from
+stdin and print prompts directly. None of that can be dropped into an ncurses
+window as-is (ncurses wants single-keystroke input via `getch()`, not blocking
+`fgets`). So M2 isn't "just add input handling to the TUI" -- it's "figure out how
+much of the CLI's interactive orchestration logic can be *shared* with the TUI
+instead of duplicated."
+
+**Concrete features to port** (each already works in `stda.cli` -- use it as the
+spec/reference, don't re-derive the rules):
+1. **`TAB` toggle** between **PLAY mode** (single keystrokes: `0`-`9`/similar select
+   a hand card, `P` pass, etc.) and **COMMAND mode** (the `> ` line, reusing the
+   CLI's exact grammar: `cham <indices>`, `draw <index>`, `cash <index>`, `pass`).
+   This hybrid was the user's explicit choice when M1 was scoped (see the PDF/xlsx
+   template, which shows both a play zone and a command line).
+2. **Card play** (attack phase) and **defense selection** -- `handle_interactive_attack`
+   / `handle_interactive_defense` in `cli_game.c` are the reference.
+3. **Recall**: playing a draw/recall card must offer "Draw N" vs "Recall **exactly**
+   M champions from discard" (never "up to") -- `card_actions.c`'s `choose_num`,
+   `cli_input.c`'s `handle_recall_choice()`/`validate_and_recall_champions()`.
+4. **Cash exchange**: human picks which champion to exchange (AI auto-picks
+   lowest-power) -- `cli_input.c`'s `prompt_champion_exchange()`.
+5. **Mulligan** (Player B, game start) and **discard-to-7** (end of every turn) --
+   `cli_game.c`'s `handle_interactive_mulligan()` / `handle_interactive_discard_to_7()`.
+6. Once real interaction exists, the combat-zone card-rendering path can finally be
+   exercised by normal play (see the M1 changelog's "known gap" note: right now
+   `resolve_combat()` clears both zones before `play_turn()` returns, so
+   `tui_draw_combat_zone()`'s non-empty path has never been hit in AI-vs-AI M1
+   testing) -- this alone is a good early smoke test once phase-by-phase pausing
+   exists.
+
+**The one real architectural decision, make it early**: a minimal
+**display/input callback seam** so `cli_game.c`'s orchestration functions can call
+out to "show this prompt" / "read this input" through a small interface that both
+`cli_input.c` (prints/reads via stdio) and a new `tui_input.c` (draws into ncurses
+windows/reads via `getch()`) implement -- versus just duplicating the CLI's
+prompt/validation logic wholesale into `stda_tui.c`/`tui_input.c`. This is the
+*only* slice of `ideas/2 game engine refactoring for GUI and network support/`'s
+proposal that's relevant here (its Action-struct/`get_list_of_possible_actions()`/
+`apply_action()`/`VisibleGameState`/client-server split is NOT needed -- that
+solves network multiplayer + MCTS tree search, a different problem). Decide this
+before writing card-selection code, since it determines whether new files land in
+`src/ui/tui/tui_input.c` calling shared logic, or whether `cli_input.c` itself gets
+refactored to take a callback struct.
+
+**Suggested sequencing**: (1) settle the callback-seam question with a short design
+note or plan; (2) wire the `TAB` toggle + inert-to-live command line first (lowest
+risk, mirrors M1's own staged approach); (3) card play/defense; (4) recall, cash
+exchange, mulligan, discard-to-7 in whatever order feels natural; (5) context-sensitive
+shortcut panel content + live combat-result formatting in the message box (currently
+static placeholders); (6) help overlay; (7) mode switching (TUI <-> SIM), low priority.
+
+**Key files**: `src/roles/stda/stda_tui.c/h` (current AI-vs-AI loop, will need a
+human-branch), `src/ui/tui/tui_render.c/h` (rendering, done), `src/ui/cli/cli_game.c`
++ `cli_input.c` (the interactive logic to port/share), `src/core/card_actions.c`
+(engine-level recall/cash/discard functions both UIs call into either way).
 
 #### Simulation UI (stda_sim.c) 📋
 

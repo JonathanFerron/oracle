@@ -8,7 +8,7 @@
 
 ## Current Status
 
-**Active Work**: Deciding next feature area (see "Next Up" below); Turn Logic & Game Loop's interactive-mode command set and the source folder structure cleanup are both now complete.
+**Active Work**: TUI mode Milestone 2 (human interaction, see "Next Up" below); Turn Logic & Game Loop's interactive-mode command set, the source folder structure cleanup, and TUI Milestone 1 are all now complete.
 
 ### Recently Completed (2026-07-14)
 
@@ -19,6 +19,8 @@
 - ✅ Source folder structure cleanup, pragmatic pass: split `cli_display.c` into two
   files under the 500-line limit, fixed `make test_combo` (now 20/20), doc sync -- see
   `ideas/1 improve source code folder structure/pragmatic_cleanup_implementation_plan.md`
+- ✅ TUI mode Milestone 1 (ncurses display skeleton): responsive layout matching the
+  target PDF/xlsx template, AI-vs-AI, one turn per keypress -- see `doc/changelog.md`
 
 ### What Needs Work
 
@@ -28,7 +30,7 @@
 
 ### Next Up (preferred order)
 
-1. TUI mode (`ideas/3 tui/`) -- may need part of the game-engine refactoring for GUI/network support (`ideas/2 game engine refactoring for GUI and network support/`, clean state-machine/UI-callback groundwork) first
+1. TUI mode Milestone 2 (human interaction: `TAB`-toggled play/command modes, card play, recall, cash exchange, mulligan, discard-to-7) -- Milestone 1 (display skeleton) is done without needing the game-engine refactoring for GUI/network support (`ideas/2 game engine refactoring for GUI and network support/`); Milestone 2 may need a minimal display/input callback seam from it, not the full rewrite -- see `doc/oracle_todo.md`
 2. First "non-dumb" AI strategy (`ideas/A1 ai agent value based/`), then `A2 -> A3 -> A4` in order -- the rating system (`ideas/5/`) needs the Borealis benchmark agent (`A4`), which needs `A1`-`A3` implemented first for comparison. The CLI's `display_ai_strategy_menu()` (`src/ui/shared/player_config.c`) already lists all 11 planned agents as stubs (2026-07-14); remaining work per agent is wiring its menu choice to real strategy functions once implemented (see `doc/oracle_todo.md`).
 
 Back burner (explicitly deferred): save/load game state (`ideas/6 save and load gamestate/`), configuration file system (`ideas/7 config file/`).
@@ -108,14 +110,14 @@ See `ideas/done/2 Recall Card functionality in cli mode/` and `testsrc/test_reca
 
 - [ ] Save/load game state
 
-#### Text UI Mode (stda.tui) 📋 PLANNED
+#### Text UI Mode (stda.tui) -- Milestone 1 done, Milestone 2 in progress
 
-- [ ] ncurses-based full-screen UI
-- [ ] Real-time game board display
-- [ ] Scrolling message log
-- [ ] Command palette
-- [ ] Keyboard shortcuts
-- [ ] See `ideas/3 tui/` for detailed plan
+- [x] ncurses-based full-screen UI
+- [x] Real-time game board display
+- [x] Scrolling message log
+- [ ] Command palette (M2 -- TAB-toggled command mode)
+- [ ] Keyboard shortcuts (M2 -- play-mode card selection)
+- [ ] See `doc/oracle_todo.md` for the Milestone 2 breakdown; `ideas/3 tui/` for original intent
 
 ---
 

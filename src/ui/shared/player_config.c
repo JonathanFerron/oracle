@@ -401,3 +401,64 @@ const char* get_strategy_display_name(AIStrategyType strategy,
 const char* get_player_display_name(PlayerID player, PlayerConfig* pconfig)
 { return pconfig->player_names[player];
 }
+
+// Shorthand codes for `-A`/`--ai` (lowercase letters/digits, <=10 chars).
+// AI_STRATEGY_COMBO_AWARE has two aliases (its own name and the Borealis
+// benchmark codename); every other strategy has exactly one.
+typedef struct
+{ AIStrategyType strategy;
+  const char* shorthands[2];
+} AIStrategyShorthand;
+
+static const AIStrategyShorthand AI_STRATEGY_SHORTHANDS[] =
+{ { AI_STRATEGY_RANDOM,       { "rand", NULL } },
+  { AI_STRATEGY_VALUE_BASED,  { "value", NULL } },
+  { AI_STRATEGY_GREEDY_POWER, { "greedy", NULL } },
+  { AI_STRATEGY_COMBO_AWARE,  { "combo", "borealis" } },
+  { AI_STRATEGY_BALANCED,     { "balanced", NULL } },
+  { AI_STRATEGY_HEURISTIC,    { "heuristic", NULL } },
+  { AI_STRATEGY_HYBRID_HBT,   { "hbt", NULL } },
+  { AI_STRATEGY_HBT_2PLY,     { "hbt2ply", NULL } },
+  { AI_STRATEGY_SIMPLE_MC,    { "simplemc", NULL } },
+  { AI_STRATEGY_ISMCTS,       { "ismcts", NULL } },
+  { AI_STRATEGY_ISMCTS_NN,    { "ismctsnn", NULL } },
+};
+#define AI_STRATEGY_SHORTHAND_COUNT \
+  (sizeof(AI_STRATEGY_SHORTHANDS) / sizeof(AI_STRATEGY_SHORTHANDS[0]))
+
+AIStrategyType parse_ai_strategy_shorthand(const char* shorthand)
+{ if(!shorthand) return AI_STRATEGY_COUNT;
+
+  char lower[16] = {0};
+  size_t i;
+  for(i = 0; i < sizeof(lower) - 1 && shorthand[i]; i++)
+    lower[i] = (char)tolower((unsigned char)shorthand[i]);
+
+  for(i = 0; i < AI_STRATEGY_SHORTHAND_COUNT; i++)
+  { const AIStrategyShorthand* e = &AI_STRATEGY_SHORTHANDS[i];
+    if((e->shorthands[0] && strcmp(lower, e->shorthands[0]) == 0) ||
+       (e->shorthands[1] && strcmp(lower, e->shorthands[1]) == 0))
+      return e->strategy;
+  }
+
+  return AI_STRATEGY_COUNT;
+}
+
+void print_ai_agent_shorthand_list(config_t* cfg)
+{ printf("%s\n", LOCALIZED_STRING("Available AI agents (for -A/--ai):",
+                                  "Agents IA disponibles (pour -A/--ai) :",
+                                  "Agentes IA disponibles (para -A/--ai):"));
+
+  for(size_t i = 0; i < AI_STRATEGY_SHORTHAND_COUNT; i++)
+  { const AIStrategyShorthand* e = &AI_STRATEGY_SHORTHANDS[i];
+    char codes[24];
+
+    if(e->shorthands[1])
+      snprintf(codes, sizeof(codes), "%s, %s", e->shorthands[0], e->shorthands[1]);
+    else
+      snprintf(codes, sizeof(codes), "%s", e->shorthands[0]);
+
+    printf("  %-16s %s\n", codes,
+           get_strategy_display_name(e->strategy, cfg->language));
+  }
+}

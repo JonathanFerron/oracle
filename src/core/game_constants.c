@@ -22,6 +22,15 @@ const char* const CHAMPION_SPECIES_NAMES[] =
   "FAUN", "FAIRY", "KOATL", "LYCAN", "NA"
 };
 
+// 3-letter abbreviations for compact card display (e.g. TUI hand/combat rows).
+// Not localized, matching CHAMPION_SPECIES_NAMES above -- species names are
+// shown in English regardless of UI language elsewhere in the codebase too.
+const char* const CHAMPION_SPECIES_ABBR[] =
+{ "HUM", "ELF", "DWA", "ORC", "GOB", "DRA",
+  "HOB", "CEN", "MIN", "AVE", "CYC",
+  "FAU", "FAI", "KOA", "LYC", "NA"
+};
+
 const char* const CHAMPION_ORDER_NAMES[] =
 { "ORDER_A (Dawn Light)",
   "ORDER_B (Verdant Light)",
