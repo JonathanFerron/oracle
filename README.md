@@ -73,6 +73,10 @@ Working features:
 - ✅ Automated simulation
 - ✅️ Mulligan system for interactive player
 - ✅ Discard-to-7 mechanic for interactive player
+- ✅ Recall mechanic (draw or recall champions from discard)
+- ✅ Interactive cash exchange (choose which champion to exchange)
+- ✅ Detailed combat results display (per-champion rolls, combo, damage)
+- ✅ Discard pile inspection (`gmst` summary, `shod` detail)
 
 In development:
 

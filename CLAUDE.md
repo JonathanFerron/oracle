@@ -37,7 +37,11 @@ Other modes (`stda.sim/.tui/.gui`, `server`, `client.*`) are wired into `main.c`
 
 **Primary regression check (do this after any change that shouldn't alter game outcomes)**: run `./bin/oracle -a -p` and diff against `bin/expectedresults.txt` — this is the main way changes are validated as behavior-preserving (same as what `test_stda_auto` automates, modulo the `.exe` naming issue above). Also play one interactive game via `stda.cli` with the standard seed (`-p`) as a manual sanity check. Worth turning both into a proper automated test at some point.
 
-There is no other automated test runner yet; most validation is manual play-testing via `stda.cli` or statistical inspection of `stda.auto` output.
+`make test_recall` and `make test_cash_exchange` build and run small standalone unit-test binaries (`testsrc/test_recall.c`, `testsrc/test_cash_exchange.c`) covering the recall mechanic and the interactive/AI cash-exchange paths, including the champion-card-index-0 edge case. Both link a minimal subset of `src/` objects directly (see the `TEST_*` variables in the Makefile) rather than depending on the (broken) `test_combo` pattern.
+
+`testsrc/cli_scripts/` holds canned stdin scripts for repeatable manual verification of interactive-only features (recall, cash exchange, combat display, discard display) — run via `./bin/oracle -sl -p < testsrc/cli_scripts/<name>.txt`; see that directory's README for what each one exercises and what to look for. These aren't auto-asserted (ANSI-colored free-form output isn't worth pinning byte-for-byte), but they make manual re-verification consistent instead of ad hoc.
+
+There is no other automated test runner yet; most other validation is manual play-testing via `stda.cli` or statistical inspection of `stda.auto` output.
 
 ## Architecture
 
@@ -68,10 +72,16 @@ AI strategies are attack/defense function pointer pairs (`AttackStrategyFunc`/`D
 
 `turn_logic.c` drives: `begin_of_turn()` (draw, except first player turn 1) → `attack_phase()` (attacker plays champions/draw/cash/pass) → `defense_phase()` (defender plays 0–3 champions or declines) → `resolve_combat()` (`combat.c`: `attack = Σ(base + roll(dice)) + combo_bonus`, `defense = Σ(roll(dice)) + combo_bonus`, `damage = max(attack-defense,0)`) → `end_of_turn()` (collect luna, discard-to-7, switch player). Energy starts at 99; first to 0 loses.
 
+### Interactive-only features (CLI, not yet in the AI strategy layer)
+
+- **Recall** (`card_actions.c`'s `choose_num`, `cli_input.c`'s `handle_recall_choice`/`validate_and_recall_champions`): playing a draw/recall card lets the interactive player choose Draw N or Recall **exactly** M champions from discard (never "up to" — recall is only offered when discard holds ≥ M champions, and the sub-prompt re-asks until exactly M valid indices are given). The Random AI never recalls, always draws.
+- **Cash exchange** (`card_actions.c`'s `play_cash_card_interactive` vs `play_cash_card_ai`): the interactive player picks which champion to exchange (`cli_input.c`'s `prompt_champion_exchange`); the AI path still auto-picks lowest-power via `select_champion_for_cash_exchange()`.
+- **Combat results display** (`combat.c`'s `resolve_combat_with_details`, `cli_display.c`'s `display_combat_details_cli`): shown whenever either combatant is human; `stda_auto` always uses the plain `resolve_combat()` so its RNG-dependent results stay untouched.
+- **Discard pile display** (`cli_display.c`'s `display_player_discard`/`_detailed`, `gmst`/`shod` commands).
+
 ### Known architectural gaps (don't be surprised)
 
-- Recall mechanic (choosing to recall a champion from discard instead of drawing) is unimplemented — draw/recall cards only ever draw. `struct card.choose_num` exists but is unused.
-- `select_champion_for_cash_exchange()` in `card_actions.c` embeds AI decision logic that architecturally belongs in the strategy layer.
+- `select_champion_for_cash_exchange()` (AI-only heuristic) used to return card index `0` as a "not found" sentinel, ambiguous with champion index 0 being a real selection. Fixed to use `UINT8_MAX` as the sentinel instead — this changed `stda_auto`'s RNG-dependent play sequence (different hand state after the fix fires), so `bin/expectedresults.txt` was regenerated at the same time. If you ever see `-a -p` diverge from that file again, first check whether it's a deliberate behavior change (regenerate the baseline, documented in the commit) versus an actual regression (fix your change instead).
 - Config is scattered across `cmdline.c` (parsing), `main.c` (cleanup), `stda_auto.c`/`stda_cli.c` (usage) rather than centralized.
 - Client/server and GUI/TUI modes are placeholders only (see `main.c` dispatch — they just print a message).
 
@@ -95,7 +105,7 @@ AI strategies are attack/defense function pointer pairs (`AttackStrategyFunc`/`D
 - `ideas/` — numbered folders of design explorations/proposals and **prototypes**, not yet implemented and not canonical. Useful for intent/rationale on planned features (recall, drafting formats, client/server, GUI, rating system), but don't copy its conventions into real code — port the *intent*, re-fit to current structure/includes/naming/GameContext. Known mismatches: `ideas/13 tui/` uses flat includes (`#include "game_types.h"`) and calls the file `tui.c`, whereas the real module will be `stda_tui.c` under `src/roles/stda/` with pathed includes (`#include "../core/game_types.h"`); prototype code there predates both the CLI split (`cli_display.c`/`cli_input.c`/`cli_game.c`) and the linked-list → fixed-array migration for hands/decks.
 - `oldsrc/` — pre-refactor implementation, kept only for `make oldcode` regression comparisons. Don't extend it.
 - `aicalibsrc/` — planning notes for AI-agent parameter calibration tooling, not yet implemented.
-- `testsrc/` — unit tests; currently only `test_combo_bonus.c`, and it's stale (see Tests section above).
+- `testsrc/` — unit tests (`test_combo_bonus.c` is stale, see Tests section above; `test_recall.c`/`test_cash_exchange.c` are current) plus `cli_scripts/`, canned interactive-CLI input scripts for manual regression checks.
 
 ## How work gets done here
 

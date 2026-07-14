@@ -31,6 +31,30 @@ TEST_COMBO_OBJS := $(TESTSRCDIR)/test_combo_bonus.o \
                    $(SRCDIR)/combo_bonus.o \
                    $(SRCDIR)/game_constants.o
 
+TEST_RECALL_TARGET := $(BINDIR)/test_recall
+TEST_RECALL_SRCS := $(TESTSRCDIR)/test_recall.c \
+                    $(SRCDIR)/core/card_actions.c \
+                    $(SRCDIR)/core/game_constants.c \
+                    $(SRCDIR)/core/game_context.c \
+                    $(SRCDIR)/ui/cli/cli_input.c \
+                    $(SRCDIR)/ui/cli/cli_display.c \
+                    $(SRCDIR)/structures/card_collection.c \
+                    $(SRCDIR)/structures/deckstack.c \
+                    $(SRCDIR)/util/mtwister.c \
+                    $(SRCDIR)/util/rnd.c
+TEST_RECALL_OBJS := $(patsubst %.c,%.o,$(TEST_RECALL_SRCS))
+
+TEST_CASH_TARGET := $(BINDIR)/test_cash_exchange
+TEST_CASH_SRCS := $(TESTSRCDIR)/test_cash_exchange.c \
+                  $(SRCDIR)/core/card_actions.c \
+                  $(SRCDIR)/core/game_constants.c \
+                  $(SRCDIR)/core/game_context.c \
+                  $(SRCDIR)/structures/card_collection.c \
+                  $(SRCDIR)/structures/deckstack.c \
+                  $(SRCDIR)/util/mtwister.c \
+                  $(SRCDIR)/util/rnd.c
+TEST_CASH_OBJS := $(patsubst %.c,%.o,$(TEST_CASH_SRCS))
+
 # Default target
 all: $(TARGET)
 
@@ -69,6 +93,28 @@ $(TEST_COMBO_TARGET): $(TEST_COMBO_OBJS)
 	@mkdir -p $(BINDIR)
 	$(CC) $(TEST_COMBO_OBJS) -o $(TEST_COMBO_TARGET) $(LIBS)
 	@echo "Test build complete: $(TEST_COMBO_TARGET)"
+
+# Test recall mechanic
+.PHONY: test_recall
+test_recall: $(TEST_RECALL_TARGET)
+	./$(TEST_RECALL_TARGET)
+
+$(TEST_RECALL_TARGET): $(TEST_RECALL_OBJS)
+	@echo "Linking test_recall..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(TEST_RECALL_OBJS) -o $(TEST_RECALL_TARGET) $(LIBS)
+	@echo "Test build complete: $(TEST_RECALL_TARGET)"
+
+# Test cash exchange (interactive path)
+.PHONY: test_cash_exchange
+test_cash_exchange: $(TEST_CASH_TARGET)
+	./$(TEST_CASH_TARGET)
+
+$(TEST_CASH_TARGET): $(TEST_CASH_OBJS)
+	@echo "Linking test_cash_exchange..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(TEST_CASH_OBJS) -o $(TEST_CASH_TARGET) $(LIBS)
+	@echo "Test build complete: $(TEST_CASH_TARGET)"
 
 OLDCODE_TARGET := $(BINDIR)/oracle_old
 OLDCODE_SRCS := $(shell find $(OLDSRCDIR) -type f -name *.$(SRCEXT))

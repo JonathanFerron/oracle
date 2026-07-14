@@ -1,22 +1,39 @@
 # Oracle Development TODO
 
-**Quick Status**: In progress: completing miscellaneous actions / commands in interactive mode (recall, combat results details, discard pile inspection, cash card functionality)
+**Quick Status**: Turn-logic interactive-mode commands (recall, combat results details, discard pile inspection, cash card functionality) are complete. Deciding next feature area (see "Next Up" below).
 
 ---
 
-## Current Focus
+## Current Focus -- DONE (2026-07-13)
 
 **Complete Turn Logic Module** - Get full game loop working end-to-end in interactive mode with all the rules
 
 Tasks:
 
-- Display Discard Pile in CLI Mode
+- [x] Display Discard Pile in CLI Mode -- `gmst` (summary) and `shod` (detailed, power-sorted) commands; see `ideas/done/4 ...`.
 
-- Get Recall Card functionality to work in at least stda.cli mode (it's fine to just use the 'draw n cards' option for the Random AI engine given that this engine is not meant to be strong) 
+- [x] Get Recall Card functionality to work in stda.cli mode -- recall is **exact and mandatory** (a "recall 1 / draw 2" card recalls exactly 1 champion, "recall 2 / draw 3" recalls exactly 2; recall is only offered when discard holds enough champions). The Random AI engine still only ever draws (never recalls), which is fine given it's not meant to be strong. See `ideas/done/2 ...`, `doc/game_rules_doc.md` (recall section corrected to match), and `testsrc/test_recall.c`.
 
-- Enhance display of combat results in stda.cli mode
+- [x] Enhance display of combat results in stda.cli mode -- per-champion rolls/base/combo/damage breakdown, shown whenever a human is involved; `stda.auto` unaffected. See `ideas/done/3 ...`.
 
-- When playing cash card in interactive mode, ask user to select the champion card that they want to discard in exchange of 5 lunas instead of letting the AI decide automatically based on power heuristic
+- [x] When playing cash card in interactive mode, ask user to select the champion card to exchange instead of the AI power-heuristic auto-pick -- interactive path (`play_cash_card_interactive`) lets the human pick freely. Along the way, fixed a real bug in the AI heuristic (`select_champion_for_cash_exchange` conflated "not found" with card index 0, a valid champion, using it as a sentinel -- now uses `UINT8_MAX`). See `ideas/done/5 ...` and `testsrc/test_cash_exchange.c`.
+
+**Note**: fixing the index-0 sentinel bug changed `stda_auto`'s RNG-dependent play sequence (different AI hand state whenever that bug used to fire), so `bin/expectedresults.txt` was regenerated (2026-07-13) to reflect the corrected behavior -- this was a deliberate re-baseline, not a regression.
+
+All four verified via `make test_recall` / `make test_cash_exchange`, the `testsrc/cli_scripts/` manual scripts, a full valgrind pass (auto + interactive), and the `./bin/oracle -a -p` regression check against the regenerated `bin/expectedresults.txt`.
+
+---
+
+## Next Up (preferred order)
+
+1. **Improve source code folder structure** (`ideas/8/`) -- revisit before adding more UI surface area, so new modes don't compound existing structural debt.
+2. **TUI mode** (`ideas/13/`) -- may need to pull in part of **game engine refactoring for GUI/network support** (`ideas/9/`) first, specifically the clean state-machine / UI-callback groundwork, so the TUI isn't built directly on top of the CLI-specific display/input functions.
+3. **First "non-dumb" AI strategy** (`ideas/14.3/`, tactical + HBT) -- once the above structural work is settled.
+
+**Back burner (explicitly deferred for now)**:
+
+- Save/load game state (`ideas/6/`)
+- Configuration file system (`ideas/7/`)
 
 ---
 
@@ -79,12 +96,12 @@ GameError DeckStk_pop_safe(struct deck_stack* deck, uint8_t* out);
 
 ### Core Game Logic (src/core/)
 
-#### Card Actions ⚠️ IN PROGRESS
+#### Card Actions
 
-- [ ] **Recall mechanic** (draw/recall cards)
-  - [ ] recall_champion() function
-  - [ ] UI for choosing which champion to recall
-  - [ ] Validation (champion must be in discard)
+- [x] **Recall mechanic** (draw/recall cards) -- interactive CLI only (see "Current Focus" above); `validate_and_recall_champions()` + `handle_recall_choice()` in `cli_input.c`
+  - [x] recall function (`validate_and_recall_champions()`)
+  - [x] UI for choosing which champion(s) to recall (`display_recallable_champions()`, exact-count prompt)
+  - [x] Validation (champions must be in discard; exact count enforced; recall not offered below the required count)
 - [ ] Better error handling
 
 ---
@@ -144,7 +161,7 @@ GameError DeckStk_pop_safe(struct deck_stack* deck, uint8_t* out);
 
 #### CLI Mode (stda_cli.c) ⚠️
 
-- [ ] Show combat results clearly
+- [x] Show combat results clearly -- `display_combat_details_cli()` in `ui/cli/cli_display.c`
 - [ ] Save/load game state
 
 #### TUI Mode (stda_tui.c) 📋
@@ -402,11 +419,13 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 
 ### When Implementing Recall
 
+**Done for CLI** (see "Current Focus" above) -- still applies when building TUI input:
+
 - Draw/recall cards allow choice
-- Can recall up to N champions from discard
+- Must recall **exactly** N champions from discard (not "up to" -- mandatory, no partial/zero recall), and only when discard holds at least N champions
 - Must be champions (not draw/cash cards)
 - Champions go to hand
-- Integrate with CLI/TUI input
+- Integrate with TUI input (CLI already done)
 
 ### When Starting Network Code
 
@@ -426,4 +445,4 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 
 ---
 
-*Last Updated: December 2025*
+*Last Updated: July 2026*

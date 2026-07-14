@@ -19,13 +19,26 @@ int handle_draw_command(struct gamestate* gstate, PlayerID player,
 int handle_cash_command(struct gamestate* gstate, PlayerID player,
                         char* input, GameContext* ctx, config_t* cfg);
 
+/* Recall functionality (draw/recall cards) */
+char prompt_draw_or_recall(config_t* cfg);
+
+int handle_recall_choice(struct gamestate* gstate, PlayerID player,
+                         uint8_t card_idx, GameContext* ctx, config_t* cfg);
+
+int validate_and_recall_champions(struct gamestate* gstate, PlayerID player,
+                                  uint8_t draw_card_idx, uint8_t* indices,
+                                  int count, GameContext* ctx, config_t* cfg);
+
+/* Cash exchange functionality (cash cards) */
+int prompt_champion_exchange(Hand* hand, config_t* cfg);
+
 /* Command processing */
 int process_attack_command(char* input_buffer, struct gamestate* gstate,
-                          PlayerID player, GameContext* ctx, config_t* cfg);
+                           PlayerID player, GameContext* ctx, config_t* cfg);
 
 int process_defense_command(char* input_buffer, struct gamestate* gstate,
-                           PlayerID player, GameContext* ctx, config_t* cfg);
-                           
+                            PlayerID player, GameContext* ctx, config_t* cfg);
+
 // Card selection input helpers
 int parse_card_indices_with_validation(char* input, uint8_t* indices,
                                        int max_count, int hand_size,
@@ -33,6 +46,6 @@ int parse_card_indices_with_validation(char* input, uint8_t* indices,
 
 void discard_and_draw_cards(struct gamestate* gstate, PlayerID player,
                             uint8_t* indices, int count,
-                            bool draw_replacements, GameContext* ctx);                           
+                            bool draw_replacements, GameContext* ctx);
 
 #endif // CLI_INPUT_H

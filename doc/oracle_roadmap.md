@@ -8,13 +8,28 @@
 
 ## Current Status
 
-**Active Work**: Turn Logic & Game Loop Completion  
+**Active Work**: Deciding next feature area (see "Next Up" below); Turn Logic & Game Loop's interactive-mode command set is now complete.
+
+### Recently Completed (2026-07-13)
+
+- ✅ Recall mechanic (interactive CLI, exact/mandatory count)
+- ✅ Interactive cash-card champion selection
+- ✅ Detailed combat results display (interactive CLI)
+- ✅ Discard pile display (`gmst` summary, `shod` detail)
 
 ### What Needs Work
 
 - ⚠️ Automated simulation mode needs refactoring
 - ⚠️ No save/load functionality
 - ⚠️ Limited AI strategies (only random implemented)
+
+### Next Up (preferred order)
+
+1. Improve source code folder structure (`ideas/8/`)
+2. TUI mode (`ideas/13/`) -- may need part of the game-engine refactoring for GUI/network support (`ideas/9/`, clean state-machine/UI-callback groundwork) first
+3. First "non-dumb" AI strategy (`ideas/14.3/`, tactical + HBT)
+
+Back burner (explicitly deferred): save/load game state (`ideas/6/`), configuration file system (`ideas/7/`).
 
 ---
 
@@ -58,23 +73,21 @@
 
 #### Card Actions
 
-- [ ] Play draw/recall cards
-- [ ] Play cash exchange cards
-- [ ] Recall mechanic (draw/recall cards)
+- [x] Play draw/recall cards -- draw path was already working; recall path added (interactive CLI only, see below)
+- [x] Play cash exchange cards -- AI auto-select path was already working; interactive champion choice added
+- [x] Recall mechanic (draw/recall cards) -- see "Recall Mechanic" below
 
 ---
 
-## Recall Mechanic
+## Recall Mechanic -- RESOLVED (2026-07-13)
 
-**Contradiction:**
-
-- Full deck includes 9 "Draw 2/Recall 1" and 6 "Draw 3/Recall 2" cards
-- Game rules document extensively describes recall mechanics
-- `card_actions.c` TODO: "TODO: must give the option to the interactive player to choose between draw and recall"
-- **Reality:** `play_draw_card()` ONLY draws cards, never recalls
-- `struct card` has `choose_num` field (for recall) but it's never used
-
-**Impact:** High - Major game feature completely missing
+Was a major gap (`play_draw_card()` only ever drew; `struct card.choose_num` was unused).
+Now implemented for the interactive CLI: `handle_recall_choice()`/`validate_and_recall_champions()`
+in `ui/cli/cli_input.c`, using `choose_num` as an **exact, mandatory** count (not "up to") --
+recall is only offered when discard holds enough champions. `game_rules_doc.md`'s recall
+wording was corrected to match. The Random AI strategy still only ever draws (acceptable,
+per its "not meant to be strong" design intent); a smarter AI recall strategy is future work.
+See `ideas/done/2 Recall Card functionality in cli mode/` and `testsrc/test_recall.c`.
 
 ---
 
@@ -108,7 +121,7 @@
 
 **Status**: Foundation ready, implementation pending
 
-Cash Card Selection**: `select_champion_for_cash_exchange()` is in `card_actions.c` with TODO "this code could be moved to the strategy" - architectural boundary violation
+**Cash Card Selection**: `select_champion_for_cash_exchange()` (AI-only heuristic) is in `card_actions.c` with TODO "this code could be moved to the strategy" -- architectural boundary violation. It also had an index-0 sentinel bug (fixed 2026-07-13: now uses `UINT8_MAX` instead of `0` to mean "not found," since 0 is a valid champion index) -- fixing it changed `stda.auto`'s RNG-dependent output, so `bin/expectedresults.txt` was deliberately regenerated at the same time. The interactive CLI path no longer goes through this function at all -- `play_cash_card_interactive()` lets the human choose freely (see `ideas/done/5 cash card functionality in cli mode/` and `testsrc/test_cash_exchange.c`).
 
 #### Balanced Rules AI 📋
 
@@ -464,4 +477,4 @@ for(int i = 0; i < 2; i++)
 
 ---
 
-*Last Updated: December 2025*
+*Last Updated: July 2026*

@@ -2,6 +2,7 @@
 #define CLI_DISPLAY_H
 
 #include "../../core/game_types.h"
+#include "../../core/combat.h"
 
 /* ANSI color codes */
 #define RESET   "\033[0m"
@@ -32,7 +33,7 @@ void display_game_status(struct gamestate* gstate, config_t* cfg);
 void display_cli_help(int is_defense, config_t* cfg);
 
 void display_turn_header(PlayerID player, PlayerID opponent,
-                        struct gamestate* gstate, config_t* cfg);
+                         struct gamestate* gstate, config_t* cfg);
 void display_game_summary(struct gamestate* gstate, config_t* cfg);
 
 // Card display with power values
@@ -45,5 +46,18 @@ void display_mulligan_prompt(struct gamestate* gstate,
 
 void display_discard_prompt(struct gamestate* gstate,
                             PlayerID player, config_t* cfg);
+
+// Discard pile display
+void display_player_discard(PlayerID player, struct gamestate* gstate, config_t* cfg);
+void display_player_discard_detailed(PlayerID player, struct gamestate* gstate, config_t* cfg);
+
+// Recall display
+void display_recallable_champions(Discard* discard, config_t* cfg);
+
+// Cash exchange display
+void display_exchangeable_champions(Hand* hand, config_t* cfg);
+
+// Combat results display
+void display_combat_details_cli(struct gamestate* gstate, CombatDetails* details, config_t* cfg);
 
 #endif // CLI_DISPLAY_H

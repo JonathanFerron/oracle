@@ -11,11 +11,14 @@
 void play_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx);
 void play_champion(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx);
 void play_draw_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx);
-void play_cash_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx);
+void play_cash_card_ai(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx);
+void play_cash_card_interactive(struct gamestate* gstate, PlayerID player,
+                                uint8_t card_idx, uint8_t champion_idx, GameContext* ctx);
 
 // Helper functions for card management
 int has_champion_in_hand(Hand* hand);
 uint8_t select_champion_for_cash_exchange(Hand* hand);
+uint8_t collect_champions(const uint8_t* cards, uint8_t n, uint8_t* out, bool sort_desc);
 
 // Game action functions
 void draw_1_card(struct gamestate* gstate, PlayerID player, GameContext* ctx);

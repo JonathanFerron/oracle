@@ -31,8 +31,8 @@ This section could be trimmed if same content appears in later sections of this 
 
 3 couleurs x 34 champions = 102 cartes champion
 
-9 cartes 'pige 2 cartes ou rappelle (un maximum de) 1 champion': 1 luna
-6 cartes 'pige 3 cartes ou rappelle (un maximum de) 2 champions': 2 lunas
+9 cartes 'pige 2 cartes ou rappelle exactement 1 champion': 1 luna
+6 cartes 'pige 3 cartes ou rappelle exactement 2 champions': 2 lunas
 3 cartes ‘échange 1 champion pour 5 lunas’
 120 cartes en tout, cartes de 65mm large et 86mm haut.
 
@@ -279,7 +279,7 @@ The active player (attacker) chooses ONE action:
 - Pay the luna cost (1 or 2)
 - Choose to either:
   - Draw 2 or 3 cards (depending on card), OR
-  - Recall 1 or 2 champions from your discard pile to your hand
+  - Recall exactly 1 or 2 champions (depending on card, if you have that many in discard) from your discard pile to your hand
 - Skip to collection phase (no combat)
 
 **Option C**: **Play an Exchange Card**
@@ -362,8 +362,10 @@ The defending player (opponent) chooses:
 
 **Option B: Recall Champions**
 
-- Return 1 champion from your discard pile to your hand (for "Draw 2" card)
-- Return 2 champions from your discard pile to your hand (for "Draw 3" card)
+- Return **exactly** 1 champion from your discard pile to your hand (for "Draw 2" card)
+- Return **exactly** 2 champions from your discard pile to your hand (for "Draw 3" card)
+- Recall is mandatory once chosen -- it is not "up to" the stated number; you cannot recall 0 or a partial count
+- Recall is only a legal choice if your discard pile holds at least that many champions (1, or 2, respectively); otherwise you must draw
 - Champions can only be recalled from discard, not from deck
 
 **Strategic Note**: Drawing gives you more options, but recalling can retrieve powerful champions for future use.

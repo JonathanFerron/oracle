@@ -1,0 +1,10 @@
+
+
+
+
+cham 1
+pass
+draw 5
+r
+1
+exit

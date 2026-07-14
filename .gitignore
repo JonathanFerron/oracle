@@ -3,6 +3,9 @@
 *.zip
 *.exe
 /bin/oracle
+/bin/test_combo
+/bin/test_recall
+/bin/test_cash_exchange
 *.o
 *.xls
 *.xlsx

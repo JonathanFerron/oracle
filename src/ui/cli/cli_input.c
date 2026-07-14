@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "cli_input.h"
 #include "cli_display.h"
@@ -98,6 +99,104 @@ int validate_and_play_champions(struct gamestate* gstate, PlayerID player,
    Card Action Handlers
    ======================================================================== */
 
+/* ========================================================================
+   Recall Functionality (draw/recall cards)
+   ======================================================================== */
+
+// Ask the player to choose between drawing cards or recalling champions.
+// Only called when recall is actually available (enough champions in discard).
+char prompt_draw_or_recall(config_t* cfg)
+{ printf("\n%s " ICON_PROMPT " ",
+         LOCALIZED_STRING("Choose: (d)raw cards or (r)ecall champions? [d]",
+                          "Choisir: (p)iocher ou (r)appeler? [p]",
+                          "Elegir: (r)obar o (recu)perar? [r]"));
+
+  char input[MAX_INPUT_LEN_SHORT];
+  if(fgets(input, sizeof(input), stdin) == NULL)
+    return 'd';
+
+  input[strcspn(input, "\n")] = 0;
+  if(strlen(input) == 0)
+    return 'd';
+
+  char c = tolower((unsigned char)input[0]);
+  return (c == 'r' || c == 'a') ? 'r' : 'd';
+}
+
+// Recall is exact and mandatory: choosing recall on a card requires selecting
+// exactly recall_num champions from discard (no partial recall, no pass).
+int handle_recall_choice(struct gamestate* gstate, PlayerID player,
+                         uint8_t card_idx, GameContext* ctx, config_t* cfg)
+{ uint8_t recall_num = fullDeck[card_idx].choose_num;
+  uint8_t indices[2];
+  char input[MAX_COMMAND_LEN];
+
+  display_recallable_champions(&gstate->discard[player], cfg);
+
+  for(;;)
+  { uint8_t champions[40];
+    uint8_t champ_count = collect_champions(gstate->discard[player].cards,
+                                            gstate->discard[player].size,
+                                            champions, false);
+
+    printf("\n%s %d %s: ",
+           LOCALIZED_STRING("Select exactly", "Selectionnez exactement",
+                            "Selecciona exactamente"),
+           recall_num,
+           LOCALIZED_STRING("champion(s) to recall (e.g., '1 3')",
+                            "champion(s) a rappeler (ex: '1 3')",
+                            "campeon(es) a recuperar (ej: '1 3')"));
+
+    if(fgets(input, sizeof(input), stdin) == NULL)
+      return NO_ACTION;
+
+    input[strcspn(input, "\n")] = 0;
+    int count = parse_card_indices_with_validation(input, indices, recall_num,
+                                                   champ_count, cfg);
+    if(count < 0) continue;
+
+    if(count != recall_num)
+    { printf(RED "%s %d %s\n" RESET,
+             LOCALIZED_STRING("Error: You must recall exactly",
+                              "Erreur: Vous devez rappeler exactement",
+                              "Error: Debes recuperar exactamente"),
+             recall_num,
+             LOCALIZED_STRING("champion(s)", "champion(s)", "campeon(es)"));
+      continue;
+    }
+
+    return validate_and_recall_champions(gstate, player, card_idx, indices,
+                                         count, ctx, cfg);
+  }
+}
+
+int validate_and_recall_champions(struct gamestate* gstate, PlayerID player,
+                                  uint8_t draw_card_idx, uint8_t* indices,
+                                  int count, GameContext* ctx, config_t* cfg)
+{ uint8_t champions[40];
+  collect_champions(gstate->discard[player].cards, gstate->discard[player].size,
+                    champions, true);
+
+  // Remove draw/recall card from hand, pay cost, discard it
+  Hand_remove(&gstate->hand[player], draw_card_idx);
+  gstate->current_cash_balance[player] -= fullDeck[draw_card_idx].cost;
+  Discard_add(&gstate->discard[player], draw_card_idx);
+
+  // Recall the selected champions from discard to hand
+  for(int i = 0; i < count; i++)
+  { uint8_t champion_idx = champions[indices[i]];
+    Discard_remove(&gstate->discard[player], champion_idx);
+    Hand_add(&gstate->hand[player], champion_idx);
+  }
+
+  printf(GREEN ICON_SUCCESS " %s %d %s\n" RESET,
+         LOCALIZED_STRING("Recalled", "Rappele", "Recuperado"),
+         count,
+         LOCALIZED_STRING("champion(s)", "champion(s)", "campeon(es)"));
+
+  return ACTION_TAKEN;
+}
+
 int handle_draw_command(struct gamestate* gstate, PlayerID player,
                         char* input, GameContext* ctx, config_t* cfg)
 { int idx = atoi(input);
@@ -128,11 +227,51 @@ int handle_draw_command(struct gamestate* gstate, PlayerID player,
     return NO_ACTION;
   }
 
+  uint8_t recall_num = fullDeck[card_idx].choose_num;
+  uint8_t champions[40];
+  uint8_t champ_count = collect_champions(gstate->discard[player].cards,
+                                          gstate->discard[player].size,
+                                          champions, false);
+
+  if(champ_count >= recall_num && prompt_draw_or_recall(cfg) == 'r')
+    return handle_recall_choice(gstate, player, card_idx, ctx, cfg);
+
   play_draw_card(gstate, player, card_idx, ctx);
   printf(GREEN ICON_SUCCESS " %s\n" RESET,
          LOCALIZED_STRING("Played draw card", "Carte piocher jouee",
                           "Carta de robar jugada"));
   return ACTION_TAKEN;
+}
+
+// Prompt for a single champion index to exchange (mandatory, no pass).
+// Returns the chosen champion's card index, or -1 on invalid/EOF input.
+int prompt_champion_exchange(Hand* hand, config_t* cfg)
+{ char input[MAX_COMMAND_LEN];
+
+  printf("\n%s: ",
+         LOCALIZED_STRING("Enter champion index (e.g., '1')",
+                          "Entrez indice champion (ex: '1')",
+                          "Ingresa indice campeon (ej: '1')"));
+
+  if(fgets(input, sizeof(input), stdin) == NULL)
+    return -1;
+
+  uint8_t champions[15];
+  uint8_t count = collect_champions(hand->cards, hand->size, champions, false);
+
+  int idx = atoi(input);
+  if(idx < 1 || idx > count)
+  { printf(RED "%s %d (%s 1-%d)\n" RESET,
+           LOCALIZED_STRING("Error: Invalid index",
+                            "Erreur: Indice invalide",
+                            "Error: Indice invalido"),
+           idx,
+           LOCALIZED_STRING("must be", "doit etre", "debe ser"),
+           count);
+    return -1;
+  }
+
+  return champions[idx - 1];
 }
 
 int handle_cash_command(struct gamestate* gstate, PlayerID player,
@@ -165,10 +304,15 @@ int handle_cash_command(struct gamestate* gstate, PlayerID player,
     return NO_ACTION;
   }
 
-  play_cash_card(gstate, player, card_idx, ctx);
-  printf(GREEN ICON_SUCCESS " %s\n" RESET,
-         LOCALIZED_STRING("Played exchange card", "Carte echange jouee",
-                          "Carta de intercambio jugada"));
+  display_exchangeable_champions(&gstate->hand[player], cfg);
+  int champion_idx = prompt_champion_exchange(&gstate->hand[player], cfg);
+  if(champion_idx < 0)
+    return NO_ACTION;
+
+  play_cash_card_interactive(gstate, player, card_idx, (uint8_t)champion_idx, ctx);
+  printf(GREEN ICON_SUCCESS " %s %s\n" RESET,
+         LOCALIZED_STRING("Exchanged", "Echange", "Cambiado"),
+         CHAMPION_SPECIES_NAMES[fullDeck[champion_idx].species]);
   return ACTION_TAKEN;
 }
 
@@ -205,6 +349,11 @@ int process_attack_command(char* input_buffer, struct gamestate* gstate,
   { display_game_status(gstate, cfg);
     return NO_ACTION;
   }
+  else if(strcmp(input_buffer, "shod") == 0)
+  { display_player_discard_detailed(PLAYER_A, gstate, cfg);
+    display_player_discard_detailed(PLAYER_B, gstate, cfg);
+    return NO_ACTION;
+  }
   else if(strcmp(input_buffer, "help") == 0)
   { display_cli_help(0, cfg);
     return NO_ACTION;
@@ -220,7 +369,7 @@ int process_attack_command(char* input_buffer, struct gamestate* gstate,
 }
 
 int process_defense_command(char* input_buffer, struct gamestate* gstate,
-                           PlayerID player, GameContext* ctx, config_t* cfg)
+                            PlayerID player, GameContext* ctx, config_t* cfg)
 { input_buffer[strcspn(input_buffer, "\n")] = 0;
 
   if(strcmp(input_buffer, "exit") == 0)
@@ -266,76 +415,73 @@ int process_defense_command(char* input_buffer, struct gamestate* gstate,
 }
 
 /* ========================================================================
-   Card Selection Input Helpers 
+   Card Selection Input Helpers
    ======================================================================== */
 
 // Parse multiple card indices with duplicate detection
 int parse_card_indices_with_validation(char* input, uint8_t* indices,
                                        int max_count, int hand_size,
                                        config_t* cfg)
-{
-    int count = 0;
-    char* token = strtok(input, " ");
+{ int count = 0;
+  char* token = strtok(input, " ");
 
-    while (token != NULL && count < max_count) {
-        int idx = atoi(token);
-        if (idx < 1 || idx > hand_size) {
-            printf(RED "%s %d (%s 1-%d)\n" RESET,
-                   LOCALIZED_STRING("Error: Invalid card number",
-                                   "Erreur: Numero invalide",
-                                   "Error: Numero invalido"),
-                   idx,
-                   LOCALIZED_STRING("must be", "doit etre", "debe ser"),
-                   hand_size);
-            return -1;
-        }
-
-        // Check for duplicates
-        for (int i = 0; i < count; i++) {
-            if (indices[i] == (idx - 1)) {
-                printf(RED "%s %d\n" RESET,
-                       LOCALIZED_STRING("Error: Duplicate card number",
-                                       "Erreur: Numero en double",
-                                       "Error: Numero duplicado"),
-                       idx);
-                return -1;
-            }
-        }
-
-        indices[count++] = idx - 1;
-        token = strtok(NULL, " ");
+  while(token != NULL && count < max_count)
+  { int idx = atoi(token);
+    if(idx < 1 || idx > hand_size)
+    { printf(RED "%s %d (%s 1-%d)\n" RESET,
+             LOCALIZED_STRING("Error: Invalid card number",
+                              "Erreur: Numero invalide",
+                              "Error: Numero invalido"),
+             idx,
+             LOCALIZED_STRING("must be", "doit etre", "debe ser"),
+             hand_size);
+      return -1;
     }
 
-    return count;
+    // Check for duplicates
+    for(int i = 0; i < count; i++)
+    { if(indices[i] == (idx - 1))
+      { printf(RED "%s %d\n" RESET,
+               LOCALIZED_STRING("Error: Duplicate card number",
+                                "Erreur: Numero en double",
+                                "Error: Numero duplicado"),
+               idx);
+        return -1;
+      }
+    }
+
+    indices[count++] = idx - 1;
+    token = strtok(NULL, " ");
+  }
+
+  return count;
 }
 
 // Discard selected cards and optionally draw replacements
 void discard_and_draw_cards(struct gamestate* gstate, PlayerID player,
-                            uint8_t* indices, int count, 
+                            uint8_t* indices, int count,
                             bool draw_replacements, GameContext* ctx)
-{
-    // Sort indices descending to avoid index shifting issues
-    for (int i = 0; i < count - 1; i++) {
-        for (int j = i + 1; j < count; j++) {
-            if (indices[i] < indices[j]) {
-                uint8_t temp = indices[i];
-                indices[i] = indices[j];
-                indices[j] = temp;
-            }
-        }
+{ // Sort indices descending to avoid index shifting issues
+  for(int i = 0; i < count - 1; i++)
+  { for(int j = i + 1; j < count; j++)
+    { if(indices[i] < indices[j])
+      { uint8_t temp = indices[i];
+        indices[i] = indices[j];
+        indices[j] = temp;
+      }
     }
+  }
 
-    // Discard cards from highest index to lowest
-    for (int i = 0; i < count; i++) {
-        uint8_t card_idx = gstate->hand[player].cards[indices[i]];
-        Hand_remove(&gstate->hand[player], card_idx);
-        Discard_add(&gstate->discard[player], card_idx);
-    }
+  // Discard cards from highest index to lowest
+  for(int i = 0; i < count; i++)
+  { uint8_t card_idx = gstate->hand[player].cards[indices[i]];
+    Hand_remove(&gstate->hand[player], card_idx);
+    Discard_add(&gstate->discard[player], card_idx);
+  }
 
-    // Draw replacement cards if requested
-    if (draw_replacements) {
-        for (int i = 0; i < count; i++) {
-            draw_1_card(gstate, player, ctx);
-        }
-    }
+  // Draw replacement cards if requested
+  if(draw_replacements)
+  { for(int i = 0; i < count; i++)
+      draw_1_card(gstate, player, ctx);
+  }
 }
