@@ -31,13 +31,13 @@ Other modes (`stda.sim/.tui/.gui`, `server`, `client.*`) are wired into `main.c`
 
 ### Tests
 
-`make test_combo` is currently **broken**: `testsrc/test_combo_bonus.c` still includes headers from the pre-reorg flat `src/` layout (`../src/combo_bonus.h`) and the Makefile's `TEST_COMBO_SRCS`/`TEST_COMBO_OBJS` likewise point at `$(SRCDIR)/combo_bonus.c` instead of `$(SRCDIR)/core/combo_bonus.c`. Fix the paths (test file includes + Makefile variables) before relying on this target.
+`make test_combo` builds and runs `testsrc/test_combo_bonus.c` (20/20 passing as of 2026-07-14, fixed as part of the folder-8 cleanup pass): include paths and Makefile variables now point at `core/combo_bonus.{c,h}`/`core/game_constants.{c,h}`, the stale `test_order_mapping()` (testing the since-removed `get_order_from_species()`) was deleted, and the remaining `CombatCard` literals were given explicit `.order` fields matching each species (the struct gained that field after the test was originally written, so positional initializers were silently leaving it zero and causing spurious order-match bonuses).
 
 `make test_stda_auto` diffs `./bin/oracle.exe -sa -p` output against `bin/expectedresults.txt` — note it invokes the `.exe` (MSYS2/Windows) binary name even though the Linux target is `bin/oracle`; adjust the binary name to match your platform when running this check manually.
 
 **Primary regression check (do this after any change that shouldn't alter game outcomes)**: run `./bin/oracle -a -p` and diff against `bin/expectedresults.txt` — this is the main way changes are validated as behavior-preserving (same as what `test_stda_auto` automates, modulo the `.exe` naming issue above). Also play one interactive game via `stda.cli` with the standard seed (`-p`) as a manual sanity check. Worth turning both into a proper automated test at some point.
 
-`make test_recall` and `make test_cash_exchange` build and run small standalone unit-test binaries (`testsrc/test_recall.c`, `testsrc/test_cash_exchange.c`) covering the recall mechanic and the interactive/AI cash-exchange paths, including the champion-card-index-0 edge case. Both link a minimal subset of `src/` objects directly (see the `TEST_*` variables in the Makefile) rather than depending on the (broken) `test_combo` pattern.
+`make test_recall` and `make test_cash_exchange` build and run small standalone unit-test binaries (`testsrc/test_recall.c`, `testsrc/test_cash_exchange.c`) covering the recall mechanic and the interactive/AI cash-exchange paths, including the champion-card-index-0 edge case. Both link a minimal subset of `src/` objects directly (see the `TEST_*` variables in the Makefile) rather than depending on the `test_combo` pattern.
 
 `testsrc/cli_scripts/` holds canned stdin scripts for repeatable manual verification of interactive-only features (recall, cash exchange, combat display, discard display) — run via `./bin/oracle -sl -p < testsrc/cli_scripts/<name>.txt`; see that directory's README for what each one exercises and what to look for. These aren't auto-asserted (ANSI-colored free-form output isn't worth pinning byte-for-byte), but they make manual re-verification consistent instead of ad hoc.
 
@@ -50,7 +50,7 @@ There is no other automated test runner yet; most other validation is manual pla
 - `core/` — game engine: `game_types.h` (all enums/structs — start here), `game_constants.c/h` (the 120-card deck, `fullDeck[]`), `game_state.c` (setup/init), `card_actions.c` (play/draw/discard), `combat.c` (combat resolution), `combo_bonus.c` (combo bonus math), `turn_logic.c` (turn/phase orchestration), `game_context.c/h` (see GameContext pattern below).
 - `ai_strat/` — AI strategies as function pointers (`ai_strategy.h`); only `ai_strat_random` is functional today, the rest (`balancedrules1`, `heuristic1`, `simplemc1`, `ismcts1`) are design stubs.
 - `roles/stda/` — "standalone" mode entry points: `stda_auto.c` (batch simulation + stats/histogram), `stda_cli.c` (interactive game loop glue).
-- `ui/cli/` — CLI presentation split into `cli_display.c` (rendering), `cli_input.c` (parsing/validation), `cli_game.c` (loop wiring).
+- `ui/cli/` — CLI presentation split into `cli_display.c` (core status/turn rendering), `cli_action_display.c` (action-flow/card-selection rendering: mulligan, discard, recall, cash exchange, combat breakdown), `cli_input.c` (parsing/validation), `cli_game.c` (loop wiring).
 - `ui/shared/` — `player_config.c`/`player_selection.c` (player type/name/strategy setup), `localization.h` (EN/FR/ES macro-based i18n).
 - `ui/gui/`, `ui/tui/`, `ui/simulation/` — not implemented yet; contain only planning `.txt` notes.
 - `structures/` — `deckstack.c` (fixed-size LIFO array for draw piles), `card_collection.c` (fixed-size collection used for hand/discard/combat zone).
@@ -76,8 +76,8 @@ AI strategies are attack/defense function pointer pairs (`AttackStrategyFunc`/`D
 
 - **Recall** (`card_actions.c`'s `choose_num`, `cli_input.c`'s `handle_recall_choice`/`validate_and_recall_champions`): playing a draw/recall card lets the interactive player choose Draw N or Recall **exactly** M champions from discard (never "up to" — recall is only offered when discard holds ≥ M champions, and the sub-prompt re-asks until exactly M valid indices are given). The Random AI never recalls, always draws.
 - **Cash exchange** (`card_actions.c`'s `play_cash_card_interactive` vs `play_cash_card_ai`): the interactive player picks which champion to exchange (`cli_input.c`'s `prompt_champion_exchange`); the AI path still auto-picks lowest-power via `select_champion_for_cash_exchange()`.
-- **Combat results display** (`combat.c`'s `resolve_combat_with_details`, `cli_display.c`'s `display_combat_details_cli`): shown whenever either combatant is human; `stda_auto` always uses the plain `resolve_combat()` so its RNG-dependent results stay untouched.
-- **Discard pile display** (`cli_display.c`'s `display_player_discard`/`_detailed`, `gmst`/`shod` commands).
+- **Combat results display** (`combat.c`'s `resolve_combat_with_details`, `cli_action_display.c`'s `display_combat_details_cli`): shown whenever either combatant is human; `stda_auto` always uses the plain `resolve_combat()` so its RNG-dependent results stay untouched.
+- **Discard pile display** (`cli_action_display.c`'s `display_player_discard`/`_detailed`, `gmst`/`shod` commands).
 
 ### Known architectural gaps (don't be surprised)
 
@@ -91,7 +91,7 @@ AI strategies are attack/defense function pointer pairs (`AttackStrategyFunc`/`D
 - **Formatting is astyle-driven, not the usual K&R/Allman style** — run `make format` rather than hand-formatting. Key `.astylerc` settings: run-in braces (opening brace stays on the same "logical" line but statements after it start on the next line — see any function in `src/` for the pattern, e.g. `main.c`), 2-space indent, pointer alignment to type (`int* ptr`), tabs converted to spaces. Match this style when hand-editing between formatting runs.
 - **Function length**: target ≤35 lines, firm limit 100 (`README.md`/`oracle_roadmap.md` say "<30" — treat 35/100 as authoritative).
 - **File length**: target ≤400, soft limit ≤500, firm limit 1000 lines.
-- **Line-count exclusions**: comments/docs, blank lines, switch case-label lists, and simple if-else chains don't count toward either limit. `stda_cli.c` currently exceeds the soft file limit and is a known-acceptable violation pending a planned split into display/input/game modules (already partially done under `ui/cli/`).
+- **Line-count exclusions**: comments/docs, blank lines, switch case-label lists, and simple if-else chains don't count toward either limit. `cli_display.c` exceeded the soft file limit after the recall/cash/combat/discard display work (576 lines); it was split (2026-07-14) into `cli_display.c` (core status/turn display, ~230 lines) and `cli_action_display.c` (action-flow/card-selection display, ~360 lines), both now under the limit.
 - Snake_case is the target naming convention; some legacy camelCase exists (known debt) — don't propagate it in new code.
 - **Module prefixes** on public functions, matching the module: `RND_`, `DeckStk_`, `Hand_`, `Discard_`, `tui_`, etc.
 - Manual/duplicated code is preferred over macro-magic abstractions for readability.
@@ -105,7 +105,7 @@ AI strategies are attack/defense function pointer pairs (`AttackStrategyFunc`/`D
 - `ideas/` — numbered folders of design explorations/proposals and **prototypes**, not yet implemented and not canonical. Useful for intent/rationale on planned features (recall, drafting formats, client/server, GUI, rating system), but don't copy its conventions into real code — port the *intent*, re-fit to current structure/includes/naming/GameContext. Known mismatches: `ideas/3 tui/` (renumbered from `ideas/13 tui/`, then `ideas/1 tui/`, across subsequent reorgs) uses flat includes (`#include "game_types.h"`) and calls the file `tui.c`, whereas the real module will be `stda_tui.c` under `src/roles/stda/` with pathed includes (`#include "../core/game_types.h"`); prototype code there predates both the CLI split (`cli_display.c`/`cli_input.c`/`cli_game.c`) and the linked-list → fixed-array migration for hands/decks.
 - `oldsrc/` — pre-refactor implementation, kept only for `make oldcode` regression comparisons. Don't extend it.
 - `aicalibsrc/` — planning notes for AI-agent parameter calibration tooling, not yet implemented.
-- `testsrc/` — unit tests (`test_combo_bonus.c` is stale, see Tests section above; `test_recall.c`/`test_cash_exchange.c` are current) plus `cli_scripts/`, canned interactive-CLI input scripts for manual regression checks.
+- `testsrc/` — unit tests (`test_combo_bonus.c`, `test_recall.c`, `test_cash_exchange.c`, all current, see Tests section above) plus `cli_scripts/`, canned interactive-CLI input scripts for manual regression checks.
 
 ## How work gets done here
 

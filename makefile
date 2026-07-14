@@ -25,11 +25,11 @@ CFLAGS := -g -Og -Wall -std=c23
 # Test targets
 TEST_COMBO_TARGET := $(BINDIR)/test_combo
 TEST_COMBO_SRCS := $(TESTSRCDIR)/test_combo_bonus.c \
-                   $(SRCDIR)/combo_bonus.c \
-                   $(SRCDIR)/game_constants.c
+                   $(SRCDIR)/core/combo_bonus.c \
+                   $(SRCDIR)/core/game_constants.c
 TEST_COMBO_OBJS := $(TESTSRCDIR)/test_combo_bonus.o \
-                   $(SRCDIR)/combo_bonus.o \
-                   $(SRCDIR)/game_constants.o
+                   $(SRCDIR)/core/combo_bonus.o \
+                   $(SRCDIR)/core/game_constants.o
 
 TEST_RECALL_TARGET := $(BINDIR)/test_recall
 TEST_RECALL_SRCS := $(TESTSRCDIR)/test_recall.c \
@@ -38,6 +38,7 @@ TEST_RECALL_SRCS := $(TESTSRCDIR)/test_recall.c \
                     $(SRCDIR)/core/game_context.c \
                     $(SRCDIR)/ui/cli/cli_input.c \
                     $(SRCDIR)/ui/cli/cli_display.c \
+                    $(SRCDIR)/ui/cli/cli_action_display.c \
                     $(SRCDIR)/structures/card_collection.c \
                     $(SRCDIR)/structures/deckstack.c \
                     $(SRCDIR)/util/mtwister.c \
@@ -87,6 +88,7 @@ debug: clean all
 # Test combo bonus calculator
 .PHONY: test_combo
 test_combo: $(TEST_COMBO_TARGET)
+	./$(TEST_COMBO_TARGET)
 
 $(TEST_COMBO_TARGET): $(TEST_COMBO_OBJS)
 	@echo "Linking test_combo..."

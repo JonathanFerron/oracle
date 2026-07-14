@@ -2,8 +2,8 @@
 // Test suite for combo bonus calculator
 // Updated for refactored source structure
 
-#include "../src/combo_bonus.h"
-#include "../src/game_constants.h"
+#include "../src/core/combo_bonus.h"
+#include "../src/core/game_constants.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -34,10 +34,10 @@ void test_random_distribution(TestSuite *suite)
 
   // Test 1: Two same species
   cards[0] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[1] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   bonus = calc_random_bonus(cards, 2);
   print_test_result("Two same species", 10, bonus);
@@ -46,13 +46,13 @@ void test_random_distribution(TestSuite *suite)
 
   // Test 2: Three same species
   cards[0] = (CombatCard)
-  { SPECIES_ELF, COLOR_RED
+  { SPECIES_ELF, COLOR_RED, ORDER_A
   };
   cards[1] = (CombatCard)
-  { SPECIES_ELF, COLOR_RED
+  { SPECIES_ELF, COLOR_RED, ORDER_A
   };
   cards[2] = (CombatCard)
-  { SPECIES_ELF, COLOR_RED
+  { SPECIES_ELF, COLOR_RED, ORDER_A
   };
   bonus = calc_random_bonus(cards, 3);
   print_test_result("Three same species", 16, bonus);
@@ -61,13 +61,13 @@ void test_random_distribution(TestSuite *suite)
 
   // Test 3: Two same species + third same order (different species)
   cards[0] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[1] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[2] = (CombatCard)
-  { SPECIES_ELF, COLOR_INDIGO
+  { SPECIES_ELF, COLOR_INDIGO, ORDER_A
   };
   bonus = calc_random_bonus(cards, 3);
   print_test_result("Two species + third same order", 14, bonus);
@@ -76,13 +76,13 @@ void test_random_distribution(TestSuite *suite)
 
   // Test 4: Two same species + third same color
   cards[0] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[1] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[2] = (CombatCard)
-  { SPECIES_HOBBIT, COLOR_RED
+  { SPECIES_HOBBIT, COLOR_RED, ORDER_B
   };
   bonus = calc_random_bonus(cards, 3);
   print_test_result("Two species + third same color", 13, bonus);
@@ -91,10 +91,10 @@ void test_random_distribution(TestSuite *suite)
 
   // Test 5: Two same order (no species match)
   cards[0] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[1] = (CombatCard)
-  { SPECIES_ELF, COLOR_INDIGO
+  { SPECIES_ELF, COLOR_INDIGO, ORDER_A
   };
   bonus = calc_random_bonus(cards, 2);
   print_test_result("Two same order", 7, bonus);
@@ -103,13 +103,13 @@ void test_random_distribution(TestSuite *suite)
 
   // Test 6: Three same order
   cards[0] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[1] = (CombatCard)
-  { SPECIES_ELF, COLOR_INDIGO
+  { SPECIES_ELF, COLOR_INDIGO, ORDER_A
   };
   cards[2] = (CombatCard)
-  { SPECIES_DWARF, COLOR_ORANGE
+  { SPECIES_DWARF, COLOR_ORANGE, ORDER_A
   };
   bonus = calc_random_bonus(cards, 3);
   print_test_result("Three same order", 11, bonus);
@@ -118,13 +118,13 @@ void test_random_distribution(TestSuite *suite)
 
   // Test 7: Two same order + third same color
   cards[0] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[1] = (CombatCard)
-  { SPECIES_ELF, COLOR_INDIGO
+  { SPECIES_ELF, COLOR_INDIGO, ORDER_A
   };
   cards[2] = (CombatCard)
-  { SPECIES_HOBBIT, COLOR_RED
+  { SPECIES_HOBBIT, COLOR_RED, ORDER_B
   };
   bonus = calc_random_bonus(cards, 3);
   print_test_result("Two order + third same color", 9, bonus);
@@ -133,25 +133,26 @@ void test_random_distribution(TestSuite *suite)
 
   // Test 8: Two same color only
   cards[0] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[1] = (CombatCard)
-  { SPECIES_GOBLIN, COLOR_RED
+  { SPECIES_GOBLIN, COLOR_RED, ORDER_C
   };
   bonus = calc_random_bonus(cards, 2);
   print_test_result("Two same color", 5, bonus);
   suite->passed += (bonus == 5);
   suite->failed += (bonus != 5);
 
-  // Test 9: Three same color
+  // Test 9: Three same color (species/orders must all differ, or this
+  // accidentally also matches on order -- see Human+Dwarf both ORDER_A)
   cards[0] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_ORANGE
+  { SPECIES_HUMAN, COLOR_ORANGE, ORDER_A
   };
   cards[1] = (CombatCard)
-  { SPECIES_GOBLIN, COLOR_ORANGE
+  { SPECIES_GOBLIN, COLOR_ORANGE, ORDER_C
   };
   cards[2] = (CombatCard)
-  { SPECIES_DWARF, COLOR_ORANGE
+  { SPECIES_HOBBIT, COLOR_ORANGE, ORDER_B
   };
   bonus = calc_random_bonus(cards, 3);
   print_test_result("Three same color", 8, bonus);
@@ -160,10 +161,10 @@ void test_random_distribution(TestSuite *suite)
 
   // Test 10: No combo
   cards[0] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[1] = (CombatCard)
-  { SPECIES_GOBLIN, COLOR_INDIGO
+  { SPECIES_GOBLIN, COLOR_INDIGO, ORDER_C
   };
   bonus = calc_random_bonus(cards, 2);
   print_test_result("No combo", 0, bonus);
@@ -178,10 +179,10 @@ void test_prebuilt_distribution(TestSuite *suite)
 
   // Test 1: Two same species
   cards[0] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[1] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   bonus = calc_prebuilt_bonus(cards, 2);
   print_test_result("Two same species", 7, bonus);
@@ -190,13 +191,13 @@ void test_prebuilt_distribution(TestSuite *suite)
 
   // Test 2: Three same species
   cards[0] = (CombatCard)
-  { SPECIES_ELF, COLOR_RED
+  { SPECIES_ELF, COLOR_RED, ORDER_A
   };
   cards[1] = (CombatCard)
-  { SPECIES_ELF, COLOR_RED
+  { SPECIES_ELF, COLOR_RED, ORDER_A
   };
   cards[2] = (CombatCard)
-  { SPECIES_ELF, COLOR_RED
+  { SPECIES_ELF, COLOR_RED, ORDER_A
   };
   bonus = calc_prebuilt_bonus(cards, 3);
   print_test_result("Three same species", 12, bonus);
@@ -205,13 +206,13 @@ void test_prebuilt_distribution(TestSuite *suite)
 
   // Test 3: Two same species + third same order
   cards[0] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[1] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[2] = (CombatCard)
-  { SPECIES_ELF, COLOR_RED
+  { SPECIES_ELF, COLOR_RED, ORDER_A
   };
   bonus = calc_prebuilt_bonus(cards, 3);
   print_test_result("Two species + third same order", 9, bonus);
@@ -220,10 +221,10 @@ void test_prebuilt_distribution(TestSuite *suite)
 
   // Test 4: Two same order (no species match)
   cards[0] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[1] = (CombatCard)
-  { SPECIES_ELF, COLOR_RED
+  { SPECIES_ELF, COLOR_RED, ORDER_A
   };
   bonus = calc_prebuilt_bonus(cards, 2);
   print_test_result("Two same order", 4, bonus);
@@ -232,13 +233,13 @@ void test_prebuilt_distribution(TestSuite *suite)
 
   // Test 5: Three same order
   cards[0] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[1] = (CombatCard)
-  { SPECIES_ELF, COLOR_RED
+  { SPECIES_ELF, COLOR_RED, ORDER_A
   };
   cards[2] = (CombatCard)
-  { SPECIES_DWARF, COLOR_RED
+  { SPECIES_DWARF, COLOR_RED, ORDER_A
   };
   bonus = calc_prebuilt_bonus(cards, 3);
   print_test_result("Three same order", 6, bonus);
@@ -247,10 +248,10 @@ void test_prebuilt_distribution(TestSuite *suite)
 
   // Test 6: No combo
   cards[0] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[1] = (CombatCard)
-  { SPECIES_GOBLIN, COLOR_RED
+  { SPECIES_GOBLIN, COLOR_RED, ORDER_C
   };
   bonus = calc_prebuilt_bonus(cards, 2);
   print_test_result("No combo", 0, bonus);
@@ -265,10 +266,10 @@ void test_main_function(TestSuite *suite)
 
   // Test with RANDOM deck type
   cards[0] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[1] = (CombatCard)
-  { SPECIES_HUMAN, COLOR_RED
+  { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   bonus = calculate_combo_bonus(cards, 2, DECK_RANDOM);
   print_test_result("DECK_RANDOM routing", 10, bonus);
@@ -294,50 +295,6 @@ void test_main_function(TestSuite *suite)
   suite->failed += (bonus != 0);
 }
 
-void test_order_mapping(TestSuite *suite)
-{ printf("\n=== ORDER MAPPING TESTS ===\n");
-
-  // Test ORDER_A (Dawn Light): Human, Elf, Dwarf
-  ChampionOrder order = get_order_from_species(SPECIES_HUMAN);
-  print_test_result("Human -> ORDER_A", ORDER_A, order);
-  suite->passed += (order == ORDER_A);
-  suite->failed += (order != ORDER_A);
-
-  order = get_order_from_species(SPECIES_ELF);
-  print_test_result("Elf -> ORDER_A", ORDER_A, order);
-  suite->passed += (order == ORDER_A);
-  suite->failed += (order != ORDER_A);
-
-  order = get_order_from_species(SPECIES_DWARF);
-  print_test_result("Dwarf -> ORDER_A", ORDER_A, order);
-  suite->passed += (order == ORDER_A);
-  suite->failed += (order != ORDER_A);
-
-  // Test ORDER_B (Verdant Light): Hobbit, Faun, Centaur
-  order = get_order_from_species(SPECIES_HOBBIT);
-  print_test_result("Hobbit -> ORDER_B", ORDER_B, order);
-  suite->passed += (order == ORDER_B);
-  suite->failed += (order != ORDER_B);
-
-  // Test ORDER_C (Ember Light): Orc, Goblin, Minotaur
-  order = get_order_from_species(SPECIES_ORC);
-  print_test_result("Orc -> ORDER_C", ORDER_C, order);
-  suite->passed += (order == ORDER_C);
-  suite->failed += (order != ORDER_C);
-
-  // Test ORDER_D (Eternal Light): Dragon, Cyclops, Fairy
-  order = get_order_from_species(SPECIES_DRAGON);
-  print_test_result("Dragon -> ORDER_D", ORDER_D, order);
-  suite->passed += (order == ORDER_D);
-  suite->failed += (order != ORDER_D);
-
-  // Test ORDER_E (Moonlight): Aven, Koatl, Lycan
-  order = get_order_from_species(SPECIES_AVEN);
-  print_test_result("Aven -> ORDER_E", ORDER_E, order);
-  suite->passed += (order == ORDER_E);
-  suite->failed += (order != ORDER_E);
-}
-
 int main(void)
 { TestSuite suite = {"Combo Bonus Tests", 0, 0};
 
@@ -353,7 +310,6 @@ int main(void)
   printf("║  - ORDER_E (Moonlight)                     ║\n");
   printf("╚════════════════════════════════════════════╝\n");
 
-  test_order_mapping(&suite);
   test_random_distribution(&suite);
   test_prebuilt_distribution(&suite);
   test_main_function(&suite);

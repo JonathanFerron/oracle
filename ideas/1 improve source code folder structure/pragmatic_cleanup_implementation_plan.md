@@ -1,10 +1,8 @@
 # Folder-8 Source Structure Cleanup — Pragmatic Pass Implementation Plan
 
-**Status**: Planned, not yet implemented (2026-07-13; updated 2026-07-14 to keep the
-placeholder `.txt` scaffolding instead of deleting it, and again later 2026-07-14 after
-`ideas/` was renumbered a second time -- this folder is now `ideas/1 improve source code
-folder structure/`, still informally called "folder 8" below as its original id). This
-is the concrete, scoped-down implementation plan -- pick this up in a future session.
+**Status**: DONE (2026-07-14). Steps 1-3 and 5 executed and verified; Step 4 (explicit
+non-scope) still applies going forward. This folder is now `ideas/1 improve source code
+folder structure/`, still informally called "folder 8" below as its original id.
 
 ## Context
 
@@ -94,10 +92,10 @@ sentence describing its purpose and pointing at the relevant `ideas/` folder, so
 scaffolding stays honest instead of being silently empty. No directory removal, no git
 tracking changes beyond the file contents.
 
-### Step 2 — Split `cli_display.c`
+### Step 2 — Split `cli_display.c` (done 2026-07-14)
 
-Keep a **single shared header** `cli_display.h` (avoids touching every caller's include
-list) but split the implementation:
+Kept a **single shared header** `cli_display.h` (avoids touching every caller's include
+list) and split the implementation:
 
 - `cli_display.c` (core status/turn display, ~220 lines — the functions that predate the
   recall/cash/combat/discard feature work): `display_player_prompt`,
@@ -114,19 +112,30 @@ list) but split the implementation:
 Both files `#include "cli_display.h"`. No changes needed to callers (`cli_input.c`,
 `cli_game.c`) since they already just `#include "cli_display.h"`.
 
-### Step 3 — Makefile updates
+### Step 3 — Makefile updates (done 2026-07-14)
 
-- Add `$(SRCDIR)/ui/cli/cli_action_display.c` to `TEST_RECALL_OBJS`/`TEST_RECALL_SRCS`
+- Added `$(SRCDIR)/ui/cli/cli_action_display.c` to `TEST_RECALL_OBJS`/`TEST_RECALL_SRCS`
   (`test_recall.c`'s `cli_input.c` calls `display_recallable_champions`, now in the new
   file; it still also needs plain `cli_display.c` since `process_attack_command` calls
   `display_game_status`/`display_cli_help`).
-- Fix `TEST_COMBO_SRCS`/`TEST_COMBO_OBJS` to use `$(SRCDIR)/core/combo_bonus.c` and
-  `$(SRCDIR)/core/game_constants.c`.
-- Fix `testsrc/test_combo_bonus.c`'s includes to `"../src/core/combo_bonus.h"` /
-  `"../src/core/game_constants.h"`, and remove `test_order_mapping()` (and its call in
+- Fixed `TEST_COMBO_SRCS`/`TEST_COMBO_OBJS` to use `$(SRCDIR)/core/combo_bonus.c` and
+  `$(SRCDIR)/core/game_constants.c`; also added an auto-run step (`./$(TEST_COMBO_TARGET)`)
+  to the `test_combo` target so it behaves like `test_recall`/`test_cash_exchange`.
+- Fixed `testsrc/test_combo_bonus.c`'s includes to `"../src/core/combo_bonus.h"` /
+  `"../src/core/game_constants.h"`, and removed `test_order_mapping()` (and its call in
   `main()`) since `get_order_from_species()` no longer exists.
-- Consider also fixing `test_stda_auto`'s `./bin/oracle.exe` → platform-appropriate binary
-  name while touching this area (small, optional, already flagged in CLAUDE.md).
+- **Extra fix discovered during execution, beyond original scope**: fixing the includes
+  alone left `make test_combo` building but failing 6/20 tests. Root cause: `CombatCard`
+  (`combo_bonus.h`) gained a third field, `.order`, since this test was written; the
+  test's positional initializers (`{ SPECIES_HUMAN, COLOR_RED }`) only filled the first
+  two members, silently leaving `.order` zero for every card and causing spurious
+  same-order-bonus matches. Fixed by adding the correct `.order` value to every
+  `CombatCard` literal (species→order mapping verified against `game_constants.c`'s
+  `fullDeck[]`: Human/Elf/Dwarf→`ORDER_A`, Hobbit→`ORDER_B`, Orc/Goblin→`ORDER_C`), plus
+  one test case ("Three same color") that needed different species chosen (it originally
+  used Human+Dwarf, both `ORDER_A`, contaminating the color-only test) — now 20/20 pass.
+- Not fixed (deferred, unrelated to this pass): `test_stda_auto`'s `./bin/oracle.exe` →
+  platform-appropriate binary name.
 
 ### Step 4 — Explicitly NOT doing (documented so it isn't re-litigated later)
 
@@ -142,34 +151,31 @@ Both files `#include "cli_display.h"`. No changes needed to callers (`cli_input.
 - No touching `core/game_engine.c` / action-system / callback-system — that's
   `ideas/2 game engine refactoring for GUI and network support/`.
 
-### Step 5 — Update docs
+### Step 5 — Update docs (done 2026-07-14)
 
-- `CLAUDE.md`: update the `ui/cli/` module-layout bullet to mention the
-  `cli_action_display.c` split; fix the stale "`stda_cli.c` currently exceeds the soft
-  file limit" line to instead describe `cli_display.c`'s split (past tense, resolved);
-  update the "Interactive-only features" bullets' file references
-  (`display_combat_details_cli`, `display_player_discard*`, `display_recallable_champions`,
-  `display_exchangeable_champions` now live in `cli_action_display.c`).
-- `doc/oracle_todo.md` / `doc/oracle_roadmap.md`: mark this folder-8 pass done once
-  executed.
+- `CLAUDE.md`: updated the `ui/cli/` module-layout bullet to mention the
+  `cli_action_display.c` split; replaced the stale "`stda_cli.c` currently exceeds the
+  soft file limit" line with the resolved `cli_display.c` split (past tense); updated the
+  "Interactive-only features" bullets' file references (`display_combat_details_cli`,
+  `display_player_discard*` now live in `cli_action_display.c`); updated the Tests
+  section to reflect `test_combo` now passing 20/20, with the `.order`-field root cause
+  noted.
+- `doc/oracle_todo.md` / `doc/oracle_roadmap.md`: to be marked done in a follow-up edit.
 - `doc/oracle_design.md`'s stale "File Size Violations" section (still references the old
-  `stda_cli.c` monolith) is a known, separate, larger doc-sync task — explicitly out of
+  `stda_cli.c` monolith) remains a known, separate, larger doc-sync task — still out of
   scope for this pass.
 
-## Verification (for whoever executes this)
+## Verification (executed 2026-07-14 — all passed)
 
-1. `make clean && make` — confirm clean build, no new `-Wall` warnings.
-2. `./bin/oracle -a -p | diff -w -B - bin/expectedresults.txt` — must stay identical
-   (pure file-move/split, zero behavior change expected).
-3. `make test_recall` and `make test_cash_exchange` — both should still pass (10/10, 6/6)
-   after the Makefile source-list update in Step 3.
-4. `make test_combo` — should now build and pass after Step 3's fixes.
-5. Re-run the `testsrc/cli_scripts/*.txt` interactive scripts — same transcripts as
-   before (grep for the same markers used previously: "Exchanged DWARF", "Recalled 1
-   champion", "Combat Resolution", discard counts).
-6. `valgrind --leak-check=full` on the auto path and at least one interactive script —
-   should remain 0 errors/0 leaks (no behavior change expected, but cheap to re-confirm
-   given file moves touch the build graph).
-7. `git status` — confirm nothing unexpected changed; the 10 placeholder `.txt` files
-   from Step 1 stay in the tree (with their explanatory sentences) rather than
-   disappearing.
+1. `make clean && make` — clean build, no new `-Wall` warnings. ✅
+2. `./bin/oracle -a -p | diff -w -B - bin/expectedresults.txt` — identical. ✅
+3. `make test_recall` (10/10) and `make test_cash_exchange` (6/6). ✅
+4. `make test_combo` — 20/20 (see Step 3's extra `.order`-field fix). ✅
+5. Re-ran `testsrc/cli_scripts/*.txt` — same markers present ("Combat Resolution",
+   "Recalled 1 champion", discard counts, "DWARF" in the cash-exchange transcript). ✅
+6. `valgrind --leak-check=full --show-leak-kinds=all` on `-a -p -n 3` and on
+   `hva_combat_display.txt` — 0 errors, 0 leaks, all heap blocks freed, on both. ✅
+7. `wc -l` — `cli_display.c` 233 lines, `cli_action_display.c` 357 lines, both under the
+   500-line soft limit. ✅
+8. `astyle --project --suffix=none` on the touched files — no changes needed (already
+   matched project style). ✅

@@ -10,14 +10,21 @@
 #define MAX_PLAYER_NAME_LEN 32
 #define MAX_STRATEGY_NAME_LEN 32
 
-// Available AI strategies
+// Available AI strategies. Order matches the ideas/A1-A11 planned agent
+// roster (ideas/A2 parameter storing/optimization is calibration tooling,
+// not itself an agent, so it has no entry here).
 typedef enum
 { AI_STRATEGY_RANDOM = 0,
-  AI_STRATEGY_BALANCED,
-  AI_STRATEGY_HEURISTIC,
-  AI_STRATEGY_HYBRID,
-  AI_STRATEGY_SIMPLE_MC,
-  AI_STRATEGY_ISMCTS,
+  AI_STRATEGY_VALUE_BASED,   // ideas/A1 ai agent value based
+  AI_STRATEGY_GREEDY_POWER,  // ideas/A3 ai agent greedy power
+  AI_STRATEGY_COMBO_AWARE,   // ideas/A4 ai agent combo aware -- Borealis benchmark agent
+  AI_STRATEGY_BALANCED,      // ideas/A5 ai agent balanced
+  AI_STRATEGY_HEURISTIC,     // ideas/A6 ai agent heuristics
+  AI_STRATEGY_HYBRID_HBT,    // ideas/A7 ai agent tactical and hbt (Heuristics+Balanced+Tactical)
+  AI_STRATEGY_HBT_2PLY,      // ideas/A8 ai agent hbt 2 ply
+  AI_STRATEGY_SIMPLE_MC,     // ideas/A9 ai agent simple MC
+  AI_STRATEGY_ISMCTS,        // ideas/A10 ai agent is mcts
+  AI_STRATEGY_ISMCTS_NN,     // ideas/A11 ai agent is mcts with neural network
   AI_STRATEGY_COUNT
 } AIStrategyType;
 

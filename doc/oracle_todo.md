@@ -1,26 +1,6 @@
 # Oracle Development TODO
 
-**Quick Status**: Turn-logic interactive-mode commands (recall, combat results details, discard pile inspection, cash card functionality) are complete. Deciding next feature area (see "Next Up" below).
-
----
-
-## Current Focus -- DONE (2026-07-13)
-
-**Complete Turn Logic Module** - Get full game loop working end-to-end in interactive mode with all the rules
-
-Tasks:
-
-- [x] Display Discard Pile in CLI Mode -- `gmst` (summary) and `shod` (detailed, power-sorted) commands; see `ideas/done/4 ...`.
-
-- [x] Get Recall Card functionality to work in stda.cli mode -- recall is **exact and mandatory** (a "recall 1 / draw 2" card recalls exactly 1 champion, "recall 2 / draw 3" recalls exactly 2; recall is only offered when discard holds enough champions). The Random AI engine still only ever draws (never recalls), which is fine given it's not meant to be strong. See `ideas/done/2 ...`, `doc/game_rules_doc.md` (recall section corrected to match), and `testsrc/test_recall.c`.
-
-- [x] Enhance display of combat results in stda.cli mode -- per-champion rolls/base/combo/damage breakdown, shown whenever a human is involved; `stda.auto` unaffected. See `ideas/done/3 ...`.
-
-- [x] When playing cash card in interactive mode, ask user to select the champion card to exchange instead of the AI power-heuristic auto-pick -- interactive path (`play_cash_card_interactive`) lets the human pick freely. Along the way, fixed a real bug in the AI heuristic (`select_champion_for_cash_exchange` conflated "not found" with card index 0, a valid champion, using it as a sentinel -- now uses `UINT8_MAX`). See `ideas/done/5 ...` and `testsrc/test_cash_exchange.c`.
-
-**Note**: fixing the index-0 sentinel bug changed `stda_auto`'s RNG-dependent play sequence (different AI hand state whenever that bug used to fire), so `bin/expectedresults.txt` was regenerated (2026-07-13) to reflect the corrected behavior -- this was a deliberate re-baseline, not a regression.
-
-All four verified via `make test_recall` / `make test_cash_exchange`, the `testsrc/cli_scripts/` manual scripts, a full valgrind pass (auto + interactive), and the `./bin/oracle -a -p` regression check against the regenerated `bin/expectedresults.txt`.
+**Quick Status**: Turn-logic interactive-mode commands (recall, combat results details, discard pile inspection, cash card functionality) and the source folder structure cleanup (pragmatic pass) are complete -- see `doc/changelog.md`. Deciding next feature area (see "Next Up" below).
 
 ---
 
@@ -33,16 +13,21 @@ existing relative order) so adding new AI ideas doesn't require renumbering ever
 else. See `git log` / folder contents if an old number (e.g. `ideas/8/`, `ideas/14.3/`)
 shows up in an older doc or commit message.
 
-1. **Improve source code folder structure** (`ideas/1 improve source code folder structure/`) -- revisit before adding more UI surface area, so new modes don't compound existing structural debt. See `ideas/1 improve source code folder structure/pragmatic_cleanup_implementation_plan.md` for the scoped-down plan (splitting `cli_display.c`, fixing `make test_combo`, doc sync). That plan deliberately does **not** create the following directories yet -- they get created only when their first real file lands, in the folder noted:
-   - `deck_formats/` -- when a draft/deck-format feature is implemented (`ideas/10 Draft Format and Game Depth Addition Ideas/`)
-   - `game_rules/` -- when the game-engine refactor (below) needs a home for rules data separate from `core/`
-   - `interactive/` -- when TUI/GUI interactive-mode code needs a shared home distinct from `ui/cli/`
-   - `network/` -- client/server (`ideas/8 client server/`)
-   - `persistence/` -- save/load game state (`ideas/6 save and load gamestate/`)
-   - `config/` -- configuration file system (`ideas/7 config file/`)
-   - `platform/` -- if/when platform-specific code (beyond the current `#ifdef _WIN32` blocks) grows enough to warrant its own directory
-2. **TUI mode** (`ideas/3 tui/`) -- may need to pull in part of **game engine refactoring for GUI/network support** (`ideas/2 game engine refactoring for GUI and network support/`) first, specifically the clean state-machine / UI-callback groundwork, so the TUI isn't built directly on top of the CLI-specific display/input functions.
-3. **First "non-dumb" AI strategy** (`ideas/A1 ai agent value based/`) -- once the above structural work is settled. **Once any new AI strategy beyond Random is implemented**, update `display_ai_strategy_menu()`/`get_ai_strategy_choice()` in `src/ui/shared/player_config.c` (currently only lists Random/Balanced/Heuristic/Hybrid/Simple MC/IS-MCTS) and the `AIStrategyType` enum to match the fuller planned roster, now tracked as `ideas/A1`-`A11`: `A1` value-based, `A2` parameter storing/optimization, `A3` greedy power, `A4` combo-aware (Borealis benchmark), `A5` balanced, `A6` heuristics, `A7` tactical + HBT, `A8` HBT 2-ply, `A9` simple MC, `A10` IS-MCTS, `A11` IS-MCTS + neural network -- the CLI menu is missing several of these and should stay in sync as each is built.
+Note: source code folder structure cleanup is now DONE -- see `doc/changelog.md`. Future
+directories not created yet, to be added only when their first real file lands, in the
+folder noted:
+- `deck_formats/` -- when a draft/deck-format feature is implemented (`ideas/10 Draft Format and Game Depth Addition Ideas/`)
+- `game_rules/` -- when the game-engine refactor (below) needs a home for rules data separate from `core/`
+- `interactive/` -- when TUI/GUI interactive-mode code needs a shared home distinct from `ui/cli/`
+- `network/` -- client/server (`ideas/8 client server/`)
+- `persistence/` -- save/load game state (`ideas/6 save and load gamestate/`)
+- `config/` -- configuration file system (`ideas/7 config file/`)
+- `platform/` -- if/when platform-specific code (beyond the current `#ifdef _WIN32` blocks) grows enough to warrant its own directory
+
+1. **TUI mode** (`ideas/3 tui/`) -- may need to pull in part of **game engine refactoring for GUI/network support** (`ideas/2 game engine refactoring for GUI and network support/`) first, specifically the clean state-machine / UI-callback groundwork, so the TUI isn't built directly on top of the CLI-specific display/input functions.
+2. **First "non-dumb" AI strategy** (`ideas/A1 ai agent value based/`) -- implement agents in `A1 -> A2 -> A3 -> A4` order first: the rating system (`ideas/5/`) needs the Borealis benchmark agent (`ideas/A4 ai agent combo aware`), which itself needs A1-A3 to exist for comparison, so this order isn't just "easiest first" -- it's a real dependency.
+
+   **CLI menu is now stub-synced (2026-07-14)**: `display_ai_strategy_menu()`/`get_ai_strategy_choice()`/`get_strategy_display_name()` in `src/ui/shared/player_config.c` and the `AIStrategyType` enum now list all 11 planned agents (`A1`-`A11`, skipping `A2` since parameter storing/optimization is calibration tooling, not an agent) as "not yet implemented" stub menu entries, in `ideas/A#` order, each with a comment cross-referencing its `ideas/A#` folder. `A4`'s menu entry is explicitly labeled "Combo Aware [Borealis benchmark]" so it's identifiable in the CLI. The former "Hybrid" entry is confirmed to be `A7` (tactical+HBT: **H**euristics+**B**alanced+**T**actical) and is now labeled "Hybrid (HBT)". **Remaining work per agent**: as each strategy is actually implemented (attack/defense functions in `src/ai_strat/`), wire its menu choice through to the real strategy functions instead of falling back to Random.
 
 **Back burner (explicitly deferred for now)**:
 
@@ -112,10 +97,8 @@ GameError DeckStk_pop_safe(struct deck_stack* deck, uint8_t* out);
 
 #### Card Actions
 
-- [x] **Recall mechanic** (draw/recall cards) -- interactive CLI only (see "Current Focus" above); `validate_and_recall_champions()` + `handle_recall_choice()` in `cli_input.c`
-  - [x] recall function (`validate_and_recall_champions()`)
-  - [x] UI for choosing which champion(s) to recall (`display_recallable_champions()`, exact-count prompt)
-  - [x] Validation (champions must be in discard; exact count enforced; recall not offered below the required count)
+Recall mechanic (draw/recall cards, interactive CLI only) is complete -- see `doc/changelog.md`.
+
 - [ ] Better error handling
 
 ---
@@ -175,7 +158,8 @@ GameError DeckStk_pop_safe(struct deck_stack* deck, uint8_t* out);
 
 #### CLI Mode (stda_cli.c) ⚠️
 
-- [x] Show combat results clearly -- `display_combat_details_cli()` in `ui/cli/cli_display.c`
+Combat results display is complete -- see `doc/changelog.md`.
+
 - [ ] Save/load game state
 
 #### TUI Mode (stda_tui.c) 📋

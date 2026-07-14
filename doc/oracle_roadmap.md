@@ -8,14 +8,17 @@
 
 ## Current Status
 
-**Active Work**: Deciding next feature area (see "Next Up" below); Turn Logic & Game Loop's interactive-mode command set is now complete.
+**Active Work**: Deciding next feature area (see "Next Up" below); Turn Logic & Game Loop's interactive-mode command set and the source folder structure cleanup are both now complete.
 
-### Recently Completed (2026-07-13)
+### Recently Completed (2026-07-14)
 
 - ✅ Recall mechanic (interactive CLI, exact/mandatory count)
 - ✅ Interactive cash-card champion selection
 - ✅ Detailed combat results display (interactive CLI)
 - ✅ Discard pile display (`gmst` summary, `shod` detail)
+- ✅ Source folder structure cleanup, pragmatic pass: split `cli_display.c` into two
+  files under the 500-line limit, fixed `make test_combo` (now 20/20), doc sync -- see
+  `ideas/1 improve source code folder structure/pragmatic_cleanup_implementation_plan.md`
 
 ### What Needs Work
 
@@ -25,9 +28,8 @@
 
 ### Next Up (preferred order)
 
-1. Improve source code folder structure (`ideas/1 improve source code folder structure/`) -- see `doc/oracle_todo.md` for the planned future directories (`deck_formats/`, `game_rules/`, `interactive/`, `network/`, `persistence/`, `config/`, `platform/`) this deliberately does not create yet.
-2. TUI mode (`ideas/3 tui/`) -- may need part of the game-engine refactoring for GUI/network support (`ideas/2 game engine refactoring for GUI and network support/`, clean state-machine/UI-callback groundwork) first
-3. First "non-dumb" AI strategy (`ideas/A1 ai agent value based/`) -- once implemented (or any other strategy beyond Random), update the CLI's `display_ai_strategy_menu()` (`src/ui/shared/player_config.c`) to reflect the fuller planned AI roster, now tracked as `ideas/A1`-`A11` (see `doc/oracle_todo.md`)
+1. TUI mode (`ideas/3 tui/`) -- may need part of the game-engine refactoring for GUI/network support (`ideas/2 game engine refactoring for GUI and network support/`, clean state-machine/UI-callback groundwork) first
+2. First "non-dumb" AI strategy (`ideas/A1 ai agent value based/`), then `A2 -> A3 -> A4` in order -- the rating system (`ideas/5/`) needs the Borealis benchmark agent (`A4`), which needs `A1`-`A3` implemented first for comparison. The CLI's `display_ai_strategy_menu()` (`src/ui/shared/player_config.c`) already lists all 11 planned agents as stubs (2026-07-14); remaining work per agent is wiring its menu choice to real strategy functions once implemented (see `doc/oracle_todo.md`).
 
 Back burner (explicitly deferred): save/load game state (`ideas/6 save and load gamestate/`), configuration file system (`ideas/7 config file/`).
 
