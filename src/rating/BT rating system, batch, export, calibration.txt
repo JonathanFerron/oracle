@@ -1,0 +1,1 @@
+Placeholder for the Bradley-Terry rating system: batch match ingestion, rating export, and AI-strategy calibration. Design notes: `ideas/15 rating system/` (see v2 Bradley-Terry doc) and `ideas/12.1 ai agent parameters storing and optimization/`.

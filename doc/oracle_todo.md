@@ -26,14 +26,28 @@ All four verified via `make test_recall` / `make test_cash_exchange`, the `tests
 
 ## Next Up (preferred order)
 
-1. **Improve source code folder structure** (`ideas/8/`) -- revisit before adding more UI surface area, so new modes don't compound existing structural debt.
-2. **TUI mode** (`ideas/13/`) -- may need to pull in part of **game engine refactoring for GUI/network support** (`ideas/9/`) first, specifically the clean state-machine / UI-callback groundwork, so the TUI isn't built directly on top of the CLI-specific display/input functions.
-3. **First "non-dumb" AI strategy** (`ideas/14.3/`, tactical + HBT) -- once the above structural work is settled.
+**Note on `ideas/` numbering (2026-07-14)**: folders were renumbered twice this session.
+Non-AI planning folders now use plain integers 1-10 reflecting rough priority order; AI
+agent folders were pulled into their own `A1`-`A11` namespace (kept together, in their
+existing relative order) so adding new AI ideas doesn't require renumbering everything
+else. See `git log` / folder contents if an old number (e.g. `ideas/8/`, `ideas/14.3/`)
+shows up in an older doc or commit message.
+
+1. **Improve source code folder structure** (`ideas/1 improve source code folder structure/`) -- revisit before adding more UI surface area, so new modes don't compound existing structural debt. See `ideas/1 improve source code folder structure/pragmatic_cleanup_implementation_plan.md` for the scoped-down plan (splitting `cli_display.c`, fixing `make test_combo`, doc sync). That plan deliberately does **not** create the following directories yet -- they get created only when their first real file lands, in the folder noted:
+   - `deck_formats/` -- when a draft/deck-format feature is implemented (`ideas/10 Draft Format and Game Depth Addition Ideas/`)
+   - `game_rules/` -- when the game-engine refactor (below) needs a home for rules data separate from `core/`
+   - `interactive/` -- when TUI/GUI interactive-mode code needs a shared home distinct from `ui/cli/`
+   - `network/` -- client/server (`ideas/8 client server/`)
+   - `persistence/` -- save/load game state (`ideas/6 save and load gamestate/`)
+   - `config/` -- configuration file system (`ideas/7 config file/`)
+   - `platform/` -- if/when platform-specific code (beyond the current `#ifdef _WIN32` blocks) grows enough to warrant its own directory
+2. **TUI mode** (`ideas/3 tui/`) -- may need to pull in part of **game engine refactoring for GUI/network support** (`ideas/2 game engine refactoring for GUI and network support/`) first, specifically the clean state-machine / UI-callback groundwork, so the TUI isn't built directly on top of the CLI-specific display/input functions.
+3. **First "non-dumb" AI strategy** (`ideas/A1 ai agent value based/`) -- once the above structural work is settled. **Once any new AI strategy beyond Random is implemented**, update `display_ai_strategy_menu()`/`get_ai_strategy_choice()` in `src/ui/shared/player_config.c` (currently only lists Random/Balanced/Heuristic/Hybrid/Simple MC/IS-MCTS) and the `AIStrategyType` enum to match the fuller planned roster, now tracked as `ideas/A1`-`A11`: `A1` value-based, `A2` parameter storing/optimization, `A3` greedy power, `A4` combo-aware (Borealis benchmark), `A5` balanced, `A6` heuristics, `A7` tactical + HBT, `A8` HBT 2-ply, `A9` simple MC, `A10` IS-MCTS, `A11` IS-MCTS + neural network -- the CLI menu is missing several of these and should stay in sync as each is built.
 
 **Back burner (explicitly deferred for now)**:
 
-- Save/load game state (`ideas/6/`)
-- Configuration file system (`ideas/7/`)
+- Save/load game state (`ideas/6 save and load gamestate/`)
+- Configuration file system (`ideas/7 config file/`)
 
 ---
 
@@ -57,7 +71,7 @@ All four verified via `make test_recall` / `make test_cash_exchange`, the `tests
 
 ### Prepare for Client-Server Split
 
-Current code is monolithic. Start preparing for separation. See notes in 'ideas/game engine refactoring for GUI and network support'
+Current code is monolithic. Start preparing for separation. See notes in `ideas/2 game engine refactoring for GUI and network support/`
 
 ---
 
@@ -166,7 +180,7 @@ GameError DeckStk_pop_safe(struct deck_stack* deck, uint8_t* out);
 
 #### TUI Mode (stda_tui.c) 📋
 
-See `ideas/tui/` for full implementation plan
+See `ideas/3 tui/` for full implementation plan
 
 - [ ] ncurses initialization
 - [ ] Window layout:

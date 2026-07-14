@@ -1,0 +1,1 @@
+Placeholder for the TUI display/input/callback module (stda_tui.c and friends). Design notes: `ideas/1 tui/`. Sequenced after folder 8 (source structure cleanup), and likely needs part of folder 9's UI-callback groundwork so it isn't built directly on CLI-specific display/input code.

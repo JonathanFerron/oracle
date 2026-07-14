@@ -25,11 +25,11 @@
 
 ### Next Up (preferred order)
 
-1. Improve source code folder structure (`ideas/8/`)
-2. TUI mode (`ideas/13/`) -- may need part of the game-engine refactoring for GUI/network support (`ideas/9/`, clean state-machine/UI-callback groundwork) first
-3. First "non-dumb" AI strategy (`ideas/14.3/`, tactical + HBT)
+1. Improve source code folder structure (`ideas/1 improve source code folder structure/`) -- see `doc/oracle_todo.md` for the planned future directories (`deck_formats/`, `game_rules/`, `interactive/`, `network/`, `persistence/`, `config/`, `platform/`) this deliberately does not create yet.
+2. TUI mode (`ideas/3 tui/`) -- may need part of the game-engine refactoring for GUI/network support (`ideas/2 game engine refactoring for GUI and network support/`, clean state-machine/UI-callback groundwork) first
+3. First "non-dumb" AI strategy (`ideas/A1 ai agent value based/`) -- once implemented (or any other strategy beyond Random), update the CLI's `display_ai_strategy_menu()` (`src/ui/shared/player_config.c`) to reflect the fuller planned AI roster, now tracked as `ideas/A1`-`A11` (see `doc/oracle_todo.md`)
 
-Back burner (explicitly deferred): save/load game state (`ideas/6/`), configuration file system (`ideas/7/`).
+Back burner (explicitly deferred): save/load game state (`ideas/6 save and load gamestate/`), configuration file system (`ideas/7 config file/`).
 
 ---
 
@@ -113,7 +113,7 @@ See `ideas/done/2 Recall Card functionality in cli mode/` and `testsrc/test_reca
 - [ ] Scrolling message log
 - [ ] Command palette
 - [ ] Keyboard shortcuts
-- [ ] See `ideas/tui/` for detailed plan
+- [ ] See `ideas/3 tui/` for detailed plan
 
 ---
 

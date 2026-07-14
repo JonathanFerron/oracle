@@ -1,0 +1,1 @@
+Placeholder for the action-struct system (list possible actions, validate an action against game state) that replaces ad hoc CLI command parsing once the engine moves to a pollable state machine. Design notes: `ideas/9 game engine refactoring for GUI and network support/`.

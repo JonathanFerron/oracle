@@ -1,0 +1,1 @@
+Turn logic and combat resolution are already implemented (`turn_logic.c`, `combat.c`); this placeholder now tracks only the remaining action-processor / pollable-state-machine rework. Design notes: `ideas/9 game engine refactoring for GUI and network support/`.

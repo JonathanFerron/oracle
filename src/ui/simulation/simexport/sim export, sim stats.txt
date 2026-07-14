@@ -1,0 +1,1 @@
+Placeholder for exporting simulation results/statistics (win rates, histograms) to CSV or similar for external analysis. Design notes: `ideas/11 match results export/`.

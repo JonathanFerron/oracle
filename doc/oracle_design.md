@@ -978,7 +978,7 @@ Test complete workflows:
 
 - **MCTS Resources**: (to be added as studied)
 
-- **Bradley-Terry Model**: See `ideas/rating system/` for full spec and papers
+- **Bradley-Terry Model**: See `ideas/5 rating system/` for full spec and papers
 
 ---
 

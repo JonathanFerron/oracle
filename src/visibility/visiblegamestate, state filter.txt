@@ -1,0 +1,1 @@
+Placeholder for the visible-gamestate / state-filter layer that hides hidden information (opponent's hand/deck) from each client in client-server mode. Design notes: `ideas/18 client server/`.

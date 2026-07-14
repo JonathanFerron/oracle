@@ -1,0 +1,1 @@
+Placeholder for shared UI callback/context plumbing so CLI, TUI, and GUI modes can share one event-driven interface instead of each polling game state directly. Design notes: `ideas/9 game engine refactoring for GUI and network support/`.

@@ -1,0 +1,1 @@
+Placeholder for the long-horizon SDL3 GUI mode. Design notes: `ideas/16 gui/oracle_sdl3_gui_plan.md`. Out of scope until explicitly picked up (see CLAUDE.md "Out of scope / don't-do-yet").

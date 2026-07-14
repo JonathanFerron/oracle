@@ -1,0 +1,1 @@
+Superseded by real code: CLI display/input/game-loop wiring now lives in `cli_display.c`, `cli_input.c`, and `cli_game.c` in this directory. Kept as a placeholder marker for the original module grouping; safe to remove once nothing else references it.
