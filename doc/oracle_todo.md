@@ -260,6 +260,16 @@ human-branch), `src/ui/tui/tui_render.c/h` (rendering, done), `src/ui/cli/cli_ga
 + `cli_input.c` (the interactive logic to port/share), `src/core/card_actions.c`
 (engine-level recall/cash/discard functions both UIs call into either way).
 
+Two refinements to the above paragraphs:
+
+**Refinement 1 — Seam granularity: plan for multi-step dialogues, not just prompt/read pairs.**
+The handout describes the seam as "show this prompt / read this input," which fits single prompt-then-read interactions (attack, defense, pass). But recall and cash-exchange are multi-step sub-dialogues with their own validation loops — recall is "offer Draw N vs. Recall exactly M champions from discard, then have the user pick which M, re-prompting on invalid input," and cash-exchange is "pick which champion to exchange." A pure line-read seam forces that loop/validation logic to either branch on CLI-vs-TUI or be reimplemented in the TUI. So design a **two-level seam**: low-level primitives (`show_prompt`, `read_line`, `read_key`) plus a few **composite helpers** for the multi-step flows (e.g. `ui_choose_from_discard(...)`, `ui_confirm_count(...)`) that own the validation loop once and call the primitives internally. That way neither UI duplicates the recall/cash loops.
+
+**Refinement 2 — Keep validation in `ui/shared/`, callback struct is I/O-only.**
+Both the handout and this chat agree the CLI's rules/validation (`parse_card_indices_with_validation`, affordability checks, exact-count enforcement) should be shared. The handout leaves open *how* — new `tui_input.c` calling shared logic, vs. refactoring `cli_input.c` to take a callback struct. Take the first fork: pull the **pure validation** (no `printf`, no `fgets`) into `ui/shared/`, callable by both `cli_input.c` and `tui_input.c`, and let the callback struct carry **only I/O** (prompt/read primitives + the composite helpers from Refinement 1). This keeps the interface small and the validation UI-agnostic, avoiding the messier "thread a callback struct through cli_input.c" option.
+
+Both belong in step (1) of the suggested sequencing — the design note that settles the callback-seam question — and should be decided before any card-selection code is written, since together they determine the seam's shape and where new files land.
+
 #### Simulation UI (stda_sim.c) 📋
 
 - [ ] ncurses-based results display
