@@ -4,7 +4,7 @@
 #include "../../core/game_types.h"
 #include "../../core/game_context.h"
 #include "../../ai_strat/ai_strategy.h"
-#include "cli_constants.h"
+#include "../shared/ui_constants.h"
 
 /* Game phase handlers */
 int handle_interactive_attack(struct gamestate* gstate,

@@ -9,8 +9,9 @@
 #include "../src/core/game_constants.h"
 #include "../src/core/card_actions.h"
 #include "../src/core/game_context.h"
-#include "../src/ui/cli/cli_input.h"
-#include "../src/ui/cli/cli_constants.h"
+#include "../src/ui/interactive/game_commands.h"
+#include "../src/ui/cli/cli_io.h"
+#include "../src/ui/shared/ui_constants.h"
 #include <stdio.h>
 
 #define TEST_PASS "\033[32m✓ PASS\033[0m"
@@ -91,9 +92,10 @@ void test_recall_one_champion(TestSuite* suite, GameContext* ctx, config_t* cfg)
   Hand_add(&gs.hand[PLAYER_A], recall1_card);
   Discard_add(&gs.discard[PLAYER_A], champ0);
 
+  UiIO io = cli_io_create(cfg);
   uint8_t indices[2] = {0};
   int result = validate_and_recall_champions(&gs, PLAYER_A, recall1_card,
-                                             indices, 1, ctx, cfg);
+                                             indices, 1, ctx, cfg, &io);
   print_test_result("Returns ACTION_TAKEN", ACTION_TAKEN, result);
   suite->passed += (result == ACTION_TAKEN);
   suite->failed += (result != ACTION_TAKEN);
@@ -134,9 +136,10 @@ void test_recall_two_champions(TestSuite* suite, GameContext* ctx, config_t* cfg
   Discard_add(&gs.discard[PLAYER_B], champ0);
   Discard_add(&gs.discard[PLAYER_B], champ1);
 
+  UiIO io = cli_io_create(cfg);
   uint8_t indices[2] = {0, 1};
   int result = validate_and_recall_champions(&gs, PLAYER_B, recall2_card,
-                                             indices, 2, ctx, cfg);
+                                             indices, 2, ctx, cfg, &io);
   print_test_result("Returns ACTION_TAKEN", ACTION_TAKEN, result);
   suite->passed += (result == ACTION_TAKEN);
   suite->failed += (result != ACTION_TAKEN);

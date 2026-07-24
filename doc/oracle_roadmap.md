@@ -8,7 +8,15 @@
 
 ## Current Status
 
-**Active Work**: TUI mode Milestone 2 (human interaction, see "Next Up" below); Turn Logic & Game Loop's interactive-mode command set, the source folder structure cleanup, and TUI Milestone 1 are all now complete.
+**Active Work**: First "non-dumb" AI strategy (see "Next Up" below); Turn Logic & Game Loop's interactive-mode command set, the source folder structure cleanup, and TUI Milestones 1 and 2 are all now complete.
+
+### Recently Completed (2026-07-23)
+
+- ✅ TUI mode Milestone 2 (human interaction): pre-ncurses player configuration,
+  `TAB`-toggled PLAY (digit-staging) / COMMAND modes, card play, defense, recall,
+  cash exchange, mulligan, discard-to-7, live combat-result display -- see
+  `doc/changelog.md`'s two 2026-07-23 entries (the shared `UiIO` seam, then the
+  playable TUI itself).
 
 ### Recently Completed (2026-07-14)
 
@@ -30,8 +38,7 @@
 
 ### Next Up (preferred order)
 
-1. TUI mode Milestone 2 (human interaction: `TAB`-toggled play/command modes, card play, recall, cash exchange, mulligan, discard-to-7) -- Milestone 1 (display skeleton) is done without needing the game-engine refactoring for GUI/network support (`ideas/2 game engine refactoring for GUI and network support/`); Milestone 2 may need a minimal display/input callback seam from it, not the full rewrite -- see `doc/oracle_todo.md`
-2. First "non-dumb" AI strategy (`ideas/A1 ai agent value based/`), then `A2 -> A3 -> A4` in order -- the rating system (`ideas/5/`) needs the Borealis benchmark agent (`A4`), which needs `A1`-`A3` implemented first for comparison. The CLI's `display_ai_strategy_menu()` (`src/ui/shared/player_config.c`) already lists all 11 planned agents as stubs (2026-07-14); remaining work per agent is wiring its menu choice to real strategy functions once implemented (see `doc/oracle_todo.md`).
+1. First "non-dumb" AI strategy (`ideas/A1 ai agent value based/`), then `A2 -> A3 -> A4` in order -- the rating system (`ideas/5/`) needs the Borealis benchmark agent (`A4`), which needs `A1`-`A3` implemented first for comparison. The CLI's `display_ai_strategy_menu()` (`src/ui/shared/player_config.c`) already lists all 11 planned agents as stubs (2026-07-14); remaining work per agent is wiring its menu choice to real strategy functions once implemented (see `doc/oracle_todo.md`).
 
 Back burner (explicitly deferred): save/load game state (`ideas/6 save and load gamestate/`), configuration file system (`ideas/7 config file/`).
 
@@ -110,14 +117,15 @@ See `ideas/done/2 Recall Card functionality in cli mode/` and `testsrc/test_reca
 
 - [ ] Save/load game state
 
-#### Text UI Mode (stda.tui) -- Milestone 1 done, Milestone 2 in progress
+#### Text UI Mode (stda.tui) -- Milestones 1 and 2 done
 
 - [x] ncurses-based full-screen UI
 - [x] Real-time game board display
 - [x] Scrolling message log
-- [ ] Command palette (M2 -- TAB-toggled command mode)
-- [ ] Keyboard shortcuts (M2 -- play-mode card selection)
-- [ ] See `doc/oracle_todo.md` for the Milestone 2 breakdown; `ideas/3 tui/` for original intent
+- [x] Command palette (M2 -- TAB-toggled command mode)
+- [x] Keyboard shortcuts (M2 -- play-mode digit-staging card selection)
+- [x] See `doc/oracle_todo.md` / `doc/changelog.md` (2026-07-23) for the Milestone 2
+      breakdown; `ideas/3 tui/` for original intent (superseded)
 
 ---
 

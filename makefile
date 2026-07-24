@@ -37,8 +37,11 @@ TEST_RECALL_SRCS := $(TESTSRCDIR)/test_recall.c \
                     $(SRCDIR)/core/game_constants.c \
                     $(SRCDIR)/core/game_context.c \
                     $(SRCDIR)/ui/cli/cli_input.c \
+                    $(SRCDIR)/ui/cli/cli_io.c \
                     $(SRCDIR)/ui/cli/cli_display.c \
                     $(SRCDIR)/ui/cli/cli_action_display.c \
+                    $(SRCDIR)/ui/interactive/game_commands.c \
+                    $(SRCDIR)/ui/interactive/game_commands_cards.c \
                     $(SRCDIR)/structures/card_collection.c \
                     $(SRCDIR)/structures/deckstack.c \
                     $(SRCDIR)/util/mtwister.c \

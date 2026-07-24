@@ -5,6 +5,112 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-07-23 — TUI Milestone 2, Passes 2 & 3: playable human-vs-AI TUI
+
+Builds on Pass 1's `UiIO` seam to deliver a fully playable human-vs-AI `stda.tui`:
+attack/defense/recall/cash-exchange/mulligan/discard-to-7, both a `TAB`-toggled
+COMMAND-mode line editor and a PLAY-mode digit-staging flow for champion selection,
+live combat-result display, and context-sensitive shortcuts text.
+
+- **New `src/ui/tui/tui_input.c/h`**: the TUI's `UiIO` backend. `message` maps
+  `UiMsgKind` to color-tagged console lines (new `tui_add_message_colored()` /
+  `TUI_MSG_COLOR_*` in `tui_render.h`); `read_line` is a `getch()`-based line editor
+  drawn into the command window (`tui_draw_command_line()`); `show_card_list` formats
+  recall/cash-exchange candidates via the newly-exported `tui_format_card()`.
+- **`src/roles/stda/stda_tui.c`**: now runs the same pre-ncurses player-configuration
+  menu as `stda_cli.c` (`display_player_selection_menu`/`get_player_names`/
+  `get_ai_strategies`/`get_player_assignment`, all before `tui_screen_create()`),
+  then a human-vs-AI-aware game loop. **New `src/roles/stda/stda_tui_interactive.c/h`**
+  holds the human-turn handlers: `tui_handle_interactive_attack`/`_defense` (PLAY-mode
+  digit-staging -- 1-9 toggles a hand card, Enter plays the staged set via
+  `validate_and_play_champions()`, Esc clears, `P` passes, `TAB` drops into full
+  COMMAND-mode line editing for draw/cash/recall/exit), `tui_handle_interactive_mulligan`/
+  `_discard_to_7` (COMMAND-mode only), and `tui_play_turn_with_humans()` (phase-by-phase
+  orchestrator mirroring `cli_game.c`'s `execute_game_turn()`, mixing human handlers and
+  plain AI strategy calls per phase per player type). AI-vs-AI games still take the
+  original M1 `play_turn()` fast path unchanged.
+- **New `src/ui/tui/tui_render_playarea.c` and `tui_render_io.c`**: `tui_render.c` was
+  split three ways (mirroring the `cli_display.c`/`cli_action_display.c` precedent) to
+  stay under the file-size guideline after this milestone's additions -- board/hand/
+  discard/combat-zone drawing moved to `_playarea.c`; the message log, input predicates,
+  command-line drawing, and combat-details rendering (`tui_show_combat_details()`,
+  TUI's equivalent of `display_combat_details_cli()`) moved to `_io.c`.
+- **Shared mulligan/discard-to-7 grammar**: `game_process_mulligan_command()` /
+  `game_process_discard_command()` added to `ui/interactive/game_commands.c`
+  (mirroring the attack/defense split from Pass 1); `cli_game.c`'s
+  `process_mulligan_command`/`process_discard_command` are now thin wrappers
+  (CLI-only `help` interception, then delegate) -- same pattern as `cli_input.c`.
+- **Bug found and fixed, both in `tui_render.c`**:
+  1. **Blank-screen hang**: with the player-config menu now running its own
+     `printf`/`fgets` prompts before `tui_screen_create()`, the very first
+     `wrefresh()` on any of the independent `newwin()`-created panels became a
+     silent no-op (returned OK, wrote nothing) because `stdscr` itself is never
+     drawn to or refreshed and ncurses' physical/virtual screen sync was never
+     seeded. Fixed with `fflush(stdout)` + one plain `refresh()` right after
+     `initscr()`/color setup, before any panel is ever refreshed. (M1 never hit
+     this because it called `initscr()` immediately, with no prior stdio output.)
+  2. **Attacker/Defender status-bar labels inverted mid-turn**: `tui_role_label()`
+     keyed off `gstate->turn_phase`, which `attack_phase()` (AI path) flips to
+     `DEFENSE` partway through -- fine for M1 (only ever redrew once, after a full
+     `play_turn()`, when `turn_phase` was always stale-`DEFENSE` in a way that
+     happened to cancel out) but wrong once a human is actually watching mid-turn.
+     Fixed by keying the label purely off `current_player` (always this turn's
+     attacker until `end_of_turn()`), which needs no `turn_phase` reference at
+     all. Also made `tui_handle_interactive_attack()` set
+     `turn_phase = DEFENSE`/`player_to_move` itself (mirroring what
+     `attack_phase()` does for AI), so the shortcuts-panel hint text stays
+     correct in a Human-vs-Human game too, not just Human-vs-AI.
+- Verified: `-a -p` regression identical; `test_recall`/`test_cash_exchange`/
+  `test_combo` still 10/10, 6/6, 20/20; a full `tmux`-scripted human-vs-AI game
+  (attack via PLAY-mode staging, AI auto-defense, combat display, AI attack,
+  human defense via PLAY-mode staging, second combat display, COMMAND-mode
+  `draw` command, graceful `q` quit) played correctly end-to-end; `tmux`-scripted
+  valgrind pass on the same flow: 0 errors, 0 definitely/indirectly-lost bytes
+  (same ncurses/terminfo "still reachable" pattern as M1's prior valgrind checks).
+- Not yet done from the M2 handout (left for a future pass): visual highlighting of
+  staged cards directly in the hand display (currently shown as a `[n,m]` list in the
+  command-line row instead); a help overlay; TUI↔SIM mode switching (low priority,
+  `stda.sim` doesn't exist yet either).
+
+## 2026-07-23 — TUI Milestone 2, Pass 1: shared interactive command seam (`UiIO`)
+
+Behavior-preserving refactor, no user-visible change yet -- lays the groundwork so
+Milestone 2's human-vs-AI TUI can reuse the CLI's interactive rules instead of
+duplicating them (see the "TUI Mode" section of `doc/oracle_todo.md`).
+
+- **New `src/ui/shared/ui_io.h`**: a small `UiIO` function-pointer struct
+  (`message`/`read_line`/`show_card_list`) that decouples the interactive command
+  grammar from stdio. Board/state rendering is explicitly NOT part of this seam --
+  each UI keeps rendering its own way (`cli_display.c` vs `tui_render.c`); only the
+  three points where the shared rules used to touch stdio directly (feedback
+  messages, blocking line reads, "show this titled card list") go through it.
+- **New `src/ui/interactive/game_commands.c` + `game_commands_cards.c`**: the
+  UI-agnostic command grammar and rules moved out of `ui/cli/cli_input.c` --
+  attack/defense dispatch (`cham`/`draw`/`cash`/`pass`/`exit`), champion-play
+  validation, and (in the `_cards.c` split, mirroring the `cli_display.c`/
+  `cli_action_display.c` precedent) recall (draw/recall cards, exact-count) and
+  cash exchange. Each function now takes a `UiIO*` instead of calling
+  `printf`/`fgets` directly.
+- **New `src/ui/cli/cli_io.c/h`**: the CLI's `UiIO` backend -- `message` maps to
+  the existing ANSI color scheme, `read_line` to `fgets`, `show_card_list` to
+  `display_card_with_power()` (reusing `select_champion_for_cash_exchange()` for
+  the cash-exchange "suggested" marker instead of re-deriving it).
+  `src/ui/cli/cli_input.c` is now a thin wrapper: it intercepts the CLI-only
+  diagnostic commands (`gmst`/`shod`/`help`, which dump the full board/discard/help
+  text and have no TUI equivalent yet) and delegates everything else to the shared
+  grammar.
+- **Relocated `ui/cli/cli_constants.h` to `src/ui/shared/ui_constants.h`**: it was
+  already reached into from `ui/shared/player_config.c`/`player_selection.c`
+  (a pre-existing sign it was misplaced), and the new shared `game_commands.c`
+  needed it too.
+- Verified: `-a -p` regression identical to `bin/expectedresults.txt`;
+  `test_recall`/`test_cash_exchange`/`test_combo` still 10/10, 6/6, 20/20; all four
+  `testsrc/cli_scripts/` canned scripts (recall, cash exchange, combat, discard)
+  replayed with unchanged output; valgrind clean (0 leaks/errors) on the recall path.
+- Next: Pass 2 wires a TUI `UiIO` backend (`ui/tui/tui_input.c`, `read_line` as a
+  `getch()` line editor in the command window) and a human-turn branch in
+  `stda_tui.c` for a command-mode-only playable human-vs-AI game.
+
 ## 2026-07-14 — TUI layout: shortcuts hint moved, vertical hand, discard corners
 
 Further Milestone 1 polish.
