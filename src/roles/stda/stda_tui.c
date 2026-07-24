@@ -82,14 +82,15 @@ static bool tui_setup(config_t* cfg, PlayerConfig* pconfig, GameContext* ctx,
    Game Loop
    ======================================================================== */
 
+// Turn summary is narrative (Game Messages), not interaction (Console).
 static void tui_log_turn(TuiScreen* screen, struct gamestate* gstate,
                          config_t* cfg)
-{ tui_add_message(screen, "%s %d: %s %d, %s %d",
-                  LOCALIZED_STRING("Turn", "Tour", "Turno"), gstate->turn,
-                  LOCALIZED_STRING("energy A", "energie A", "energia A"),
-                  gstate->current_energy[PLAYER_A],
-                  LOCALIZED_STRING("energy B", "energie B", "energia B"),
-                  gstate->current_energy[PLAYER_B]);
+{ tui_add_game_message(screen, "%s %d: %s %d, %s %d",
+                       LOCALIZED_STRING("Turn", "Tour", "Turno"), gstate->turn,
+                       LOCALIZED_STRING("energy A", "energie A", "energia A"),
+                       gstate->current_energy[PLAYER_A],
+                       LOCALIZED_STRING("energy B", "energie B", "energia B"),
+                       gstate->current_energy[PLAYER_B]);
 }
 
 static void tui_run_loop(TuiScreen* screen, struct gamestate* gstate,
@@ -99,12 +100,13 @@ static void tui_run_loop(TuiScreen* screen, struct gamestate* gstate,
   bool any_human = (pconfig->player_types[PLAYER_A] == INTERACTIVE_PLAYER ||
                     pconfig->player_types[PLAYER_B] == INTERACTIVE_PLAYER);
 
+  // Full shortcut hints live in the always-visible Shortcuts box now, so the
+  // human-player console line stays short; the AI-vs-AI line keeps its hint
+  // since that mode has no Shortcuts-box equivalent for "press any key".
   tui_add_message(screen, "%s",
                   any_human ?
-                  LOCALIZED_STRING(
-                    "Game started. TAB=commands, digits=select, Enter=play, P=pass, q=quit.",
-                    "Partie commencee. TAB=commandes, chiffres=selection, Entree=jouer, P=passer, q=quitter.",
-                    "Partida iniciada. TAB=comandos, digitos=seleccion, Enter=jugar, P=pasar, q=salir.") :
+                  LOCALIZED_STRING("Game started.", "Partie commencee.",
+                                   "Partida iniciada.") :
                   LOCALIZED_STRING(
                     "Game started. Press any key to advance a turn, q to quit.",
                     "Partie commencee. Une touche pour avancer, q pour quitter.",

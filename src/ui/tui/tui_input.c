@@ -9,6 +9,9 @@
 #include "../shared/ui_constants.h"
 #include "../shared/localization.h"
 
+// Routes by kind: SUCCESS/INFO are narrative action outcomes ("Played N
+// champion(s)", draw/recall/cash results) and go to Game Messages; WARNING/
+// ERROR are interaction feedback (validation problems) and stay in Console.
 static void tui_io_message(UiIO* io, UiMsgKind kind, const char* fmt, ...)
 { TuiIoContext* tctx = (TuiIoContext*)io->ctx;
   char buffer[256];
@@ -17,15 +20,14 @@ static void tui_io_message(UiIO* io, UiMsgKind kind, const char* fmt, ...)
   vsnprintf(buffer, sizeof(buffer), fmt, args);
   va_end(args);
 
-  int color;
-  switch(kind)
-  { case UI_MSG_ERROR:   color = TUI_MSG_COLOR_ERROR; break;
-    case UI_MSG_SUCCESS: color = TUI_MSG_COLOR_SUCCESS; break;
-    case UI_MSG_WARNING: color = TUI_MSG_COLOR_WARNING; break;
-    default:             color = TUI_MSG_COLOR_DEFAULT; break;
-  }
-
-  tui_add_message_colored(tctx->screen, color, "%s", buffer);
+  if(kind == UI_MSG_ERROR)
+    tui_add_message_colored(tctx->screen, TUI_MSG_COLOR_ERROR, "%s", buffer);
+  else if(kind == UI_MSG_WARNING)
+    tui_add_message_colored(tctx->screen, TUI_MSG_COLOR_WARNING, "%s", buffer);
+  else if(kind == UI_MSG_SUCCESS)
+    tui_add_game_message_colored(tctx->screen, TUI_MSG_COLOR_SUCCESS, "%s", buffer);
+  else
+    tui_add_game_message(tctx->screen, "%s", buffer);
 }
 
 // Live getch()-based line editor drawn into the command window: echoes as
@@ -82,7 +84,7 @@ static void tui_io_show_card_list(UiIO* io, const char* title,
 
   for(int i = 0; i < count; i++)
   { char card_buf[24];
-    tui_format_card(card_indices[i], card_buf, sizeof(card_buf));
+    tui_format_card(card_indices[i], card_buf, sizeof(card_buf), cfg);
     if(i == suggested_idx)
       tui_add_message_colored(tctx->screen, TUI_MSG_COLOR_SUCCESS, "  [%d] %s  %s",
                               i + 1, card_buf,

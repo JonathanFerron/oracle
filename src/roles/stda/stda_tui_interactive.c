@@ -64,8 +64,11 @@ static TuiStageResult tui_play_mode_step(TuiScreen* screen, int hand_size,
   return STAGE_CONTINUE;
 }
 
+// Short form only -- this now renders in the narrower command window (it
+// shares the bottom row with Player A's status bar), and the full key hints
+// already live in the always-visible Shortcuts box.
 static void tui_format_staged_status(const uint8_t* staged, int staged_count,
-                                     config_t* cfg, char* buf, size_t bufsize)
+                                     char* buf, size_t bufsize)
 { char list[32] = "";
   for(int i = 0; i < staged_count; i++)
   { char num[8];
@@ -73,11 +76,7 @@ static void tui_format_staged_status(const uint8_t* staged, int staged_count,
     strncat(list, num, sizeof(list) - strlen(list) - 1);
   }
 
-  snprintf(buf, bufsize, "PLAY [%s] %s", list,
-           LOCALIZED_STRING(
-             "1-9=select Enter=confirm Esc=clear P=pass TAB=command mode",
-             "1-9=selectionner Entree=confirmer Echap=effacer P=passer TAB=mode commande",
-             "1-9=seleccionar Enter=confirmar Esc=borrar P=pasar TAB=modo comando"));
+  snprintf(buf, bufsize, "PLAY [%s]", list);
 }
 
 /* ========================================================================
@@ -94,8 +93,8 @@ static bool tui_handle_interactive_attack(TuiScreen* screen, struct gamestate* g
   while(!gstate->someone_has_zero_energy)
   { tui_draw_all(screen, gstate, cfg);
 
-    char status[160];
-    tui_format_staged_status(staged, staged_count, cfg, status, sizeof(status));
+    char status[32];
+    tui_format_staged_status(staged, staged_count, status, sizeof(status));
     tui_draw_command_line(screen, status, false);
 
     TuiStageResult result = tui_play_mode_step(screen, gstate->hand[player].size,
@@ -140,9 +139,9 @@ static bool tui_handle_interactive_defense(TuiScreen* screen, struct gamestate* 
 
   if(gstate->hand[player].size == 0)
   { io.message(&io, UI_MSG_WARNING, "%s",
-              LOCALIZED_STRING("No cards in hand - taking damage without defending",
-                               "Aucune carte en main - prendre des degats sans defendre",
-                               "No hay cartas en mano - recibir dano sin defender"));
+               LOCALIZED_STRING("No cards in hand - taking damage without defending",
+                                "Aucune carte en main - prendre des degats sans defendre",
+                                "No hay cartas en mano - recibir dano sin defender"));
     return true;
   }
 
@@ -152,8 +151,8 @@ static bool tui_handle_interactive_defense(TuiScreen* screen, struct gamestate* 
   for(;;)
   { tui_draw_all(screen, gstate, cfg);
 
-    char status[160];
-    tui_format_staged_status(staged, staged_count, cfg, status, sizeof(status));
+    char status[32];
+    tui_format_staged_status(staged, staged_count, status, sizeof(status));
     tui_draw_command_line(screen, status, false);
 
     TuiStageResult result = tui_play_mode_step(screen, gstate->hand[player].size,
@@ -268,18 +267,21 @@ bool tui_play_turn_with_humans(TuiScreen* screen, struct gamestate* gstate,
     { CombatDetails details;
       resolve_combat_with_details(gstate, &details, ctx);
       tui_show_combat_details(screen, gstate, &details, cfg);
-      tui_draw_all(screen, gstate, cfg);
-
-      int ch = tui_get_input();
-      if(tui_input_is_quit(ch)) return false;
-      if(tui_input_is_resize(ch))
-      { tui_layout(screen);
-        tui_draw_all(screen, gstate, cfg);
-      }
+      // No press-any-key pause here: combat/damage/energy now persist in the
+      // Game Messages box, so the turn can flow straight into end-of-turn
+      // without losing anything the player needed to read.
     }
     else
       resolve_combat(gstate, ctx);
   }
+
+  // attack_phase()/its human mirror above unconditionally pointed
+  // player_to_move at the defender, whether or not any champions were
+  // actually played and regardless of how combat resolved. From here on
+  // (luna collection, discard-to-7) it's the attacker's own housekeeping
+  // again -- point Active/Waiting back at them, or the defender would
+  // wrongly keep showing as Active with nothing left to decide.
+  gstate->player_to_move = attacker;
 
   if(gstate->someone_has_zero_energy) return true;
 

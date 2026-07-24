@@ -5,6 +5,84 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-07-24 — TUI polish pass: layout, colors, card formatting, playability fixes
+
+Hands-on play of the Milestone 2 human-vs-AI `stda.tui` surfaced ~17 UI/layout/
+playability rough edges; all fixed in one pass, grouped low-risk to higher-risk. Two
+items were deliberately deferred (see "Left for a future pass" below).
+
+- **Gameplay fixes**:
+  - Removed the forced "press any key" pause after combat resolves
+    (`tui_play_turn_with_humans()`, `stda_tui_interactive.c`) — safe now that combat/
+    damage/energy persist in the Game Messages box instead of scrolling past in the
+    Console.
+  - Fixed the Active/Waiting status-bar label to key off `gstate->player_to_move`
+    (the player whose decision is actually pending) instead of `current_player` (this
+    turn's fixed attacker) — previously a human *defender* showed as "Waiting" while
+    the AI attacker showed "Active". Found and fixed a follow-on bug during tmux
+    playtesting: `attack_phase()`/its human mirror always point `player_to_move` at
+    the defender, even when no champions were played or after combat already
+    resolved, so the attacker's own end-of-turn housekeeping (luna collection,
+    discard-to-7) was showing the *defender* as wrongly Active — fixed by resetting
+    `player_to_move` back to the attacker right after the attack/defense/combat block.
+- **Info-column text**: `q=quit` added to the Shortcuts box (was missing); `P=pass`
+  lowercased to `p=pass` display-wide (parsing already accepted both cases);
+  `Enter=play` now wraps onto its own line (`tui_print_wrapped()` honors an explicit
+  `\n`); the game-start Console line is now just "Game started." for human games
+  (full hints live in the always-visible Shortcuts box).
+- **Bottom-row layout restructure**: the command line now shares the bottom row with
+  Player A's status bar (table portion for the bar, info-column portion for the
+  command line) instead of its own full-width row — reclaims a body row. The
+  PLAY-mode status line shrank to just the staged-index list (`PLAY [1,2]`) to fit
+  the narrower command window; full key hints live in the Shortcuts box.
+- **Play-area labels/positioning**: hand labels dropped the redundant player name
+  (`Hand (6)` / `Hand (5) [Hidden]` — the status bars already say whose hand it is);
+  `Deck`/`Discard` counts moved from one combined centered label to separate
+  corner labels, each tucked right where that pile's actual content starts/grows
+  (Discard top-left / Deck top-right for Player B, mirrored for Player A); the
+  `Combat zone PLAYER x (n):` labels were removed (table side + the `-- combat zone --`
+  divider already make ownership obvious) and champions now render as a vertical
+  stack tucked directly against the divider, growing toward the owning player's hand
+  as more are added.
+- **Game Messages box now does something**: added a second message ring buffer
+  (`tui_add_game_message()`/`_colored()`, mirroring the existing Console
+  `tui_add_message()` pair) and a shared `tui_draw_message_pane()` renderer for both
+  boxes. Routing: all narrative (turn summaries, combat resolution/damage/energy,
+  action outcomes like "Played N champion(s)") now goes to Game Messages; Console is
+  reserved for interaction (prompts, input echo, validation errors, recall/cash
+  candidate lists). The box itself was previously decorative — drawn but never
+  populated. Also made it (and the Shortcuts box) genuinely tall: both now split the
+  info column's remaining height (after Shortcuts) evenly, instead of Console getting
+  whatever was left over.
+- **Card formatting — hybrid, localized, colored**: `tui_format_card()` (compact
+  board form, used in the discard grid) no longer hardcodes French `Pig`/`Rap`/
+  `Echange` labels regardless of UI language — draw/recall/cash labels now go
+  through `LOCALIZED_STRING` like everywhere else. New detailed CLI-style form
+  (`tui_format_card_detailed()`/`tui_draw_card_detailed()`, mirroring
+  `cli_display.c`'s `display_player_hand()`) used for the hand and combat zone —
+  roomier areas, so full species name + `(D+, L)` breakdown instead of the compact
+  abbreviated form; both the compact and detailed forms now color the luna cost cyan
+  and the card's own name/label in its type color (champion color, green for draw,
+  dim for cash) — previously the whole compact string was a single flat color.
+  Hand-card index prefixes (`[1] ...`) gained a space after the bracket.
+- **Player colors borrowed from the CLI**: top/bottom status bars switched from
+  plain red/green to the CLI's bold cyan (Player A) / bold yellow (Player B)
+  (`cli_display.h`'s `COLOR_P1`/`COLOR_P2`); player-attributed Game Messages lines
+  (attacker/defender headers, energy-change lines) now use the same two colors via a
+  new `tui_player_msg_color()` helper.
+- **Left for a future pass** (deliberately out of scope this time, see the approved
+  plan): moving the pre-ncurses player-setup questions (mode/name/AI-strategy prompts,
+  currently plain stdio before `initscr()`) into the Console box — larger scope,
+  touches CLI-shared setup code, planned as its own milestone; rendering deck-card
+  contents (only meaningful once a card-visibility model exists for "discard shuffled
+  back into deck" — not yet modeled).
+- Verified: `-a -p` regression identical throughout every incremental step; multiple
+  `tmux`-scripted human-vs-AI sessions (including escape-sequence capture to confirm
+  actual ANSI colors, not just layout) in both English and French confirmed every fix
+  end-to-end — corner labels, combat-zone stacking/divider-tucking, Game-Messages
+  vs. Console routing, no more forced pause, correct Active/Waiting through a full
+  attack→defense→discard-to-7 cycle, and the localized card labels in both languages.
+
 ## 2026-07-23 — TUI Milestone 2, Passes 2 & 3: playable human-vs-AI TUI
 
 Builds on Pass 1's `UiIO` seam to deliver a fully playable human-vs-AI `stda.tui`:

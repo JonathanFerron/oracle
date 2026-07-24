@@ -49,7 +49,11 @@ enum
   PAIR_CARD_ORANGE,
   PAIR_MSG_ERROR,
   PAIR_MSG_SUCCESS,
-  PAIR_MSG_WARNING
+  PAIR_MSG_WARNING,
+  PAIR_LUNA,
+  PAIR_CARD_GREEN,
+  PAIR_MSG_PLAYER_A,
+  PAIR_MSG_PLAYER_B
 };
 
 #define TUI_INFO_COL_MIN 24
@@ -68,8 +72,11 @@ static void tui_setup_colors(void)
 { if(!has_colors()) return;
   start_color();
   init_pair(PAIR_DEFAULT, NC_WHITE, NC_BLACK);
-  init_pair(PAIR_STATUS_B, NC_RED, NC_BLACK);
-  init_pair(PAIR_STATUS_A, NC_GREEN, NC_BLACK);
+  // Player colors borrowed from the CLI (cli_display.h: COLOR_P1 = bold
+  // cyan for Player A, COLOR_P2 = bold yellow for Player B) -- applied with
+  // A_BOLD in tui_draw_status_bars() to match the CLI's bright look.
+  init_pair(PAIR_STATUS_B, NC_YELLOW, NC_BLACK);
+  init_pair(PAIR_STATUS_A, NC_CYAN, NC_BLACK);
   init_pair(PAIR_BORDER_SHORTCUTS, NC_YELLOW, NC_BLACK);
   init_pair(PAIR_BORDER_MSGBOX, NC_MAGENTA, NC_BLACK);
   init_pair(PAIR_BORDER_CONSOLE, NC_GREEN, NC_BLACK);
@@ -79,6 +86,10 @@ static void tui_setup_colors(void)
   init_pair(PAIR_MSG_ERROR, NC_RED, NC_BLACK);
   init_pair(PAIR_MSG_SUCCESS, NC_GREEN, NC_BLACK);
   init_pair(PAIR_MSG_WARNING, NC_YELLOW, NC_BLACK);
+  init_pair(PAIR_LUNA, NC_CYAN, NC_BLACK); /* luna/cost, matches CLI's COLOR_LUNA */
+  init_pair(PAIR_CARD_GREEN, NC_GREEN, NC_BLACK); /* draw-card label, matches CLI */
+  init_pair(PAIR_MSG_PLAYER_A, NC_CYAN, NC_BLACK);
+  init_pair(PAIR_MSG_PLAYER_B, NC_YELLOW, NC_BLACK);
 }
 
 TuiScreen* tui_screen_create(void)
@@ -130,6 +141,8 @@ void tui_screen_destroy(TuiScreen* screen)
 
   for(int i = 0; i < screen->message_count; i++)
     free(screen->messages[i]);
+  for(int i = 0; i < screen->game_message_count; i++)
+    free(screen->game_messages[i]);
 
   tui_destroy_windows(screen);
   endwin();
@@ -152,17 +165,25 @@ void tui_layout(TuiScreen* screen)
 
   int info_w = clampi(cols / 3, TUI_INFO_COL_MIN, TUI_INFO_COL_MAX);
   int play_w = cols - info_w;
-  int top_h = 1, bottom_h = 1, command_h = 1;
+  int top_h = 1, bottom_h = 1;
 
-  int body_rows = rows - top_h - bottom_h - command_h;
+  /* No separate full-width command row: the command line shares the bottom
+     row with Player A's status bar (table portion for the bar, info-column
+     portion for the command line) -- reclaims a row for the body. */
+  int body_rows = rows - top_h - bottom_h;
   int shortcuts_h = clampi(body_rows / 5, TUI_SHORTCUTS_MIN_H, 6);
-  int msgbox_h = clampi(body_rows / 5, TUI_MSGBOX_MIN_H, 6);
-  int console_h = body_rows - shortcuts_h - msgbox_h;
 
-  if(console_h < TUI_CONSOLE_MIN_H)
-  { console_h = TUI_CONSOLE_MIN_H;
-    shortcuts_h = TUI_SHORTCUTS_MIN_H;
-    msgbox_h = body_rows - console_h - shortcuts_h;
+  /* Game Messages and Console split the remaining info-column height evenly
+     (half/half), rather than Console getting whatever's left over. */
+  int remaining = body_rows - shortcuts_h;
+  int msgbox_h = remaining / 2;
+  int console_h = remaining - msgbox_h;
+
+  if(console_h < TUI_CONSOLE_MIN_H || msgbox_h < TUI_MSGBOX_MIN_H)
+  { shortcuts_h = TUI_SHORTCUTS_MIN_H;
+    remaining = body_rows - shortcuts_h;
+    msgbox_h = remaining / 2;
+    console_h = remaining - msgbox_h;
   }
 
   screen->win_top_status = newwin(top_h, cols, 0, 0);
@@ -171,9 +192,9 @@ void tui_layout(TuiScreen* screen)
   screen->win_msgbox = newwin(msgbox_h, info_w, top_h + shortcuts_h, play_w);
   screen->win_console = newwin(console_h, info_w,
                                top_h + shortcuts_h + msgbox_h, play_w);
-  screen->win_bottom_status = newwin(bottom_h, cols, top_h + body_rows, 0);
-  screen->win_command = newwin(command_h, cols,
-                               top_h + body_rows + bottom_h, 0);
+  screen->win_bottom_status = newwin(bottom_h, play_w, top_h + body_rows, 0);
+  screen->win_command = newwin(bottom_h, info_w,
+                               top_h + body_rows, play_w);
 
   scrollok(screen->win_console, TRUE);
 }
@@ -182,16 +203,24 @@ void tui_layout(TuiScreen* screen)
    Card formatting / coloring
    ======================================================================== */
 
-void tui_format_card(uint8_t card_idx, char* buf, size_t bufsize)
+// Compact single-line form (e.g. "d5+3 3 RAT") -- used in the tighter
+// discard grid and (uncolored fallback) for the UiIO show_card_list()
+// message-log lines. Localized: draw/recall/cash labels now go through
+// LOCALIZED_STRING instead of the hardcoded French abbreviations this used
+// to always show regardless of UI language.
+void tui_format_card(uint8_t card_idx, char* buf, size_t bufsize, config_t* cfg)
 { const struct card* c = &fullDeck[card_idx];
 
   if(c->card_type == CHAMPION_CARD)
     snprintf(buf, bufsize, "d%u+%u %u %s", c->defense_dice, c->attack_base,
              c->cost, CHAMPION_SPECIES_ABBR[c->species]);
   else if(c->card_type == DRAW_CARD)
-    snprintf(buf, bufsize, "Pig%u/Rap%u %u", c->draw_num, c->choose_num, c->cost);
+    snprintf(buf, bufsize, "%s%u/%s%u %u",
+             LOCALIZED_STRING("Dr", "Pio", "Rob"), c->draw_num,
+             LOCALIZED_STRING("Rc", "Rap", "Rec"), c->choose_num, c->cost);
   else
-    snprintf(buf, bufsize, "Echange%u", c->exchange_cash);
+    snprintf(buf, bufsize, "%s%u %u",
+             LOCALIZED_STRING("Ex", "Ech", "Cam"), c->exchange_cash, c->cost);
 }
 
 /* ========================================================================
@@ -226,6 +255,9 @@ static void tui_print_3segment(WINDOW* win, int y, int pane_width,
 
 /* Simple char-width wrapping (no word-break awareness -- fine for the short,
    static reference text this is used for). Prints at most max_rows lines. */
+// Char-width wrapping, plus explicit '\n' in the source text forces a hard
+// line break (used to keep e.g. "Enter=play" from being split mid-word by
+// the width-based wrap alone). The newline itself is consumed, not printed.
 static void tui_print_wrapped(WINDOW* win, int y, int max_rows, int width,
                               const char* text)
 { int len = (int)strlen(text);
@@ -233,8 +265,10 @@ static void tui_print_wrapped(WINDOW* win, int y, int max_rows, int width,
 
   for(int i = 0; i < max_rows && pos < len; i++, row++)
   { int chunk = (len - pos < width) ? (len - pos) : width;
-    mvwprintw(win, row, 1, "%.*s", chunk, text + pos);
-    pos += chunk;
+    const char* nl = memchr(text + pos, '\n', (size_t)chunk);
+    int print_len = nl ? (int)(nl - (text + pos)) : chunk;
+    mvwprintw(win, row, 1, "%.*s", print_len, text + pos);
+    pos += nl ? print_len + 1 : chunk;
   }
 }
 
@@ -242,9 +276,16 @@ static void tui_print_wrapped(WINDOW* win, int y, int max_rows, int width,
    Status bars
    ======================================================================== */
 
+// Keyed off player_to_move (the player whose decision is actually pending),
+// not current_player (this turn's fixed attacker) -- otherwise a human
+// defender shows as "Waiting" while the AI attacker shows "Active", even
+// though the human is the one being prompted to defend/pass. player_to_move
+// is kept correct throughout the turn: begin_of_turn() sets it to the
+// attacker, attack_phase() flips it to the defender (and the human-attack
+// path in stda_tui_interactive.c mirrors that same flip).
 static const char* tui_active_label(struct gamestate* gstate, PlayerID player,
                                     config_t* cfg)
-{ return (gstate->current_player == player) ?
+{ return (gstate->player_to_move == player) ?
          LOCALIZED_STRING("Active", "Actif", "Activo") :
          LOCALIZED_STRING("Waiting", "En attente", "Esperando");
 }
@@ -282,10 +323,10 @@ static void tui_draw_status_bars(TuiScreen* screen, struct gamestate* gstate,
            tui_role_label(gstate, PLAYER_B, cfg));
 
   werase(screen->win_top_status);
-  wattron(screen->win_top_status, COLOR_PAIR(PAIR_STATUS_B));
+  wattron(screen->win_top_status, COLOR_PAIR(PAIR_STATUS_B) | A_BOLD);
   tui_print_3segment(screen->win_top_status, 0, pane_w,
                      left_b, PLAYER_NAMES[PLAYER_B], right_b);
-  wattroff(screen->win_top_status, COLOR_PAIR(PAIR_STATUS_B));
+  wattroff(screen->win_top_status, COLOR_PAIR(PAIR_STATUS_B) | A_BOLD);
 
   char left_a[32], right_a[32];
   snprintf(left_a, sizeof(left_a), "%u %s | %u %s",
@@ -298,10 +339,10 @@ static void tui_draw_status_bars(TuiScreen* screen, struct gamestate* gstate,
            tui_active_label(gstate, PLAYER_A, cfg));
 
   werase(screen->win_bottom_status);
-  wattron(screen->win_bottom_status, COLOR_PAIR(PAIR_STATUS_A));
+  wattron(screen->win_bottom_status, COLOR_PAIR(PAIR_STATUS_A) | A_BOLD);
   tui_print_3segment(screen->win_bottom_status, 0, pane_w,
                      left_a, PLAYER_NAMES[PLAYER_A], right_a);
-  wattroff(screen->win_bottom_status, COLOR_PAIR(PAIR_STATUS_A));
+  wattroff(screen->win_bottom_status, COLOR_PAIR(PAIR_STATUS_A) | A_BOLD);
 
   werase(screen->win_command);
   mvwprintw(screen->win_command, 0, 0, "> ");
@@ -317,8 +358,8 @@ void tui_draw_play_area(TuiScreen* screen, struct gamestate* gstate, config_t* c
    Info column: shortcuts / message box / console
    ======================================================================== */
 
-/* One wrapped display-line's worth of an original console message: which
-   message it came from, and the [offset, offset+len) slice of it to print. */
+/* One wrapped display-line's worth of an original message: which message it
+   came from, and the [offset, offset+len) slice of it to print. */
 typedef struct
 { int msg_index;
   int offset;
@@ -328,17 +369,21 @@ typedef struct
 #define TUI_CONSOLE_SEG_MAX 256
 #define TUI_CONSOLE_RECENT_MSGS 40
 
-/* Wraps the most recent messages (bounded lookback, not the whole history --
-   plenty for any realistic console height) into segments in chronological
-   order; the caller then displays only the tail of this list that fits. */
-static int tui_build_console_segments(TuiScreen* screen, int avail_w,
-                                      TuiConsoleSegment* segs, int max_segs)
+/* Wraps the most recent messages of the given buffer (bounded lookback, not
+   the whole history -- plenty for any realistic pane height) into segments in
+   chronological order; the caller then displays only the tail of this list
+   that fits. Shared by both the Game Messages and Console panes -- each
+   keeps its own `messages`/`colors`/`count` buffer (TuiScreen), but the
+   wrap-and-scroll logic is identical either way. */
+static int tui_build_message_segments(char* const* msgs, int msg_count,
+                                      int avail_w, TuiConsoleSegment* segs,
+                                      int max_segs)
 { int count = 0;
-  int start = screen->message_count - TUI_CONSOLE_RECENT_MSGS;
+  int start = msg_count - TUI_CONSOLE_RECENT_MSGS;
   if(start < 0) start = 0;
 
-  for(int i = start; i < screen->message_count && count < max_segs; i++)
-  { const char* msg = screen->messages[i];
+  for(int i = start; i < msg_count && count < max_segs; i++)
+  { const char* msg = msgs[i];
     int len = (int)strlen(msg);
 
     if(len == 0)
@@ -361,6 +406,33 @@ static int tui_build_console_segments(TuiScreen* screen, int avail_w,
   return count;
 }
 
+/* Renders one message buffer (wrapped, most-recent-first) into its pane --
+   used for both the Game Messages box (narrative: turn/combat/energy/action
+   outcomes) and the Console box (interaction: prompts, input echo,
+   validation errors, candidate lists). */
+static void tui_draw_message_pane(WINDOW* win, char* const* msgs,
+                                  const int* colors, int msg_count)
+{ int h, w;
+  getmaxyx(win, h, w);
+  int max_lines = h - 2;
+  int avail_w = w - 2;
+  if(avail_w < 1) avail_w = 1;
+
+  TuiConsoleSegment segs[TUI_CONSOLE_SEG_MAX];
+  int seg_count = tui_build_message_segments(msgs, msg_count, avail_w, segs,
+                                             TUI_CONSOLE_SEG_MAX);
+  int start_seg = (seg_count > max_lines) ? seg_count - max_lines : 0;
+  int row = 1;
+
+  for(int s = start_seg; s < seg_count; s++)
+  { const char* msg = msgs[segs[s].msg_index];
+    int pair = colors[segs[s].msg_index];
+    if(pair > 0) wattron(win, COLOR_PAIR(pair));
+    mvwprintw(win, row++, 1, "%.*s", segs[s].len, msg + segs[s].offset);
+    if(pair > 0) wattroff(win, COLOR_PAIR(pair));
+  }
+}
+
 /* Shortcut hint text depends only on the current turn phase (not on whether
    the phase's actor is human) -- keeps this rendering layer decoupled from
    PlayerConfig, matching the rest of tui_render.c (gstate+cfg only). Showing
@@ -370,15 +442,15 @@ static void tui_shortcuts_text(struct gamestate* gstate, config_t* cfg,
 { if(gstate->turn_phase == ATTACK)
     snprintf(buf, bufsize, "%s",
              LOCALIZED_STRING(
-               "TAB=command mode | 1-7=toggle champion | Enter=play | Esc=clear | P=pass",
-               "TAB=mode commande | 1-7=selectionner champion | Entree=jouer | Echap=effacer | P=passer",
-               "TAB=modo comando | 1-7=alternar campeon | Enter=jugar | Esc=borrar | P=pasar"));
+               "TAB=command mode | 1-7=toggle champion\nEnter=play | Esc=clear | p=pass | q=quit",
+               "TAB=mode commande | 1-7=selectionner champion\nEntree=jouer | Echap=effacer | p=passer | q=quitter",
+               "TAB=modo comando | 1-7=alternar campeon\nEnter=jugar | Esc=borrar | p=pasar | q=salir"));
   else
     snprintf(buf, bufsize, "%s",
              LOCALIZED_STRING(
-               "TAB=command mode | 'cham <i..>' or 'pass' to defend",
-               "TAB=mode commande | 'cham <i..>' ou 'pass' pour defendre",
-               "TAB=modo comando | 'cham <i..>' o 'pass' para defender"));
+               "TAB=command mode | 'cham <i..>' or 'pass' to defend | q=quit",
+               "TAB=mode commande | 'cham <i..>' ou 'pass' pour defendre | q=quitter",
+               "TAB=modo comando | 'cham <i..>' o 'pass' para defender | q=salir"));
 }
 
 static void tui_draw_info_column(TuiScreen* screen, struct gamestate* gstate,
@@ -401,6 +473,8 @@ static void tui_draw_info_column(TuiScreen* screen, struct gamestate* gstate,
   mvwprintw(screen->win_msgbox, 0, 2, " %s ",
             LOCALIZED_STRING("Game Messages", "Messages du jeu", "Mensajes"));
   wattroff(screen->win_msgbox, COLOR_PAIR(PAIR_BORDER_MSGBOX));
+  tui_draw_message_pane(screen->win_msgbox, screen->game_messages,
+                        screen->game_message_colors, screen->game_message_count);
 
   werase(screen->win_console);
   wattron(screen->win_console, COLOR_PAIR(PAIR_BORDER_CONSOLE));
@@ -408,27 +482,8 @@ static void tui_draw_info_column(TuiScreen* screen, struct gamestate* gstate,
   mvwprintw(screen->win_console, 0, 2, " %s ",
             LOCALIZED_STRING("Console", "Console", "Consola"));
   wattroff(screen->win_console, COLOR_PAIR(PAIR_BORDER_CONSOLE));
-
-  int h, w;
-  getmaxyx(screen->win_console, h, w);
-  int max_lines = h - 2;
-  int avail_w = w - 2;
-  if(avail_w < 1) avail_w = 1;
-
-  TuiConsoleSegment segs[TUI_CONSOLE_SEG_MAX];
-  int seg_count = tui_build_console_segments(screen, avail_w, segs,
-                                             TUI_CONSOLE_SEG_MAX);
-  int start_seg = (seg_count > max_lines) ? seg_count - max_lines : 0;
-  int row = 1;
-
-  for(int s = start_seg; s < seg_count; s++)
-  { const char* msg = screen->messages[segs[s].msg_index];
-    int pair = screen->message_colors[segs[s].msg_index];
-    if(pair > 0) wattron(screen->win_console, COLOR_PAIR(pair));
-    mvwprintw(screen->win_console, row++, 1, "%.*s",
-              segs[s].len, msg + segs[s].offset);
-    if(pair > 0) wattroff(screen->win_console, COLOR_PAIR(pair));
-  }
+  tui_draw_message_pane(screen->win_console, screen->messages,
+                        screen->message_colors, screen->message_count);
 }
 
 /* ========================================================================

@@ -28,6 +28,8 @@ typedef struct _win_st WINDOW;
 #define TUI_MSG_COLOR_ERROR   10
 #define TUI_MSG_COLOR_SUCCESS 11
 #define TUI_MSG_COLOR_WARNING 12
+#define TUI_MSG_COLOR_PLAYER_A 15
+#define TUI_MSG_COLOR_PLAYER_B 16
 
 typedef struct
 { WINDOW* win_top_status;
@@ -38,9 +40,17 @@ typedef struct
   WINDOW* win_msgbox;
   WINDOW* win_console;
 
+  // Console: interaction (prompts, input echo, validation errors,
+  // recall/cash candidate lists).
   char* messages[TUI_MAX_MESSAGES];
   int message_colors[TUI_MAX_MESSAGES];
   int message_count;
+
+  // Game Messages: narrative (turn summaries, combat resolution, damage,
+  // energy changes, action outcomes like "Played N champion(s)").
+  char* game_messages[TUI_MAX_MESSAGES];
+  int game_message_colors[TUI_MAX_MESSAGES];
+  int game_message_count;
 
   int last_rows;
   int last_cols;
@@ -59,12 +69,25 @@ void tui_layout(TuiScreen* screen);
 /* Draws every panel for the given game state and refreshes the physical screen. */
 void tui_draw_all(TuiScreen* screen, struct gamestate* gstate, config_t* cfg);
 
-/* Appends a formatted line to the scrolling console log (oldest dropped past
-   TUI_MAX_MESSAGES), in the default color. */
+/* Appends a formatted line to the scrolling Console log (oldest dropped past
+   TUI_MAX_MESSAGES), in the default color. Console is for interaction:
+   prompts, input echo, validation errors, recall/cash candidate lists. */
 void tui_add_message(TuiScreen* screen, const char* format, ...);
 
 /* Same, tagged with one of the TUI_MSG_COLOR_* constants above. */
 void tui_add_message_colored(TuiScreen* screen, int color_pair, const char* format, ...);
+
+/* Same as tui_add_message()/tui_add_message_colored(), but appends to the
+   Game Messages log instead -- narrative: turn summaries, combat resolution,
+   damage, energy changes, action outcomes ("Played N champion(s)"). */
+void tui_add_game_message(TuiScreen* screen, const char* format, ...);
+void tui_add_game_message_colored(TuiScreen* screen, int color_pair, const char* format, ...);
+
+/* Returns TUI_MSG_COLOR_PLAYER_A/B for the given player -- convenience for
+   tagging player-attributed Game Messages lines (e.g. "PLAYER x (Attacker):"
+   headers, energy-change lines) with the same color as that player's status
+   bar. */
+int tui_player_msg_color(PlayerID player);
 
 /* Input helpers -- kept here (rather than callers touching <ncurses.h>
    directly) so ncurses stays confined to tui_render.c. */
@@ -83,8 +106,9 @@ bool tui_input_is_printable(int ch);
 void tui_draw_command_line(TuiScreen* screen, const char* text, bool show_cursor);
 
 /* Formats a card compactly (e.g. "d5+3 3 RAT") -- shared by the play-area
-   card rendering and the UiIO show_card_list()/message-log formatting. */
-void tui_format_card(uint8_t card_idx, char* buf, size_t bufsize);
+   card rendering and the UiIO show_card_list()/message-log formatting.
+   Localized (draw/recall/cash labels follow cfg->language). */
+void tui_format_card(uint8_t card_idx, char* buf, size_t bufsize, config_t* cfg);
 
 /* Renders a resolved combat's per-champion breakdown into the message log
    (mirrors cli_action_display.c's display_combat_details_cli(), TUI-side). */

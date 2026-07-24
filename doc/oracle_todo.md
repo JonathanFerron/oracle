@@ -1,6 +1,6 @@
 # Oracle Development TODO
 
-**Quick Status**: Turn-logic interactive-mode commands (recall, combat results details, discard pile inspection, cash card functionality), the source folder structure cleanup (pragmatic pass), and TUI Milestones 1 and 2 (ncurses display skeleton, then playable human-vs-AI interaction) are complete -- see `doc/changelog.md`. First non-dumb AI strategy is next (see "Next Up" below).
+**Quick Status**: Turn-logic interactive-mode commands (recall, combat results details, discard pile inspection, cash card functionality), the source folder structure cleanup (pragmatic pass), TUI Milestones 1 and 2 (ncurses display skeleton, then playable human-vs-AI interaction), and a follow-up TUI UI/playability polish pass (layout, colors, card formatting, message routing) are complete -- see `doc/changelog.md`. First non-dumb AI strategy is next (see "Next Up" below).
 
 ---
 
@@ -190,13 +190,28 @@ PLAY mode (digit-staging champion selection, `P` pass) and COMMAND mode (`cham`/
 discard-to-7, and live combat-result display. AI-vs-AI still uses the original M1
 `play_turn()` fast path unchanged.
 
-**Left for a future pass** (not blocking, noted in the Pass 2/3 changelog entry):
+**UI/playability polish pass -- DONE (2026-07-24)**, see `doc/changelog.md`. Layout
+(command line moved to share Player A's status row, Deck/Discard corner labels,
+combat-zone divider-tucking, taller/populated Game Messages box), message routing
+(Game Messages = narrative, Console = interaction), card formatting (hybrid detailed/
+compact forms, localized draw/recall/cash labels, luna-cost + name coloring), CLI-
+borrowed player colors, and two playability fixes (no forced pause after combat,
+correct Active/Waiting through the whole attack/defense/discard-to-7 cycle).
+
+**Left for a future pass** (not blocking, noted in the 2026-07-24 changelog entry):
 - Visual highlighting of staged cards directly in the hand display (currently just a
   `[n,m]` list shown in the command-line row instead).
 - Help overlay (CLI's `gmst`/`shod`/`help` diagnostic commands have no TUI equivalent
   yet -- board is always visible so `gmst`/`shod` are moot, but a `help` command/key
   listing the grammar would still be useful).
 - TUI &harr; SIM mode switching (low priority; `stda.sim` doesn't exist yet either).
+- Move the pre-ncurses player-setup questions (mode/name/AI-strategy prompts) into
+  the Console box instead of plain stdio before `initscr()` -- larger scope, touches
+  CLI-shared setup code (`ui/shared/player_config.c`/`player_selection.c`), planned as
+  its own milestone.
+- Render deck-card contents once a card-visibility model exists (currently deck stays
+  a count-only label; only meaningful after a discard-shuffled-into-deck mechanic is
+  modeled).
 
 **Key files**: `src/roles/stda/stda_tui.c` (setup/loop) +
 `stda_tui_interactive.c/h` (human-turn handlers), `src/ui/tui/tui_render.c` +

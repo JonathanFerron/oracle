@@ -19,19 +19,22 @@
 #include <ncurses.h>
 #undef COLOR_RED
 
-static void tui_push_message(TuiScreen* screen, int color_pair, const char* text)
-{ if(screen->message_count >= TUI_MAX_MESSAGES)
-  { free(screen->messages[0]);
-    memmove(screen->messages, screen->messages + 1,
-            (TUI_MAX_MESSAGES - 1) * sizeof(char*));
-    memmove(screen->message_colors, screen->message_colors + 1,
-            (TUI_MAX_MESSAGES - 1) * sizeof(int));
-    screen->message_count--;
+// Shared by both the Console buffer (messages/message_colors/message_count)
+// and the Game Messages buffer (game_messages/game_message_colors/
+// game_message_count) -- same ring-buffer-with-oldest-dropped behavior for
+// either, just operating on whichever buffer the caller points it at.
+static void tui_push_message_to(char** msgs, int* colors, int* count,
+                                int color_pair, const char* text)
+{ if(*count >= TUI_MAX_MESSAGES)
+  { free(msgs[0]);
+    memmove(msgs, msgs + 1, (TUI_MAX_MESSAGES - 1) * sizeof(char*));
+    memmove(colors, colors + 1, (TUI_MAX_MESSAGES - 1) * sizeof(int));
+    (*count)--;
   }
 
-  screen->messages[screen->message_count] = strdup(text);
-  screen->message_colors[screen->message_count] = color_pair;
-  screen->message_count++;
+  msgs[*count] = strdup(text);
+  colors[*count] = color_pair;
+  (*count)++;
 }
 
 void tui_add_message(TuiScreen* screen, const char* format, ...)
@@ -41,7 +44,8 @@ void tui_add_message(TuiScreen* screen, const char* format, ...)
   vsnprintf(buffer, sizeof(buffer), format, args);
   va_end(args);
 
-  tui_push_message(screen, TUI_MSG_COLOR_DEFAULT, buffer);
+  tui_push_message_to(screen->messages, screen->message_colors,
+                      &screen->message_count, TUI_MSG_COLOR_DEFAULT, buffer);
 }
 
 void tui_add_message_colored(TuiScreen* screen, int color_pair, const char* format, ...)
@@ -51,7 +55,34 @@ void tui_add_message_colored(TuiScreen* screen, int color_pair, const char* form
   vsnprintf(buffer, sizeof(buffer), format, args);
   va_end(args);
 
-  tui_push_message(screen, color_pair, buffer);
+  tui_push_message_to(screen->messages, screen->message_colors,
+                      &screen->message_count, color_pair, buffer);
+}
+
+void tui_add_game_message(TuiScreen* screen, const char* format, ...)
+{ char buffer[256];
+  va_list args;
+  va_start(args, format);
+  vsnprintf(buffer, sizeof(buffer), format, args);
+  va_end(args);
+
+  tui_push_message_to(screen->game_messages, screen->game_message_colors,
+                      &screen->game_message_count, TUI_MSG_COLOR_DEFAULT, buffer);
+}
+
+void tui_add_game_message_colored(TuiScreen* screen, int color_pair, const char* format, ...)
+{ char buffer[256];
+  va_list args;
+  va_start(args, format);
+  vsnprintf(buffer, sizeof(buffer), format, args);
+  va_end(args);
+
+  tui_push_message_to(screen->game_messages, screen->game_message_colors,
+                      &screen->game_message_count, color_pair, buffer);
+}
+
+int tui_player_msg_color(PlayerID player)
+{ return (player == PLAYER_A) ? TUI_MSG_COLOR_PLAYER_A : TUI_MSG_COLOR_PLAYER_B;
 }
 
 int tui_get_input(void)
@@ -99,6 +130,9 @@ void tui_draw_command_line(TuiScreen* screen, const char* text, bool show_cursor
    Combat Results (message-log rendering)
    ======================================================================== */
 
+// Combat/damage/energy/turn narrative all goes to Game Messages, not
+// Console -- Console is reserved for interaction (prompts, input echo,
+// errors, candidate lists).
 static void tui_show_combat_side(TuiScreen* screen, int count,
                                  const ChampionSpecies* species,
                                  const uint8_t* dice, const uint8_t* rolls,
@@ -110,7 +144,7 @@ static void tui_show_combat_side(TuiScreen* screen, int count,
                        CHAMPION_SPECIES_NAMES[species[i]], dice[i], rolls[i]);
     if(show_base && pos > 0 && (size_t)pos < sizeof(line))
       snprintf(line + pos, sizeof(line) - pos, " + %d = %d", base[i], totals[i]);
-    tui_add_message(screen, "%s", line);
+    tui_add_game_message(screen, "%s", line);
   }
 }
 
@@ -119,51 +153,55 @@ void tui_show_combat_details(TuiScreen* screen, struct gamestate* gstate,
 { PlayerID attacker = gstate->current_player;
   PlayerID defender = 1 - attacker;
 
-  tui_add_message(screen, "=== %s ===",
-                  LOCALIZED_STRING("Combat Resolution", "Resolution du combat",
-                                   "Resolucion del combate"));
+  tui_add_game_message(screen, "=== %s ===",
+                       LOCALIZED_STRING("Combat Resolution", "Resolution du combat",
+                                        "Resolucion del combate"));
 
-  tui_add_message(screen, "%s (%s):", PLAYER_NAMES[attacker],
-                  LOCALIZED_STRING("Attacker", "Attaquant", "Atacante"));
+  tui_add_game_message_colored(screen, tui_player_msg_color(attacker),
+                               "%s (%s):", PLAYER_NAMES[attacker],
+                               LOCALIZED_STRING("Attacker", "Attaquant", "Atacante"));
   tui_show_combat_side(screen, details->num_attackers, details->attacker_species,
                        details->attacker_dice, details->attacker_rolls,
                        details->attacker_base, details->attacker_total, 1);
   if(details->attack_combo > 0)
-    tui_add_message_colored(screen, TUI_MSG_COLOR_SUCCESS, "  %s: +%d",
-                            LOCALIZED_STRING("Combo bonus", "Bonus combo", "Bono combo"),
-                            details->attack_combo);
-  tui_add_message(screen, "  %s: %d",
-                  LOCALIZED_STRING("Total attack", "Attaque totale", "Ataque total"),
-                  details->total_attack);
+    tui_add_game_message_colored(screen, TUI_MSG_COLOR_SUCCESS, "  %s: +%d",
+                                 LOCALIZED_STRING("Combo bonus", "Bonus combo", "Bono combo"),
+                                 details->attack_combo);
+  tui_add_game_message(screen, "  %s: %d",
+                       LOCALIZED_STRING("Total attack", "Attaque totale", "Ataque total"),
+                       details->total_attack);
 
-  tui_add_message(screen, "%s (%s):", PLAYER_NAMES[defender],
-                  LOCALIZED_STRING("Defender", "Defenseur", "Defensor"));
+  tui_add_game_message_colored(screen, tui_player_msg_color(defender),
+                               "%s (%s):", PLAYER_NAMES[defender],
+                               LOCALIZED_STRING("Defender", "Defenseur", "Defensor"));
   if(details->num_defenders == 0)
-    tui_add_message(screen, "  %s",
-                    LOCALIZED_STRING("No defense", "Aucune defense", "Sin defensa"));
+    tui_add_game_message(screen, "  %s",
+                         LOCALIZED_STRING("No defense", "Aucune defense", "Sin defensa"));
   else
   { tui_show_combat_side(screen, details->num_defenders, details->defender_species,
                          details->defender_dice, details->defender_rolls,
                          NULL, details->defender_total, 0);
     if(details->defense_combo > 0)
-      tui_add_message_colored(screen, TUI_MSG_COLOR_SUCCESS, "  %s: +%d",
-                              LOCALIZED_STRING("Combo bonus", "Bonus combo", "Bono combo"),
-                              details->defense_combo);
-    tui_add_message(screen, "  %s: %d",
-                    LOCALIZED_STRING("Total defense", "Defense totale", "Defensa total"),
-                    details->total_defense);
+      tui_add_game_message_colored(screen, TUI_MSG_COLOR_SUCCESS, "  %s: +%d",
+                                   LOCALIZED_STRING("Combo bonus", "Bonus combo", "Bono combo"),
+                                   details->defense_combo);
+    tui_add_game_message(screen, "  %s: %d",
+                         LOCALIZED_STRING("Total defense", "Defense totale", "Defensa total"),
+                         details->total_defense);
   }
 
   if(details->damage > 0)
-    tui_add_message_colored(screen, TUI_MSG_COLOR_ERROR, "%s: %d (%d - %d)",
-                            LOCALIZED_STRING("Damage", "Degats", "Dano"),
-                            details->damage, details->total_attack, details->total_defense);
+    tui_add_game_message_colored(screen, TUI_MSG_COLOR_ERROR, "%s: %d (%d - %d)",
+                                 LOCALIZED_STRING("Damage", "Degats", "Dano"),
+                                 details->damage, details->total_attack, details->total_defense);
   else
-    tui_add_message_colored(screen, TUI_MSG_COLOR_SUCCESS, "%s",
-                            LOCALIZED_STRING("Attack blocked! No damage.",
-                                             "Attaque bloquee! Aucun degat.",
-                                             "Ataque bloqueado! Sin dano."));
+    tui_add_game_message_colored(screen, TUI_MSG_COLOR_SUCCESS, "%s",
+                                 LOCALIZED_STRING("Attack blocked! No damage.",
+                                                  "Attaque bloquee! Aucun degat.",
+                                                  "Ataque bloqueado! Sin dano."));
 
-  tui_add_message(screen, "%s: %d -> %d", PLAYER_NAMES[defender],
-                  details->defender_energy_before, details->defender_energy_after);
+  tui_add_game_message_colored(screen, tui_player_msg_color(defender),
+                               "%s: %d -> %d", PLAYER_NAMES[defender],
+                               details->defender_energy_before,
+                               details->defender_energy_after);
 }
