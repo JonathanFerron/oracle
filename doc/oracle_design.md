@@ -1093,7 +1093,6 @@ all          # Build the project
 clean        # Remove build artifacts
 debug        # Build with debug symbols and -O0
 test_combo   # Build combo bonus tests
-oldcode      # Build old code for regression testing
 format       # Format code with astyle
 help         # Show help message
 ```

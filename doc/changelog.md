@@ -5,6 +5,20 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-07-24 — Removed `oldsrc/`; `make format` now excludes `ideas/`
+
+- **Removed `oldsrc/`** (pre-refactor implementation) and the `oldcode`/`make oldcode`
+  Makefile target, per the `oracle_todo.md` "Code Cleanup" item -- everything in it is
+  fully preserved in git history, so it had no reason to keep living in the working
+  tree. `OLDSRCDIR`/`OLDBUILDDIR` variables and the `oldobj/%.o` build rule removed
+  along with it. (The file deletions themselves ended up bundled into the prior
+  commit alongside the TUI polish pass -- a staging mix-up, not intentional -- but
+  the removal is recorded here where it belongs.)
+- **`make format`** now passes `--exclude=ideas` to `astyle` so the recursive
+  `--project` sweep no longer reformats `ideas/`'s design-exploration/prototype code
+  (which deliberately doesn't follow the real codebase's conventions -- see
+  `CLAUDE.md`'s note on that folder).
+
 ## 2026-07-24 — TUI polish pass: layout, colors, card formatting, playability fixes
 
 Hands-on play of the Milestone 2 human-vs-AI `stda.tui` surfaced ~17 UI/layout/

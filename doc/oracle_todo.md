@@ -393,10 +393,6 @@ See `ideas/rating system/rating system BT v2/` for complete spec
 - [ ] Consolidate constants (some in .h, some in .c)
 - [ ] Remove unused functions/variables
 - [ ] Update all file headers with consistent format
-- [ ] **Remove `oldsrc/`** (2026-07-23) -- pre-refactor implementation, kept only for
-  `make oldcode` regression comparisons. Everything in it is fully preserved in git
-  history, so it has no reason to keep living in the working tree now; delete the
-  directory and the `oldcode`/`make oldcode` Makefile target along with it.
 
 ---
 

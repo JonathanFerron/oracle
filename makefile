@@ -4,9 +4,7 @@
 CC := gcc
 SRCDIR := src
 TESTSRCDIR := testsrc
-OLDSRCDIR := oldsrc
 BUILDDIR := obj
-OLDBUILDDIR := oldobj
 BINDIR := bin
 TARGET := $(BINDIR)/oracle
 SRCEXT := c
@@ -121,27 +119,9 @@ $(TEST_CASH_TARGET): $(TEST_CASH_OBJS)
 	$(CC) $(TEST_CASH_OBJS) -o $(TEST_CASH_TARGET) $(LIBS)
 	@echo "Test build complete: $(TEST_CASH_TARGET)"
 
-OLDCODE_TARGET := $(BINDIR)/oracle_old
-OLDCODE_SRCS := $(shell find $(OLDSRCDIR) -type f -name *.$(SRCEXT))
-OLDCODE_OBJS := $(patsubst $(OLDSRCDIR)/%,$(OLDBUILDDIR)/%,$(OLDCODE_SRCS:.$(SRCEXT)=.o))
-
-.PHONY: oldcode
-oldcode: $(OLDCODE_TARGET)
-
-$(OLDCODE_TARGET): $(OLDCODE_OBJS)
-	@echo "Linking ..."
-	@mkdir -p $(BINDIR)
-	$(CC) $^ -o $(OLDCODE_TARGET) $(LIBS)
-	@echo "Build complete: $(OLDCODE_TARGET)"
-
-$(OLDBUILDDIR)/%.o: $(OLDSRCDIR)/%.$(SRCEXT)
-	@mkdir -p "$(@D)"
-	@echo "Compiling $<..."
-	$(CC) $(CFLAGS) -c -o $@ $<
-
 .PHONY: format
 format:
-	astyle --project --suffix=none --recursive "*.c,*.h"
+	astyle --project --suffix=none --recursive --exclude=ideas "*.c,*.h"
 
 test_stda_auto:
 	@./bin/oracle.exe -sa -p | diff -w -B - bin/expectedresults.txt && \
@@ -157,7 +137,6 @@ help:
 	@echo "  clean        - Remove build artifacts"
 	@echo "  debug        - Build with debug symbols and -Og"
 	@echo "  test_combo   - Build combo bonus tests"
-	@echo "  oldcode      - Build the old code (usually used for regression testing purpose)"
 	@echo "  format       - Format the c and h source files using astyle"
 	@echo "  help         - Show this help message"
 	@echo ""

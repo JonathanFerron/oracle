@@ -14,8 +14,7 @@ Oracle ("Les Champions d'Arcadie") is a fixed-pool, two-player strategic dueling
 make                              # build bin/oracle (auto-discovers all src/**/*.c)
 make clean                        # remove obj/ and bin/oracle*
 make debug                        # rebuild with -O0 -DDEBUG -DDEBUG_ENABLED=1
-make format                       # format all .c/.h via astyle (uses .astylerc — see below)
-make oldcode                      # build oldsrc/ (pre-refactor code, kept for regression comparison)
+make format                       # format all .c/.h via astyle (uses .astylerc — see below; excludes ideas/)
 make help                         # list targets
 ```
 
@@ -108,7 +107,6 @@ AI strategies are attack/defense function pointer pairs (`AttackStrategyFunc`/`D
 
 - `doc/` — design docs (`oracle_design.md`, may lag actual code structure — verify against `src/` when in doubt), `oracle_roadmap.md`, `oracle_todo.md`, `game_rules_doc.md` (full rules).
 - `ideas/` — numbered folders of design explorations/proposals and **prototypes**, not yet implemented and not canonical. Useful for intent/rationale on planned features (recall, drafting formats, client/server, GUI, rating system), but don't copy its conventions into real code — port the *intent*, re-fit to current structure/includes/naming/GameContext. Known mismatches: `ideas/3 tui/`'s `oracle_tui_impl.txt` prototype uses flat includes (`#include "game_types.h"`) and calls the file `tui.c`, and predates both the CLI split (`cli_display.c`/`cli_input.c`/`cli_game.c`) and the linked-list → fixed-array migration for hands/decks — it's now superseded by the real `src/ui/tui/tui_render.c/h` + `src/roles/stda/stda_tui.c` (Milestone 1, 2026-07-14).
-- `oldsrc/` — pre-refactor implementation, kept only for `make oldcode` regression comparisons. Don't extend it.
 - `aicalibsrc/` — planning notes for AI-agent parameter calibration tooling, not yet implemented.
 - `testsrc/` — unit tests (`test_combo_bonus.c`, `test_recall.c`, `test_cash_exchange.c`, all current, see Tests section above) plus `cli_scripts/`, canned interactive-CLI input scripts for manual regression checks.
 
