@@ -462,3 +462,12 @@ void print_ai_agent_shorthand_list(config_t* cfg)
            get_strategy_display_name(e->strategy, cfg->language));
   }
 }
+
+void print_ai_agent_shorthand_codes(void)
+{ for(size_t i = 0; i < AI_STRATEGY_SHORTHAND_COUNT; i++)
+  { const AIStrategyShorthand* e = &AI_STRATEGY_SHORTHANDS[i];
+    printf("%s\n", e->shorthands[0]);
+    if(e->shorthands[1])
+      printf("%s\n", e->shorthands[1]);
+  }
+}

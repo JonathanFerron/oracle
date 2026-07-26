@@ -5,6 +5,27 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-07-26 — Hidden `--oracle-complete` option + bash tab-completion script
+
+- Added a hidden `--oracle-complete[=WHAT]` option to `parse_options()`
+  (`src/main/cmdline.c`) that dumps completion candidates one per line and exits
+  cleanly (return `-1`, same as `-h`/`-V`) — deliberately absent from `print_usage()`,
+  not part of the public CLI. Bare `--oracle-complete` lists every option spelling
+  (all 3 forms where they exist, `-`/`--` dashed per `print_usage()`'s convention,
+  trailing `=` when the option takes an argument); `=agents` lists the `-A`/`--ai`
+  shorthand codes (via new `print_ai_agent_shorthand_codes()` in
+  `src/ui/shared/player_config.c`/`.h`, a bare-codes counterpart to the existing
+  localized `print_ai_agent_shorthand_list()`); `=langs` lists the `-u`/`--ui.lang`
+  codes (`en`/`fr`/`es`). `long_options[]` moved from a `parse_options()`-local
+  `static` array to file scope so `print_completion_list()` can also read it.
+- Added `tools/oracle-completion.bash`, a bash completion script (source it manually,
+  e.g. from `~/.bashrc`) that calls the binary for every candidate list instead of
+  hardcoding any of them, so adding a new option/agent/language needs no script
+  change. Handles bash's default `COMP_WORDBREAKS` splitting `--ai=rand`-style
+  arguments at `=`, the attached-only `-A<agent>` form, and file completion for
+  `-i`/`-o`.
+- No game-logic changes; `-a -p` output still matches `bin/expectedresults.txt`.
+
 ## 2026-07-24 — Removed `oldsrc/`; `make format` now excludes `ideas/`
 
 - **Removed `oldsrc/`** (pre-refactor implementation) and the `oldcode`/`make oldcode`

@@ -29,6 +29,8 @@ Run modes (see `src/main/cmdline.c` for the full option table; both single-lette
 
 Other modes (`stda.sim/.gui`, `server`, `client.*`) are wired into `main.c`'s dispatch switch but currently just print "not yet implemented" — see `src/main/main.c`. `stda.tui` is real as of 2026-07-14 and, as of 2026-07-23 (Milestone 2), supports full human-vs-AI play, not just AI-vs-AI display — see below.
 
+Bash tab-completion: `source tools/oracle-completion.bash` (e.g. from `~/.bashrc`). It calls the binary's hidden `--oracle-complete[=WHAT]` option (intentionally absent from `--help`/`print_usage()`) for every candidate list — option spellings, `-A`/`--ai` agent codes, `-u`/`--ui.lang` codes — so the script has nothing to hardcode.
+
 ### Tests
 
 `make test_combo` builds and runs `testsrc/test_combo_bonus.c` (20/20 passing as of 2026-07-14, fixed as part of the folder-8 cleanup pass): include paths and Makefile variables now point at `core/combo_bonus.{c,h}`/`core/game_constants.{c,h}`, the stale `test_order_mapping()` (testing the since-removed `get_order_from_species()`) was deleted, and the remaining `CombatCard` literals were given explicit `.order` fields matching each species (the struct gained that field after the test was originally written, so positional initializers were silently leaving it zero and causing spurious order-match bonuses).

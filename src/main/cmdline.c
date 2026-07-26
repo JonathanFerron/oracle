@@ -11,6 +11,9 @@
 #include "../util/prng_seed.h"
 #include "../ui/shared/player_config.h"
 
+/* Hidden option for shell completion scripts; deliberately absent from print_usage() */
+#define OPT_ORACLE_COMPLETE 1000
+
 /* Parse language code from string */
 static ui_language_t parse_language(const char* lang_str)
 { if(!lang_str || *lang_str == '\0')
@@ -86,73 +89,99 @@ void print_version(void)
          VERSION_YEAR, VERSION_MONTH, VERSION_SUFFIX);
 }
 
+/* Long options table; file scope so print_completion_list() can also read it */
+static struct option long_options[] =
+{ /* Single letter options */
+  {"h",          no_argument,       0, 'h'},
+  {"v",          no_argument,       0, 'v'},
+  {"V",          no_argument,       0, 'V'},
+  {"n",          required_argument, 0, 'n'},
+  {"i",          required_argument, 0, 'i'},
+  {"o",          required_argument, 0, 'o'},
+  {"u",          optional_argument, 0, 'u'},
+  {"p",          optional_argument, 0, 'p'},
+  {"a",          no_argument,       0, 'a'},
+  {"s",          no_argument,       0, 's'},
+  {"l",          no_argument,       0, 'l'},
+  {"t",          no_argument,       0, 't'},
+  {"g",          no_argument,       0, 'g'},
+  {"S",          no_argument,       0, 'S'},
+  {"C",          no_argument,       0, 'C'},
+  {"L",          no_argument,       0, 'L'},
+  {"T",          no_argument,       0, 'T'},
+  {"G",          no_argument,       0, 'G'},
+  {"A",          optional_argument, 0, 'A'},
+  /* Two letter options */
+  {"he",         no_argument,       0, 'h'},
+  {"vb",         no_argument,       0, 'v'},
+  {"vr",         no_argument,       0, 'V'},
+  {"ns",         required_argument, 0, 'n'},
+  {"in",         required_argument, 0, 'i'},
+  {"ou",         required_argument, 0, 'o'},
+  {"ul",         optional_argument, 0, 'u'},
+  {"pr",         optional_argument, 0, 'p'},
+  {"sa",         no_argument,       0, 'a'},
+  {"ss",         no_argument,       0, 's'},
+  {"sl",         no_argument,       0, 'l'},
+  {"st",         no_argument,       0, 't'},
+  {"sg",         no_argument,       0, 'g'},
+  {"sv",         no_argument,       0, 'S'},
+  {"cs",         no_argument,       0, 'C'},
+  {"cl",         no_argument,       0, 'L'},
+  {"ct",         no_argument,       0, 'T'},
+  {"cg",         no_argument,       0, 'G'},
+  {"ai",         optional_argument, 0, 'A'},
+  /* Long form options */
+  {"help",       no_argument,       0, 'h'},
+  {"verbose",    no_argument,       0, 'v'},
+  {"version",    no_argument,       0, 'V'},
+  {"numsim",     required_argument, 0, 'n'},
+  {"input",      required_argument, 0, 'i'},
+  {"output",     required_argument, 0, 'o'},
+  {"ui.lang",    optional_argument, 0, 'u'},
+  {"prng.seed",  optional_argument, 0, 'p'},
+  {"stda.auto",  no_argument,       0, 'a'},
+  {"stda.sim",   no_argument,       0, 's'},
+  {"stda.cli",   no_argument,       0, 'l'},
+  {"stda.tui",   no_argument,       0, 't'},
+  {"stda.gui",   no_argument,       0, 'g'},
+  {"server",     no_argument,       0, 'S'},
+  {"client.sim", no_argument,       0, 'C'},
+  {"client.cli", no_argument,       0, 'L'},
+  {"client.tui", no_argument,       0, 'T'},
+  {"client.gui", no_argument,       0, 'G'},
+  {"oracle-complete", optional_argument, 0, OPT_ORACLE_COMPLETE},
+  {0, 0, 0, 0}
+};
+
+/* Dump completion candidates, one per line, for the shell completion script
+   (tools/oracle-completion.bash). Option names carry a trailing '=' when
+   they take an argument. Hidden from --help; not part of the public CLI. */
+static void print_completion_list(const char* what)
+{ if(what && strcmp(what, "agents") == 0)
+  { print_ai_agent_shorthand_codes();
+    return;
+  }
+  if(what && strcmp(what, "langs") == 0)
+  { printf("en\nfr\nes\n");   /* keep in sync with parse_language() above */
+    return;
+  }
+
+  for(int i = 0; long_options[i].name; i++)
+  { const struct option* o = &long_options[i];
+    if(o->val == OPT_ORACLE_COMPLETE)
+      continue;               /* never suggest the hidden option itself */
+    printf("%s%s%s\n",
+           strlen(o->name) <= 2 ? "-" : "--",
+           o->name,
+           o->has_arg == no_argument ? "" : "=");
+  }
+}
+
 /* Parse command line options */
 int parse_options(int argc, char** argv, config_t* cfg)
 { int opt;
   int option_index = 0;
-
-  static struct option long_options[] =
-  { /* Single letter options */
-    {"h",          no_argument,       0, 'h'},
-    {"v",          no_argument,       0, 'v'},
-    {"V",          no_argument,       0, 'V'},
-    {"n",          required_argument, 0, 'n'},
-    {"i",          required_argument, 0, 'i'},
-    {"o",          required_argument, 0, 'o'},
-    {"u",          optional_argument, 0, 'u'},
-    {"p",          optional_argument, 0, 'p'},
-    {"a",          no_argument,       0, 'a'},
-    {"s",          no_argument,       0, 's'},
-    {"l",          no_argument,       0, 'l'},
-    {"t",          no_argument,       0, 't'},
-    {"g",          no_argument,       0, 'g'},
-    {"S",          no_argument,       0, 'S'},
-    {"C",          no_argument,       0, 'C'},
-    {"L",          no_argument,       0, 'L'},
-    {"T",          no_argument,       0, 'T'},
-    {"G",          no_argument,       0, 'G'},
-    {"A",          optional_argument, 0, 'A'},
-    /* Two letter options */
-    {"he",         no_argument,       0, 'h'},
-    {"vb",         no_argument,       0, 'v'},
-    {"vr",         no_argument,       0, 'V'},
-    {"ns",         required_argument, 0, 'n'},
-    {"in",         required_argument, 0, 'i'},
-    {"ou",         required_argument, 0, 'o'},
-    {"ul",         optional_argument, 0, 'u'},
-    {"pr",         optional_argument, 0, 'p'},
-    {"sa",         no_argument,       0, 'a'},
-    {"ss",         no_argument,       0, 's'},
-    {"sl",         no_argument,       0, 'l'},
-    {"st",         no_argument,       0, 't'},
-    {"sg",         no_argument,       0, 'g'},
-    {"sv",         no_argument,       0, 'S'},
-    {"cs",         no_argument,       0, 'C'},
-    {"cl",         no_argument,       0, 'L'},
-    {"ct",         no_argument,       0, 'T'},
-    {"cg",         no_argument,       0, 'G'},
-    {"ai",         optional_argument, 0, 'A'},
-    /* Long form options */
-    {"help",       no_argument,       0, 'h'},
-    {"verbose",    no_argument,       0, 'v'},
-    {"version",    no_argument,       0, 'V'},
-    {"numsim",     required_argument, 0, 'n'},
-    {"input",      required_argument, 0, 'i'},
-    {"output",     required_argument, 0, 'o'},
-    {"ui.lang",    optional_argument, 0, 'u'},
-    {"prng.seed",  optional_argument, 0, 'p'},
-    {"stda.auto",  no_argument,       0, 'a'},
-    {"stda.sim",   no_argument,       0, 's'},
-    {"stda.cli",   no_argument,       0, 'l'},
-    {"stda.tui",   no_argument,       0, 't'},
-    {"stda.gui",   no_argument,       0, 'g'},
-    {"server",     no_argument,       0, 'S'},
-    {"client.sim", no_argument,       0, 'C'},
-    {"client.cli", no_argument,       0, 'L'},
-    {"client.tui", no_argument,       0, 'T'},
-    {"client.gui", no_argument,       0, 'G'},
-    {0, 0, 0, 0}
-  };
 
   /* Initialize config with defaults */
   memset(cfg, 0, sizeof(config_t));
@@ -174,6 +203,9 @@ int parse_options(int argc, char** argv, config_t* cfg)
         break;
       case 'V':
         print_version();
+        return -1;
+      case OPT_ORACLE_COMPLETE:
+        print_completion_list(optarg);
         return -1;
       case 'n':
         cfg->numsim = atoi(optarg);

@@ -62,4 +62,8 @@ const char* get_player_display_name(PlayerID player, PlayerConfig* pconfig);
 AIStrategyType parse_ai_strategy_shorthand(const char* shorthand);
 void print_ai_agent_shorthand_list(config_t* cfg);
 
+// Bare shorthand codes only, one per line, no localized names/header
+// (shell completion; see tools/oracle-completion.bash).
+void print_ai_agent_shorthand_codes(void);
+
 #endif // PLAYER_CONFIG_H
