@@ -99,69 +99,76 @@ static void display_ai_strategy_menu(ui_language_t lang)
          LOCALIZED_STRING_L(lang, "Random", "Aleatoire", "Aleatorio"),
          LOCALIZED_STRING_L(lang, "available", "disponible", "disponible"));
 
-  // ideas/A1 ai agent value based
+  // ideas/A1 ai agent value based (the apprentice)
   printf("  [2] %s (%s)\n",
          LOCALIZED_STRING_L(lang, "Value Based", "Base sur la valeur",
                             "Basado en valor"),
          LOCALIZED_STRING_L(lang, "not yet implemented",
                             "pas encore implemente", "no implementado"));
 
-  // ideas/A3 ai agent greedy power
+  // ideas/A2 ai agent combo threshold (the showboat)
   printf("  [3] %s (%s)\n",
-         LOCALIZED_STRING_L(lang, "Greedy Power", "Puissance gloutonne",
-                            "Poder codicioso"),
+         LOCALIZED_STRING_L(lang, "Combo Threshold [The Showboat]",
+                            "Seuil de combo [Le Frimeur]",
+                            "Umbral de combo [El Fanfarron]"),
          LOCALIZED_STRING_L(lang, "not yet implemented",
                             "pas encore implemente", "no implementado"));
 
-  // ideas/A4 ai agent combo aware -- the Borealis benchmark agent
+  // ideas/A3 ai agent greedy power (borealis) -- the benchmark agent
   printf("  [4] %s (%s)\n",
-         LOCALIZED_STRING_L(lang, "Combo Aware [Borealis benchmark]",
-                            "Sensible aux combos [reference Borealis]",
-                            "Consciente de combos [referencia Borealis]"),
+         LOCALIZED_STRING_L(lang, "Greedy Power [Borealis benchmark]",
+                            "Puissance gloutonne [reference Borealis]",
+                            "Poder codicioso [referencia Borealis]"),
          LOCALIZED_STRING_L(lang, "not yet implemented",
                             "pas encore implemente", "no implementado"));
 
-  // ideas/A5 ai agent balanced
+  // ideas/A4 ai agent balanced rules (bean counter)
   printf("  [5] %s (%s)\n",
          LOCALIZED_STRING_L(lang, "Balanced Rules", "Regles equilibrees",
                             "Reglas equilibradas"),
          LOCALIZED_STRING_L(lang, "not yet implemented",
                             "pas encore implemente", "no implementado"));
 
-  // ideas/A6 ai agent heuristics
+  // ideas/A5 ai agent heuristic (eps-gam-del)
   printf("  [6] %s (%s)\n",
          LOCALIZED_STRING_L(lang, "Heuristic", "Heuristique", "Heuristica"),
          LOCALIZED_STRING_L(lang, "not yet implemented",
                             "pas encore implemente", "no implementado"));
 
-  // ideas/A7 ai agent tactical and hbt (Heuristics+Balanced+Tactical hybrid)
+  // ideas/A6 ai agent tactical (pressure cooker)
   printf("  [7] %s (%s)\n",
+         LOCALIZED_STRING_L(lang, "Tactical", "Tactique", "Tactico"),
+         LOCALIZED_STRING_L(lang, "not yet implemented",
+                            "pas encore implemente", "no implementado"));
+
+  // ideas/A7 ai agent hybrid hbt (the grandmaster)
+  printf("  [8] %s (%s)\n",
          LOCALIZED_STRING_L(lang, "Hybrid (HBT)", "Hybride (HBT)",
                             "Hibrido (HBT)"),
          LOCALIZED_STRING_L(lang, "not yet implemented",
                             "pas encore implemente", "no implementado"));
 
-  // ideas/A8 ai agent hbt 2 ply
-  printf("  [8] %s (%s)\n",
-         LOCALIZED_STRING_L(lang, "HBT 2-ply", "HBT 2-coups", "HBT 2-jugadas"),
-         LOCALIZED_STRING_L(lang, "not yet implemented",
-                            "pas encore implemente", "no implementado"));
-
-  // ideas/A9 ai agent simple MC
+  // ideas/A8 ai agent simple monte carlo (the soothsayer)
   printf("  [9] %s (%s)\n",
          LOCALIZED_STRING_L(lang, "Simple Monte Carlo",
                             "Monte Carlo simple", "Monte Carlo simple"),
          LOCALIZED_STRING_L(lang, "not yet implemented",
                             "pas encore implemente", "no implementado"));
 
-  // ideas/A10 ai agent is mcts
+  // ideas/A9 ai agent hbt 2 ply (grandmaster ii)
   printf("  [10] %s (%s)\n",
+         LOCALIZED_STRING_L(lang, "HBT 2-ply", "HBT 2-coups", "HBT 2-jugadas"),
+         LOCALIZED_STRING_L(lang, "not yet implemented",
+                            "pas encore implemente", "no implementado"));
+
+  // ideas/A10 ai agent is-mcts (the omniscient)
+  printf("  [11] %s (%s)\n",
          LOCALIZED_STRING_L(lang, "IS-MCTS", "IS-MCTS", "IS-MCTS"),
          LOCALIZED_STRING_L(lang, "not yet implemented",
                             "pas encore implemente", "no implementado"));
 
-  // ideas/A11 ai agent is mcts with neural network
-  printf("  [11] %s (%s)\n",
+  // ideas/A11 ai agent is-mcts + nn (alphaoracle prime)
+  printf("  [12] %s (%s)\n",
          LOCALIZED_STRING_L(lang, "IS-MCTS + Neural Network",
                             "IS-MCTS + reseau de neurones",
                             "IS-MCTS + red neuronal"),
@@ -360,39 +367,48 @@ void apply_player_assignment(PlayerConfig* pconfig, config_t* cfg,
   }
 }
 
+// Flavour names from ideas/G1 AI agent general info/oracle_ai_agent_names.md
+// (canonical roster). ASCII-safe variants are used throughout, matching that
+// file's "ASCII-Safe Variants" table, since print_ai_agent_shorthand_list()
+// pads with %-16s, which counts bytes rather than glyphs.
 const char* get_strategy_display_name(AIStrategyType strategy,
                                       ui_language_t lang)
 { switch(strategy)
   { case AI_STRATEGY_RANDOM:
-      return LOCALIZED_STRING_L(lang, "Random", "Aleatoire", "Aleatorio");
+      return LOCALIZED_STRING_L(lang, "The Gambler", "Le Parieur",
+                                "El Apostador");
     case AI_STRATEGY_VALUE_BASED:
-      return LOCALIZED_STRING_L(lang, "Value Based", "Base sur la valeur",
-                                "Basado en valor");
-    case AI_STRATEGY_GREEDY_POWER:
-      return LOCALIZED_STRING_L(lang, "Greedy Power", "Puissance gloutonne",
-                                "Poder codicioso");
-    case AI_STRATEGY_COMBO_AWARE:
-      return LOCALIZED_STRING_L(lang, "Combo Aware [Borealis]",
-                                "Sensible aux combos [Borealis]",
-                                "Consciente de combos [Borealis]");
+      return LOCALIZED_STRING_L(lang, "The Apprentice", "L'Apprenti",
+                                "El Aprendiz");
+    case AI_STRATEGY_COMBO_THRESHOLD:
+      return LOCALIZED_STRING_L(lang, "The Showboat", "Le Frimeur",
+                                "El Fanfarron");
+    case AI_STRATEGY_BOREALIS:
+      return LOCALIZED_STRING_L(lang, "Borealis", "Borealis", "Borealis");
     case AI_STRATEGY_BALANCED:
-      return LOCALIZED_STRING_L(lang, "Balanced", "Equilibre", "Equilibrado");
+      return LOCALIZED_STRING_L(lang, "Bean Counter", "Compteur de Feves",
+                                "Contador de Frijoles");
     case AI_STRATEGY_HEURISTIC:
-      return LOCALIZED_STRING_L(lang, "Heuristic", "Heuristique",
-                                "Heuristica");
+      return LOCALIZED_STRING_L(lang, "Eps-Gam-Del", "Eps-Gam-Del",
+                                "Eps-Gam-Del");
+    case AI_STRATEGY_TACTICAL:
+      return LOCALIZED_STRING_L(lang, "Pressure Cooker", "Cocotte-Minute",
+                                "Olla a Presion");
     case AI_STRATEGY_HYBRID_HBT:
-      return LOCALIZED_STRING_L(lang, "Hybrid (HBT)", "Hybride (HBT)",
-                                "Hibrido (HBT)");
-    case AI_STRATEGY_HBT_2PLY:
-      return LOCALIZED_STRING_L(lang, "HBT 2-ply", "HBT 2-coups",
-                                "HBT 2-jugadas");
+      return LOCALIZED_STRING_L(lang, "The Grandmaster", "Le Grand Maitre",
+                                "El Gran Maestro");
     case AI_STRATEGY_SIMPLE_MC:
-      return LOCALIZED_STRING_L(lang, "SimpleMC", "MC-Simple", "MC-Simple");
+      return LOCALIZED_STRING_L(lang, "The Soothsayer", "Le Devin",
+                                "El Adivino");
+    case AI_STRATEGY_HBT_2PLY:
+      return LOCALIZED_STRING_L(lang, "Grandmaster II", "Grand Maitre II",
+                                "Gran Maestro II");
     case AI_STRATEGY_ISMCTS:
-      return LOCALIZED_STRING_L(lang, "IS-MCTS", "IS-MCTS", "IS-MCTS");
+      return LOCALIZED_STRING_L(lang, "The Omniscient", "L'Omniscient",
+                                "El Omnisciente");
     case AI_STRATEGY_ISMCTS_NN:
-      return LOCALIZED_STRING_L(lang, "IS-MCTS + NN", "IS-MCTS + RN",
-                                "IS-MCTS + RN");
+      return LOCALIZED_STRING_L(lang, "AlphaOracle Prime", "AlphaOracle Prime",
+                                "AlphaOracle Prime");
     default:
       return "Unknown";
   }
@@ -403,25 +419,27 @@ const char* get_player_display_name(PlayerID player, PlayerConfig* pconfig)
 }
 
 // Shorthand codes for `-A`/`--ai` (lowercase letters/digits, <=10 chars).
-// AI_STRATEGY_COMBO_AWARE has two aliases (its own name and the Borealis
-// benchmark codename); every other strategy has exactly one.
+// AI_STRATEGY_BOREALIS and AI_STRATEGY_COMBO_THRESHOLD each have two aliases
+// (their current name plus the retired name they were renamed from -- see
+// player_config.h's rename note); every other strategy has exactly one.
 typedef struct
 { AIStrategyType strategy;
   const char* shorthands[2];
 } AIStrategyShorthand;
 
 static const AIStrategyShorthand AI_STRATEGY_SHORTHANDS[] =
-{ { AI_STRATEGY_RANDOM,       { "rand", NULL } },
-  { AI_STRATEGY_VALUE_BASED,  { "value", NULL } },
-  { AI_STRATEGY_GREEDY_POWER, { "greedy", NULL } },
-  { AI_STRATEGY_COMBO_AWARE,  { "combo", "borealis" } },
-  { AI_STRATEGY_BALANCED,     { "balanced", NULL } },
-  { AI_STRATEGY_HEURISTIC,    { "heuristic", NULL } },
-  { AI_STRATEGY_HYBRID_HBT,   { "hbt", NULL } },
-  { AI_STRATEGY_HBT_2PLY,     { "hbt2ply", NULL } },
-  { AI_STRATEGY_SIMPLE_MC,    { "simplemc", NULL } },
-  { AI_STRATEGY_ISMCTS,       { "ismcts", NULL } },
-  { AI_STRATEGY_ISMCTS_NN,    { "ismctsnn", NULL } },
+{ { AI_STRATEGY_RANDOM,           { "rand", NULL } },
+  { AI_STRATEGY_VALUE_BASED,      { "value", NULL } },
+  { AI_STRATEGY_COMBO_THRESHOLD,  { "showboat", "combo" } },
+  { AI_STRATEGY_BOREALIS,         { "borealis", "greedy" } },
+  { AI_STRATEGY_BALANCED,         { "balanced", NULL } },
+  { AI_STRATEGY_HEURISTIC,        { "heuristic", NULL } },
+  { AI_STRATEGY_TACTICAL,         { "tactical", NULL } },
+  { AI_STRATEGY_HYBRID_HBT,       { "hbt", NULL } },
+  { AI_STRATEGY_SIMPLE_MC,        { "simplemc", NULL } },
+  { AI_STRATEGY_HBT_2PLY,         { "hbt2ply", NULL } },
+  { AI_STRATEGY_ISMCTS,           { "ismcts", NULL } },
+  { AI_STRATEGY_ISMCTS_NN,        { "ismctsnn", NULL } },
 };
 #define AI_STRATEGY_SHORTHAND_COUNT \
   (sizeof(AI_STRATEGY_SHORTHANDS) / sizeof(AI_STRATEGY_SHORTHANDS[0]))

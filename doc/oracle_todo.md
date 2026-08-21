@@ -8,7 +8,7 @@ see `doc/oracle_design.md`. For a dated history of finished work see `doc/change
 mulligan, discard-to-7, combat/discard display), the source folder structure cleanup, and
 TUI Milestones 1–2 + polish pass are complete — see `doc/changelog.md`. First non-dumb AI
 strategy is next; see `doc/oracle_roadmap.md`'s "Next Up" for the authoritative order and
-rationale (`A1 → A2 → A3 → A4`).
+rationale (`A1 → A2 → A3`).
 
 ---
 
@@ -19,8 +19,8 @@ The mechanical steps for implementing whichever agent is next are in "Checklist:
 New AI Strategy" below.
 
 **Future `src/` directories, created only when their first real file lands** (tracked
-here so it isn't lost between sessions — see `ideas/2 game engine refactoring for GUI and
-network support/target_folder_structure_v4.md`'s ownership table for the full picture):
+here so it isn't lost between sessions — see `ideas/2 engine and action system design/
+target_folder_structure_v4.md`'s ownership table for the full picture):
 
 - `deck_formats/` — draft/deck-format feature (`ideas/10 Draft Format and Game Depth
   Addition Ideas/`)
@@ -77,10 +77,12 @@ if(genRand(&MTwister_rand_struct) > DEFENSE_PROBABILITY) return;
 ## AI Strategies (`src/ai_strat/`)
 
 See `doc/oracle_roadmap.md`'s "Phase: AI Development" for the full agent ladder and
-`ideas/A1`–`ideas/A11` for per-agent design notes. Below are the two agents with enough
-design-note detail already sketched out to break into sub-tasks.
+`ideas/A1`–`ideas/A11` for per-agent design notes (`A#` matches each agent's
+`AIStrategyType` enum ordinal; see `ideas/G1 AI agent general info/oracle_ai_agent_names.md`
+for the canonical roster). Below are the two agents with enough design-note detail
+already sketched out to break into sub-tasks.
 
-### `A5` Balanced Rules Strategy (`ai_strat_balancedrules1.c`)
+### `A4` Balanced Rules Strategy (`ai_strat_balancedrules1.c`)
 
 - [ ] In `stda.cli` mode, when AI-vs-AI play is selected, use "AI strategy name + (A or
   B)" as the player name instead of asking for player 1's name and not player 2's
@@ -95,13 +97,13 @@ design-note detail already sketched out to break into sub-tasks.
 - [ ] Parameter tuning: calibrate target cash/hand formulas; optimize defend
   probability; test vs Random AI (should win >70%)
 
-### `A6` Heuristic Strategy (`ai_strat_heuristic1.c`)
+### `A5` Heuristic Strategy (`ai_strat_heuristic1.c`)
 
 - [ ] Advantage function (energy advantage, cards advantage, cash advantage — see
   `ai_strat_heuristic1.c` notes for the formulas)
 - [ ] 1-move lookahead, action evaluation
 - [ ] Parameters: ε (epsilon) for energy weight, γ (gamma) for cards weight
-- [ ] Calibration against `A5` Balanced AI
+- [ ] Calibration against `A4` Balanced AI
 
 ---
 

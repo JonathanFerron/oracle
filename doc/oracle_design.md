@@ -76,9 +76,9 @@ mechanic; interactive cash-exchange champion choice; detailed combat-results dis
 discard-pile inspection.
 
 **AI Framework**: strategy function-pointer system; `ai_strat_random` is the only
-functional strategy (baseline, ~50% win rate in mirror matches, as expected). Ten
-further agents (`ideas/A1`–`ideas/A11`, skipping `A2` which is calibration tooling, not
-an agent) are registered as named stub menu entries — see §7.
+functional strategy (baseline, ~50% win rate in mirror matches, as expected). Eleven
+further agents (`ideas/A1`–`ideas/A11`, one folder per agent, numbered to match the
+agent's `AIStrategyType` enum ordinal) are registered as named stub menu entries — see §7.
 
 **User Interface**: command-line argument parsing (`getopt_long_only`, short/`--long`/
 `--long.form` spellings, hidden `--oracle-complete` completion helper); CLI mode (human
@@ -338,21 +338,24 @@ folder:
 | Enum | Status | `ideas/` folder |
 | --- | --- | --- |
 | `AI_STRATEGY_RANDOM` | **implemented** | — |
-| `AI_STRATEGY_VALUE_BASED` | stub | `A1` |
-| `AI_STRATEGY_GREEDY_POWER` | stub | `A3` |
-| `AI_STRATEGY_COMBO_AWARE` | stub | `A4` — Borealis benchmark agent |
-| `AI_STRATEGY_BALANCED` | stub | `A5` |
-| `AI_STRATEGY_HEURISTIC` | stub | `A6` |
-| `AI_STRATEGY_HYBRID_HBT` | stub | `A7` (Heuristics + Balanced + Tactical) |
-| `AI_STRATEGY_HBT_2PLY` | stub | `A8` |
-| `AI_STRATEGY_SIMPLE_MC` | stub | `A9` |
-| `AI_STRATEGY_ISMCTS` | stub | `A10` |
-| `AI_STRATEGY_ISMCTS_NN` | stub | `A11` |
+| `AI_STRATEGY_VALUE_BASED` | stub | `A1` (The Apprentice) |
+| `AI_STRATEGY_COMBO_THRESHOLD` | stub | `A2` (The Showboat) |
+| `AI_STRATEGY_BOREALIS` | stub | `A3` — the rating-scale benchmark agent |
+| `AI_STRATEGY_BALANCED` | stub | `A4` (Bean Counter) |
+| `AI_STRATEGY_HEURISTIC` | stub | `A5` (ε-γ-δ) |
+| `AI_STRATEGY_TACTICAL` | stub | `A6` (Pressure Cooker) |
+| `AI_STRATEGY_HYBRID_HBT` | stub | `A7` (The Grandmaster — synthesis of `A4`/`A5`/`A6`) |
+| `AI_STRATEGY_SIMPLE_MC` | stub | `A8` (The Soothsayer) |
+| `AI_STRATEGY_HBT_2PLY` | stub | `A9` (Grandmaster II) |
+| `AI_STRATEGY_ISMCTS` | stub | `A10` (The Omniscient) |
+| `AI_STRATEGY_ISMCTS_NN` | stub | `A11` (AlphaOracle Prime) |
 
-Implementation order is `A1 → A2 → A3 → A4`, not just easiest-first: the rating system
-(`ideas/5`) needs the Borealis benchmark agent (`A4`), which itself needs `A1`–`A3` to
-exist for comparison. `A2` (`ideas/A2 ai agent parameters storing and optimization/`) is
-calibration tooling, not an agent, so it's skipped in the enum.
+Implementation order is `A1 → A2 → A3`, not just easiest-first: the rating system
+(`ideas/5`) needs the Borealis benchmark agent (`A3`), which itself needs `A1`–`A2` to
+exist for comparison. General info and calibration tooling live in
+`ideas/G1 AI agent general info/` and `ideas/G2 ai agent parameters storing and
+optimization/` — support material, not agents, so they carry no enum entry and no longer
+occupy a slot on the A-line.
 
 ### Random Strategy (reference implementation)
 

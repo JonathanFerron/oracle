@@ -39,16 +39,18 @@ Full details: `doc/changelog.md`.
 
 ## Next Up (single authoritative order)
 
-1. **First "non-dumb" AI strategy** (`ideas/A1 ai agent value based/`), then
-   `A2 → A3 → A4` in order. This isn't just easiest-first: the rating system
-   (`ideas/5 rating system/`) needs the Borealis benchmark agent (`A4`), which itself
-   needs `A1`–`A3` implemented for comparison. `A2` (`ideas/A2 ai agent parameters
-   storing and optimization/`) is calibration tooling, not an agent — skipped in the
-   `AIStrategyType` enum.
+1. **First "non-dumb" AI strategy** (`ideas/A1 ai agent value based (the apprentice)/`),
+   then `A2 → A3` in order. This isn't just easiest-first: the rating system
+   (`ideas/5 rating system/`) needs the Borealis benchmark agent (`A3`), which itself
+   needs `A1`–`A2` implemented for comparison. Support material that isn't itself an
+   agent — general info and calibration tooling — was moved off the A-line into
+   `ideas/G1 AI agent general info/` and `ideas/G2 ai agent parameters storing and
+   optimization/` (2026-08-21 folder-sort pass), so it no longer occupies an
+   `AIStrategyType` enum slot or interrupts the A-line numbering.
 
    The CLI's `display_ai_strategy_menu()`/`get_ai_strategy_choice()`/
    `get_strategy_display_name()` (`src/ui/shared/player_config.c`) already list all
-   eleven planned agents as stubs; remaining work per agent is implementing its
+   twelve planned agents as stubs; remaining work per agent is implementing its
    attack/defense functions in `src/ai_strat/` and wiring its menu choice through
    instead of falling back to Random. See `doc/oracle_todo.md`'s "Checklist: Adding a
    New AI Strategy" for the mechanical steps.
@@ -102,11 +104,13 @@ error-handling polish (see `doc/oracle_todo.md`).
 
 ### Phase: AI Development — foundation ready, implementation pending
 
-Ladder: `A1` value-based → `A3` greedy-power → `A4` combo-aware (Borealis benchmark) →
-`A5` balanced rules → `A6` heuristic → `A7` hybrid (HBT) → `A8` HBT 2-ply → `A9` simple
-MC → `A10` IS-MCTS → `A11` IS-MCTS + neural network. One `ideas/A#` folder per agent, in
-`src/ai_strat/`'s `AIStrategyType` enum order (`src/ui/shared/player_config.h`). See
-"Next Up" above for why `A1→A2→A3→A4` comes first.
+Ladder: `A1` value-based → `A2` combo threshold (The Showboat) → `A3` greedy power
+(Borealis benchmark) → `A4` balanced rules → `A5` heuristic → `A6` tactical → `A7` hybrid
+(HBT) → `A8` simple MC → `A9` HBT 2-ply → `A10` IS-MCTS → `A11` IS-MCTS + neural network.
+One `ideas/A#` folder per agent, `A#` matching that agent's `AIStrategyType` enum ordinal
+(`src/ui/shared/player_config.h`). See "Next Up" above for why `A1→A2→A3` comes first, and
+`ideas/G1 AI agent general info/oracle_ai_agent_names.md` for the canonical roster,
+flavour names, and ratings.
 
 ### Phase: Simulation & Analysis Tools — spec complete, implementation pending
 

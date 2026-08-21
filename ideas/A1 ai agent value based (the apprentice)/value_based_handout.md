@@ -1,12 +1,14 @@
 # Handout — Implement the Value Based AI Agent
 
 **Target:** `AI_STRATEGY_VALUE_BASED`
-**Prerequisite:** `AI_STRATEGY_GREEDY_POWER` ("The Hoarder") is implemented and
+**Prerequisite:** `AI_STRATEGY_BOREALIS` ("Borealis") is implemented and
 merged. This handout assumes its helpers exist and are available for reuse.
+Design notes: `../A3 ai agent greedy power (borealis)/greedy_power_borealis_handout.md`.
+(The retired name for this prerequisite was "The Hoarder" — see
+`../G1 AI agent general info/oracle_ai_agent_names.md`, "Retired names".)
 **Status to confirm:** enum, shorthand and display name are believed to already
 exist in `player_config.c/h` with the agent stubbed as "not yet implemented".
-Verify before touching anything. Also confirm the `ideas/A*` number for this
-work item.
+Verify before touching anything.
 
 ---
 
@@ -29,7 +31,9 @@ Deliberately **out of scope**:
 - resource targets, phase modelling, aggression modelling
 - any lookahead or simulation
 
-Expected strength: above Random, below Greedy Power. Placeholder rating ≈ 20.
+Expected strength: above Random, below Greedy Power (Borealis). Placeholder
+rating **15**, per the canonical roster
+(`../G1 AI agent general info/oracle_ai_agent_names.md`).
 
 ---
 
@@ -53,7 +57,7 @@ one term.
 
 Value Based therefore differs on three structural axes, not one:
 
-| Axis | Greedy Power | Value Based |
+| Axis | Greedy Power (Borealis) | Value Based |
 |---|---|---|
 | Scoring | additive, λ-penalised: `Σcontrib + combo − λ·Σcost` | ratio: `contrib / (cost + k)` per card |
 | Selection | exhaustive subsets 0–3, argmax | rank + greedy take under budget, cap 2 |
@@ -243,7 +247,7 @@ The whole agent should land well under 300 lines.
 
 1. **`src/ui/shared/player_config.c`** — `get_strategy_display_name()`: set the
    flavour name for `AI_STRATEGY_VALUE_BASED`, matching the accent-stripping
-   convention already used there for The Hoarder.
+   convention already used there for Borealis.
 2. **`src/ui/shared/player_config.c`** — interactive strategy menu: drop the
    "not yet implemented" suffix from the Value Based entry.
 3. **Strategy dispatch** — register both functions in the `AIStrategyType` →
@@ -321,7 +325,7 @@ strictly more aggressive than Greedy Power, which can score the empty set
 highest and decline to play. Two readings:
 
 - **Feature.** "Always commits" is a legible, distinct personality for a
-  low-tier agent, and it makes the head-to-head loss against The Hoarder
+  low-tier agent, and it makes the head-to-head loss against Borealis
   interpretable as *combos + restraint* rather than combos alone.
 - **Bug.** It muddies the combo attribution, since two things differ.
 

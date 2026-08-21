@@ -50,7 +50,7 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ## 2026-08-20 — Idea 1 (source folder structure) closed out; doc cleanup pass
 
-- **Idea 1 second pass**: `ideas/1 improve source code folder structure/`'s pragmatic
+- **Idea 1 second pass**: `ideas/done/1 improve source code folder structure/`'s pragmatic
   cleanup (done 2026-07-14) left a small remainder, now closed. The ten `src/`
   placeholder `.txt` files had cross-references to a pre-renumbering `ideas/` layout
   (`ideas/9`, `11`, `12.1`, `15`, `16`, `18`, `1 tui`) — repointed at the current folder
@@ -487,7 +487,7 @@ Oracle's own code).
 ## 2026-07-14 — Source folder structure cleanup (pragmatic pass)
 
 Pragmatic pass only (not the full v4 engine rewrite) — see
-`ideas/1 improve source code folder structure/pragmatic_cleanup_implementation_plan.md`
+`ideas/done/1 improve source code folder structure/pragmatic_cleanup_implementation_plan.md`
 for full detail.
 
 - Split `cli_display.c` (576 lines) into `cli_display.c` (233 lines, core status/turn

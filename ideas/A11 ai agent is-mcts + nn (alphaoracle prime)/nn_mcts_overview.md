@@ -1,57 +1,14 @@
-# Advanced AI Agents: IS-MCTS and NN+MCTS
+# Neural Network + MCTS (AlphaZero-Style)
 
-## Information Set Monte Carlo Tree Search (IS-MCTS)
+Split out of the original combined `ismcts_nn_overview.md` (2026-08-21) — this file now
+covers NN+MCTS on its own; plain IS-MCTS moved to
+`../A10 ai agent is-mcts (the omniscient)/ismcts_overview.md`. Read that file first: this
+one assumes a working IS-MCTS foundation (Stage 1 below) is in place.
 
-### Overview
-IS-MCTS extends traditional MCTS to handle imperfect information games like Oracle, where players cannot see their opponent's hand or deck composition. Unlike games like Chess or Go where all information is visible, Oracle requires the AI to reason about hidden information.
-
-### Core Concept: Determinization
-Since the AI cannot see the opponent's hidden cards, it uses **determinization**:
-1. **Sample** a possible opponent hand/deck consistent with observed information
-2. **Search** the game tree as if this sample were the true game state
-3. **Repeat** with many different samples to build a robust strategy
-4. **Aggregate** results across all determinizations
-
-### Key Components
-
-**Tree Structure**
-- Nodes represent game states from the AI's perspective (information sets)
-- Each node tracks: visit count, total reward, available actions
-- UCT (Upper Confidence bounds applied to Trees) balances exploration vs exploitation
-
-**Four Phases per Iteration**
-1. **Selection**: Traverse tree using UCT formula to pick promising nodes
-2. **Expansion**: Add new child node when reaching tree frontier
-3. **Simulation**: Play out the game randomly (rollout) from new node to terminal state
-4. **Backpropagation**: Update all ancestor nodes with simulation result
-
-**Handling Hidden Information**
-- Maintain observer's information set (what the AI knows)
-- Clone game state and randomize unknown cards (opponent's hand/deck)
-- Re-determinize periodically as new information is revealed
-- Use consistent determinization within each tree search
-
-### Oracle-Specific Challenges
-- **Deck composition unknown**: After initial random distribution, neither player knows what's in their deck
-- **Hand hidden**: Cannot see opponent's current hand (0-7 cards)
-- **Discard pile visible**: Public information that constrains possible remaining cards
-- **Stochastic elements**: Dice rolls during combat add randomness beyond hidden information
-
-### Expected Performance
-Well-tuned IS-MCTS should achieve strong strategic play by:
-- Reasoning probabilistically about opponent's possible hands
-- Planning multi-turn sequences
-- Balancing resource management (lunas, hand size, energy)
-- Adapting strategy based on revealed information
-
----
-
-## Neural Network + MCTS (AlphaZero-Style)
-
-### Overview
+## Overview
 Combining deep neural networks with MCTS creates superhuman game-playing AI, as demonstrated by AlphaZero (Chess), AlphaGo (Go), and KataGo. The neural network **guides** the MCTS search toward promising positions, making it vastly more efficient than pure MCTS.
 
-### The Hybrid Approach
+## The Hybrid Approach
 
 **Traditional MCTS Problem**: Random rollouts waste computation on bad moves
 
@@ -59,7 +16,7 @@ Combining deep neural networks with MCTS creates superhuman game-playing AI, as 
 1. **Policy**: Which actions are most promising? (focuses search)
 2. **Value**: How good is this position? (reduces rollout depth)
 
-### Architecture Components
+## Architecture Components
 
 **Neural Network**
 - **Input**: Oracle game state representation
@@ -81,7 +38,7 @@ Combining deep neural networks with MCTS creates superhuman game-playing AI, as 
 4. **Backpropagation**: Use neural net value estimate instead of rollout result
 5. **Repeat**: Re-determinize and search again with different samples
 
-### Training Process (Self-Play Loop)
+## Training Process (Self-Play Loop)
 
 **Phase 1: Self-Play Data Generation**
 - AI plays against itself using current neural network
@@ -99,7 +56,7 @@ Combining deep neural networks with MCTS creates superhuman game-playing AI, as 
 - Keep new network if it wins >55% of games
 - Repeat cycle: self-play → train → evaluate → iterate
 
-### Why This Works for Oracle
+## Why This Works for Oracle
 
 **Advantages**
 - **Learns game patterns**: Network discovers combo synergies, resource management strategies
@@ -114,7 +71,7 @@ Combining deep neural networks with MCTS creates superhuman game-playing AI, as 
 - **Resource management**: Network discovers optimal luna spending patterns
 - **Training advantage**: Network sees full game state during self-play, learns patterns that help with uncertainty during actual play
 
-### Expected Training Requirements
+## Expected Training Requirements
 
 Based on KataGo's results (which trained strong Go AI in 19 days on 28 GPUs):
 - **Hardware**: 1× RTX 4090 (24GB VRAM)
@@ -123,7 +80,7 @@ Based on KataGo's results (which trained strong Go AI in 19 days on 28 GPUs):
 - **Data generated**: 10-50 million training positions
 - **Result**: Superhuman Oracle play
 
-### Comparison to Pure IS-MCTS
+## Comparison to Pure IS-MCTS
 
 | Aspect | IS-MCTS | NN+MCTS |
 |--------|---------|---------|
@@ -135,9 +92,9 @@ Based on KataGo's results (which trained strong Go AI in 19 days on 28 GPUs):
 | **Requires training** | No | Yes (but one-time) |
 | **Determinization** | Required | Also required, but more efficient |
 
-### Implementation Path for Oracle
+## Implementation Path for Oracle
 
-**Stage 1: IS-MCTS Foundation** (Prerequisite)
+**Stage 1: IS-MCTS Foundation** (Prerequisite — see A10)
 - Build working IS-MCTS agent
 - Establish baseline performance
 - Create game state cloning and determinization
@@ -164,20 +121,11 @@ Based on KataGo's results (which trained strong Go AI in 19 days on 28 GPUs):
 
 ## References & Further Reading
 
-- **IS-MCTS**: "Information Set Monte Carlo Tree Search" (Cowling et al., 2012)
 - **AlphaZero**: "Mastering Chess and Shogi by Self-Play with a General Reinforcement Learning Algorithm" (Silver et al., 2017)
 - **KataGo**: "Accelerating Self-Play Learning in Go" (Wu, 2019) - achieved amateur dan strength in days, not months
 - **Oracle Design**: See `doc/oracle_design.md` and `doc/oracle_roadmap.md` in this repository
 
----
-
 ## Quick Decision Guide
-
-**Choose IS-MCTS if you want:**
-- Strong AI without machine learning complexity
-- CPU-only solution
-- Faster development cycle
-- More interpretable decision-making
 
 **Choose NN+MCTS if you want:**
 - Strongest possible AI (superhuman play)
