@@ -1,0 +1,264 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oracle TCG Complexity Progression</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        th, td {
+            border: 2px solid #ddd;
+            padding: 12px;
+            text-align: center;
+            font-size: 13px;
+        }
+        th {
+            background: #34495e;
+            color: white;
+            font-weight: 600;
+        }
+        th.deck-format {
+            background: #2c3e50;
+            text-align: left;
+            width: 140px;
+        }
+        td {
+            position: relative;
+        }
+        
+        /* Path highlighting */
+        .path-beginner {
+            background: #e3f2fd !important;
+            border: 3px solid #2196F3 !important;
+            font-weight: 600;
+        }
+        .path-monochrome {
+            background: #f3e5f5 !important;
+            border: 3px solid #9C27B0 !important;
+            font-weight: 600;
+        }
+        .path-draft-expert {
+            background: #fff3e0 !important;
+            border: 3px solid #FF9800 !important;
+            font-weight: 600;
+        }
+        .path-competitive {
+            background: #ffebee !important;
+            border: 3px solid #f44336 !important;
+            font-weight: 600;
+        }
+        
+        /* Complexity indicators */
+        .complexity-1 { background: #c8e6c9; }
+        .complexity-2 { background: #fff9c4; }
+        .complexity-3 { background: #ffcc80; }
+        .complexity-4 { background: #ef9a9a; }
+        .complexity-5 { background: #ce93d8; }
+        
+        .legend {
+            margin-top: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .legend h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+        .legend-item {
+            display: inline-block;
+            margin-right: 25px;
+            margin-bottom: 10px;
+        }
+        .legend-box {
+            display: inline-block;
+            width: 30px;
+            height: 20px;
+            border: 2px solid #333;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .note {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 4px;
+        }
+        .note strong {
+            color: #856404;
+        }
+        
+        .deck-name {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <h1>Oracle TCG: Complexity Progression Matrix</h1>
+    <div class="subtitle">From Entry-Level to Expert Play</div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th class="deck-format">Deck Format</th>
+                <th>Base Game<br/>(No Combos)</th>
+                <th>+ Combo<br/>Bonuses</th>
+                <th>+ Champion<br/>Abilities</th>
+                <th>+ Momentum<br/>System</th>
+                <th>+ Order<br/>Powers</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="deck-name">Monochrome</td>
+                <td class="complexity-1">Basic<br/>⭐</td>
+                <td class="complexity-1 path-monochrome">Simple Combos<br/>⭐⭐</td>
+                <td class="complexity-2 path-monochrome">Tactical<br/>⭐⭐⭐</td>
+                <td class="complexity-3 path-monochrome">Strategic<br/>⭐⭐⭐⭐</td>
+                <td class="complexity-3 path-monochrome">Advanced<br/>⭐⭐⭐⭐⭐</td>
+            </tr>
+            <tr>
+                <td class="deck-name">Random</td>
+                <td class="complexity-1 path-beginner">Entry Point<br/>⭐</td>
+                <td class="complexity-2 path-beginner">Learn Combos<br/>⭐⭐</td>
+                <td class="complexity-2 path-beginner">Add Abilities<br/>⭐⭐⭐</td>
+                <td class="complexity-3 path-beginner">Full Game<br/>⭐⭐⭐⭐</td>
+                <td class="complexity-3">Complete<br/>⭐⭐⭐⭐⭐</td>
+            </tr>
+            <tr>
+                <td class="deck-name">Custom</td>
+                <td class="complexity-2">Deck Building<br/>⭐⭐</td>
+                <td class="complexity-3 path-competitive">Constructed<br/>⭐⭐⭐</td>
+                <td class="complexity-3 path-competitive">Meta Game<br/>⭐⭐⭐⭐</td>
+                <td class="complexity-4 path-competitive">Competitive<br/>⭐⭐⭐⭐⭐</td>
+                <td class="complexity-4 path-competitive">Tournament<br/>⭐⭐⭐⭐⭐⭐</td>
+            </tr>
+            <tr>
+                <td class="deck-name">Solomon 7×7</td>
+                <td class="complexity-2">Draft Basics<br/>⭐⭐</td>
+                <td class="complexity-3">Draft + Combos<br/>⭐⭐⭐</td>
+                <td class="complexity-3">Draft Tactical<br/>⭐⭐⭐⭐</td>
+                <td class="complexity-4">Draft Strategic<br/>⭐⭐⭐⭐⭐</td>
+                <td class="complexity-4">Draft Advanced<br/>⭐⭐⭐⭐⭐⭐</td>
+            </tr>
+            <tr>
+                <td class="deck-name">Draft 12×8</td>
+                <td class="complexity-3">Pick & Pass<br/>⭐⭐⭐</td>
+                <td class="complexity-3">Draft Medium<br/>⭐⭐⭐⭐</td>
+                <td class="complexity-4">Draft Complex<br/>⭐⭐⭐⭐⭐</td>
+                <td class="complexity-4">Draft Deep<br/>⭐⭐⭐⭐⭐⭐</td>
+                <td class="complexity-5">Draft Expert<br/>⭐⭐⭐⭐⭐⭐⭐</td>
+            </tr>
+            <tr>
+                <td class="deck-name">Draft 1-2-3</td>
+                <td class="complexity-3">Rochester<br/>⭐⭐⭐</td>
+                <td class="complexity-4 path-draft-expert">Draft Pro<br/>⭐⭐⭐⭐</td>
+                <td class="complexity-4 path-draft-expert">Draft Master<br/>⭐⭐⭐⭐⭐</td>
+                <td class="complexity-5 path-draft-expert">Epic Depth<br/>⭐⭐⭐⭐⭐⭐</td>
+                <td class="complexity-5 path-draft-expert">Maximum<br/>⭐⭐⭐⭐⭐⭐⭐</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div class="legend">
+        <h2>📍 Recommended Learning Paths</h2>
+        
+        <div class="legend-item">
+            <span class="legend-box" style="background: #e3f2fd; border-color: #2196F3;"></span>
+            <strong style="color: #2196F3;">Beginner Path (Random):</strong> Start simple, add gradually
+        </div>
+        
+        <div class="legend-item">
+            <span class="legend-box" style="background: #f3e5f5; border-color: #9C27B0;"></span>
+            <strong style="color: #9C27B0;">Monochrome Path:</strong> Easier combos, steady growth
+        </div>
+        
+        <div class="legend-item">
+            <span class="legend-box" style="background: #ffebee; border-color: #f44336;"></span>
+            <strong style="color: #f44336;">Competitive Path:</strong> Custom deck mastery
+        </div>
+        
+        <div class="legend-item">
+            <span class="legend-box" style="background: #fff3e0; border-color: #FF9800;"></span>
+            <strong style="color: #FF9800;">Draft Expert Path:</strong> Ultimate complexity
+        </div>
+        
+        <h2 style="margin-top: 20px;">🎯 Other Sensible Progression Routes</h2>
+        
+        <p><strong>1. "Combo Master" Path:</strong></p>
+        <p style="margin-left: 20px;">
+            Monochrome + Combos → Random + Combos → Solomon 7×7 + Combos → Custom + Combos
+            <br/><em>Focus: Learn combo system deeply before adding other mechanics</em>
+        </p>
+        
+        <p><strong>2. "Draft Specialist" Path:</strong></p>
+        <p style="margin-left: 20px;">
+            Random + Combos → Solomon 7×7 + Combos → Draft 12×8 + Combos → Draft 1-2-3 + Combos + Abilities
+            <br/><em>Focus: Master drafting skills with minimal rules overhead</em>
+        </p>
+        
+        <p><strong>3. "Tactical Gamer" Path:</strong></p>
+        <p style="margin-left: 20px;">
+            Monochrome + Combos + Abilities → Random + All → Custom + All (no Order Powers)
+            <br/><em>Focus: Champion abilities and momentum, skip Order Powers initially</em>
+        </p>
+        
+        <p><strong>4. "Fast Learner" Path:</strong></p>
+        <p style="margin-left: 20px;">
+            Random + Combos → Monochrome + Combos + Abilities → Custom + All
+            <br/><em>Focus: Quick progression for experienced card game players</em>
+        </p>
+        
+        <p><strong>5. "Social/Casual" Path:</strong></p>
+        <p style="margin-left: 20px;">
+            Monochrome + Combos → Solomon 7×7 + Combos + Abilities → Stop there
+            <br/><em>Focus: Fun, interactive play without excessive complexity</em>
+        </p>
+        
+        <p><strong>6. "Tournament Prep" Path:</strong></p>
+        <p style="margin-left: 20px;">
+            Random + All → Custom + All → Draft 12×8 + All → Draft 1-2-3 + All
+            <br/><em>Focus: Full rules mastery, then draft format expertise</em>
+        </p>
+    </div>
+    
+    <div class="note">
+        <strong>Design Insight:</strong> The top-left (Monochrome, No Combos) and bottom-right (Draft 1-2-3, All Additions) represent a complexity span of roughly 1 star to 7 stars. This 30-cell matrix provides flexible entry points for different player types while maintaining a clear progression toward mastery.
+    </div>
+    
+    <div class="note" style="background: #e8f5e9; border-color: #4caf50;">
+        <strong>🎓 Teaching Recommendation:</strong> Most new players should start at either:
+        <ul style="margin-bottom: 0;">
+            <li><strong>Monochrome + Combos</strong> (simpler combo rules, clearer deck theme)</li>
+            <li><strong>Random + Combos</strong> (maximum variety, standard complexity)</li>
+        </ul>
+        Both paths lead naturally to more complex formats as skills develop.
+    </div>
+</body>
+</html>

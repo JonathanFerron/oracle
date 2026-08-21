@@ -28,7 +28,7 @@
 
 ## 
 
-# Contributing to Oracle Card Game
+# Contributing to Oracle
 
 ## Refactoring Methodology
 

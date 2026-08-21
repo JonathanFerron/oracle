@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Oracle TCG Complexity & Depth Heatmap</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f5f5f5;
+    padding: 20px;
+    max-width: 1300px;
+    margin: 0 auto;
+  }
+  h1 { text-align: center; color: #2c3e50; margin-bottom: 4px; }
+  .subtitle { text-align: center; color: #7f8c8d; margin-bottom: 25px; font-size: 14px; }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    background: white;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+  }
+  th, td {
+    border: 1px solid #ccc;
+    text-align: center;
+  }
+  th {
+    background: #2c3e50;
+    color: white;
+    padding: 10px 6px;
+    font-size: 13px;
+  }
+  th.row-header-col {
+    background: #1a252f;
+    width: 130px;
+  }
+  td.row-label {
+    background: #34495e;
+    color: white;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 8px;
+    text-align: left;
+  }
+
+  .cellwrap {
+    width: 150px;
+    height: 100px;
+    padding: 0;
+  }
+  .cell {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  .tri {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1a1a1a;
+    text-shadow: 0 0 3px rgba(255,255,255,0.6);
+  }
+  .tri-c {
+    clip-path: polygon(0 0, 100% 0, 0 100%);
+  }
+  .tri-d {
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  }
+  .tri-c .label-inner {
+    transform: translate(-16px, -12px);
+  }
+  .tri-d .label-inner {
+    transform: translate(16px, 12px);
+  }
+  .diag-line {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  .diag-line svg { width: 100%; height: 100%; }
+
+  .legend {
+    margin-top: 28px;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .legend h2 { margin-top: 0; color: #2c3e50; font-size: 17px; }
+  .scalebar {
+    height: 22px;
+    width: 100%;
+    border-radius: 4px;
+    margin: 8px 0 4px 0;
+    border: 1px solid #999;
+  }
+  .scale-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #555;
+  }
+  .legend-flex {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+  .legend-col { flex: 1; min-width: 260px; }
+  .triangle-demo {
+    width: 90px; height: 60px;
+    position: relative;
+    margin: 10px auto;
+    border: 1px solid #999;
+  }
+  .triangle-demo .tri-c { background: #67a9cf; }
+  .triangle-demo .tri-d { background: #ef8a62; }
+  .note {
+    margin-top: 18px;
+    padding: 14px;
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    border-radius: 4px;
+    font-size: 13.5px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Oracle TCG: Complexity (c) &amp; Depth (d) Heatmap</h1>
+<div class="subtitle">Each cell split diagonally — upper-left triangle = Complexity (c), lower-right triangle = Depth (d). Both values ≥ 1.0.</div>
+
+<table>
+  <thead>
+    <tr>
+      <th class="row-header-col">Deck Format</th>
+      <th>Base Game<br/>(No Combos)</th>
+      <th>+ Combo<br/>Bonuses</th>
+      <th>+ Champion<br/>Abilities</th>
+      <th>+ Momentum<br/>System</th>
+      <th>+ Order<br/>Powers</th>
+    </tr>
+  </thead>
+  <tbody id="tbody">
+  </tbody>
+</table>
+
+<div class="legend">
+  <h2>📊 Reading the Table</h2>
+  <div class="legend-flex">
+    <div class="legend-col">
+      <p><strong>Each cell is split into two triangles:</strong></p>
+      <div class="triangle-demo">
+        <div class="cell">
+          <div class="tri tri-c"><span class="label-inner">c</span></div>
+          <div class="tri tri-d"><span class="label-inner">d</span></div>
+        </div>
+      </div>
+      <p style="text-align:center; font-size:13px;">
+        ◤ Upper-left = <strong>Complexity</strong> (rules/mechanics burden)<br/>
+        ◢ Lower-right = <strong>Depth</strong> (strategic richness / skill ceiling)
+      </p>
+    </div>
+    <div class="legend-col">
+      <p><strong>Color scale (heatmap, both triangles use the same scale):</strong></p>
+      <div class="scalebar" id="scalebar"></div>
+      <div class="scale-labels">
+        <span>1.0 (low)</span>
+        <span>~5.0 (mid)</span>
+        <span>9.0+ (high)</span>
+      </div>
+      <p style="margin-top:14px; font-size:13px;">
+        Blue → cool/simple, Yellow → moderate, Red → hot/complex or deep.
+        Because <em>d</em> generally rises faster than <em>c</em> as you add
+        Momentum and Order Powers, lower-right triangles trend redder than
+        upper-left ones in the bottom rows — depth grows faster than raw complexity.
+      </p>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Design intent:</strong> Complexity (c) approximates how much new
+    procedural/rules knowledge a player must hold in their head. Depth (d)
+    approximates how much genuine strategic decision-space opens up.
+    Notice cells can have <em>d &gt; c</em> (a mechanic that's easy to learn
+    but rich in strategy, e.g. Combo Bonuses) or <em>c ≈ d</em> (a mechanic
+    that's about as hard to learn as it is deep, e.g. raw draft mechanics).
+    Numbers are illustrative design estimates, not measured playtest data.
+  </div>
+</div>
+
+<script>
+const rowNames = ["Monochrome", "Random", "Custom", "Solomon 7×7", "Draft 12×8", "Draft 1-2-3"];
+
+// data[row][col] = [c, d]
+const data = [
+  // Monochrome
+  [[1.0,1.0],[1.6,2.0],[2.3,2.8],[2.9,3.6],[3.4,4.3]],
+  // Random
+  [[1.2,1.3],[2.0,2.5],[2.7,3.3],[3.3,4.1],[3.8,4.8]],
+  // Custom
+  [[2.5,2.8],[3.3,4.0],[4.0,4.9],[4.6,5.7],[5.1,6.4]],
+  // Solomon 7x7
+  [[2.8,3.0],[3.6,4.2],[4.3,5.1],[4.9,5.9],[5.4,6.6]],
+  // Draft 12x8
+  [[3.3,3.6],[4.1,4.8],[4.8,5.7],[5.4,6.5],[5.9,7.2]],
+  // Draft 1-2-3
+  [[4.0,4.5],[4.8,5.7],[5.5,6.6],[6.1,7.4],[6.6,8.1]]
+];
+
+const MIN_V = 1.0;
+const MAX_V = 9.0;
+
+// Heatmap stops: blue -> cyan -> yellow -> orange -> red
+const stops = [
+  {t:0.00, c:[33,102,172]},   // blue
+  {t:0.25, c:[103,169,207]},  // light blue
+  {t:0.50, c:[255,255,191]},  // pale yellow
+  {t:0.75, c:[239,138,98]},   // orange
+  {t:1.00, c:[178,24,43]}     // red
+];
+
+function lerp(a,b,t){ return a + (b-a)*t; }
+
+function heatColor(value){
+  let t = (value - MIN_V) / (MAX_V - MIN_V);
+  t = Math.max(0, Math.min(1, t));
+  for (let i=0;i<stops.length-1;i++){
+    const s0 = stops[i], s1 = stops[i+1];
+    if (t >= s0.t && t <= s1.t){
+      const localT = (t - s0.t) / (s1.t - s0.t);
+      const r = Math.round(lerp(s0.c[0], s1.c[0], localT));
+      const g = Math.round(lerp(s0.c[1], s1.c[1], localT));
+      const b = Math.round(lerp(s0.c[2], s1.c[2], localT));
+      return `rgb(${r},${g},${b})`;
+    }
+  }
+  const last = stops[stops.length-1].c;
+  return `rgb(${last[0]},${last[1]},${last[2]})`;
+}
+
+const tbody = document.getElementById('tbody');
+
+data.forEach((row, ri) => {
+  const tr = document.createElement('tr');
+
+  const labelTd = document.createElement('td');
+  labelTd.className = 'row-label';
+  labelTd.textContent = rowNames[ri];
+  tr.appendChild(labelTd);
+
+  row.forEach(([c,d]) => {
+    const td = document.createElement('td');
+    td.className = 'cellwrap';
+
+    const cellDiv = document.createElement('div');
+    cellDiv.className = 'cell';
+
+    const triC = document.createElement('div');
+    triC.className = 'tri tri-c';
+    triC.style.background = heatColor(c);
+    const spanC = document.createElement('span');
+    spanC.className = 'label-inner';
+    spanC.textContent = 'c=' + c.toFixed(1);
+    triC.appendChild(spanC);
+
+    const triD = document.createElement('div');
+    triD.className = 'tri tri-d';
+    triD.style.background = heatColor(d);
+    const spanD = document.createElement('span');
+    spanD.className = 'label-inner';
+    spanD.textContent = 'd=' + d.toFixed(1);
+    triD.appendChild(spanD);
+
+    cellDiv.appendChild(triC);
+    cellDiv.appendChild(triD);
+    td.appendChild(cellDiv);
+    tr.appendChild(td);
+  });
+
+  tbody.appendChild(tr);
+});
+
+// build scale bar gradient
+const scalebar = document.getElementById('scalebar');
+let gradientStops = stops.map(s => `rgb(${s.c[0]},${s.c[1]},${s.c[2]}) ${s.t*100}%`).join(', ');
+scalebar.style.background = `linear-gradient(to right, ${gradientStops})`;
+</script>
+
+</body>
+</html>

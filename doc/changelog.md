@@ -5,6 +5,86 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-20 — Ideas 2 and 3 cleanup (engine refactoring notes, TUI prototype)
+
+- **Idea 2** (`ideas/2 engine and action system design/`): pared
+  down to only mode-agnostic core-engine material. Deleted outright, as superseded
+  before ever being built: a full CLI-specific reference implementation
+  (`reference_implementation_with_callbacks.c`, `cli_refactor_summary.md`,
+  `Refactoring of stda_cli in 4 modules...md`, ~2000 lines) describing an
+  engine/`Action*`/`UICallbacks` redesign the real CLI split (2026-07-14) never
+  adopted — it took a simpler path (`cli_display`/`cli_action_display`/`cli_input`/
+  `cli_io`/`cli_game` around the `UiIO` seam). GUI-flavored sketches
+  (`gamegui_main_loop.txt`, `unified_gui_interface.txt`, `stda_game_gui.txt`,
+  `stda_game_impl.txt`, plus the GUI example from `mode_usage_examples.txt`) were
+  consolidated into new `ideas/9 gui/game_loop_engine_integration_notes.md` — genuinely
+  new content, since the existing SDL3 GUI plan there covers rendering/assets/input but
+  not engine integration. Network-flavored sketches (`More notes on client-server
+  preparation.md`, `client_game_gui.txt`, plus the Server example) were checked against
+  `ideas/8 client server/`'s two existing ~5100-line docs — mostly redundant/inferior
+  and dropped, but an opaque-handle server/client API sketch, a `CardVisibility` enum,
+  and a simpler single-threaded poll-based client loop were confirmed (by grep) *not*
+  already present there, so those moved into new
+  `ideas/8 client server/game_loop_and_client_api_notes.md`, which also flags that
+  ideas/8's own "Strategy Interface" section still shows the stale `void`-mutating
+  strategy signature rather than the `Action`-returning one a networked AI client
+  actually needs (load-bearing for AI-agent-as-network-client scenarios). Verified
+  before any of this that the AI-as-network-client use case itself stays fully covered
+  (ideas/8's own "AI Integration" section, untouched). Added a `README.md` to folder 2
+  summarizing what remains and why.
+- **Idea 3**: nine early flat-file TUI prototype files (`oracle_tui_impl.txt`/
+  `_header.txt`, `oracle_cmdline.txt`/`_h.txt`, `oracle_main_updated.txt`,
+  `oracle_makefile_tui.txt`, `oracle_version_h.txt`, `oracle_tui_readme.md`,
+  `oracle_integration_guide.md` — pre-reorg includes, the old `HDCLL` linked-list
+  types, a single `tui.c`, missing most of today's `cmdline.c` options) were confirmed
+  superseded by the real `src/ui/tui/` + `src/roles/stda/stda_tui*.c` implementation
+  and deleted outright. One file — `ascii art fonts for logo in tui and cli modes.txt`
+  — stayed, since it describes a logo feature confirmed (by grep) not implemented
+  anywhere. Since nothing TUI-specific remained, the folder was renamed
+  `ideas/3 tui/` → `ideas/3 misc ui ideas/`; all repo cross-references to the old path
+  updated (`CLAUDE.md`, `doc/oracle_roadmap.md`, `ideas/2 …/target_folder_structure_v4.md`,
+  `src/ui/tui/tui display input and callbacks.txt`) except one intentionally-preserved
+  historical mention in the already-archived `ideas/done/1 …/pragmatic_cleanup_
+  implementation_plan.md`.
+- No game-logic or build changes; this is a documentation/`ideas/`-only pass.
+
+## 2026-08-20 — Idea 1 (source folder structure) closed out; doc cleanup pass
+
+- **Idea 1 second pass**: `ideas/1 improve source code folder structure/`'s pragmatic
+  cleanup (done 2026-07-14) left a small remainder, now closed. The ten `src/`
+  placeholder `.txt` files had cross-references to a pre-renumbering `ideas/` layout
+  (`ideas/9`, `11`, `12.1`, `15`, `16`, `18`, `1 tui`) — repointed at the current folder
+  numbers. `src/ui/cli/cli display input and callbacks.txt`, which its own text marked
+  "safe to remove" once superseded by real code, was deleted (confirmed nothing
+  references it first). The three test targets (`test_combo`, `test_recall`,
+  `test_cash_exchange`) compiled objects straight into `src/**`/`testsrc/` via the
+  Makefile's default `%.o: %.c` rule, leaving twelve stray git-ignored `.o` files that
+  `make clean` never removed; `makefile` now routes them through `$(BUILDDIR)` (a new
+  `$(BUILDDIR)/testsrc/%.o` pattern rule mirrors the existing source rule), and `clean`
+  removes the test binaries plus any leftover in-tree `.o` files defensively.
+  `make test_stda_auto` invoked `./bin/oracle.exe` (the MSYS2 name) unconditionally, so
+  it could never pass on the primary Linux target; fixed to use `$(TARGET)` and marked
+  `.PHONY`, with `help` listing all four test targets. The folder itself moved to
+  `ideas/done/1 improve source code folder structure/`; its still-relevant target
+  architecture doc (`revised_folder_structure.md`) moved instead to
+  `ideas/2 engine and action system design/
+  target_folder_structure_v4.md`, trimmed of content duplicated elsewhere in that
+  folder, since that's where the work it describes actually happens.
+- **Doc cleanup**: `doc/oracle_design.md` (dated December 2025, describing a
+  pre-reorg flat `src/*.c` tree, missing recall/TUI/fixed-arrays, an ~800-line
+  `stda_cli.c` awaiting a split, and Geany/Arch Linux) was rewritten top to bottom
+  against the current codebase and restructured around what's actually true today,
+  including new UI-architecture (`UiIO` seam) and modes/command-line sections.
+  `doc/oracle_roadmap.md` and `doc/oracle_todo.md`, which had drifted into duplicating
+  and sometimes disagreeing with each other, were split by role — roadmap owns
+  long-horizon phases/ordering/vision, todo owns actionable near-term checkboxes — with
+  stale paths, the `<30` vs `35`-line contradiction, and completed-work narratives
+  (now just linked to this changelog) removed. `README.md` synced similarly (TUI is
+  working, not planned; AI list matches the real `A1`–`A11` agent scheme).
+- No game-logic changes; `-a -p` output still matches `bin/expectedresults.txt`.
+  `make test_combo` (20/20), `test_recall` (10/10), `test_cash_exchange` (6/6), and
+  `test_stda_auto` all pass; `make clean` now leaves the tree free of `.o` files.
+
 ## 2026-07-26 — Hidden `--oracle-complete` option + bash tab-completion script
 
 - Added a hidden `--oracle-complete[=WHAT]` option to `parse_options()`

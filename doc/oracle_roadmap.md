@@ -1,46 +1,61 @@
 # Oracle Development Roadmap
 
-**Project**: Les Champions d'Arcadie / The Arcadian Champions of Light  
-**Type**: Open source hobby/research project  
-**Focus**: Card game AI research, C programming patterns, game architecture
+**Project**: Les Champions d'Arcadie / The Arcadian Champions of Light
+**Type**: Open source hobby/research project
+**Focus**: Strategic dueling card game AI research, C programming patterns, game
+architecture
+
+**Scope of this document**: long-horizon phases, ordering, and status-at-a-glance. For
+actionable near-term checkboxes see `doc/oracle_todo.md`. For a dated history of finished
+work see `doc/changelog.md`. For architecture/design rationale see `doc/oracle_design.md`.
 
 ---
 
 ## Current Status
 
-**Active Work**: First "non-dumb" AI strategy (see "Next Up" below); Turn Logic & Game Loop's interactive-mode command set, the source folder structure cleanup, and TUI Milestones 1 and 2 are all now complete.
+Core game engine, CLI interactive mode, and TUI mode (Milestones 1 & 2 plus a polish
+pass) are done. Only the Random AI strategy is implemented. **Active work**: the first
+"non-dumb" AI strategy — see "Next Up" below.
 
-### Recently Completed (2026-07-23)
+### Recently Completed
 
-- ✅ TUI mode Milestone 2 (human interaction): pre-ncurses player configuration,
-  `TAB`-toggled PLAY (digit-staging) / COMMAND modes, card play, defense, recall,
-  cash exchange, mulligan, discard-to-7, live combat-result display -- see
-  `doc/changelog.md`'s two 2026-07-23 entries (the shared `UiIO` seam, then the
-  playable TUI itself).
+- **2026-07-23/24** — TUI Milestone 2 (human-vs-AI play: `TAB`-toggled PLAY/COMMAND
+  modes, recall, cash exchange, mulligan, discard-to-7, live combat-result display) and
+  a follow-up UI/playability polish pass.
+- **2026-07-14** — Recall mechanic, interactive cash-card champion selection, detailed
+  combat results display, discard pile display, source folder structure cleanup
+  (pragmatic pass), TUI Milestone 1 (ncurses display skeleton, AI-vs-AI).
 
-### Recently Completed (2026-07-14)
-
-- ✅ Recall mechanic (interactive CLI, exact/mandatory count)
-- ✅ Interactive cash-card champion selection
-- ✅ Detailed combat results display (interactive CLI)
-- ✅ Discard pile display (`gmst` summary, `shod` detail)
-- ✅ Source folder structure cleanup, pragmatic pass: split `cli_display.c` into two
-  files under the 500-line limit, fixed `make test_combo` (now 20/20), doc sync -- see
-  `ideas/1 improve source code folder structure/pragmatic_cleanup_implementation_plan.md`
-- ✅ TUI mode Milestone 1 (ncurses display skeleton): responsive layout matching the
-  target PDF/xlsx template, AI-vs-AI, one turn per keypress -- see `doc/changelog.md`
+Full details: `doc/changelog.md`.
 
 ### What Needs Work
 
-- ⚠️ Automated simulation mode needs refactoring
-- ⚠️ No save/load functionality
-- ⚠️ Limited AI strategies (only random implemented)
+- Only Random AI strategy implemented — everything else on the AI ladder below is open.
+- Automated simulation mode (`stda_auto.c`) needs a refactor (see `doc/oracle_todo.md`).
+- No save/load, no config file system, no CSV export, no rating system, no network, no
+  GUI, no `stda.sim`.
 
-### Next Up (preferred order)
+---
 
-1. First "non-dumb" AI strategy (`ideas/A1 ai agent value based/`), then `A2 -> A3 -> A4` in order -- the rating system (`ideas/5/`) needs the Borealis benchmark agent (`A4`), which needs `A1`-`A3` implemented first for comparison. The CLI's `display_ai_strategy_menu()` (`src/ui/shared/player_config.c`) already lists all 11 planned agents as stubs (2026-07-14); remaining work per agent is wiring its menu choice to real strategy functions once implemented (see `doc/oracle_todo.md`).
+## Next Up (single authoritative order)
 
-Back burner (explicitly deferred): save/load game state (`ideas/6 save and load gamestate/`), configuration file system (`ideas/7 config file/`).
+1. **First "non-dumb" AI strategy** (`ideas/A1 ai agent value based/`), then
+   `A2 → A3 → A4` in order. This isn't just easiest-first: the rating system
+   (`ideas/5 rating system/`) needs the Borealis benchmark agent (`A4`), which itself
+   needs `A1`–`A3` implemented for comparison. `A2` (`ideas/A2 ai agent parameters
+   storing and optimization/`) is calibration tooling, not an agent — skipped in the
+   `AIStrategyType` enum.
+
+   The CLI's `display_ai_strategy_menu()`/`get_ai_strategy_choice()`/
+   `get_strategy_display_name()` (`src/ui/shared/player_config.c`) already list all
+   eleven planned agents as stubs; remaining work per agent is implementing its
+   attack/defense functions in `src/ai_strat/` and wiring its menu choice through
+   instead of falling back to Random. See `doc/oracle_todo.md`'s "Checklist: Adding a
+   New AI Strategy" for the mechanical steps.
+
+**Back burner** (explicitly deferred): save/load game state
+(`ideas/6 save and load gamestate/`), configuration file system
+(`ideas/7 config file/`).
 
 ---
 
@@ -48,390 +63,91 @@ Back burner (explicitly deferred): save/load game state (`ideas/6 save and load 
 
 ### Research Goals
 
-1. **AI Development**: Progress from random → rule-based → Monte Carlo → MCTS
-2. **Rating System**: Implement Bradley-Terry model to measure AI strength objectively
-3. **Architecture**: Clean client/server separation for future multiplayer
-4. **Simulation**: Export framework for statistical analysis of strategies
-5. **Cross-Platform**: Terminal (ncurses), desktop (SDL3), mobile (future)
+1. **AI Development**: progress from random → rule-based → heuristic → Monte Carlo →
+   Information Set MCTS.
+2. **Rating System**: Bradley-Terry model to measure AI strength objectively.
+3. **Architecture**: clean client/server separation for future multiplayer.
+4. **Simulation**: CSV export framework for statistical analysis of strategies.
+5. **Cross-Platform**: terminal (ncurses, done), desktop (SDL3, future), mobile
+   (long-term).
 
 ### Learning Objectives
 
-- Advanced AI techniques (MCTS, information sets)
-- Network programming patterns
-- Statistical modeling (rating systems)
-- GUI programming (SDL3)
-- Build systems and cross-platform development
-
----
-
-## File Size Targets Violated
-
-**Contradiction:**
-
-- Design guideline: "Maximum 500 lines per source file (ideally ≤400)"
-- **Violations:**
-  - `stda_cli.c`: 550 lines
-
-**Impact:** Low-Medium - Code organization debt
+Advanced AI techniques (MCTS, information sets); network programming patterns;
+statistical modeling (rating systems); GUI programming (SDL3); build systems and
+cross-platform development.
 
 ---
 
 ## Development Phases
 
-### Complete Game Loop ⚠️ IN PROGRESS
+Each phase below names its `ideas/` home; see `doc/oracle_todo.md` for the actionable
+task breakdown within whichever phase is currently active.
 
-**Status**: Core logic exists, needs refinement and testing
+### Phase: Complete Game Loop — mostly done
 
-#### Card Actions
+Core turn/combat/card-action logic and all interactive-mode features (recall, cash
+exchange, mulligan, discard-to-7, combat/discard display) are implemented. Remaining:
+error-handling polish (see `doc/oracle_todo.md`).
 
-- [x] Play draw/recall cards -- draw path was already working; recall path added (interactive CLI only, see below)
-- [x] Play cash exchange cards -- AI auto-select path was already working; interactive champion choice added
-- [x] Recall mechanic (draw/recall cards) -- see "Recall Mechanic" below
+### Phase: Standalone Modes — partial
 
----
+- `stda.auto` (automated simulation): working, needs a refactor + CSV export
+  (`ideas/2 engine and action system design/stda_auto_split_plan.md`,
+  `ideas/4 match results export/`).
+- `stda.cli` (interactive CLI): done except save/load.
+- `stda.tui` (ncurses TUI): Milestones 1–2 done and its design-exploration folder
+  archived accordingly — see `doc/changelog.md`.
+- `stda.sim` (simulation UI): not started.
 
-## Recall Mechanic -- RESOLVED (2026-07-13)
+### Phase: AI Development — foundation ready, implementation pending
 
-Was a major gap (`play_draw_card()` only ever drew; `struct card.choose_num` was unused).
-Now implemented for the interactive CLI: `handle_recall_choice()`/`validate_and_recall_champions()`
-in `ui/cli/cli_input.c`, using `choose_num` as an **exact, mandatory** count (not "up to") --
-recall is only offered when discard holds enough champions. `game_rules_doc.md`'s recall
-wording was corrected to match. The Random AI strategy still only ever draws (acceptable,
-per its "not meant to be strong" design intent); a smarter AI recall strategy is future work.
-See `ideas/done/2 Recall Card functionality in cli mode/` and `testsrc/test_recall.c`.
+Ladder: `A1` value-based → `A3` greedy-power → `A4` combo-aware (Borealis benchmark) →
+`A5` balanced rules → `A6` heuristic → `A7` hybrid (HBT) → `A8` HBT 2-ply → `A9` simple
+MC → `A10` IS-MCTS → `A11` IS-MCTS + neural network. One `ideas/A#` folder per agent, in
+`src/ai_strat/`'s `AIStrategyType` enum order (`src/ui/shared/player_config.h`). See
+"Next Up" above for why `A1→A2→A3→A4` comes first.
 
----
+### Phase: Simulation & Analysis Tools — spec complete, implementation pending
 
-## Standalone Modes
+CSV export (`ideas/4 match results export/`); interactive simulation UI, `stda.sim`
+(no dedicated `ideas/` folder yet, see `ideas/2 …/target_folder_structure_v4.md` for
+scoping notes); configuration file system (`ideas/7 config file/`, back-burnered).
 
-**Status**: Partial implementation, needs completion
+### Phase: Rating System — spec complete, ready for implementation
 
-#### Automated Simulation Mode (stda.auto) ⚠️
+Bradley-Terry core calculations, adaptive learning rate, keeper benchmark (rating 50 =
+the `A4` Borealis agent), incremental + batch updates, CSV persistence, matchmaking.
+`ideas/5 rating system/` (v2 spec).
 
-- [ ] **Refactor simulation engine** (extract from stda_auto.c)
-- [ ] Better statistics (confidence intervals, effect size)
-- [ ] Export to CSV (see sim_export_spec.md)
-- [ ] Support for multiple deck types
+### Phase: Client/Server Architecture — design complete, major refactor required
 
-#### Interactive CLI Mode (stda.cli) ⚠️
+Protocol design, server (full state + validation + broadcast), client (visible state +
+action submission), code separation (`sh_`/`sr_`/`cl_`/`pr_`-style modules). Depends on
+the engine state-machine/action-system rework in
+`ideas/2 engine and action system design/` landing first.
+`ideas/8 client server/` for the client/server-specific design.
 
-- [ ] Save/load game state
+### Phase: Cross-Platform GUI — plan exists, major undertaking
 
-#### Text UI Mode (stda.tui) -- Milestones 1 and 2 done
-
-- [x] ncurses-based full-screen UI
-- [x] Real-time game board display
-- [x] Scrolling message log
-- [x] Command palette (M2 -- TAB-toggled command mode)
-- [x] Keyboard shortcuts (M2 -- play-mode digit-staging card selection)
-- [x] See `doc/oracle_todo.md` / `doc/changelog.md` (2026-07-23) for the Milestone 2
-      breakdown; `ideas/3 tui/` for original intent (superseded)
-
----
-
-### Basic AI Development
-
-**Status**: Foundation ready, implementation pending
-
-**Cash Card Selection**: `select_champion_for_cash_exchange()` (AI-only heuristic) is in `card_actions.c` with TODO "this code could be moved to the strategy" -- architectural boundary violation. It also had an index-0 sentinel bug (fixed 2026-07-13: now uses `UINT8_MAX` instead of `0` to mean "not found," since 0 is a valid champion index) -- fixing it changed `stda.auto`'s RNG-dependent output, so `bin/expectedresults.txt` was deliberately regenerated at the same time. The interactive CLI path no longer goes through this function at all -- `play_cash_card_interactive()` lets the human choose freely (see `ideas/done/5 cash card functionality in cli mode/` and `testsrc/test_cash_exchange.c`).
-
-#### Balanced Rules AI 📋
-
-- [ ] **Attack heuristics** (when to play champions vs draw)
-- [ ] **Defense heuristics** (when to defend vs decline)
-- [ ] **Card selection** (which cards to play)
-- [ ] **Resource management** (luna/energy trade-offs)
-- [ ] Parameter tuning against Random AI
-
-**Reference**: See `src/strat_balancedrules1.c` for design notes
-
-Notes on adding AI strategy to player_config.c and stda_cli.c:
-
-```c
-// In player_config.c - get_ai_strategies()
-// When new strategy implemented, remove the warning:
-if(choice == 2) // Balanced strategy now available
-{
-    return AI_STRATEGY_BALANCED;
-}
-```
-
-```c
-// In stda_cli.c - initialize_cli_game()
-// Map AIStrategyType to actual function pointers:
-PlayerConfig* pconfig = (PlayerConfig*)cfg->player_config;
-
-for(int i = 0; i < 2; i++)
-{
-    if(cfg->player_types[i] == AI_PLAYER)
-    {
-        switch(pconfig->ai_strategies[i])
-        {
-            case AI_STRATEGY_RANDOM:
-                set_player_strategy(strategies, i,
-                    random_attack_strategy, random_defense_strategy);
-                break;
-            case AI_STRATEGY_BALANCED:
-                set_player_strategy(strategies, i,
-                    balanced_attack_strategy, balanced_defense_strategy);
-                break;
-            // Add other strategies as implemented
-        }
-    }
-}
-```
-
-#### Heuristic AI 📋
-
-- [ ] Power heuristic for cards (offensive/defensive value)
-- [ ] Advantage function (energy + cards + cash)
-- [ ] 1-move lookahead evaluation
-- [ ] Parameter calibration (epsilon, gamma)
-- [ ] Compare performance vs Balanced AI
-
-**Reference**: See `src/strat_heuristic1.c` for approach
-
-#### Hybrid AI 📋
-
-- [ ] Combine Balanced + Heuristic
-- [ ] Situational decision logic (early/mid/late game)
-- [ ] Leading vs trailing tactics
-- [ ] Resource-based strategy switching
-
----
-
-### Simulation & Analysis Tools
-
-**Status**: Specification complete, implementation pending
-
-#### CSV Export System 📋
-
-- [ ] Per-game detail export
-- [ ] Summary statistics export
-- [ ] Simparam string generation (deck_stratA_stratB_params)
-- [ ] Filename conventions
-- [ ] Integration with stda.auto mode
-
-**Specification**: See `ideas/sim_export_spec.md`
-
-#### Interactive Simulation UI (stda.sim) 📋
-
-- [ ] ncurses-based results display
-- [ ] Live progress updates
-- [ ] Parameter adjustment UI
-- [ ] Win rate graphs (ASCII art)
-- [ ] Export commands
-- [ ] Mode switching (sim ↔ tui)
-
-#### Configuration System 📋
-
-- [ ] INI-style config file parser
-- [ ] Default configuration
-- [ ] Per-user config (~/.oraclerc)
-- [ ] Command-line override
-- [ ] Save current settings
-
-**Reference**: See `ideas/config file/` for implementation
-
----
-
-### Rating System
-
-**Status**: Complete specification, ready for implementation
-
-#### Bradley-Terry Implementation 📋
-
-- [ ] Core rating calculations (rating.c)
-- [ ] Adaptive learning rate (A function)
-- [ ] Keeper benchmark (rating = 50)
-- [ ] Incremental updates
-- [ ] Batch gradient ascent
-- [ ] CSV persistence
-
-**Specification**: See `ideas/rating system/rating system BT v2/`
-
-#### Rating Integration 📋
-
-- [ ] Per-player rating tracking
-- [ ] Automatic updates after matches
-- [ ] Leaderboard display
-- [ ] Rating-based matchmaking
-- [ ] Historical rating graphs
-- [ ] Confidence intervals
-
-#### Calibration Tools 📋
-
-- [ ] Heuristic parameter optimization
-- [ ] Non-champion card power values
-- [ ] Strategy strength measurement
-- [ ] Python analysis scripts
-
----
-
-### Advanced AI (Monte Carlo)
-
-**Status**: Design notes exist, major research component
-
-#### Simple Monte Carlo 📋
-
-- [ ] Action enumeration (get all legal moves)
-- [ ] Random rollout to game end
-- [ ] Win rate per action
-- [ ] Best action selection
-- [ ] Performance optimization
-
-**Reference**: See `src/strat_simplemc1.c`
-
-#### Progressive Pruning MC 📋
-
-- [ ] Multi-stage rollouts (100/200/400/800)
-- [ ] Confidence-based pruning
-- [ ] Top-N retention
-- [ ] Early stopping criteria
-
-#### UCB1 / PUCB1 📋
-
-- [ ] Upper confidence bound for exploration
-- [ ] Prior probability estimation
-- [ ] Exploration-exploitation balance
-
----
-
-### Information Set MCTS
-
-**Status**: Advanced research goal, longest-term objective
-
-#### MCTS Core 📋
-
-- [ ] Tree node structure
-- [ ] Selection (UCT)
-- [ ] Expansion
-- [ ] Simulation (rollout)
-- [ ] Backpropagation
-
-**Reference**: See `src/strat_ismcts1.c` for design notes
-
-#### Information Set Handling 📋
-
-- [ ] Determinization (observer's view)
-- [ ] Hidden information management
-- [ ] Clone and randomize game state
-- [ ] Belief state tracking
-
-#### Optimizations 📋
-
-- [ ] Tree reuse between turns
-- [ ] Transposition tables
-- [ ] RAVE (Rapid Action Value Estimation)
-- [ ] Parallelization (multi-threaded)
-
-#### Neural Network Enhancement (Long-term) 🔮
-
-- [ ] Prior probability predictor
-- [ ] Value network
-- [ ] Policy network
-- [ ] Training infrastructure
-
----
-
-### Client/Server Architecture
-
-**Status**: Design complete, major refactoring required
-
-#### Protocol Design 📋
-
-- [ ] Message types (action, gamestate, event)
-- [ ] Binary serialization
-- [ ] Text protocol (development/debugging)
-- [ ] Action serialization
-- [ ] State serialization (visible only)
-
-**Reference**: See DESIGN DOC
-
-#### Server Implementation 📋
-
-- [ ] Socket server (TCP)
-- [ ] Client connection management
-- [ ] Game room system
-- [ ] Full game state management
-- [ ] Action validation
-- [ ] Broadcast system
-
-#### Client Implementation 📋
-
-- [ ] Socket client
-- [ ] Local visible state tracking
-- [ ] Action submission
-- [ ] State sync
-- [ ] Reconnection handling
-
-#### Code Separation 📋
-
-- [ ] Extract shared types (sh_*.c/h)
-- [ ] Server-only logic (sr_*.c/h)
-- [ ] Client-only logic (cl_*.c/h)
-- [ ] Protocol layer (pr_*.c/h)
-
----
-
-### Cross-Platform GUI
-
-**Status**: Detailed plan exists, major undertaking
-
-#### SDL3 Desktop GUI 📋
-
-- [ ] SDL3 setup (Windows/Linux)
-- [ ] Card rendering system
-- [ ] Font management
-- [ ] Texture cache
-- [ ] Layout system (normalized coords)
-- [ ] Animation framework
-- [ ] Input handling (mouse/keyboard)
-
-**Specification**: See `ideas/gui/oracle_sdl3_gui_plan.md`
-
-#### Asset Pipeline 📋
-
-- [ ] Champion artwork (102 cards)
-- [ ] Card frame templates
-- [ ] Species icons (15)
-- [ ] Order symbols (5)
-- [ ] UI elements
-- [ ] Font selection
-- [ ] Asset generation tools (Python)
-
-#### Mobile Platforms (Future) 🔮
-
-- [ ] iOS port (Xcode + SDL3)
-- [ ] Android port (NDK + SDL3)
-- [ ] Touch input
-- [ ] Tablet UI layout
-- [ ] Platform-specific builds
+SDL3 desktop GUI (`ideas/9 gui/oracle_sdl3_gui_plan.md`): card rendering, font/texture
+management, responsive layout, input handling; asset pipeline (champion artwork, frames,
+species/order icons); mobile ports (iOS/Android) as a long-term stretch goal.
 
 ---
 
 ## Research Questions to Explore
 
-### AI Development
+**AI Development**: minimum MCTS rollouts for good play? How much does combo bonus
+affect optimal strategy? Can rule-based AI approach MCTS performance? What's the skill
+ceiling with perfect information?
 
-- What's the minimum number of MCTS rollouts for good play?
-- How much does combo bonus affect optimal strategy?
-- Can rule-based AI approach MCTS performance?
-- What's the skill ceiling with perfect information?
+**Game Balance**: are random/mono/custom decks balanced? Do certain species/orders
+dominate? Is the mulligan rule fair? What's the optimal starting cash amount?
 
-### Game Balance
-
-- Are all three deck types (random/mono/custom) balanced?
-- Do certain species/orders dominate?
-- Is the mulligan rule fair?
-- What's the optimal starting cash amount?
-
-### System Design
-
-- Best way to serialize game state for network play?
-- How to handle reconnection in multiplayer?
-- Efficient card representation for GUI rendering?
-- Optimal strategy framework for pluggable AIs?
+**System Design**: best way to serialize game state for network play? How to handle
+reconnection in multiplayer? Efficient card representation for GUI rendering? Optimal
+strategy framework for pluggable AIs?
 
 ---
 
@@ -440,53 +156,28 @@ for(int i = 0; i < 2; i++)
 - [ ] At least 3 different AI strategies working
 - [ ] Rating system accurately ranks AI strength
 - [ ] CSV export generates usable data for R/Python analysis
-- [ ] TUI mode provides good user experience
+- [ ] TUI mode provides a good user experience *(largely met already — Milestones 1–2 +
+      polish pass done; see "Left for a future pass" in `doc/oracle_todo.md`)*
 
 ### Longer-Term
 
-- [ ] ISMCTS AI demonstrably stronger than rule-based
+- [ ] IS-MCTS AI demonstrably stronger than rule-based
 - [ ] Network multiplayer works reliably
 - [ ] Cross-platform GUI runs on Windows/Linux/macOS
-- [ ] Project serves as good portfolio/learning showcase
-
----
-
-## Contributing
-
-### Before Starting a Module
-
-1. Read relevant DESIGN.md section
-2. Check TODO.md for current status
-3. Review any design notes in `ideas/`
-4. Write test cases first (TDD approach)
-5. Keep functions under 30 lines
-
-### After Completing a Module
-
-1. Update TODO.md checkboxes
-2. Add entry to CHANGELOG (future)
-3. Update DESIGN.md if architecture changed
-4. Commit with descriptive message
-5. Push to GitHub for backup
-
-### When Stuck
-
-1. Write design notes in `ideas/`
-2. Implement simplest version that works
-3. Refactor later (but not too much later)
-4. Ask for help (GitHub discussions, forums)
-5. Take a break, come back fresh
+- [ ] Project serves as a good portfolio/learning showcase
 
 ---
 
 ## References
 
-- Game rules: See documents 1-2 (attached)
+- Game rules: `doc/game_rules_doc.md`
+- Architecture: `doc/oracle_design.md`
+- Actionable backlog: `doc/oracle_todo.md`
+- History: `doc/changelog.md`
+- Contributing workflow: `CLAUDE.md`, `doc/REFACTORING.md`
 - GitHub repo: https://github.com/JonathanFerron/oracle/
-- Design notes: See `ideas/` directory
-- Similar projects: (add as you discover them)
-- Academic papers: (add MCTS/rating system papers as you study them)
+- Design notes: `ideas/` directory
 
 ---
 
-*Last Updated: July 2026*
+*Last Updated: August 2026*

@@ -1,0 +1,807 @@
+# Oracle: Skill vs. Chance Analysis Framework
+
+## Executive Summary
+
+This document proposes a comprehensive methodology to evaluate where Oracle falls on the spectrum between pure chance and pure skill games. The approach combines two complementary research methodologies:
+
+1. **Relative Skill Opportunity (RSO)** - Dreef et al. (2023)
+2. **Pairwise Rating Comparison** - Duersch et al. (2018)
+
+## Research Paper Summaries
+
+### Paper 1: Dreef et al. (2023) - Relative Skill Opportunity
+
+**Core Concept**: Skill opportunity is measured by comparing game outcomes when:
+- All players have equal skill (homogeneous)
+- Players have different skill levels (heterogeneous)
+
+**Formula**:
+```
+RSO = (Var[X|heterogeneous] - Var[X|homogeneous]) / Var[X|homogeneous]
+
+Where X = outcome metric (e.g., final score, win/loss)
+```
+
+**Interpretation**:
+- RSO ≈ 0: Pure chance (skill doesn't affect outcomes)
+- RSO ≈ 1: Significant skill influence
+- RSO > 1: Very high skill influence
+
+**Key Insight**: If skilled players consistently produce different outcomes than unskilled players (beyond random variation), the game has skill opportunity.
+
+### Paper 2: Duersch et al. (2018) - Pairwise Rating Method
+
+**Core Concept**: Use rating systems (Elo/Bradley-Terry) to:
+1. Assign ratings to players based on match history
+2. Predict match outcomes based on rating differences
+3. Compare predictions to actual outcomes
+
+**Formula**:
+```
+P(A beats B) = 1 / (1 + 10^((Rating_B - Rating_A) / 400))
+```
+
+**Metrics**:
+1. **Rating Stability**: Do ratings converge and remain stable?
+2. **Predictive Power**: Do ratings accurately predict match outcomes?
+3. **Discrimination**: Can the system distinguish between skill levels?
+
+**Key Insight**: If a rating system accurately predicts outcomes, skill dominates. If outcomes remain highly unpredictable despite ratings, chance dominates.
+
+## Oracle-Specific Considerations
+
+### Game Characteristics Relevant to Skill-Chance Analysis
+
+**Chance Elements in Oracle**:
+1. Initial deck distribution (Random mode)
+2. Card draw order (shuffled deck)
+3. Dice rolls in combat (d4, d6, d8, d12, d20)
+4. Opponent's hidden hand
+
+**Skill Elements in Oracle**:
+1. Resource management (lunas)
+2. Card selection (which champions to play)
+3. Combat decisions (attack/defend/decline)
+4. Combo construction (species/order/color matching)
+5. Hand management (draw vs. play)
+6. Timing (when to attack aggressively vs. conservatively)
+7. Opponent modeling (predicting opponent's strategy)
+
+**Complexity Factors**:
+- Deck type affects skill ceiling (Random < Monochrome < Custom < Draft)
+- Game length (longer games may allow more skill expression)
+- AI sophistication (Random AI vs. Balanced vs. MCTS)
+
+## Methodology 1: Relative Skill Opportunity (RSO)
+
+### Implementation Strategy
+
+#### Step 1: Define Player Skill Levels
+
+Create a spectrum of AI strategies representing different skill levels:
+
+1. **Keeper** (Baseline, Rating = 50)
+   - Random strategy with minor improvements
+   - Serves as reference point
+
+2. **Novice** (Rating ≈ 40-45)
+   - Pure Random AI
+   - No strategic decisions
+
+3. **Intermediate** (Rating ≈ 55-65)
+   - Balanced Rules AI
+   - Basic heuristics
+
+4. **Advanced** (Rating ≈ 70-85)
+   - Heuristic AI with lookahead
+   - Power calculations
+
+5. **Expert** (Rating ≈ 90-99)
+   - Monte Carlo or IS-MCTS
+   - Deep search
+
+#### Step 2: Simulation Design
+
+**Homogeneous Matches** (Equal Skill):
+```
+For each skill level S:
+  Run 10,000 games of S vs. S
+  Record outcomes: wins, turns, final energies
+```
+
+**Heterogeneous Matches** (Different Skill):
+```
+For each pair (S1, S2) where S1 > S2:
+  Run 10,000 games of S1 vs. S2
+  Record outcomes
+```
+
+#### Step 3: Outcome Metrics
+
+Define measurable outcomes X:
+
+1. **Binary Win/Loss** (primary)
+   - X = 1 if Player A wins, 0 otherwise
+   - Var[X] = variance of win rate
+
+2. **Energy Differential** (secondary)
+   - X = (Energy_A - Energy_B) at game end
+   - Captures margin of victory
+
+3. **Turn Count** (tertiary)
+   - X = number of turns until game end
+   - Faster victories may indicate skill dominance
+
+4. **Advantage Trajectory** (advanced)
+   - Track energy differential over time
+   - Measure divergence point
+
+#### Step 4: Calculate RSO
+
+```
+For each outcome metric X:
+
+  1. Calculate Var[X|homogeneous]:
+     - Pool all homogeneous matches (S vs. S)
+     - Calculate variance of X across all games
+     
+  2. Calculate Var[X|heterogeneous]:
+     - Pool all heterogeneous matches (S1 vs. S2)
+     - Calculate variance of X across all games
+     
+  3. RSO = (Var[X|hetero] - Var[X|homo]) / Var[X|homo]
+```
+
+**Expected Results**:
+- High RSO (>0.5): Skill matters significantly
+- Medium RSO (0.2-0.5): Balanced skill-chance mix
+- Low RSO (<0.2): Chance dominates
+
+### Implementation in Code
+
+**File**: `src/analysis/rso_analysis.c/h`
+
+**Key Functions**:
+```c
+// Structure to hold RSO analysis results
+typedef struct {
+    double var_homogeneous;
+    double var_heterogeneous;
+    double rso;
+    uint32_t num_homo_games;
+    uint32_t num_hetero_games;
+} RSOResult;
+
+// Run RSO analysis for a specific outcome metric
+RSOResult analyze_rso_for_metric(
+    OutcomeMetric metric,
+    AIStrategy* strategies,
+    uint32_t num_games_per_pair,
+    GameContext* ctx
+);
+
+// Run complete RSO analysis across all metrics
+void run_full_rso_analysis(
+    const char* output_csv,
+    uint32_t num_games_per_pair,
+    GameContext* ctx
+);
+```
+
+**Output**: CSV with columns:
+- Metric, Var_Homo, Var_Hetero, RSO, Games_Homo, Games_Hetero
+
+## Methodology 2: Pairwise Rating Comparison
+
+### Implementation Strategy
+
+#### Step 1: Implement Bradley-Terry Rating System
+
+*(You already have a specification for this in `ideas/rating system/`)*
+
+**Key Components**:
+1. Rating calculation (Bradley-Terry model)
+2. Match outcome prediction
+3. Rating updates after each match
+4. Convergence detection
+
+#### Step 2: Simulation Design
+
+**Rating Calibration Phase**:
+```
+For each AI strategy S:
+  Initialize rating = 50 (Keeper baseline)
+  
+For 5,000 matches (random pairings):
+  Select two strategies S1, S2
+  Play match
+  Update ratings based on outcome
+  
+Continue until ratings converge (change < 1 per 100 games)
+```
+
+**Prediction Testing Phase**:
+```
+For each rating-stabilized strategy pair (S1, S2):
+  Calculate predicted win probability P(S1 beats S2)
+  Play 10,000 matches
+  Record actual win rate
+  Compare predicted vs. actual
+```
+
+#### Step 3: Metrics
+
+1. **Predictive Accuracy**
+   - Mean Absolute Error (MAE)
+   - Root Mean Square Error (RMSE)
+   - Brier Score
+
+2. **Rating Spread**
+   - Range of ratings (max - min)
+   - Standard deviation of ratings
+   - Rating separation between adjacent skill levels
+
+3. **Consistency**
+   - Do higher-rated players consistently beat lower-rated?
+   - Percentage of upsets (lower-rated wins)
+
+**Formulas**:
+```
+MAE = (1/N) * Σ|P(predicted) - P(actual)|
+
+Brier Score = (1/N) * Σ(P(predicted) - outcome)²
+
+Consistency = % of matches where higher-rated player wins
+```
+
+#### Step 4: Compare Against Pure Chance/Skill Baselines
+
+**Pure Chance Baseline**:
+- All ratings should cluster around 50 (Keeper)
+- Predictions should be ~50% regardless of pairing
+- MAE should be high (~0.5)
+
+**Pure Skill Baseline**:
+- Ratings should spread widely (e.g., 10 to 90)
+- Predictions should be accurate (MAE < 0.05)
+- Consistency should be very high (>95%)
+
+**Oracle's Position**:
+- Compare Oracle's metrics to these baselines
+- Calculate relative position on skill-chance spectrum
+
+### Implementation in Code
+
+**File**: `src/analysis/rating_analysis.c/h`
+
+**Key Functions**:
+```c
+// Structure for rating analysis results
+typedef struct {
+    double mae;
+    double rmse;
+    double brier_score;
+    double rating_spread;
+    double consistency_pct;
+    uint32_t num_matches;
+} RatingAnalysisResult;
+
+// Run rating system and analyze predictions
+RatingAnalysisResult analyze_rating_predictions(
+    RatingSystem* rating_system,
+    AIStrategy* strategies,
+    uint32_t num_strategies,
+    uint32_t calibration_games,
+    uint32_t test_games,
+    GameContext* ctx
+);
+
+// Compare to pure chance/skill baselines
+void compare_to_baselines(
+    RatingAnalysisResult oracle_result,
+    const char* output_file
+);
+```
+
+## Combined Framework
+
+### Integrated Analysis Pipeline
+
+**Phase 1: Data Collection** (Weeks 1-2)
+1. Implement all AI strategies (Random through IS-MCTS)
+2. Run RSO simulations (50,000+ games)
+3. Run rating calibration (10,000+ games)
+4. Run rating prediction tests (50,000+ games)
+
+**Phase 2: Analysis** (Week 3)
+1. Calculate RSO for each outcome metric
+2. Analyze rating system performance
+3. Compare across deck types (Random/Mono/Custom/Draft)
+4. Generate visualizations
+
+**Phase 3: Interpretation** (Week 4)
+1. Position Oracle on skill-chance spectrum
+2. Compare to other known games
+3. Identify which game aspects contribute most to skill
+4. Write research paper/blog post
+
+### Expected Computation Requirements
+
+**Total Games Needed**: ~160,000
+- RSO homogeneous: 50,000 (5 skill levels × 10,000 games)
+- RSO heterogeneous: 50,000 (10 pairs × 5,000 games)
+- Rating calibration: 10,000
+- Rating testing: 50,000
+
+**Estimated Runtime**: 
+- 160,000 games × 0.1 seconds/game = 4.4 hours
+- Parallelizable across CPU cores
+- Total: ~1-2 hours on modern hardware
+
+### Output Deliverables
+
+**CSV Files**:
+1. `rso_results.csv` - RSO calculations for each metric
+2. `rating_calibration.csv` - Rating history during calibration
+3. `rating_predictions.csv` - Predicted vs. actual outcomes
+4. `skill_chance_summary.csv` - Final positioning
+
+**Visualizations** (Python scripts):
+1. RSO by deck type (bar chart)
+2. Rating distribution (histogram)
+3. Predicted vs. actual win rates (scatter plot)
+4. Skill-chance spectrum positioning (custom visual)
+
+**Report**:
+- `analysis/skill_chance_report.md`
+- Executive summary
+- Methodology details
+- Results and interpretation
+- Comparison to other games
+
+## Comparison to Other Games
+
+### Expected Positioning (Hypotheses)
+
+**Pure Chance Games** (RSO ≈ 0, MAE ≈ 0.5):
+- Bingo
+- Roulette
+- Coin flip tournaments
+
+**Balanced Games** (RSO ≈ 0.3-0.7, MAE ≈ 0.1-0.2):
+- Poker (Texas Hold'em)
+- Backgammon
+- Magic: The Gathering (Limited)
+- **Oracle (expected)**
+
+**High Skill Games** (RSO > 0.8, MAE < 0.05):
+- Chess
+- Go
+- StarCraft II
+- Magic: The Gathering (Constructed with known decks)
+
+### Factors Affecting Oracle's Position
+
+**Increases Chance Component**:
+- Dice rolls in combat (high variance)
+- Random deck distribution
+- Card draw luck
+- Short games (less time for skill to emerge)
+
+**Increases Skill Component**:
+- Resource management (lunas)
+- Hand management (draw vs. play)
+- Combo construction (species/order/color)
+- Combat decisions (attack/defend/decline)
+- Draft formats (player agency in deck construction)
+- Longer games (more decisions = more skill expression)
+
+**Expected Finding**: Oracle likely falls in the "balanced" category, with RSO around 0.4-0.6 and MAE around 0.1-0.15.
+
+## Implementation Plan
+
+### Phase 1: Core Infrastructure (Week 1)
+
+**Tasks**:
+1. Create `src/analysis/` directory
+2. Implement `rso_analysis.c/h`
+3. Implement `rating_analysis.c/h`
+4. Add new mode: `--analysis.rso` and `--analysis.rating`
+5. Integrate with existing GameContext and simulation code
+
+**Files to Create**:
+```
+src/analysis/
+├── rso_analysis.c/h
+├── rating_analysis.c/h
+├── skill_chance_report.c/h
+└── analysis_types.h
+```
+
+**New Dependencies**:
+- Rating system (already planned, see `ideas/rating system/`)
+- CSV export (already planned, see `ideas/sim_export_spec.md`)
+
+### Phase 2: AI Strategy Implementation (Weeks 2-3)
+
+**Prerequisites**:
+- Need at least 3-4 distinct skill levels
+- Minimum: Random, Balanced, Heuristic
+- Ideal: Random, Balanced, Heuristic, MC, IS-MCTS
+
+**Tasks**:
+1. Implement Balanced Rules AI (already planned)
+2. Implement Heuristic AI (already planned)
+3. (Optional) Implement Simple Monte Carlo
+4. Calibrate each AI's approximate rating
+
+### Phase 3: Data Collection (Week 4)
+
+**Tasks**:
+1. Run RSO simulations (50,000 games)
+2. Run rating calibration (10,000 games)
+3. Run rating prediction tests (50,000 games)
+4. Export all data to CSV
+
+**Automation**:
+```bash
+# RSO analysis
+./bin/oracle --analysis.rso --numsim=50000 --output=rso_results.csv
+
+# Rating analysis
+./bin/oracle --analysis.rating --calibration=10000 --testing=50000 \
+  --output=rating_results.csv
+```
+
+### Phase 4: Analysis & Visualization (Week 5)
+
+**Python Scripts** (`tools/analyze_skill_chance.py`):
+1. Load CSV data
+2. Calculate summary statistics
+3. Generate visualizations
+4. Position Oracle on spectrum
+5. Generate report
+
+**Outputs**:
+- `analysis/skill_chance_report.md`
+- `analysis/figures/` (PNG visualizations)
+- `analysis/skill_chance_summary.csv`
+
+## Code Structure
+
+### Analysis Types Header
+
+**File**: `src/analysis/analysis_types.h`
+
+```c
+#ifndef ANALYSIS_TYPES_H
+#define ANALYSIS_TYPES_H
+
+#include <stdint.h>
+
+// Outcome metrics for RSO analysis
+typedef enum {
+    OUTCOME_WIN_LOSS,
+    OUTCOME_ENERGY_DIFF,
+    OUTCOME_TURN_COUNT,
+    OUTCOME_ADVANTAGE_TRAJECTORY
+} OutcomeMetric;
+
+// Skill level categories
+typedef enum {
+    SKILL_NOVICE,      // Random AI
+    SKILL_INTERMEDIATE, // Balanced AI
+    SKILL_ADVANCED,    // Heuristic AI
+    SKILL_EXPERT       // MC/MCTS AI
+} SkillLevel;
+
+// RSO result structure
+typedef struct {
+    OutcomeMetric metric;
+    double var_homogeneous;
+    double var_heterogeneous;
+    double rso;
+    uint32_t num_homo_games;
+    uint32_t num_hetero_games;
+} RSOResult;
+
+// Rating analysis result structure
+typedef struct {
+    double mae;
+    double rmse;
+    double brier_score;
+    double rating_spread;
+    double consistency_pct;
+    uint32_t num_calibration_games;
+    uint32_t num_test_games;
+} RatingAnalysisResult;
+
+#endif // ANALYSIS_TYPES_H
+```
+
+### RSO Analysis Module
+
+**File**: `src/analysis/rso_analysis.h`
+
+```c
+#ifndef RSO_ANALYSIS_H
+#define RSO_ANALYSIS_H
+
+#include "analysis_types.h"
+#include "../game_context.h"
+#include "../strategy.h"
+
+// Run RSO analysis for a single outcome metric
+RSOResult analyze_rso_single_metric(
+    OutcomeMetric metric,
+    StrategySet* strategies,
+    uint32_t num_games_per_pair,
+    GameContext* ctx
+);
+
+// Run complete RSO analysis across all metrics
+void run_full_rso_analysis(
+    const char* output_csv,
+    uint32_t num_games_per_pair,
+    DeckType deck_type,
+    GameContext* ctx
+);
+
+// Export RSO results to CSV
+void export_rso_results(
+    const char* filename,
+    RSOResult* results,
+    uint32_t num_results
+);
+
+#endif // RSO_ANALYSIS_H
+```
+
+### Rating Analysis Module
+
+**File**: `src/analysis/rating_analysis.h`
+
+```c
+#ifndef RATING_ANALYSIS_H
+#define RATING_ANALYSIS_H
+
+#include "analysis_types.h"
+#include "../rating/rating.h"
+#include "../game_context.h"
+#include "../strategy.h"
+
+// Run rating system calibration
+void calibrate_ratings(
+    RatingSystem* rating_system,
+    StrategySet* strategies,
+    uint32_t num_strategies,
+    uint32_t num_games,
+    GameContext* ctx
+);
+
+// Test rating predictions
+RatingAnalysisResult test_rating_predictions(
+    RatingSystem* rating_system,
+    StrategySet* strategies,
+    uint32_t num_strategies,
+    uint32_t num_games_per_pair,
+    GameContext* ctx
+);
+
+// Run complete rating analysis
+void run_full_rating_analysis(
+    const char* output_csv,
+    uint32_t calibration_games,
+    uint32_t test_games,
+    DeckType deck_type,
+    GameContext* ctx
+);
+
+// Export rating analysis results to CSV
+void export_rating_analysis(
+    const char* filename,
+    RatingAnalysisResult* result,
+    RatingSystem* rating_system
+);
+
+#endif // RATING_ANALYSIS_H
+```
+
+## Expected Results
+
+### RSO Analysis
+
+**Hypothesis**: Oracle RSO ≈ 0.4-0.6
+
+**Reasoning**:
+1. Dice rolls introduce variance (reduces skill expression)
+2. Hidden information limits perfect play
+3. But: Many decision points per game (~30 rounds)
+4. Resource management rewards planning
+5. Combo construction rewards pattern recognition
+
+**Comparison**:
+- Poker: RSO ≈ 0.5-0.7 (similar hidden info + variance)
+- Magic: RSO ≈ 0.6-0.8 (more complex decisions)
+- Backgammon: RSO ≈ 0.4-0.5 (dice rolls, but skill matters)
+
+### Rating Analysis
+
+**Hypothesis**: MAE ≈ 0.1-0.15, Consistency ≈ 70-80%
+
+**Reasoning**:
+1. Better AI should win significantly more often
+2. But variance from dice/draws prevents 100% win rate
+3. Expected rating spread: 30-40 points (Novice to Expert)
+
+**Comparison**:
+- Chess: MAE < 0.05, Consistency > 95%
+- Poker: MAE ≈ 0.15, Consistency ≈ 70%
+- Backgammon: MAE ≈ 0.12, Consistency ≈ 75%
+
+### Deck Type Comparison
+
+**Expected RSO by Deck Type** (highest to lowest skill):
+
+1. **Custom Decks**: RSO ≈ 0.6-0.7
+   - Deck construction is a skill component
+   - Reduced randomness in deck composition
+
+2. **Draft Formats**: RSO ≈ 0.5-0.6
+   - Drafting is a skill
+   - Still some randomness in card pool
+
+3. **Monochrome Decks**: RSO ≈ 0.4-0.5
+   - Reduced combo complexity
+   - More consistent decks
+
+4. **Random Decks**: RSO ≈ 0.3-0.4
+   - Maximum variance in deck quality
+   - Luck of the draw matters most
+
+## Integration with Existing Oracle Codebase
+
+### Minimal Changes to Existing Code
+
+**Advantage**: RSO/rating analysis can be implemented as a new module without modifying game logic.
+
+**Required**:
+1. Rating system (already planned)
+2. CSV export (already planned)
+3. GameContext (already implemented)
+
+**New**:
+1. `src/analysis/` directory
+2. Two new command-line modes
+
+### Command-Line Interface
+
+**New Options**:
+```
+--analysis.rso              Run RSO analysis
+--analysis.rating           Run rating analysis
+--analysis.output=FILE      Output CSV filename
+--analysis.calibration=N    Number of calibration games
+--analysis.testing=N        Number of testing games
+--analysis.deck=TYPE        Deck type (random/mono/custom/draft)
+```
+
+**Example Usage**:
+```bash
+# RSO analysis with Random decks
+./bin/oracle --analysis.rso --analysis.deck=random \
+  --numsim=50000 --analysis.output=rso_random.csv
+
+# Rating analysis with Monochrome decks
+./bin/oracle --analysis.rating --analysis.deck=mono \
+  --analysis.calibration=10000 --analysis.testing=50000 \
+  --analysis.output=rating_mono.csv
+```
+
+## Research Paper Outline
+
+### Title
+"Measuring Skill and Chance in Oracle: A Card Game with Dice-Based Combat"
+
+### Abstract
+- Introduce Oracle game
+- Describe methodologies (RSO + Rating)
+- Present key findings (RSO value, rating spread, MAE)
+- Position Oracle on skill-chance spectrum
+- Compare to other games
+
+### Introduction
+1. Background on skill-chance debate in games
+2. Legal implications (gambling classification)
+3. Game design implications (balancing luck and skill)
+4. Research question: Where does Oracle fall on the spectrum?
+
+### Game Description
+1. Oracle overview (resources, combat, combos)
+2. Chance elements (dice, shuffling, hidden info)
+3. Skill elements (resource management, timing, combos)
+4. Deck types and their impact
+
+### Methodology
+1. RSO analysis (Dreef et al. 2023)
+   - Homogeneous vs. heterogeneous matches
+   - Outcome metrics
+   - Simulation design
+2. Rating analysis (Duersch et al. 2018)
+   - Bradley-Terry model
+   - Calibration and prediction testing
+   - Metrics (MAE, consistency)
+3. AI strategies (representing skill levels)
+
+### Results
+1. RSO calculations
+   - Overall RSO
+   - RSO by deck type
+   - RSO by outcome metric
+2. Rating analysis
+   - Rating distribution
+   - Predictive accuracy (MAE, Brier score)
+   - Consistency rates
+3. Statistical significance tests
+
+### Discussion
+1. Interpretation of results
+2. Positioning Oracle on the spectrum
+3. Comparison to other games (Poker, Backgammon, Magic)
+4. Implications for game design
+5. Limitations of the study
+
+### Conclusion
+1. Summary of findings
+2. Oracle's balance of skill and chance
+3. Future work (different AI strategies, human play data)
+
+### References
+- Dreef et al. (2023)
+- Duersch et al. (2018)
+- Elo rating system papers
+- Game theory literature
+
+## Timeline Summary
+
+### Week 1: Infrastructure
+- Create `src/analysis/` module
+- Implement basic RSO framework
+- Implement basic rating analysis framework
+
+### Week 2: AI Development
+- Implement Balanced Rules AI
+- Implement Heuristic AI
+- Calibrate approximate ratings
+
+### Week 3: AI Development (continued)
+- (Optional) Implement Monte Carlo AI
+- Finalize all AI strategies
+
+### Week 4: Data Collection
+- Run RSO simulations (50,000 games)
+- Run rating calibration (10,000 games)
+- Run rating prediction tests (50,000 games)
+
+### Week 5: Analysis
+- Python analysis scripts
+- Generate visualizations
+- Write report/paper
+
+### Week 6: Polish & Publication
+- Refine analysis
+- Clean up code
+- Publish results (blog post, research paper)
+
+**Total Time**: 6 weeks (assuming part-time hobby work)
+
+## Conclusion
+
+This framework provides a rigorous, research-backed approach to answering "How much skill vs. chance is in Oracle?" The combination of RSO and rating analysis gives complementary perspectives:
+
+- **RSO** measures skill opportunity (how much better outcomes can be with skill)
+- **Rating analysis** measures skill expression (how well we can predict outcomes)
+
+Both approaches are feasible to implement within Oracle's existing architecture, requiring only new analysis modules and leveraging already-planned features (rating system, CSV export).
+
+The expected result is that Oracle will fall in the "balanced" category with significant but not dominant skill components, similar to games like Poker and Backgammon. The exact position will depend on deck type and which AI strategies are implemented.

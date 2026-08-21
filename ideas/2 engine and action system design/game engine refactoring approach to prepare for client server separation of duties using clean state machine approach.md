@@ -257,40 +257,12 @@ uint8_t draw_1_card(struct gamestate* gstate, PlayerID player, GameContext* ctx)
 }
 ```
 
-## 7. **Implement VisibleGameState Conversion**
+## 7. **`VisibleGameState` Conversion**
 
-```c
-// In visibility.c
-void gamestate_get_visible(const GameState* gs, uint8_t player_id, 
-                           VisibleGameState* visible)
-{
-  visible->my_player_id = player_id;
-  visible->active_player_id = gs->current_player;
-  visible->phase = gs->turn_phase;
-  visible->turn_number = gs->turn;
-
-  // Copy own complete state
-  visible->my_state = gs->players[player_id];
-
-  // Copy opponent's visible info only
-  uint8_t opp = 1 - player_id;
-  visible->opp_energy = gs->players[opp].energy;
-  visible->opp_lunas = gs->players[opp].lunas;
-  visible->opp_hand_count = gs->players[opp].hand_count;
-  visible->opp_deck_count = gs->players[opp].deck_count;
-
-  // Copy opponent's discard (fully visible)
-  memcpy(visible->opp_discard, gs->players[opp].discard, 
-         gs->players[opp].discard_count);
-  visible->opp_discard_count = gs->players[opp].discard_count;
-
-  // Copy combat zone
-  visible->attack_count = gs->attack_count;
-  memcpy(visible->attack_cards, gs->attack_cards, 
-         gs->attack_count * sizeof(Card));
-  // ... etc
-}
-```
+Superseded by a more complete version already in `ideas/8 client server/Client Server
+Architecture Ideas 2 (consolidated).md`'s "State Filtering" section (same
+`gamestate_get_visible()` function, more fields, kept in sync with that folder's fuller
+`VisibleGameState` struct) — see that doc rather than duplicating it here.
 
 ## 8. **File Organization Suggestion**
 
@@ -302,7 +274,9 @@ src/core/
   action_generator.c/h    - get_list_of_possible_actions()
   action_processor.c/h    - apply_action() - server-side execution
   game_engine.c/h         - Phase management, game loop orchestration
-  visibility.c/h          - VisibleGameState conversions
+
+src/visibility/
+  visibility.c/h          - VisibleGameState conversions (see ideas/8 client server/)
 
 src/ui/
   ui_callbacks.h          - UICallbacks structure definition

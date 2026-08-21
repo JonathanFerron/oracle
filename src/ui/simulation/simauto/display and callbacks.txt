@@ -1,1 +1,1 @@
-Placeholder for stda.sim mode's display/callback wiring (interactive-ish batch simulation UI, distinct from stda_auto.c's headless loop). No dedicated ideas/ folder yet; shares the UI-callback groundwork planned in `ideas/9 game engine refactoring for GUI and network support/`.
+Placeholder for stda.sim mode's display/callback wiring (interactive-ish batch simulation UI, distinct from stda_auto.c's headless loop). Shares the UI-callback groundwork planned in `ideas/2 engine and action system design/`; see also `ideas/4 match results export/`.

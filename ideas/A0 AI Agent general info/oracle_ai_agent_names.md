@@ -1,0 +1,167 @@
+# Oracle — AI Agent Names & Borealis Ratings
+
+Canonical naming reference for the AI selection / difficulty-select screen
+across CLI, TUI and GUI front ends.
+
+Ratings are on the Borealis scale (1–99), where the rating equals the expected
+win percentage against the Borealis benchmark agent.
+
+---
+
+## Agent Roster
+
+| Tech/Math Name | English | Français | Español | Est. Borealis Rating |
+|---|---|---|---|---|
+| Random | The Gambler | Le Parieur | El Apostador | 5 |
+| Value Based | The Apprentice | L'Apprenti | El Aprendiz | 15 |
+| Combo Threshold | The Showboat | Le Frimeur | El Fanfarrón | 37 |
+| Greedy Power *(benchmark)* | Borealis | Borealis | Borealis | 50 |
+| Balanced Rules | Bean Counter | Compteur de Fèves | Contador de Frijoles | 62 |
+| Heuristic | ε-γ-δ | ε-γ-δ | ε-γ-δ | 70 |
+| Tactical | Pressure Cooker | Cocotte-Minute | Olla a Presión | 74 |
+| Hybrid (HBT) | The Grandmaster | Le Grand Maître | El Gran Maestro | 78 |
+| Simple Monte Carlo | The Soothsayer | Le Devin | El Adivino | 82 |
+| HBT 2-Ply | Grandmaster II | Grand Maître II | Gran Maestro II | 85 |
+| IS-MCTS | The Omniscient | L'Omniscient | El Omnisciente | 92 |
+| IS-MCTS + NN | AlphaOracle Prime | AlphaOracle Prime | AlphaOracle Prime | 97 |
+
+---
+
+## ASCII-Safe Variants
+
+Use these if the display layer is byte-oriented. The current
+`get_strategy_display_name()` values are already accent-stripped, and
+`print_ai_agent_shorthand_list()` pads with `%-16s`, which counts bytes rather
+than glyphs.
+
+| Tech/Math Name | English | Français | Español |
+|---|---|---|---|
+| Random | The Gambler | Le Parieur | El Apostador |
+| Value Based | The Apprentice | L'Apprenti | El Aprendiz |
+| Combo Threshold | The Showboat | Le Frimeur | El Fanfarron |
+| Greedy Power | Borealis | Borealis | Borealis |
+| Balanced Rules | Bean Counter | Compteur de Feves | Contador de Frijoles |
+| Heuristic | Eps-Gam-Del | Eps-Gam-Del | Eps-Gam-Del |
+| Tactical | Pressure Cooker | Cocotte-Minute | Olla a Presion |
+| Hybrid (HBT) | The Grandmaster | Le Grand Maitre | El Gran Maestro |
+| Simple Monte Carlo | The Soothsayer | Le Devin | El Adivino |
+| HBT 2-Ply | Grandmaster II | Grand Maitre II | Gran Maestro II |
+| IS-MCTS | The Omniscient | L'Omniscient | El Omnisciente |
+| IS-MCTS + NN | AlphaOracle Prime | AlphaOracle Prime | AlphaOracle Prime |
+
+Alternative ASCII forms for the Heuristic agent, in decreasing terseness:
+`E-G-D` · `Eps-Gam-Del` · `Epsilon-Gamma-Delta`
+
+---
+
+## Mapping to Enum & Shorthands
+
+Roster order matches strength ordering, which should match `AIStrategyType`
+declaration order.
+
+| Enum Constant | Shorthand(s) | Display Name (EN) |
+|---|---|---|
+| `AI_STRATEGY_RANDOM` | `rand` | The Gambler |
+| `AI_STRATEGY_VALUE_BASED` | `value` | The Apprentice |
+| `AI_STRATEGY_COMBO_THRESHOLD` | `showboat`, `combo` | The Showboat |
+| `AI_STRATEGY_BOREALIS` | `borealis`, `greedy` | Borealis |
+| `AI_STRATEGY_BALANCED` | `balanced` | Bean Counter |
+| `AI_STRATEGY_HEURISTIC` | `heuristic` | ε-γ-δ |
+| `AI_STRATEGY_TACTICAL` | `tactical` | Pressure Cooker |
+| `AI_STRATEGY_HYBRID_HBT` | `hbt` | The Grandmaster |
+| `AI_STRATEGY_SIMPLE_MC` | `simplemc` | The Soothsayer |
+| `AI_STRATEGY_HBT_2PLY` | `hbt2ply` | Grandmaster II |
+| `AI_STRATEGY_ISMCTS` | `ismcts` | The Omniscient |
+| `AI_STRATEGY_ISMCTS_NN` | `ismctsnn` | AlphaOracle Prime |
+
+### Required renames
+
+Two existing enum constants no longer match what they name. Rename before
+either agent is implemented, not after:
+
+| Old | New | Reason |
+|---|---|---|
+| `AI_STRATEGY_GREEDY_POWER` | `AI_STRATEGY_BOREALIS` | This spec is now the benchmark |
+| `AI_STRATEGY_COMBO_AWARE` | `AI_STRATEGY_COMBO_THRESHOLD` | "Combo Aware" no longer discriminates — Borealis computes combo bonuses too |
+
+Retain `greedy` and `combo` as shorthand aliases so existing scripts and
+saved configs keep working.
+
+### Retired names
+
+- **The Hoarder** / L'Accapareur / El Acaparador — previously assigned to
+  Greedy Power. Freed when that spec became Borealis. Unused.
+
+---
+
+## What Changed and Why
+
+The original plan had a threshold-gated, probabilistic-defence agent as the
+benchmark and a cost-penalised subset-scoring agent below it. These were
+swapped.
+
+**Reason:** a benchmark agent needs a single monotone strength dial so it can
+be calibrated to a target band. Greedy Power has one — λ, the value of a luna
+in damage units — and win rate is unimodal in it, so the agent can be detuned
+in either direction while still playing coherently. The older design had seven
+interacting parameters with unclear individual effects (one of which,
+`aggression_level`, was never referenced by its own algorithm), and was weakened
+primarily by a ~45% chance of declining a correct defence. That produces
+*exploitable* rather than *diffuse* suboptimality, which a child notices and
+plays around within a dozen games.
+
+The displaced design survives as **The Showboat**: chases high combo bonuses,
+hoards them, and blocks unreliably. Its behaviour is legible enough that losing
+to it teaches something, which makes it a reasonable rung below the benchmark.
+
+---
+
+## Notes on the Ratings
+
+- **Borealis = 50 by definition.** It is the scale anchor (`s = 1.0` in the
+  Bradley-Terry model); its rating never moves.
+- All other values are **placeholder design-intent estimates**, not measured
+  results. Replace each with a measured rating from simulated games against
+  Borealis once the agent is implemented.
+- Ordering constraints established during design:
+  - Combo Threshold sits between Value Based and Borealis.
+  - Simple Monte Carlo is weaker than HBT 2-Ply.
+  - Value Based is only marginally stronger than Random.
+- Gaps are deliberately non-uniform. The scale is non-linear: a 10-point gap
+  near 50 is a much smaller strength difference than a 10-point gap near 90.
+
+### Calibration target
+
+Children aged 11–14 with moderate to frequent experience should average a
+45–55% win rate against Borealis.
+
+That is a wide age range for a single agent to serve. The difficulty screen
+mitigates this: with The Apprentice below and Bean Counter above, players
+self-select, and the calibration burden on Borealis alone becomes much more
+forgiving. Tune λ against playtest data, not against simulation win rates —
+simulation finds the λ that maximises strength, which is not necessarily the λ
+that hits the target band.
+
+---
+
+## Naming Rationale (Progression Narrative)
+
+The roster reads as a climb from chaos to near-superhuman play, usable as
+flavour text on the difficulty-select screen:
+
+1. **The Gambler** — pure chance, no plan
+2. **The Apprentice** — knows one thing (efficiency) and nothing else
+3. **The Showboat** — chases the spectacular play, forgets to block
+4. **Borealis** — the yardstick everything else is measured against
+5. **Bean Counter** — obsessive resource accounting
+6. **ε-γ-δ** — reduces the game to a weighted advantage function
+7. **Pressure Cooker** — reads the position and turns up the heat
+8. **The Grandmaster** — synthesis of the three approaches above
+9. **The Soothsayer** — rolls the dice a thousand times before choosing
+10. **Grandmaster II** — the Grandmaster, now anticipating your reply
+11. **The Omniscient** — deep tree search over hidden information
+12. **AlphaOracle Prime** — search plus learned intuition
+
+Note that **ε-γ-δ** deliberately breaks the flavour-name pattern. It is the one
+agent whose entire identity is its weights, so naming it after them is a
+reasonable in-joke — but it is a conscious exception, not an oversight.

@@ -1,70 +1,67 @@
 # Oracle Development TODO
 
-**Quick Status**: Turn-logic interactive-mode commands (recall, combat results details, discard pile inspection, cash card functionality), the source folder structure cleanup (pragmatic pass), TUI Milestones 1 and 2 (ncurses display skeleton, then playable human-vs-AI interaction), and a follow-up TUI UI/playability polish pass (layout, colors, card formatting, message routing) are complete -- see `doc/changelog.md`. First non-dumb AI strategy is next (see "Next Up" below).
+**Scope of this document**: actionable near-term checkboxes. For phase-level ordering
+and long-horizon vision see `doc/oracle_roadmap.md`. For architecture/design rationale
+see `doc/oracle_design.md`. For a dated history of finished work see `doc/changelog.md`.
+
+**Quick Status**: Core game loop, all interactive-mode features (recall, cash exchange,
+mulligan, discard-to-7, combat/discard display), the source folder structure cleanup, and
+TUI Milestones 1–2 + polish pass are complete — see `doc/changelog.md`. First non-dumb AI
+strategy is next; see `doc/oracle_roadmap.md`'s "Next Up" for the authoritative order and
+rationale (`A1 → A2 → A3 → A4`).
 
 ---
 
-## Next Up (preferred order)
+## Next Up
 
-**Note on `ideas/` numbering (2026-07-14)**: folders were renumbered twice this session.
-Non-AI planning folders now use plain integers 1-10 reflecting rough priority order; AI
-agent folders were pulled into their own `A1`-`A11` namespace (kept together, in their
-existing relative order) so adding new AI ideas doesn't require renumbering everything
-else. See `git log` / folder contents if an old number (e.g. `ideas/8/`, `ideas/14.3/`)
-shows up in an older doc or commit message.
+See `doc/oracle_roadmap.md` — this file intentionally doesn't duplicate that ordering.
+The mechanical steps for implementing whichever agent is next are in "Checklist: Adding a
+New AI Strategy" below.
 
-Note: source code folder structure cleanup is now DONE -- see `doc/changelog.md`. Future
-directories not created yet, to be added only when their first real file lands, in the
-folder noted:
-- `deck_formats/` -- when a draft/deck-format feature is implemented (`ideas/10 Draft Format and Game Depth Addition Ideas/`)
-- `game_rules/` -- when the game-engine refactor (below) needs a home for rules data separate from `core/`
-- `network/` -- client/server (`ideas/8 client server/`)
-- `persistence/` -- save/load game state (`ideas/6 save and load gamestate/`)
-- `config/` -- configuration file system (`ideas/7 config file/`)
-- `platform/` -- if/when platform-specific code (beyond the current `#ifdef _WIN32` blocks) grows enough to warrant its own directory
+**Future `src/` directories, created only when their first real file lands** (tracked
+here so it isn't lost between sessions — see `ideas/2 game engine refactoring for GUI and
+network support/target_folder_structure_v4.md`'s ownership table for the full picture):
 
-Note: `interactive/` (TUI/GUI interactive-mode code shared with `ui/cli/`) is now
-DONE too -- `src/ui/interactive/game_commands.c`/`game_commands_cards.c`, created as
-part of TUI Milestone 2 (see below and `doc/changelog.md`, 2026-07-23).
+- `deck_formats/` — draft/deck-format feature (`ideas/10 Draft Format and Game Depth
+  Addition Ideas/`)
+- `game_rules/` — game-engine refactor needs a home for rules data separate from `core/`
+- `network/` — client/server (`ideas/8 client server/`)
+- `persistence/` — save/load game state (`ideas/6 save and load gamestate/`)
+- `config/` — configuration file system (`ideas/7 config file/`)
+- `platform/` — if/when platform-specific code (beyond the current `#ifdef _WIN32`
+  blocks) grows enough to warrant its own directory
 
-1. **First "non-dumb" AI strategy** (`ideas/A1 ai agent value based/`) -- implement agents in `A1 -> A2 -> A3 -> A4` order first: the rating system (`ideas/5/`) needs the Borealis benchmark agent (`ideas/A4 ai agent combo aware`), which itself needs A1-A3 to exist for comparison, so this order isn't just "easiest first" -- it's a real dependency.
-
-   **CLI menu is now stub-synced (2026-07-14)**: `display_ai_strategy_menu()`/`get_ai_strategy_choice()`/`get_strategy_display_name()` in `src/ui/shared/player_config.c` and the `AIStrategyType` enum now list all 11 planned agents (`A1`-`A11`, skipping `A2` since parameter storing/optimization is calibration tooling, not an agent) as "not yet implemented" stub menu entries, in `ideas/A#` order, each with a comment cross-referencing its `ideas/A#` folder. `A4`'s menu entry is explicitly labeled "Combo Aware [Borealis benchmark]" so it's identifiable in the CLI. The former "Hybrid" entry is confirmed to be `A7` (tactical+HBT: **H**euristics+**B**alanced+**T**actical) and is now labeled "Hybrid (HBT)". **Remaining work per agent**: as each strategy is actually implemented (attack/defense functions in `src/ai_strat/`), wire its menu choice through to the real strategy functions instead of falling back to Random.
-
-**Back burner (explicitly deferred for now)**:
-
-- Save/load game state (`ideas/6 save and load gamestate/`)
-- Configuration file system (`ideas/7 config file/`)
+**Back burner (explicitly deferred)**: save/load game state
+(`ideas/6 save and load gamestate/`), configuration file system
+(`ideas/7 config file/`).
 
 ---
 
-# Oracle Card Game: Code Quality & Architecture Review
+## Core Game Logic (`src/core/`)
 
-## Critical Issues
+- [ ] Better error handling — consistent error enum instead of ad hoc `bool`/`printf`:
+  ```c
+  typedef enum
+  { GAME_OK = 0,
+    GAME_ERR_EMPTY_DECK,
+    GAME_ERR_INSUFFICIENT_CASH,
+    GAME_ERR_INVALID_CARD,
+    GAME_ERR_ILLEGAL_MOVE
+  } GameError;
 
-### Config Structure Scattered
+  GameError DeckStk_pop_safe(struct deck_stack* deck, uint8_t* out);
+  ```
+- [ ] Add `DeckStk_size()` helper, `DeckStk_peek_at(index)` for debugging
+  (`structures/deckstack.c`)
 
-**Problem:** Configuration handling split between multiple files
+## Config Structure Scattered
 
-- `cmdline.c` - parsing
-- `main.c` - cleanup
-- `stda_auto.c`, `stda_cli.c` - usage
+Configuration handling is split across `cmdline.c` (parsing), `main.c` (cleanup),
+`stda_auto.c`/`stda_cli.c` (usage). Centralize in a new `config.h`/`config.c` once the
+config-file system (`ideas/7 config file/`) is picked up — not before, to avoid building
+the centralization twice.
 
-**Recommendation:** Centralize in new `config.h` / `config.c`
-
----
-
-## Architecture Recommendations
-
-### Prepare for Client-Server Split
-
-Current code is monolithic. Start preparing for separation. See notes in `ideas/2 game engine refactoring for GUI and network support/`
-
----
-
-## Code Quality Issues
-
-### Magic Numbers
+## Magic Numbers
 
 ```c
 // stda_auto.c - BAD
@@ -75,407 +72,253 @@ if(genRand(&MTwister_rand_struct) > 0.47) return;
 if(genRand(&MTwister_rand_struct) > DEFENSE_PROBABILITY) return;
 ```
 
-### Error Handling Inconsistency
+---
 
-**Recommendation:** Consistent error enum:
+## AI Strategies (`src/ai_strat/`)
 
-```c
-typedef enum {
-    GAME_OK = 0,
-    GAME_ERR_EMPTY_DECK,
-    GAME_ERR_INSUFFICIENT_CASH,
-    GAME_ERR_INVALID_CARD,
-    GAME_ERR_ILLEGAL_MOVE
-} GameError;
+See `doc/oracle_roadmap.md`'s "Phase: AI Development" for the full agent ladder and
+`ideas/A1`–`ideas/A11` for per-agent design notes. Below are the two agents with enough
+design-note detail already sketched out to break into sub-tasks.
 
-GameError DeckStk_pop_safe(struct deck_stack* deck, uint8_t* out);
-```
+### `A5` Balanced Rules Strategy (`ai_strat_balancedrules1.c`)
+
+- [ ] In `stda.cli` mode, when AI-vs-AI play is selected, use "AI strategy name + (A or
+  B)" as the player name instead of asking for player 1's name and not player 2's
+- [ ] Design decision framework (see `ai_strat_balancedrules1.c` notes)
+- [ ] Attack heuristics: when to play 0-cost champions; when to play draw/recall vs
+  champions; target hand size based on opponent energy; target cash balance based on
+  opponent energy
+- [ ] Defense heuristics: when to defend vs decline; which defenders to play;
+  E[Total Def] ≤ E[Total Attack] − β·σ rule; prioritize low attack-efficiency cards for
+  defense
+- [ ] Card selection: best attacker/defender selection; power/efficiency calculations
+- [ ] Parameter tuning: calibrate target cash/hand formulas; optimize defend
+  probability; test vs Random AI (should win >70%)
+
+### `A6` Heuristic Strategy (`ai_strat_heuristic1.c`)
+
+- [ ] Advantage function (energy advantage, cards advantage, cash advantage — see
+  `ai_strat_heuristic1.c` notes for the formulas)
+- [ ] 1-move lookahead, action evaluation
+- [ ] Parameters: ε (epsilon) for energy weight, γ (gamma) for cards weight
+- [ ] Calibration against `A5` Balanced AI
 
 ---
 
-## By Module Status
+## Game Modes (`src/roles/stda/`)
 
-### Core Game Logic (src/core/)
+### Automated Simulation (`stda_auto.c`)
 
-#### Card Actions
-
-Recall mechanic (draw/recall cards, interactive CLI only) is complete -- see `doc/changelog.md`.
-
-- [ ] Better error handling
-
----
-
-### AI Strategies (src/ai/)
-
-#### Balanced Rules Strategy
-
-- [ ] In stda.cli mode, when AI against AI play is selected, use 'AI strategy name + (A or B)' as the player name instead of asking for player 1's name and not asking for player 2
-- [ ] Design decision framework (see strat_balancedrules1.c notes)
-- [ ] Attack heuristics:
-  - [ ] When to play 0-cost champions
-  - [ ] When to play draw/recall vs champions
-  - [ ] Target hand size based on opponent energy
-  - [ ] Target cash balance based on opponent energy
-- [ ] Defense heuristics:
-  - [ ] When to defend vs decline
-  - [ ] Which defenders to play
-  - [ ] E[Total Def] ≤ E[Total Attack] - β·σ rule
-  - [ ] Prioritize low attack efficiency cards for defense
-- [ ] Card selection:
-  - [ ] Best attacker selection
-  - [ ] Best defender selection
-  - [ ] Power/efficiency calculations
-- [ ] Parameter tuning:
-  - [ ] Calibrate target cash/hand formulas
-  - [ ] Optimize defend probability
-  - [ ] Test vs Random AI (should win >70%)
-
-#### Heuristic Strategy 📋
-
-- [ ] Advantage function (see strat_heuristic1.c notes)
-  - [ ] Energy advantage (own - opponent)
-  - [ ] Cards advantage (effective deck size)
-  - [ ] Cash advantage
-- [ ] 1-move lookahead
-- [ ] Action evaluation
-- [ ] Parameters:
-  - [ ] ε (epsilon) for energy weight
-  - [ ] γ (gamma) for cards weight
-- [ ] Calibration against Balanced AI
-
----
-
-### Game Modes (src/)
-
-#### Automated Simulation (stda_auto.c) ⚠️
-
-- [ ] **Refactor**: Extract simulation.c module (part of the 'improve source code folder structure' folder under 'ideas')
+- [ ] **Refactor**: extract `sim_stats.c`/`sim_engine.c` — see
+  `ideas/2 engine and action system design/stda_auto_split_plan.md`
+  for the phased split plan. Do this alongside CSV export, not standalone.
 - [ ] Support multiple deck types (currently hardcoded random)
-- [ ] Better statistics:
-  - [ ] Confidence intervals
-  - [ ] Effect size calculations
-  - [ ] Win rate standard error
-- [ ] CSV export integration
+- [ ] Better statistics: confidence intervals, effect size calculations, win-rate
+  standard error
+- [ ] CSV export integration (`ideas/4 match results export/`)
 - [ ] Progress display during long runs
 
-#### CLI Mode (stda_cli.c) ⚠️
+### CLI Mode (`stda_cli.c`)
 
-Combat results display is complete -- see `doc/changelog.md`.
+- [ ] Save/load game state (`ideas/6 save and load gamestate/`, back-burnered)
 
-- [ ] Save/load game state
+### TUI Mode (`stda_tui.c`)
 
-#### TUI Mode (stda_tui.c)
+Milestones 1–2 and the UI/playability polish pass are done — see `doc/changelog.md`.
 
-**Milestone 1 (ncurses display skeleton) is done** -- see `doc/changelog.md`
-(2026-07-14). `src/ui/tui/tui_render.c/h` + `src/roles/stda/stda_tui.c/h`; AI-vs-AI only,
-one turn advances per keypress, layout matches `Template TUI Game Interface.pdf` /
-`Gabarit Interface de Jeu Version Texte.xlsx` and is fully responsive (any terminal size
->= 100x30, `KEY_RESIZE`-aware). See `ideas/3 tui/` for the original design intent (its
-code prototype is superseded).
+**Left for a future pass** (not blocking):
 
-- [x] ncurses initialization
-- [x] Window layout: play area (left), info column split into shortcuts/message-box
-      /console panels (right), top+bottom status bars, command line (bottom, inert)
-- [x] Display functions: player info (energy, lunas), hand display (with colors, hidden
-      for opponent), combat zone, deck/discard counts
-- [x] Message log system (scrolling console)
+- [ ] Visual highlighting of staged cards directly in the hand display (currently just a
+  `[n,m]` list in the command-line row)
+- [ ] Help overlay (CLI's `gmst`/`shod`/`help` have no TUI equivalent; board is always
+  visible so `gmst`/`shod` are moot, but a `help` command/key listing the grammar would
+  help)
+- [ ] TUI ↔ SIM mode switching (low priority; `stda.sim` doesn't exist yet either)
+- [ ] Move the pre-ncurses player-setup questions (mode/name/AI-strategy prompts) into
+  the Console box instead of plain stdio before `initscr()` — touches CLI-shared setup
+  code (`ui/shared/player_config.c`/`player_selection.c`), planned as its own milestone
+- [ ] Render deck-card contents once a card-visibility model exists (currently deck
+  stays a count-only label; only meaningful after a discard-shuffled-into-deck mechanic
+  is modeled)
 
-**Milestone 2 (human interaction) -- DONE (2026-07-23)**, see `doc/changelog.md`'s
-two 2026-07-23 entries (Pass 1: the `UiIO` seam; Passes 2/3: the playable TUI itself)
-for the full breakdown. Summary: `stda.tui` now supports a real human-vs-AI game --
-pre-ncurses player configuration (reusing `stda_cli.c`'s menu flow), `TAB`-toggled
-PLAY mode (digit-staging champion selection, `P` pass) and COMMAND mode (`cham`/
-`draw`/`cash`/`pass`/`exit`, reusing the CLI's exact grammar via
-`src/ui/interactive/game_commands.c`'s `UiIO` seam), recall, cash exchange, mulligan,
-discard-to-7, and live combat-result display. AI-vs-AI still uses the original M1
-`play_turn()` fast path unchanged.
-
-**UI/playability polish pass -- DONE (2026-07-24)**, see `doc/changelog.md`. Layout
-(command line moved to share Player A's status row, Deck/Discard corner labels,
-combat-zone divider-tucking, taller/populated Game Messages box), message routing
-(Game Messages = narrative, Console = interaction), card formatting (hybrid detailed/
-compact forms, localized draw/recall/cash labels, luna-cost + name coloring), CLI-
-borrowed player colors, and two playability fixes (no forced pause after combat,
-correct Active/Waiting through the whole attack/defense/discard-to-7 cycle).
-
-**Left for a future pass** (not blocking, noted in the 2026-07-24 changelog entry):
-- Visual highlighting of staged cards directly in the hand display (currently just a
-  `[n,m]` list shown in the command-line row instead).
-- Help overlay (CLI's `gmst`/`shod`/`help` diagnostic commands have no TUI equivalent
-  yet -- board is always visible so `gmst`/`shod` are moot, but a `help` command/key
-  listing the grammar would still be useful).
-- TUI &harr; SIM mode switching (low priority; `stda.sim` doesn't exist yet either).
-- Move the pre-ncurses player-setup questions (mode/name/AI-strategy prompts) into
-  the Console box instead of plain stdio before `initscr()` -- larger scope, touches
-  CLI-shared setup code (`ui/shared/player_config.c`/`player_selection.c`), planned as
-  its own milestone.
-- Render deck-card contents once a card-visibility model exists (currently deck stays
-  a count-only label; only meaningful after a discard-shuffled-into-deck mechanic is
-  modeled).
-
-**Key files**: `src/roles/stda/stda_tui.c` (setup/loop) +
-`stda_tui_interactive.c/h` (human-turn handlers), `src/ui/tui/tui_render.c` +
-`_playarea.c` + `_io.c` (rendering, split three ways after M2), `tui_input.c/h` (the
-TUI's `UiIO` backend), `src/ui/shared/ui_io.h` (the seam),
+**Key files**: `src/roles/stda/stda_tui.c` (setup/loop) + `stda_tui_interactive.c/h`
+(human-turn handlers), `src/ui/tui/tui_render.c` + `_playarea.c` + `_io.c` (rendering),
+`tui_input.c/h` (the TUI's `UiIO` backend), `src/ui/shared/ui_io.h` (the seam),
 `src/ui/interactive/game_commands.c/_cards.c` (the shared rules), `src/ui/cli/cli_io.c`
 (the CLI's `UiIO` backend, for comparison).
 
-#### Simulation UI (stda_sim.c) 📋
+### Simulation UI (`stda.sim`) — not started
 
-- [ ] ncurses-based results display
-- [ ] Live progress bar
-- [ ] Win rate display
-- [ ] Strategy comparison table
-- [ ] Parameter controls
-- [ ] ASCII art graphs (histogram)
-- [ ] Export commands
-- [ ] Mode switching (SIM ↔ TUI)
+- [ ] ncurses-based results display, live progress bar, win-rate display, strategy
+  comparison table, parameter controls, ASCII-art histograms, export commands, mode
+  switching (SIM ↔ TUI)
 
 ---
 
-### Utilities (src/)
+## Utilities (`src/`)
 
-#### Command-Line Parsing ✅
+### Command-Line Parsing
 
-- [ ] Add --config option
-- [ ] Add --deck option (random/mono/custom/the 3 drafting formats)
+- [ ] Add `--config` option
+- [ ] Add `--deck` option (random/mono/custom/the 3 drafting formats)
 
-#### Game Context ✅
+### Game Context
 
-- [ ] Document usage patterns in DESIGN.md
+- [ ] Document usage patterns in `doc/oracle_design.md` (partially covered — expand with
+  worked examples if it grows)
 
-#### Debug System ✅
+### Debug System
 
 - [ ] Add debug levels (INFO, WARN, ERROR)
-- [ ] Add file/line number to debug output 
-
----
-
-### Data Structures (src/)
-
-#### Deck Stack ✅
-
-- [ ] Add DeckStk_size() helper
-- [ ] Add DeckStk_peek_at(index) for debugging
+- [ ] Add file/line number to debug output
 
 ---
 
 ## New Features to Add
 
-### Configuration System 📋
+### Configuration System
 
-See `ideas/config file/` for implementation
+See `ideas/7 config file/` for implementation notes.
 
-- [ ] config.c/h implementation
-- [ ] INI-style parser
-- [ ] read_config_file()
-- [ ] Default configuration
-- [ ] User config (~/.oraclerc)
-- [ ] Command-line override
-- [ ] save_config()
+- [ ] `config.c/h` implementation, INI-style parser, `read_config_file()`, default
+  configuration, user config (`~/.oraclerc`), command-line override, `save_config()`
 
-### CSV Export System 📋
+### CSV Export System
 
-See `ideas/sim_export_spec.md` for full specification
+See `ideas/4 match results export/` for the full specification.
 
-- [ ] sim_export.c/h implementation
-- [ ] SimExporter structure
-- [ ] generate_simparam_string()
-- [ ] export_game_result()
-- [ ] export_summary()
-- [ ] Detail CSV (per-game)
-- [ ] Summary CSV (aggregate)
-- [ ] Filename conventions
-- [ ] Integration with stda_auto mode
+- [ ] `sim_export.c/h` implementation, `SimExporter` structure,
+  `generate_simparam_string()`, `export_game_result()`, `export_summary()`, detail CSV
+  (per-game), summary CSV (aggregate), filename conventions, integration with
+  `stda_auto` mode
 
-### Rating System 📋
+### Rating System
 
-See `ideas/rating system/rating system BT v2/` for complete spec
+See `ideas/5 rating system/` for the complete spec.
 
-- [ ] rating.c/h implementation
-- [ ] RatingSystem structure
-- [ ] Bradley-Terry calculations
-- [ ] rating_init()
-- [ ] rating_register_player()
-- [ ] rating_update_match()
-- [ ] rating_win_probability()
-- [ ] Adaptive A function
-- [ ] Keeper rebalancing
-- [ ] CSV persistence
-- [ ] Batch gradient ascent
-- [ ] Calibration tools
+- [ ] `rating.c/h` implementation, `RatingSystem` structure, Bradley-Terry calculations,
+  `rating_init()`, `rating_register_player()`, `rating_update_match()`,
+  `rating_win_probability()`, adaptive A function, keeper rebalancing, CSV persistence,
+  batch gradient ascent, calibration tools
 
 ---
 
 ## Testing & Quality
 
-### Performance Tests 📋
-
-- [ ] Memory leak detection (valgrind)
-- [ ] Profile hot paths (gprof)
-
-### Code Quality 📋
-
-- [ ] Run with -Wall -Wextra (fix all warnings)
+- [ ] Memory leak detection (valgrind) — routine spot-checks already happen per-change;
+  formalize into a repeatable target
+- [ ] Profile hot paths (gprof) — not needed yet, see CLAUDE.md "No premature
+  optimization"
+- [ ] Run with `-Wextra` (fix all resulting warnings)
 - [ ] Check with cppcheck
-- [ ] Format with astyle (consistent style)
-- [ ] Review all functions >35 lines (refactor)
-- [ ] Review all files >500 lines (split if needed)
+- [ ] Review all functions >35 lines / files >500 lines for possible splits (soft
+  targets, not urgent — see `doc/oracle_design.md` §1)
 
 ---
 
 ## Documentation Tasks
 
-### Code Documentation 📋
-
-- [ ] Add Doxygen comments to all public functions
-- [ ] Document GameContext pattern in DESIGN.md
-- [ ] Document CLI integration in DESIGN.md
-- [ ] Document strategy framework in DESIGN.md
-- [ ] Add examples to API.md
-- [ ] Update file organization in DESIGN.md
-
-### User Documentation 📋
-
-- [ ] Update README.md:
-  - [ ] Usage examples
-  - [ ] - [ ] Feature list
-  - [ ] Screenshot (CLI mode)
-- [ ] Write STRATEGY_GUIDE.md:
-  - [ ] AI strategy descriptions
-- [ ] Write PROTOCOL.md (when network code exists)
-
-### Design Documentation 📋
-
-- [ ] Document actual vs planned architecture
-- [ ] Add diagrams (flow charts, class diagrams)
-- [ ] Document key design decisions
-- [ ] Add examples for common operations
+- [ ] Doxygen comments on all public functions
+- [ ] `STRATEGY_GUIDE.md` — AI strategy descriptions (write once ≥2 agents beyond Random
+  exist, so there's something to compare)
+- [ ] `PROTOCOL.md` (once network code exists)
+- [ ] Diagrams for `doc/oracle_design.md` (flow charts, class diagrams) beyond the
+  existing `doc/Diagramme déroulement du jeu.svg`
 
 ---
 
 ## Bug Tracker
 
-### Known Bugs 🐛
-
-- [ ] Describe bug here
+No known open bugs. Add entries here as they're found.
 
 ---
 
-## Action Items (preparation for client / server approach and MCTS)
+## Action Items (preparation for client/server and MCTS)
 
-- **Create get_available_moves()** function
-- **Implement game state cloning** for MCTS
-- **Add phase state machine** for cleaner turn flow
+- [ ] `get_available_moves()` function (legal-move enumeration, needed by both MC/MCTS
+  agents and the future action-validation layer)
+- [ ] Game state cloning, for MCTS rollouts
+- [ ] Phase state machine for cleaner turn flow (this is the `ideas/2 …` engine rework)
 
 ---
 
 ## Technical Debt
 
-### Refactoring Needed 🔧
+### Refactoring Needed
 
-- [ ] stda_auto.c mixes simulation logic with presentation
-- [ ] card_actions.c needs better error handling
-- [ ] gamestate.c setup_game() is too long
+- [ ] `stda_auto.c` mixes simulation logic with presentation (see "Automated Simulation"
+  above)
+- [ ] `card_actions.c` needs better error handling (see "Core Game Logic" above)
+- [ ] `select_champion_for_cash_exchange()` (AI-only heuristic) lives in
+  `card_actions.c` instead of `ai_strat/` — move once a smarter AI needs it (see
+  `doc/oracle_design.md` §13)
 
-### Architecture Improvements 🏗️
+### Architecture Improvements
 
-- [ ] Separate game logic from UI (already started with GameContext)
-- [ ] Define clear API boundaries (core vs modes vs ui)
-- [ ] Create action validation layer (before applying actions)
-- [ ] Implement proper error codes (not just printf)
-- [ ] Add logging system (not just DEBUG_PRINT)
+- [ ] Define clear API boundaries (core vs. modes vs. UI) — mostly already true via the
+  `UiIO` seam; formalize the remaining core/ai_strat boundary
+- [ ] Create an action-validation layer (before applying actions) — part of the
+  `ideas/2 …` engine rework
+- [ ] Proper error codes (see "Core Game Logic" above), not just `printf`
+- [ ] Logging system (not just `DEBUG_PRINT`)
 
-### Code Cleanup 🧹
+### Code Cleanup
 
-- [ ] Remove old commented-out code
-- [ ] Consistent naming (some use camelCase, some snake_case)
-- [ ] Consolidate constants (some in .h, some in .c)
+- [ ] Remove old commented-out code where found
+- [ ] Consistent naming — some legacy camelCase remains (known debt, don't propagate to
+  new code — see `CLAUDE.md`)
+- [ ] Consolidate constants (some in `.h`, some in `.c`)
 - [ ] Remove unused functions/variables
-- [ ] Update all file headers with consistent format
-
----
-
-## Ideas / Future Exploration
-
-### AI Experiments 🤖
-
-- [ ] Parameter sweep (find optimal values)
-- [ ] Strategy tournaments (round-robin)
-- [ ] Co-evolution (strategies compete and evolve)
-- [ ] Neural network evaluation function
-- [ ] Reinforcement learning agent
-
-### Network Features 🌐
-
-- [ ] Matchmaking by rating
+- [ ] Update all file headers with a consistent format
 
 ---
 
 ## Checklist: Adding a New AI Strategy
 
-1. [ ] Create `src/ai/strategy_name.c/h`
-2. [ ] Implement `strategyname_attack_strategy()`
-3. [ ] Implement `strategyname_defense_strategy()`
-4. [ ] Add strategy registration in main.c
-5. [ ] Test against Random AI (10,000 games)
-6. [ ] Measure win rate
-7. [ ] Compare against other strategies
-8. [ ] Document in STRATEGY_GUIDE.md
-9. [ ] Add design notes to `ideas/`
-10. [ ] Update ROADMAP.md status
+1. [ ] Create `src/ai_strat/ai_strat_<name>.c` (header only if the strategy needs
+   private types beyond `ai_strategy.h`)
+2. [ ] Implement `<name>_attack_strategy()`
+3. [ ] Implement `<name>_defense_strategy()`
+4. [ ] Register in strategy-set setup and map the corresponding `AIStrategyType` enum
+   value through in `src/ui/shared/player_config.c`'s `get_ai_strategies()`:
+   ```c
+   // In player_config.c - get_ai_strategies()
+   // When new strategy implemented, remove the "not yet implemented" fallback:
+   if(choice == AI_STRATEGY_BALANCED) // now available
+   { return AI_STRATEGY_BALANCED;
+   }
+   ```
+   and wire it to real function pointers wherever strategies are assigned to players
+   (`stda_cli.c`/`stda_tui.c`/`stda_auto.c` setup):
+   ```c
+   case AI_STRATEGY_BALANCED:
+     set_player_strategy(strategies, i,
+         balancedrules1_attack_strategy, balancedrules1_defense_strategy);
+     break;
+   ```
+5. [ ] Test against Random AI (10,000 games via `stda.auto`)
+6. [ ] Measure win rate; compare against other implemented strategies
+7. [ ] Document in `STRATEGY_GUIDE.md` (create it once ≥2 agents exist — see
+   "Documentation Tasks")
+8. [ ] Update `doc/oracle_roadmap.md`'s "Recently Completed" / status
 
 ---
 
 ## Checklist: Adding a New Game Mode
 
-1. [ ] Create entry point `src/modes/mode_name.c/h`
-2. [ ] Add mode to game_mode_t enum (game_types.h)
-3. [ ] Add command-line option (cmdline.c)
-4. [ ] Add run_mode_name() in main.c
-5. [ ] Implement mode-specific UI
+1. [ ] Add mode to `game_mode_t` enum (`game_types.h`)
+2. [ ] Add command-line option (`cmdline.c`)
+3. [ ] Implement `run_mode_<name>()` in `main.c`, replacing the "not yet implemented"
+   stub
+4. [ ] Create entry-point module(s) under `src/roles/<role>/` (e.g. `src/roles/stda/` for
+   a new standalone UI)
+5. [ ] Implement mode-specific UI, reusing `ui/shared/ui_io.h` and
+   `ui/interactive/game_commands*.c` where the mode is interactive
 6. [ ] Handle mode initialization/cleanup
-7. [ ] Test mode thoroughly
-8. [ ] Document in README.md
-9. [ ] Update help text (cmdline.c)
-10. [ ] Update ROADMAP.md
+7. [ ] Test mode thoroughly (primary regression check + a manual play session)
+8. [ ] Update `README.md` and `--help` text (`cmdline.c`)
+9. [ ] Update `doc/oracle_roadmap.md`
 
 ---
 
-## Quick Reference: File Line Counts
-
-*Target: <500 lines per file, <30 lines per function*
-
----
-
-## Notes for Future
-
-### When Implementing Recall
-
-**Done for CLI** (see "Current Focus" above) -- still applies when building TUI input:
-
-- Draw/recall cards allow choice
-- Must recall **exactly** N champions from discard (not "up to" -- mandatory, no partial/zero recall), and only when discard holds at least N champions
-- Must be champions (not draw/cash cards)
-- Champions go to hand
-- Integrate with TUI input (CLI already done)
-
-### When Starting Network Code
-
-- Read DESIGN.md thoroughly
-- Start with text protocol (easier to debug)
-- Implement binary protocol later
-- Test with localhost first
-- Use separate processes (not threads initially)
-
-### When Starting GUI
-
-- Read `ideas/gui/oracle_sdl3_gui_plan.md`
-- Start with card rendering only
-- Test on one platform first (Linux easier)
-- Don't worry about mobile yet
-- Focus on functionality over polish
-
----
-
-*Last Updated: July 2026*
+*Last Updated: August 2026*

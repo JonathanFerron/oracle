@@ -1,0 +1,95 @@
+// ========================================
+// Example 1: CLI Mode (Game Owns Loop)
+// ========================================
+
+void stda_game_loop_cli(GameConfig* cfg, GameContext* ctx,
+                        StrategySet* strategies) {
+    GameEngine* engine = engine_create(cfg);
+    
+    while (engine_get_phase(engine) != PHASE_GAME_OVER) {
+        // Step until needs input
+        engine_run_until_input(engine, ctx);
+        
+        // Display current state
+        display_game_state_cli(engine_get_state(engine));
+        
+        if (engine_needs_input(engine)) {
+            PlayerID player = engine_get_active_player(engine);
+            
+            if (is_human_player(player)) {
+                // BLOCKS here waiting for CLI input
+                Action* action = get_user_input_cli(
+                    engine_get_state(engine), engine_get_phase(engine));
+                engine_submit_action(engine, action);
+            } else {
+                // Get AI action
+                VisibleGameState vgs;
+                gamestate_get_visible(engine_get_state(engine), 
+                                     player, &vgs);
+                Action* action = get_strategy_action(
+                    strategies, &vgs, engine_get_phase(engine), ctx);
+                engine_submit_action(engine, action);
+            }
+            
+            // Move to resolve phase
+            advance_to_resolve_phase(engine);
+        }
+    }
+    
+    display_final_results_cli(engine_get_state(engine));
+    engine_destroy(engine);
+}
+
+// ========================================
+// Example 2 (GUI) and Example 3 (Server) moved out 2026-08-20:
+//   - GUI:    ideas/9 gui/game_loop_engine_integration_notes.md
+//   - Server: ideas/8 client server/game_loop_and_client_api_notes.md
+// (folded in there alongside related material, rather than duplicated verbatim)
+// ========================================
+
+// ========================================
+// Example 4: Auto-simulation Mode
+// ========================================
+
+void run_simulation_batch(SimConfig* cfg, int num_games) {
+    GameContext ctx;
+    init_game_context(&ctx, cfg->seed);
+    
+    StrategySet strategies = create_strategy_set(cfg);
+    
+    for (int i = 0; i < num_games; i++) {
+        GameEngine* engine = engine_create(cfg->game_config);
+        
+        // Run entire game without any UI
+        while (engine_get_phase(engine) != PHASE_GAME_OVER) {
+            engine_run_turn(engine, &ctx, &strategies);
+        }
+        
+        // Record results
+        record_game_result(cfg->stats, engine_get_state(engine));
+        
+        engine_destroy(engine);
+    }
+    
+    export_simulation_results(cfg->stats, cfg->output_file);
+}
+
+// ========================================
+// Helper: Advance phase after action
+// ========================================
+
+void advance_to_resolve_phase(GameEngine* engine) {
+    switch (engine_get_phase(engine)) {
+        case PHASE_ATTACK_REQUEST:
+            engine->phase = PHASE_ATTACK_RESOLVE;
+            break;
+        case PHASE_DEFENSE_REQUEST:
+            engine->phase = PHASE_DEFENSE_RESOLVE;
+            break;
+        case PHASE_DISCARD_REQUEST:
+            engine->phase = PHASE_DISCARD_RESOLVE;
+            break;
+        default:
+            break;
+    }
+}

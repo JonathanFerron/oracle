@@ -1,8 +1,8 @@
 # Oracle: Arcadian Champions of Light
 
-**A strategic two-player card game**
+**A fixed-pool strategic dueling card game**
 
-Oracle is an open-source card game project combining tactical gameplay with AI development. Players command champions from five mystical Orders of Arcadia, using resource management and combat strategy to reduce their opponent's energy to zero.
+Oracle is an open-source implementation of a fixed-pool strategic dueling card game, paired with ongoing AI development. Players command champions from five mystical Orders of Arcadia, using resource management and combat strategy to reduce their opponent's energy to zero.
 
 ## 🎮 Game Features
 
@@ -20,22 +20,19 @@ Oracle is an open-source card game project combining tactical gameplay with AI d
 
 ## 🤖 AI Research Focus
 
-This project serves as a testbed for AI development, progressing from simple to sophisticated:
+This project serves as a testbed for AI development, progressing from simple to sophisticated (11 planned agents, `A1`–`A11`; see `doc/oracle_roadmap.md`):
 
-- ✅ **Random strategy** (baseline)
-- 🚧 **Balanced rules-based AI** (in development)
-- 📋 **Heuristic evaluation AI**
-- 📋 **Monte Carlo methods AI**
-- 📋 **Information Set MCTS AI** (advanced)
+- ✅ **Random strategy** (baseline, functional)
+- 📋 Value-based, greedy-power, combo-aware (Borealis benchmark), balanced rules, heuristic, hybrid (HBT), HBT 2-ply, simple Monte Carlo, IS-MCTS, IS-MCTS + neural network — all designed, not yet implemented
 
-Includes a Bradley-Terry rating system for objective AI strength measurement.
+A Bradley-Terry rating system for objective AI strength measurement is designed but not yet built.
 
 ## 🛠️ Technical Highlights
 
-- **Clean C architecture**: Modular design with <30 lines per function
-- **Cross-platform**: MSYS2 (Windows) and Linux support
-- **Multiple interfaces**: CLI (working), ncurses TUI (planned), SDL3 GUI (planned)
-- **Network-ready**: Client/server architecture designed for multiplayer
+- **Clean C architecture**: modular design, functions targeting ≤35 lines
+- **Cross-platform**: Linux (primary) and MSYS2 (Windows) support
+- **Multiple interfaces**: CLI (working), ncurses TUI (working, human-vs-AI), SDL3 GUI (planned)
+- **Network-ready**: client/server architecture designed for multiplayer
 - **Testable**: GameContext pattern enables dependency injection
 
 ## 🚀 Quick Start
@@ -61,17 +58,19 @@ make
 - [`doc/oracle_design.md`](doc/oracle_design.md) - Technical architecture
 - [`doc/oracle_roadmap.md`](doc/oracle_roadmap.md) - Development plan
 - [`doc/oracle_todo.md`](doc/oracle_todo.md) - Current task tracking
+- [`doc/changelog.md`](doc/changelog.md) - Dated history of completed work
 
 ## 🎯 Current Status
 
-**Phase 2: Turn Logic Completion** (In Progress)
+**First non-dumb AI strategy** is the active focus (see `doc/oracle_roadmap.md`'s "Next Up").
 
 Working features:
 
 - ✅ Random AI strategy
-- ✅ CLI interactive mode
+- ✅ CLI interactive mode (human vs AI, human vs human, AI vs AI)
+- ✅ TUI interactive mode (ncurses, human vs AI)
 - ✅ Automated simulation
-- ✅️ Mulligan system for interactive player
+- ✅ Mulligan system for interactive player
 - ✅ Discard-to-7 mechanic for interactive player
 - ✅ Recall mechanic (draw or recall champions from discard)
 - ✅ Interactive cash exchange (choose which champion to exchange)
@@ -80,8 +79,8 @@ Working features:
 
 In development:
 
-- ⚠️ Various AI strategies
-- ️️⚠️ TUI mode
+- ⚠️ AI strategies beyond Random (`A1`–`A11`, see above)
+- ⚠️ TUI polish items (staged-card highlighting, help overlay — see `doc/oracle_todo.md`)
 
 ## 🤝 Contributing
 
@@ -100,6 +99,6 @@ Oracle combines:
 - **Software architecture** - Clean patterns and maintainable code
 - **Cross-platform development** - Portable C with multiple UI targets
 
-Perfect for those interested in game AI, C programming patterns, or strategic card game design.
+Perfect for those interested in game AI, C programming patterns, or strategic dueling card game design.
 
 ---

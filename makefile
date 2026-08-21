@@ -21,13 +21,17 @@ OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
 CFLAGS := -g -Og -Wall -std=c23
 
 # Test targets
+# Object paths are mapped into $(BUILDDIR) (mirroring the main build's pattern rule
+# below) rather than left inside $(SRCDIR)/$(TESTSRCDIR), so test builds share objects
+# with bin/oracle instead of recompiling in place and leaving stray .o files in the
+# source tree.
 TEST_COMBO_TARGET := $(BINDIR)/test_combo
 TEST_COMBO_SRCS := $(TESTSRCDIR)/test_combo_bonus.c \
                    $(SRCDIR)/core/combo_bonus.c \
                    $(SRCDIR)/core/game_constants.c
-TEST_COMBO_OBJS := $(TESTSRCDIR)/test_combo_bonus.o \
-                   $(SRCDIR)/core/combo_bonus.o \
-                   $(SRCDIR)/core/game_constants.o
+TEST_COMBO_OBJS := $(BUILDDIR)/testsrc/test_combo_bonus.o \
+                   $(BUILDDIR)/core/combo_bonus.o \
+                   $(BUILDDIR)/core/game_constants.o
 
 TEST_RECALL_TARGET := $(BINDIR)/test_recall
 TEST_RECALL_SRCS := $(TESTSRCDIR)/test_recall.c \
@@ -44,7 +48,8 @@ TEST_RECALL_SRCS := $(TESTSRCDIR)/test_recall.c \
                     $(SRCDIR)/structures/deckstack.c \
                     $(SRCDIR)/util/mtwister.c \
                     $(SRCDIR)/util/rnd.c
-TEST_RECALL_OBJS := $(patsubst %.c,%.o,$(TEST_RECALL_SRCS))
+TEST_RECALL_OBJS := $(BUILDDIR)/testsrc/test_recall.o \
+                    $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_RECALL_SRCS)))
 
 TEST_CASH_TARGET := $(BINDIR)/test_cash_exchange
 TEST_CASH_SRCS := $(TESTSRCDIR)/test_cash_exchange.c \
@@ -55,7 +60,8 @@ TEST_CASH_SRCS := $(TESTSRCDIR)/test_cash_exchange.c \
                   $(SRCDIR)/structures/deckstack.c \
                   $(SRCDIR)/util/mtwister.c \
                   $(SRCDIR)/util/rnd.c
-TEST_CASH_OBJS := $(patsubst %.c,%.o,$(TEST_CASH_SRCS))
+TEST_CASH_OBJS := $(BUILDDIR)/testsrc/test_cash_exchange.o \
+                  $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_CASH_SRCS)))
 
 # Default target
 all: $(TARGET)
@@ -73,11 +79,18 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 	@echo "Compiling $<..."
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+# Compile test source files to object files (kept out of $(TESTSRCDIR) itself)
+$(BUILDDIR)/testsrc/%.o: $(TESTSRCDIR)/%.$(SRCEXT)
+	@mkdir -p "$(@D)"
+	@echo "Compiling $<..."
+	$(CC) $(CFLAGS) -c -o $@ $<
+
 # Clean build artifacts
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle*
+	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange
+	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o
 	@echo "Clean complete"
 
 # Debug build
@@ -123,8 +136,9 @@ $(TEST_CASH_TARGET): $(TEST_CASH_OBJS)
 format:
 	astyle --project --suffix=none --recursive --exclude=ideas "*.c,*.h"
 
-test_stda_auto:
-	@./bin/oracle.exe -sa -p | diff -w -B - bin/expectedresults.txt && \
+.PHONY: test_stda_auto
+test_stda_auto: $(TARGET)
+	@./$(TARGET) -sa -p | diff -w -B - bin/expectedresults.txt && \
 	    echo "✓ Test PASSED" || (echo "✗ Test FAILED"; exit 1)
 
 # Help target
@@ -134,11 +148,14 @@ help:
 	@echo ""
 	@echo "Available targets:"
 	@echo "  all          - Build the project (default)"
-	@echo "  clean        - Remove build artifacts"
-	@echo "  debug        - Build with debug symbols and -Og"
-	@echo "  test_combo   - Build combo bonus tests"
-	@echo "  format       - Format the c and h source files using astyle"
-	@echo "  help         - Show this help message"
+	@echo "  clean            - Remove build artifacts"
+	@echo "  debug            - Build with debug symbols and -Og"
+	@echo "  test_combo       - Build and run combo bonus tests"
+	@echo "  test_recall      - Build and run recall mechanic tests"
+	@echo "  test_cash_exchange - Build and run cash exchange tests"
+	@echo "  test_stda_auto   - Diff 'oracle -sa -p' output against bin/expectedresults.txt"
+	@echo "  format           - Format the c and h source files using astyle"
+	@echo "  help             - Show this help message"
 	@echo ""
 	@echo "Current configuration:"
 	@echo "  Source dir:  $(SRCDIR)"

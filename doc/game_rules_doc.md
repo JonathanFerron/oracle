@@ -4,7 +4,7 @@
 
 **The Arcadian Champions of Light**
 
-A strategic two-player card game of combat, resource management, and tactical decision-making.
+A fixed-pool strategic dueling card game of combat, resource management, and tactical decision-making.
 
 ---
 

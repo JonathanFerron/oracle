@@ -1,0 +1,549 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oracle TCG Complexity & Depth Analysis</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        th, td {
+            border: 2px solid #ddd;
+            padding: 0;
+            text-align: center;
+            font-size: 13px;
+            height: 80px;
+            position: relative;
+        }
+        th {
+            background: #34495e;
+            color: white;
+            font-weight: 600;
+            padding: 12px;
+            height: auto;
+        }
+        th.deck-format {
+            background: #2c3e50;
+            text-align: left;
+            width: 140px;
+        }
+        
+        .cell-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .triangle-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+        
+        .values {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            text-shadow: 0 0 3px white, 0 0 3px white, 0 0 3px white;
+            font-weight: 600;
+        }
+        
+        .complexity-value {
+            font-size: 14px;
+            color: #1a237e;
+        }
+        
+        .depth-value {
+            font-size: 14px;
+            color: #b71c1c;
+        }
+        
+        .label {
+            font-size: 10px;
+            font-weight: normal;
+            color: #666;
+        }
+        
+        .deck-name {
+            font-weight: 600;
+            color: #2c3e50;
+            padding: 12px;
+        }
+        
+        .legend {
+            margin-top: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .legend h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+        
+        .gradient-bars {
+            display: flex;
+            gap: 40px;
+            margin-top: 20px;
+        }
+        
+        .gradient-bar {
+            flex: 1;
+        }
+        
+        .gradient-bar h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+        
+        .bar {
+            height: 30px;
+            border-radius: 4px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+        }
+        
+        .complexity-bar {
+            background: linear-gradient(to right, 
+                #e3f2fd 0%, 
+                #90caf9 20%, 
+                #42a5f5 40%, 
+                #1976d2 60%, 
+                #0d47a1 80%,
+                #1a237e 100%);
+        }
+        
+        .depth-bar {
+            background: linear-gradient(to right, 
+                #ffebee 0%, 
+                #ef9a9a 20%, 
+                #e57373 40%, 
+                #ef5350 60%, 
+                #d32f2f 80%,
+                #b71c1c 100%);
+        }
+        
+        .note {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            border-radius: 4px;
+        }
+        .note strong {
+            color: #2e7d32;
+        }
+    </style>
+</head>
+<body>
+    <h1>Oracle TCG: Complexity & Depth Matrix</h1>
+    <div class="subtitle">Quantitative Analysis of Game Variants</div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th class="deck-format">Deck Format</th>
+                <th>Base Game<br/>(No Combos)</th>
+                <th>+ Combo<br/>Bonuses</th>
+                <th>+ Champion<br/>Abilities</th>
+                <th>+ Momentum<br/>System</th>
+                <th>+ Order<br/>Powers</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="deck-name">Monochrome</td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(227, 242, 253)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(255, 235, 238)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">1.0</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">1.0</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(144, 202, 249)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(239, 154, 154)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">1.5</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">2.0</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(66, 165, 245)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(229, 115, 115)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">2.0</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">2.5</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(25, 118, 210)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(239, 83, 80)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">2.8</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">3.5</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(25, 118, 210)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(211, 47, 47)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">3.2</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">4.0</span></div>
+                    </div>
+                </div></td>
+            </tr>
+            <tr>
+                <td class="deck-name">Random</td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(227, 242, 253)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(255, 235, 238)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">1.0</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">1.2</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(66, 165, 245)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(239, 154, 154)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">2.0</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">2.2</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(66, 165, 245)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(229, 115, 115)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">2.5</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">2.8</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(25, 118, 210)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(239, 83, 80)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">3.2</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">3.5</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(25, 118, 210)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(211, 47, 47)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">3.5</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">4.0</span></div>
+                    </div>
+                </div></td>
+            </tr>
+            <tr>
+                <td class="deck-name">Custom</td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(66, 165, 245)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(239, 154, 154)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">2.0</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">2.5</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(25, 118, 210)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(229, 115, 115)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">3.0</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">4.0</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(25, 118, 210)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(239, 83, 80)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">3.5</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">4.8</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(13, 71, 161)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(211, 47, 47)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">4.2</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">5.5</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(13, 71, 161)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(183, 28, 28)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">4.5</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">6.0</span></div>
+                    </div>
+                </div></td>
+            </tr>
+            <tr>
+                <td class="deck-name">Solomon 7×7</td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(66, 165, 245)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(229, 115, 115)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">2.2</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">2.8</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(25, 118, 210)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(229, 115, 115)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">3.0</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">3.8</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(25, 118, 210)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(239, 83, 80)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">3.5</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">4.5</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(13, 71, 161)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(211, 47, 47)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">4.2</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">5.2</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(13, 71, 161)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(183, 28, 28)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">4.5</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">5.8</span></div>
+                    </div>
+                </div></td>
+            </tr>
+            <tr>
+                <td class="deck-name">Draft 12×8</td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(25, 118, 210)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(229, 115, 115)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">2.8</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">3.2</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(25, 118, 210)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(239, 83, 80)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">3.5</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">4.2</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(13, 71, 161)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(211, 47, 47)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">4.2</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">5.0</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(13, 71, 161)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(183, 28, 28)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">4.8</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">5.8</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(26, 35, 126)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(183, 28, 28)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">5.2</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">6.5</span></div>
+                    </div>
+                </div></td>
+            </tr>
+            <tr>
+                <td class="deck-name">Draft 1-2-3</td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(25, 118, 210)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(239, 83, 80)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">3.2</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">3.8</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(13, 71, 161)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(211, 47, 47)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">4.0</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">4.8</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(13, 71, 161)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(183, 28, 28)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">4.8</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">5.8</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(26, 35, 126)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(183, 28, 28)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">5.5</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">6.8</span></div>
+                    </div>
+                </div></td>
+                <td><div class="cell-content">
+                    <svg class="triangle-bg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon points="0,0 100,0 100,100" fill="rgb(26, 35, 126)"/>
+                        <polygon points="0,0 0,100 100,100" fill="rgb(183, 28, 28)"/>
+                    </svg>
+                    <div class="values">
+                        <div><span class="label">C:</span> <span class="complexity-value">6.0</span></div>
+                        <div><span class="label">D:</span> <span class="depth-value">7.5</span></div>
+                    </div>
+                </div></td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div class="legend">
+        <h2>📊 Understanding the Metrics</h2>
+        
+        <div class="gradient-bars">
+            <div class="gradient-bar">
+                <h3>Complexity (C) - Learning Curve</h3>
+                <div class="bar complexity-bar">
+                    <span>1.0 (Easiest)</span>
+                    <span>6.0 (Most Complex)</span>
+                </div>
+                <p style="margin-top: 10px; font-size: 13px; color: #555;">
+                    <strong>Complexity</strong> measures how hard it is to <em>learn</em> and understand the rules.
+                    Factors: number of mechanics, rule interactions, edge cases to remember.
+                </p>
+            </div>
+            
+            <div class="gradient-bar">
+                <h3>Depth (D) - Strategic Richness</h3>
+                <div class="bar depth-bar">
+                    <span>1.0 (Shallowest)</span>
+                    <span>7.5 (Deepest)</span>
+                </div>
+                <p style="margin-top: 10px; font-size: 13px; color: #555;">
+                    <strong>Depth</strong> measures strategic possibilities and skill ceiling once rules are learned.
+                    Factors: decision trees, meaningful choices, skill differentiation.
+                </p>
+            </div>
+        </div>
+        
+        <h2 style="margin-top: 30px;">🎨 Visual Legend</h2>
+        <p style="font-size: 14px; margin-bottom: 15px;">
+            Each cell is split diagonally: <strong style="color: #1976d2;">upper-right triangle = Complexity</strong>, 
+            <strong style="color: #d32f2f;">lower-left triangle = Depth</strong>
+        </p>
+        
+        <div style="display: flex
