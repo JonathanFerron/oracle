@@ -6,9 +6,13 @@ see `doc/oracle_design.md`. For a dated history of finished work see `doc/change
 
 **Quick Status**: Core game loop, all interactive-mode features (recall, cash exchange,
 mulligan, discard-to-7, combat/discard display), the source folder structure cleanup, and
-TUI Milestones 1–2 + polish pass are complete — see `doc/changelog.md`. First non-dumb AI
-strategy is next; see `doc/oracle_roadmap.md`'s "Next Up" for the authoritative order and
-rationale (`A1 → A2 → A3`).
+TUI Milestones 1–2 + polish pass are complete — see `doc/changelog.md`. `A1` Value Based
+("The Apprentice") is implemented (2026-08-21); `A2` Combo Threshold is next; see
+`doc/oracle_roadmap.md`'s "Next Up" for the authoritative order and rationale
+(`A1 → A2 → A3`). The strategy-set build sites also gained a shared
+`AIStrategyType -> function pointer` registry (`ai_strategy.c`) as part of `A1` -- see
+"Checklist: Adding a New AI Strategy" below, which now reflects that mechanism rather
+than the old per-file hardcoding.
 
 ---
 
@@ -110,6 +114,9 @@ already sketched out to break into sub-tasks.
 ## Game Modes (`src/roles/stda/`)
 
 ### Automated Simulation (`stda_auto.c`)
+
+Per-player agent selection (`-Aa`/`-ai.a`/`--ai.a` and `-Ab`/`-ai.b`/`--ai.b`,
+`cmdline.c`) is done (2026-08-21, added alongside `A1`) — see `doc/changelog.md`.
 
 - [ ] **Refactor**: extract `sim_stats.c`/`sim_engine.c` — see
   `ideas/2 engine and action system design/stda_auto_split_plan.md`
@@ -277,32 +284,36 @@ No known open bugs. Add entries here as they're found.
 
 ## Checklist: Adding a New AI Strategy
 
-1. [ ] Create `src/ai_strat/ai_strat_<name>.c` (header only if the strategy needs
-   private types beyond `ai_strategy.h`)
+As of `A1` (2026-08-21), strategy dispatch is a single table-driven registry
+(`src/ai_strat/ai_strategy.c`) rather than three separate hardcoded call sites --
+`stda_auto.c`, `cli_game.c` (shared by CLI and TUI), and the interactive menu
+(`player_config.c`) all consult it, so a new agent only needs to be registered once.
+
+1. [ ] Create `src/ai_strat/ai_strat_<name>.c` + `.h` (`ai_strat_valuebased.{c,h}` is
+   the reference; also check whether `ai_strat_common.{c,h}`'s
+   `build_affordable_champions()`/`expected_incoming_attack()`/`try_play_draw_card()`
+   can be reused instead of re-derived)
 2. [ ] Implement `<name>_attack_strategy()`
 3. [ ] Implement `<name>_defense_strategy()`
-4. [ ] Register in strategy-set setup and map the corresponding `AIStrategyType` enum
-   value through in `src/ui/shared/player_config.c`'s `get_ai_strategies()`:
+4. [ ] Add one line to `ai_strategy.c`'s `STRATEGY_REGISTRY[]` table:
    ```c
-   // In player_config.c - get_ai_strategies()
-   // When new strategy implemented, remove the "not yet implemented" fallback:
-   if(choice == AI_STRATEGY_BALANCED) // now available
-   { return AI_STRATEGY_BALANCED;
-   }
+   [AI_STRATEGY_BALANCED] = { balancedrules1_attack_strategy, balancedrules1_defense_strategy },
    ```
-   and wire it to real function pointers wherever strategies are assigned to players
-   (`stda_cli.c`/`stda_tui.c`/`stda_auto.c` setup):
-   ```c
-   case AI_STRATEGY_BALANCED:
-     set_player_strategy(strategies, i,
-         balancedrules1_attack_strategy, balancedrules1_defense_strategy);
-     break;
-   ```
-5. [ ] Test against Random AI (10,000 games via `stda.auto`)
-6. [ ] Measure win rate; compare against other implemented strategies
-7. [ ] Document in `STRATEGY_GUIDE.md` (create it once ≥2 agents exist — see
+   That single line is now sufficient: `ai_strategy_is_implemented()` flips the
+   interactive menu's "not yet implemented" label to "available" and drops the
+   Random fallback automatically, and `set_player_strategy_by_type()` (used by
+   `stda_auto.c` and `cli_game.c`) picks it up with no further edits.
+5. [ ] Add exactly one shorthand to `player_config.c`'s `AI_STRATEGY_SHORTHANDS[]` if
+   not already present (confirm, don't assume -- see `oracle_ai_agent_names.md`)
+6. [ ] Test against Random AI (10,000 games via `--stda.auto -Aa <name> -Ab rand`, and
+   the reverse seat order -- see `A1`'s changelog entry for why both seats matter)
+7. [ ] Measure win rate; compare against other implemented strategies. Don't assume a
+   design doc's speculative win-rate estimate is correct -- `A1`'s handout guessed
+   ~60-70% vs Random and the measured result was ~90%, for reasons documented in the
+   changelog; investigate discrepancies before trusting either the doc or the code
+8. [ ] Document in `STRATEGY_GUIDE.md` (create it once ≥2 agents exist — see
    "Documentation Tasks")
-8. [ ] Update `doc/oracle_roadmap.md`'s "Recently Completed" / status
+9. [ ] Update `doc/oracle_roadmap.md`'s "Recently Completed" / status
 
 ---
 

@@ -159,6 +159,35 @@ typedef enum
   AI_PLAYER = 1
 } PlayerType;
 
+// Available AI strategies. Order matches the ideas/A1-A11 agent roster and
+// the canonical ideas/G1.../oracle_ai_agent_names.md roster/rating table
+// (ideas/G1 general info and G2 parameter storing/optimization are support
+// material, not themselves agents, so they have no entry here).
+//
+// AI_STRATEGY_GREEDY_POWER and AI_STRATEGY_COMBO_AWARE were renamed to
+// AI_STRATEGY_BOREALIS and AI_STRATEGY_COMBO_THRESHOLD (2026-08-21) per the
+// names file's "Required renames": Borealis is now the Bradley-Terry
+// benchmark, and "Combo Aware" no longer discriminates now that Borealis
+// also computes combo bonuses.
+//
+// Lives here (rather than in ui/shared/player_config.h, where it used to be)
+// so src/ai_strat/ can reference it without depending on src/ui/.
+typedef enum
+{ AI_STRATEGY_RANDOM = 0,
+  AI_STRATEGY_VALUE_BASED,     // ideas/A1 ai agent value based (the apprentice)
+  AI_STRATEGY_COMBO_THRESHOLD, // ideas/A2 ai agent combo threshold (the showboat)
+  AI_STRATEGY_BOREALIS,        // ideas/A3 ai agent greedy power (borealis) -- benchmark agent
+  AI_STRATEGY_BALANCED,        // ideas/A4 ai agent balanced rules (bean counter)
+  AI_STRATEGY_HEURISTIC,       // ideas/A5 ai agent heuristic (eps-gam-del)
+  AI_STRATEGY_TACTICAL,        // ideas/A6 ai agent tactical (pressure cooker)
+  AI_STRATEGY_HYBRID_HBT,      // ideas/A7 ai agent hybrid hbt (the grandmaster)
+  AI_STRATEGY_SIMPLE_MC,       // ideas/A8 ai agent simple monte carlo (the soothsayer)
+  AI_STRATEGY_HBT_2PLY,        // ideas/A9 ai agent hbt 2 ply (grandmaster ii)
+  AI_STRATEGY_ISMCTS,          // ideas/A10 ai agent is-mcts (the omniscient)
+  AI_STRATEGY_ISMCTS_NN,       // ideas/A11 ai agent is-mcts + nn (alphaoracle prime)
+  AI_STRATEGY_COUNT
+} AIStrategyType;
+
 /* Configuration structure */
 typedef struct
 { game_mode_t mode;
@@ -171,6 +200,10 @@ typedef struct
   uint32_t prng_seed;
   bool use_random_seed;
   void* player_config;  /* PlayerConfig* - forward declaration avoidance */
+  AIStrategyType agent[2];  /* -Aa/-ai.a and -Ab/-ai.b: per-player agent for
+                               --stda.auto (see cmdline.c). Index by PlayerID. */
+  bool agent_set[2];        /* whether agent[i] was actually given on the CLI,
+                               vs. left at its AI_STRATEGY_RANDOM zero-value. */
 } config_t;
 
 #include "game_constants.h"

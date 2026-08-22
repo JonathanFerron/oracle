@@ -4,14 +4,13 @@
 
 #include "stda_auto.h"
 #include "../../core/game_types.h"
-#include "../../util/mtwister.h"
 #include "../../core/game_constants.h"
 #include "../../ai_strat/ai_strategy.h"
-#include "../../ai_strat/ai_strat_random.h"
 #include "../../core/game_state.h"
 #include "../../core/turn_logic.h"
 #include "../../core/card_actions.h"
 #include "../../util/debug.h"
+#include "../../ui/shared/player_config.h"
 #include "stats_constants.h"
 
 //extern MTRand MTwister_rand_struct;
@@ -30,19 +29,30 @@ int run_mode_stda_auto(config_t* cfg)
   memset(&gstats, 0, sizeof(struct gamestats));
 
   // Simulation parameters: this is something that is specific to a 'simulation' mode (stda.sim or client.sim for interactive simulation or stda.auto for automated simulation)
-  uint16_t numsim = (cfg->numsim > 0) ? oraclemin(cfg->numsim, MAX_NUMBER_OF_SIM) : MAX_NUMBER_OF_SIM;
+  uint16_t numsim = (cfg->numsim > 0) ? oraclemin(cfg->numsim, MAX_NUMBER_OF_SIM)
+                    : DEFAULT_NUMBER_OF_SIM;
   uint16_t initial_cash = INITIAL_CASH_DEFAULT;
 
-  // Setup strategies for both players: this is something that would be client side
+  // Setup strategies for both players, per -Aa/-Ab (cfg->agent[]; both default
+  // to AI_STRATEGY_RANDOM when not given on the command line). Auto mode has
+  // no interactive player, so a minimal PlayerConfig only needs to carry the
+  // agent choice through to set_player_strategy_by_type() -- and through to
+  // present_results(), so the summary can name the agents that actually played.
+  PlayerConfig pconfig;
+  init_player_config(&pconfig);
+  pconfig.player_types[PLAYER_A] = AI_PLAYER;
+  pconfig.player_types[PLAYER_B] = AI_PLAYER;
+  pconfig.ai_strategies[PLAYER_A] = cfg->agent[PLAYER_A];
+  pconfig.ai_strategies[PLAYER_B] = cfg->agent[PLAYER_B];
+  cfg->player_config = &pconfig;
+
   StrategySet* strategies = create_strategy_set();
-  set_player_strategy(strategies, PLAYER_A,
-                      random_attack_strategy, random_defense_strategy);
-  set_player_strategy(strategies, PLAYER_B,
-                      random_attack_strategy, random_defense_strategy);
+  set_player_strategy_by_type(strategies, PLAYER_A, cfg->agent[PLAYER_A]);
+  set_player_strategy_by_type(strategies, PLAYER_B, cfg->agent[PLAYER_B]);
 
   // Run simulation: this is something that is specific to simulation mode (in this specific case, for the CLI only application, it's the automated simulation stda.auto)
   run_simulation(numsim, initial_cash, &gstats, strategies, ctx);
-  present_results(&gstats);
+  present_results(&gstats, cfg);
 
   // Cleanup (counterpart to initialization strategies struct earlier)
   free_strategy_set(strategies);
@@ -95,7 +105,7 @@ void play_stda_auto_game(uint16_t initial_cash, struct gamestats* gstats,
 
   // Free heap memory - No cleanup needed for fixed arrays
   DeckStk_emptyOut(&gstate.deck[PLAYER_A]);
-  DeckStk_emptyOut(&gstate.deck[PLAYER_B]);  
+  DeckStk_emptyOut(&gstate.deck[PLAYER_B]);
 } // play_game
 
 // TODO: look at moving the automated (AI) apply_mulligan() function to the strategy code instead as that's where it really belongs: this implementation is based on the power heuristic
@@ -200,8 +210,23 @@ void createHistogram(uint16_t data[], uint16_t data_size, uint16_t histogram_arr
   }
 } // createHistogram
 
-void present_results(struct gamestats* gstats)
-{ printf("Number of wins for player A: %u\n", gstats->cumul_player_wins[PLAYER_A]);
+// Matchup line, printed only when either side's agent isn't the AI_STRATEGY_RANDOM
+// default -- so a plain `-a` run's output stays byte-identical to
+// bin/expectedresults.txt and needs no re-baseline.
+static void print_matchup_line(config_t* cfg)
+{ if(cfg->agent[PLAYER_A] == AI_STRATEGY_RANDOM &&
+     cfg->agent[PLAYER_B] == AI_STRATEGY_RANDOM)
+    return;
+
+  printf("Matchup: Player A = %s, Player B = %s\n\n",
+         get_strategy_display_name(cfg->agent[PLAYER_A], cfg->language),
+         get_strategy_display_name(cfg->agent[PLAYER_B], cfg->language));
+} // print_matchup_line
+
+void present_results(struct gamestats* gstats, config_t* cfg)
+{ print_matchup_line(cfg);
+
+  printf("Number of wins for player A: %u\n", gstats->cumul_player_wins[PLAYER_A]);
   printf("Number of wins for player B: %u\n", gstats->cumul_player_wins[PLAYER_B]);
   printf("Number of draws: %u\n", gstats->cumul_number_of_draws);
 

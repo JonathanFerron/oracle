@@ -5,6 +5,83 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-21 — A1 Value Based ("The Apprentice") implemented; strategy registry; per-player agent CLI options
+
+- **A1 Value Based** (`src/ai_strat/ai_strat_valuebased.c/h`) is implemented per
+  `ideas/A1 ai agent value based (the apprentice)/value_based_handout.md`: a
+  one-ply, combo-blind agent that ranks affordable champions by an efficiency
+  ratio (`contribution / (cost + VB_COST_FLOOR)`) and greedily plays up to
+  `VB_MAX_ATTACK_CARDS` (2) on attack, or exactly one champion on defense when
+  `expected_incoming_attack() >= VB_DEFEND_THRESHOLD * candidate's expected
+  defense`. No pass option in the attack phase (shipped deliberately per the
+  handout's §12 decision), no combo awareness (the omission is the point). Two
+  handout assumptions turned out stale and were corrected in the implementation:
+  `fullDeck[]` *does* already carry precomputed `expected_attack`/
+  `expected_defense`/`*_efficiency` fields, but the precomputed `*_efficiency`
+  fields use a fixed 0.25 cost-0 divisor rather than a tunable floor, so the
+  agent derives its own ratio from `expected_attack`/`expected_defense` instead
+  of using them directly; and `HDCLL_toArray()` (assumed to need `free()`
+  discipline) no longer exists -- collections are fixed-size structs now.
+- **`src/ai_strat/ai_strat_common.c/h`** (new): `build_affordable_champions()`,
+  `expected_incoming_attack()`, `try_play_draw_card()` -- turn-strategy helpers
+  meant to be reused as-is by later agents (A2 Combo Threshold, A3 Borealis)
+  rather than re-derived, so draw-card behavior stays comparable across
+  head-to-head runs. Distinct from the still-unbuilt `strat_lib` (scoped to
+  non-turn heuristics: mulligan, discard-to-7, cash-exchange selection).
+- **Strategy registry** (`src/ai_strat/ai_strategy.c/h`): `AIStrategyType` moved
+  from `ui/shared/player_config.h` to `core/game_types.h` (so `src/ai_strat/`
+  doesn't depend on `src/ui/`), and a table-driven
+  `AIStrategyType -> {AttackStrategyFunc, DefenseStrategyFunc}` registry
+  replaces the three call sites that used to hardcode
+  `random_attack_strategy`/`random_defense_strategy`
+  (`stda_auto.c`, `cli_game.c` -- shared by CLI and TUI).
+  `ai_strategy_is_implemented()`/`set_player_strategy_by_type()` are the single
+  dispatch point every mode now goes through. The interactive strategy menu
+  (`player_config.c`'s `display_ai_strategy_menu()`/`get_ai_strategy_choice()`)
+  now derives its "available"/"not yet implemented" labels and its fallback
+  logic from that same registry instead of a hardcoded `choice > 1` check --
+  the CLI and TUI menus already asked both players for an agent, but any
+  answer besides Random was silently discarded before this change.
+- **One CLI shorthand per agent**: dropped the `showboat` (flavour name) and
+  `greedy` (retired pre-rename tech name) aliases for
+  `AI_STRATEGY_COMBO_THRESHOLD`/`AI_STRATEGY_BOREALIS`. Every agent now has
+  exactly one canonical shorthand (`combo`, `borealis`, ...). Breaking change
+  for any script using either alias, but neither had an implemented agent
+  behind it yet.
+- **Per-player agent selection for `--stda.auto`**: new `-Aa`/`-ai.a`/`--ai.a`
+  and `-Ab`/`-ai.b`/`--ai.b` options (`cmdline.c`), distinct from the existing
+  `-A`/`--ai` (still the unimplemented AI-agent client-mode selector, left
+  untouched). Unknown or not-yet-implemented shorthands are rejected up front
+  with an error and the agent list, rather than silently falling back to
+  Random. `run_mode_stda_auto()` now builds a minimal `PlayerConfig` from
+  `cfg->agent[]`/`agent_set[]` instead of hardcoding Random for both players;
+  `present_results()` prints a "Matchup: Player A = ..., Player B = ..." line,
+  but only when either agent differs from Random, so a plain `-a` run's output
+  stays byte-identical to `bin/expectedresults.txt` (verified: still matches).
+  These options only apply to `--stda.auto`; using them with `--stda.cli`/
+  `--stda.tui` prints a one-line warning and is ignored, since those modes
+  already have a (now-working) interactive per-player menu.
+- **`MAX_NUMBER_OF_SIM`** raised 1000 -> 10000 (`game_constants.h`) so the
+  handout's suggested `n = 10000` sample size (SE ~ 0.5pp) is reachable via
+  `-n`. The **default** stays 1000 -- introduced a separate
+  `DEFAULT_NUMBER_OF_SIM` constant for `run_mode_stda_auto()`'s `numsim <= 0`
+  fallback, rather than letting it inherit the raised cap.
+- **Measured strength** (both seat orders, n=10000 each, `-p` seed): Value
+  Based beat Random ~89.4% as Player A and ~92.0% as Player B -- well above
+  the handout's speculative "~60-70%" estimate. Investigated for a bug and
+  found none: Random's attack strategy plays at most **one** card per turn
+  (champion, draw, or cash, chosen uniformly, no preference for champions),
+  and its defense strategy declines to defend 53% of the time even when it
+  could. Value Based's structural advantage (up to 2 champions per turn,
+  gated but consistent defense) compounds against that weak a baseline. The
+  handout's win-rate table should be treated as superseded by this measurement.
+  Mirror match (`value` vs `value`) came in at ~47.8% for Player A in one
+  10000-game run, consistent with ordinary first-player/mulligan variance.
+- Regression: `-a -p` output unchanged (verified against
+  `bin/expectedresults.txt`); `test_combo` (20/20), `test_recall` (10/10),
+  `test_cash_exchange` (6/6) all still pass; valgrind-clean on a
+  `-a -p -n 50 --ai.a=value --ai.b=rand` run.
+
 ## 2026-08-20 — Ideas 2 and 3 cleanup (engine refactoring notes, TUI prototype)
 
 - **Idea 2** (`ideas/2 engine and action system design/`): pared

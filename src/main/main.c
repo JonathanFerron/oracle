@@ -28,6 +28,12 @@ int main(int argc, char** argv)
     return (ret < EXIT_SUCCESS) ? EXIT_SUCCESS : ret;
   }
 
+  /* -Aa/-Ab (cfg.agent[]/agent_set[]) only apply to --stda.auto; the
+     interactive modes (CLI, TUI) get their per-player agent through the
+     already-flexible get_ai_strategies() menu instead. */
+  if(cfg.mode != MODE_STDA_AUTO && (cfg.agent_set[PLAYER_A] || cfg.agent_set[PLAYER_B]))
+    fprintf(stderr, "Warning: -Aa/-Ab only apply to --stda.auto; ignored here.\n");
+
   /* Initialize PRNG with the configured seed */
   seedRand(validate_seed(cfg.prng_seed));
 

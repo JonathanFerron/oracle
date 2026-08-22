@@ -59,12 +59,12 @@ Alternative ASCII forms for the Heuristic agent, in decreasing terseness:
 Roster order matches strength ordering, which should match `AIStrategyType`
 declaration order.
 
-| Enum Constant | Shorthand(s) | Display Name (EN) |
+| Enum Constant | Shorthand | Display Name (EN) |
 |---|---|---|
 | `AI_STRATEGY_RANDOM` | `rand` | The Gambler |
 | `AI_STRATEGY_VALUE_BASED` | `value` | The Apprentice |
-| `AI_STRATEGY_COMBO_THRESHOLD` | `showboat`, `combo` | The Showboat |
-| `AI_STRATEGY_BOREALIS` | `borealis`, `greedy` | Borealis |
+| `AI_STRATEGY_COMBO_THRESHOLD` | `combo` | The Showboat |
+| `AI_STRATEGY_BOREALIS` | `borealis` | Borealis |
 | `AI_STRATEGY_BALANCED` | `balanced` | Bean Counter |
 | `AI_STRATEGY_HEURISTIC` | `heuristic` | ε-γ-δ |
 | `AI_STRATEGY_TACTICAL` | `tactical` | Pressure Cooker |
@@ -84,8 +84,11 @@ either agent is implemented, not after:
 | `AI_STRATEGY_GREEDY_POWER` | `AI_STRATEGY_BOREALIS` | This spec is now the benchmark |
 | `AI_STRATEGY_COMBO_AWARE` | `AI_STRATEGY_COMBO_THRESHOLD` | "Combo Aware" no longer discriminates — Borealis computes combo bonuses too |
 
-Retain `greedy` and `combo` as shorthand aliases so existing scripts and
-saved configs keep working.
+`greedy` and `showboat` (the retired pre-rename tech name and a flavour name,
+respectively) were considered as shorthand aliases but dropped in favor of one
+canonical shorthand per agent (2026-08-21) -- see `doc/changelog.md`. Neither
+had an implemented agent behind it yet, so this is not a breaking change to
+any working script.
 
 ### Retired names
 

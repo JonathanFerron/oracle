@@ -10,9 +10,16 @@
 #include "main.h"
 #include "../util/prng_seed.h"
 #include "../ui/shared/player_config.h"
+#include "../ai_strat/ai_strategy.h"
 
 /* Hidden option for shell completion scripts; deliberately absent from print_usage() */
 #define OPT_ORACLE_COMPLETE 1000
+
+/* --ai.a/--ai.b (and -Aa/-Ab): per-player agent selection for --stda.auto.
+   Distinct from -A/--ai, which selects the (currently unimplemented)
+   AI-agent client mode and is left untouched. */
+#define OPT_AGENT_A 1001
+#define OPT_AGENT_B 1002
 
 /* Parse language code from string */
 static ui_language_t parse_language(const char* lang_str)
@@ -77,8 +84,13 @@ void print_usage(const char* prog)
   printf("  -A,  -ai, --ai=[AGENT]        AI agent client mode [default: lists agents]\n");
   printf("                                Argument must be attached (-A<agent> or\n");
   printf("                                --ai=<agent>), not space-separated\n\n");
+  printf("  -Aa, -ai.a, --ai.a=AGENT      Player A's agent for --stda.auto [default: rand]\n");
+  printf("  -Ab, -ai.b, --ai.b=AGENT      Player B's agent for --stda.auto [default: rand]\n");
+  printf("                                See --oracle-complete=agents for the list.\n");
+  printf("                                Only implemented agents may be selected.\n\n");
   printf("Examples:\n");
   printf("  %s -a -p                      Automated AI vs AI, fixed default seed\n", prog);
+  printf("  %s -a -p --ai.a=value --ai.b=rand   Value Based vs Random\n", prog);
   printf("  %s -l -u=fr                   Interactive CLI, French UI\n", prog);
   printf("  %s -t -u=fr                   Text UI (ncurses), French UI\n", prog);
 }
@@ -131,6 +143,8 @@ static struct option long_options[] =
   {"ct",         no_argument,       0, 'T'},
   {"cg",         no_argument,       0, 'G'},
   {"ai",         optional_argument, 0, 'A'},
+  {"Aa",         required_argument, 0, OPT_AGENT_A},
+  {"Ab",         required_argument, 0, OPT_AGENT_B},
   /* Long form options */
   {"help",       no_argument,       0, 'h'},
   {"verbose",    no_argument,       0, 'v'},
@@ -150,9 +164,36 @@ static struct option long_options[] =
   {"client.cli", no_argument,       0, 'L'},
   {"client.tui", no_argument,       0, 'T'},
   {"client.gui", no_argument,       0, 'G'},
+  {"ai.a",       required_argument, 0, OPT_AGENT_A},
+  {"ai.b",       required_argument, 0, OPT_AGENT_B},
   {"oracle-complete", optional_argument, 0, OPT_ORACLE_COMPLETE},
   {0, 0, 0, 0}
 };
+
+/* Shared by the OPT_AGENT_A/OPT_AGENT_B cases below. Sets cfg->agent[player]
+   from a shorthand, rejecting both unknown shorthands and shorthands for
+   agents that aren't implemented yet -- a long simulation run that silently
+   fell back to Random would be worse than an error. Returns EXIT_SUCCESS or
+   an exit code for parse_options() to return directly. */
+static int parse_agent_option(config_t* cfg, const char* optarg, PlayerID player)
+{ AIStrategyType type = parse_ai_strategy_shorthand(optarg);
+
+  if(type == AI_STRATEGY_COUNT)
+  { fprintf(stderr, "Error: unknown AI agent '%s'\n\n", optarg ? optarg : "");
+    print_ai_agent_shorthand_list(cfg);
+    return 1;
+  }
+
+  if(!ai_strategy_is_implemented(type))
+  { fprintf(stderr, "Error: AI agent '%s' is not yet implemented\n\n", optarg);
+    print_ai_agent_shorthand_list(cfg);
+    return 1;
+  }
+
+  cfg->agent[player] = type;
+  cfg->agent_set[player] = true;
+  return EXIT_SUCCESS;
+}
 
 /* Dump completion candidates, one per line, for the shell completion script
    (tools/oracle-completion.bash). Option names carry a trailing '=' when
@@ -272,6 +313,16 @@ int parse_options(int argc, char** argv, config_t* cfg)
         cfg->mode = MODE_CLIENT_AI;
         cfg->ai_agent = strdup(optarg);
         break;
+      case OPT_AGENT_A:
+      { int result = parse_agent_option(cfg, optarg, PLAYER_A);
+        if(result != EXIT_SUCCESS) return result;
+        break;
+      }
+      case OPT_AGENT_B:
+      { int result = parse_agent_option(cfg, optarg, PLAYER_B);
+        if(result != EXIT_SUCCESS) return result;
+        break;
+      }
       default:
         print_usage(argv[0]);
         return 1;

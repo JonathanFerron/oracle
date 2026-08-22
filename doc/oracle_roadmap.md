@@ -14,11 +14,19 @@ work see `doc/changelog.md`. For architecture/design rationale see `doc/oracle_d
 ## Current Status
 
 Core game engine, CLI interactive mode, and TUI mode (Milestones 1 & 2 plus a polish
-pass) are done. Only the Random AI strategy is implemented. **Active work**: the first
-"non-dumb" AI strategy — see "Next Up" below.
+pass) are done. Random and `A1` Value Based ("The Apprentice") AI strategies are
+implemented. **Active work**: `A2` Combo Threshold — see "Next Up" below.
 
 ### Recently Completed
 
+- **2026-08-21** — `A1` Value Based ("The Apprentice") implemented: efficiency-ratio
+  card ranking, no combo awareness, no attack-phase pass option (by design). A single
+  `AIStrategyType -> function pointer` registry (`src/ai_strat/ai_strategy.c`) now
+  drives every strategy-set build site (`stda_auto.c`, `cli_game.c` shared by CLI/TUI)
+  and the interactive strategy menu's availability labels, replacing three separate
+  hardcoded Random assignments. Per-player agent selection for `--stda.auto`
+  (`-Aa`/`-Ab`), `AIStrategyType` moved to `game_types.h`, one CLI shorthand per agent
+  (dropped `showboat`/`greedy` aliases). Full details: `doc/changelog.md`.
 - **2026-07-23/24** — TUI Milestone 2 (human-vs-AI play: `TAB`-toggled PLAY/COMMAND
   modes, recall, cash exchange, mulligan, discard-to-7, live combat-result display) and
   a follow-up UI/playability polish pass.
@@ -30,7 +38,8 @@ Full details: `doc/changelog.md`.
 
 ### What Needs Work
 
-- Only Random AI strategy implemented — everything else on the AI ladder below is open.
+- Only Random and `A1` Value Based implemented — everything from `A2` onward on the AI
+  ladder below is open.
 - Automated simulation mode (`stda_auto.c`) needs a refactor (see `doc/oracle_todo.md`).
 - No save/load, no config file system, no CSV export, no rating system, no network, no
   GUI, no `stda.sim`.
@@ -39,21 +48,23 @@ Full details: `doc/changelog.md`.
 
 ## Next Up (single authoritative order)
 
-1. **First "non-dumb" AI strategy** (`ideas/A1 ai agent value based (the apprentice)/`),
-   then `A2 → A3` in order. This isn't just easiest-first: the rating system
-   (`ideas/5 rating system/`) needs the Borealis benchmark agent (`A3`), which itself
-   needs `A1`–`A2` implemented for comparison. Support material that isn't itself an
-   agent — general info and calibration tooling — was moved off the A-line into
-   `ideas/G1 AI agent general info/` and `ideas/G2 ai agent parameters storing and
-   optimization/` (2026-08-21 folder-sort pass), so it no longer occupies an
-   `AIStrategyType` enum slot or interrupts the A-line numbering.
+1. **`A2` Combo Threshold** (`ideas/A2 ai agent combo threshold (the showboat)/`), then
+   `A3` in order. `A1` Value Based ("The Apprentice") is done (2026-08-21). This isn't
+   just easiest-first: the rating system (`ideas/5 rating system/`) needs the Borealis
+   benchmark agent (`A3`), which itself needs `A1`–`A2` implemented for comparison.
+   Support material that isn't itself an agent — general info and calibration tooling —
+   was moved off the A-line into `ideas/G1 AI agent general info/` and `ideas/G2 ai
+   agent parameters storing and optimization/` (2026-08-21 folder-sort pass), so it no
+   longer occupies an `AIStrategyType` enum slot or interrupts the A-line numbering.
 
    The CLI's `display_ai_strategy_menu()`/`get_ai_strategy_choice()`/
-   `get_strategy_display_name()` (`src/ui/shared/player_config.c`) already list all
-   twelve planned agents as stubs; remaining work per agent is implementing its
-   attack/defense functions in `src/ai_strat/` and wiring its menu choice through
-   instead of falling back to Random. See `doc/oracle_todo.md`'s "Checklist: Adding a
-   New AI Strategy" for the mechanical steps.
+   `get_strategy_display_name()` (`src/ui/shared/player_config.c`) list all twelve
+   planned agents, with availability now driven by a single registry
+   (`ai_strategy_is_implemented()` in `src/ai_strat/ai_strategy.c`, added alongside
+   `A1`) rather than hardcoded per strategy; remaining work per agent is implementing
+   its attack/defense functions in `src/ai_strat/` and adding one line to that
+   registry. See `doc/oracle_todo.md`'s "Checklist: Adding a New AI Strategy" for the
+   mechanical steps.
 
 **Back burner** (explicitly deferred): save/load game state
 (`ideas/6 save and load gamestate/`), configuration file system
@@ -102,13 +113,14 @@ error-handling polish (see `doc/oracle_todo.md`).
   archived accordingly — see `doc/changelog.md`.
 - `stda.sim` (simulation UI): not started.
 
-### Phase: AI Development — foundation ready, implementation pending
+### Phase: AI Development — `A1` done, `A2` next
 
-Ladder: `A1` value-based → `A2` combo threshold (The Showboat) → `A3` greedy power
-(Borealis benchmark) → `A4` balanced rules → `A5` heuristic → `A6` tactical → `A7` hybrid
-(HBT) → `A8` simple MC → `A9` HBT 2-ply → `A10` IS-MCTS → `A11` IS-MCTS + neural network.
-One `ideas/A#` folder per agent, `A#` matching that agent's `AIStrategyType` enum ordinal
-(`src/ui/shared/player_config.h`). See "Next Up" above for why `A1→A2→A3` comes first, and
+Ladder: `A1` value-based (done, 2026-08-21) → `A2` combo threshold (The Showboat) → `A3`
+greedy power (Borealis benchmark) → `A4` balanced rules → `A5` heuristic → `A6` tactical
+→ `A7` hybrid (HBT) → `A8` simple MC → `A9` HBT 2-ply → `A10` IS-MCTS → `A11` IS-MCTS +
+neural network. One `ideas/A#` folder per agent, `A#` matching that agent's
+`AIStrategyType` enum ordinal (`src/core/game_types.h` as of `A1`; it previously lived in
+`src/ui/shared/player_config.h`). See "Next Up" above for why `A2→A3` comes next, and
 `ideas/G1 AI agent general info/oracle_ai_agent_names.md` for the canonical roster,
 flavour names, and ratings.
 

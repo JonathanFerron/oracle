@@ -1,11 +1,18 @@
 // strategy.c
 // Strategy function pointer framework implementation
 
-#include "ai_strategy.h"
+#include <string.h>
 #include <stdlib.h>
+
+#include "ai_strategy.h"
+#include "ai_strat_random.h"
+#include "ai_strat_valuebased.h"
 
 StrategySet* create_strategy_set(void)
 { StrategySet* strat = (StrategySet*)malloc(sizeof(StrategySet));
+  if(strat == NULL) return NULL;
+
+  memset(strat, 0, sizeof(StrategySet));
   return strat;
 }
 
@@ -19,4 +26,36 @@ void set_player_strategy(StrategySet* strat, PlayerID player,
 void free_strategy_set(StrategySet* strat)
 { if(strat != NULL)
     free(strat);
+}
+
+// Registry entry pair, indexed by AIStrategyType. {NULL, NULL} means "not yet
+// implemented" -- ai_strategy_is_implemented() and set_player_strategy_by_type()
+// both key off that. Keep in sync with AIStrategyType (game_types.h) and with
+// display_ai_strategy_menu()/AI_STRATEGY_SHORTHANDS (player_config.c).
+typedef struct
+{ AttackStrategyFunc attack;
+  DefenseStrategyFunc defense;
+} StrategyRegistryEntry;
+
+static const StrategyRegistryEntry STRATEGY_REGISTRY[AI_STRATEGY_COUNT] =
+{ [AI_STRATEGY_RANDOM]      = { random_attack_strategy, random_defense_strategy },
+  [AI_STRATEGY_VALUE_BASED] = { value_based_attack_strategy, value_based_defense_strategy },
+  // All other entries default to {NULL, NULL} -- not yet implemented.
+};
+
+bool ai_strategy_is_implemented(AIStrategyType type)
+{ if(type < 0 || type >= AI_STRATEGY_COUNT) return false;
+
+  return STRATEGY_REGISTRY[type].attack != NULL &&
+         STRATEGY_REGISTRY[type].defense != NULL;
+}
+
+void set_player_strategy_by_type(StrategySet* strat, PlayerID player,
+                                 AIStrategyType type)
+{ if(!ai_strategy_is_implemented(type))
+    type = AI_STRATEGY_RANDOM;
+
+  set_player_strategy(strat, player,
+                      STRATEGY_REGISTRY[type].attack,
+                      STRATEGY_REGISTRY[type].defense);
 }

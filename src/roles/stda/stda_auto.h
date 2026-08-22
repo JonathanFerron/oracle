@@ -19,6 +19,6 @@ void play_stda_auto_game(uint16_t initial_cash, struct gamestats* gstats,
 
 // Stats recording and presentation
 void record_final_stats(struct gamestats* gstats, struct gamestate* gstate);
-void present_results(struct gamestats* gstats);
+void present_results(struct gamestats* gstats, config_t* cfg);
 
 #endif

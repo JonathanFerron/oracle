@@ -10,33 +10,14 @@
 #define MAX_PLAYER_NAME_LEN 32
 #define MAX_STRATEGY_NAME_LEN 32
 
-// Available AI strategies. Order matches the ideas/A1-A11 agent roster and
-// the canonical ideas/G1.../oracle_ai_agent_names.md roster/rating table
-// (ideas/G1 general info and G2 parameter storing/optimization are support
-// material, not themselves agents, so they have no entry here).
+// AIStrategyType now lives in ../../core/game_types.h (included above) so
+// src/ai_strat/ can reference it without depending on src/ui/. See that
+// header for the roster/rename comment.
 //
-// AI_STRATEGY_GREEDY_POWER and AI_STRATEGY_COMBO_AWARE were renamed to
-// AI_STRATEGY_BOREALIS and AI_STRATEGY_COMBO_THRESHOLD (2026-08-21) per the
-// names file's "Required renames": Borealis is now the Bradley-Terry
-// benchmark, and "Combo Aware" no longer discriminates now that Borealis
-// also computes combo bonuses. `borealis`/`greedy` and `showboat`/`combo`
-// remain valid CLI shorthand aliases -- see AI_STRATEGY_SHORTHANDS in
-// player_config.c.
-typedef enum
-{ AI_STRATEGY_RANDOM = 0,
-  AI_STRATEGY_VALUE_BASED,     // ideas/A1 ai agent value based (the apprentice)
-  AI_STRATEGY_COMBO_THRESHOLD, // ideas/A2 ai agent combo threshold (the showboat)
-  AI_STRATEGY_BOREALIS,        // ideas/A3 ai agent greedy power (borealis) -- benchmark agent
-  AI_STRATEGY_BALANCED,        // ideas/A4 ai agent balanced rules (bean counter)
-  AI_STRATEGY_HEURISTIC,       // ideas/A5 ai agent heuristic (eps-gam-del)
-  AI_STRATEGY_TACTICAL,        // ideas/A6 ai agent tactical (pressure cooker)
-  AI_STRATEGY_HYBRID_HBT,      // ideas/A7 ai agent hybrid hbt (the grandmaster)
-  AI_STRATEGY_SIMPLE_MC,       // ideas/A8 ai agent simple monte carlo (the soothsayer)
-  AI_STRATEGY_HBT_2PLY,        // ideas/A9 ai agent hbt 2 ply (grandmaster ii)
-  AI_STRATEGY_ISMCTS,          // ideas/A10 ai agent is-mcts (the omniscient)
-  AI_STRATEGY_ISMCTS_NN,       // ideas/A11 ai agent is-mcts + nn (alphaoracle prime)
-  AI_STRATEGY_COUNT
-} AIStrategyType;
+// CLI shorthand aliases: as of the one-shorthand-per-agent cleanup, every
+// AIStrategyType has exactly one CLI shorthand -- see AI_STRATEGY_SHORTHANDS
+// in player_config.c. The `greedy` and `showboat` aliases (retired pre-rename
+// tech name and flavour name, respectively) were dropped.
 
 // Player assignment modes
 typedef enum

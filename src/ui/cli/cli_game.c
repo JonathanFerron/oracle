@@ -14,7 +14,6 @@
 #include "../shared/ui_constants.h"
 #include "../../core/game_constants.h"
 #include "../../ai_strat/ai_strategy.h"
-#include "../../ai_strat/ai_strat_random.h"
 #include "../../core/game_state.h"
 #include "../../core/turn_logic.h"
 #include "../../core/combat.h"
@@ -174,11 +173,10 @@ struct gamestate* initialize_cli_game(uint16_t initial_cash,
                                       StrategySet** strategies_out,
                                       config_t* cfg,
                                       GameContext* ctx)
-{ StrategySet* strategies = create_strategy_set();
-  set_player_strategy(strategies, PLAYER_A,
-                      random_attack_strategy, random_defense_strategy);
-  set_player_strategy(strategies, PLAYER_B,
-                      random_attack_strategy, random_defense_strategy);
+{ PlayerConfig* pconfig = (PlayerConfig*)cfg->player_config;
+  StrategySet* strategies = create_strategy_set();
+  set_player_strategy_by_type(strategies, PLAYER_A, pconfig->ai_strategies[PLAYER_A]);
+  set_player_strategy_by_type(strategies, PLAYER_B, pconfig->ai_strategies[PLAYER_B]);
 
   struct gamestate* gstate = malloc(sizeof(struct gamestate));
   setup_game(initial_cash, gstate, ctx);

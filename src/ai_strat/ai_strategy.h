@@ -25,4 +25,14 @@ void set_player_strategy(StrategySet* strat, PlayerID player,
                          DefenseStrategyFunc def_func);
 void free_strategy_set(StrategySet* strat);
 
+// Strategy registry: the single AIStrategyType -> function pointer dispatch
+// point, consulted by every mode (stda.auto, CLI, TUI) instead of each
+// hardcoding random_attack_strategy/random_defense_strategy. An agent is
+// "implemented" once both its attack and defense functions are registered
+// in ai_strategy.c's internal table; unimplemented agents register as
+// {NULL, NULL} and fall back to Random.
+bool ai_strategy_is_implemented(AIStrategyType type);
+void set_player_strategy_by_type(StrategySet* strat, PlayerID player,
+                                 AIStrategyType type);
+
 #endif // STRATEGY_H

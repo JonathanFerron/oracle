@@ -7,7 +7,12 @@
 // Constants
 #define FULL_DECK_SIZE 120
 #define MAX_NUMBER_OF_TURNS 500
-#define MAX_NUMBER_OF_SIM 1000
+#define MAX_NUMBER_OF_SIM 10000
+// cmdline.c defaults cfg->numsim to this same value; kept as its own name
+// (rather than reusing MAX_NUMBER_OF_SIM) so raising the cap above doesn't
+// silently raise the no-"-n" default too -- see run_mode_stda_auto()'s
+// numsim<=0 fallback in stda_auto.c, which must track this, not the cap.
+#define DEFAULT_NUMBER_OF_SIM 1000
 #define DEBUG_NUMBER_OF_SIM 1
 #define AVERAGE_POWER_FOR_MULLIGAN 4.98
 #define INITIAL_CASH_DEFAULT 30
