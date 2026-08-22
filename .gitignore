@@ -6,6 +6,7 @@
 /bin/test_combo
 /bin/test_recall
 /bin/test_cash_exchange
+/bin/calib_valuebased
 *.o
 *.xls
 *.xlsx
@@ -13,3 +14,6 @@
 *.xlsb
 ORACLEGeanyProj.tags
 .directory
+__pycache__/
+*.pyc
+aicalibsrc/*/results/

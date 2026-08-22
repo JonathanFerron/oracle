@@ -11,4 +11,12 @@
 void value_based_attack_strategy(struct gamestate* gstate, GameContext* ctx);
 void value_based_defense_strategy(struct gamestate* gstate, GameContext* ctx);
 
+// Calibration-only override hook (see aicalibsrc/value/) for this agent's two
+// tunables (VB_COST_FLOOR, VB_DEFEND_THRESHOLD), settable per player so two
+// different parameter sets can play each other in one process/game. Not part
+// of the general strategy framework -- normal play always uses the compiled
+// defaults, since nothing else calls these.
+void value_based_set_params(PlayerID player, float cost_floor, float defend_threshold);
+void value_based_reset_params(void);
+
 #endif // AI_STRAT_VALUEBASED_H

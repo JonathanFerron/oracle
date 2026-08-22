@@ -30,12 +30,25 @@
 // free (cost-0) cards, and shrinks their ratio advantage toward the
 // population mean -- without it, a cost-0 card with tiny contribution would
 // dominate the ranking purely from the denominator collapsing to zero.
-#define VB_COST_FLOOR 1.0f
+// Calibrated 2026-08-21 via aicalibsrc/value/calibrate_valuebased.py's self-play
+// round-robin with VB_DEFEND_THRESHOLD held at its chosen value below:
+// 1.2-1.7 form a consistently-better cluster than the extremes tested, but
+// the effect is small enough that the exact point within that cluster is
+// noise-dominated even at millions of games -- see doc/changelog.md. 1.3 was
+// picked as a defensible value inside that cluster, not as a precise optimum.
+#define VB_COST_FLOOR 1.3f
 
 // Defense entry gate (see should_defend()): defend only when the incoming
 // threat is worth at least this fraction of the candidate's expected
 // defense. This is the agent's primary calibration target.
-#define VB_DEFEND_THRESHOLD 0.5f
+// Calibrated 2026-08-21 (see doc/changelog.md): self-play optimization alone
+// pushed this toward 5+ (i.e. almost never defend), which measured stronger
+// (~94% vs Random) but changed the agent's intended character from
+// "moderate, threshold-gated defender" to "attacks almost exclusively" --
+// too large a personality shift to accept as a side effect of tuning. 0.8 is
+// a deliberate, human-chosen compromise: modestly less defensive than the
+// original 0.5 default, while keeping the same defensive style.
+#define VB_DEFEND_THRESHOLD 0.8f
 
 // Attack-phase greedy take cap -- combat zone holds up to 3, but this agent
 // commits at most 2, leaving headroom deliberately unused (no subset search).
@@ -47,21 +60,42 @@
 // turn drawing when a lethal-adjacent attack might be available instead.
 #define VB_DRAW_ENERGY_FLOOR 20
 
+// Per-player parameter overrides for calibration (see aicalibsrc/value/), defaulting
+// to the two #defines above. This is deliberately scoped to this file rather
+// than threaded through AttackStrategyFunc/GameContext/StrategySet -- no other
+// agent needs runtime-tunable parameters yet, so a general mechanism (sketched
+// in ideas/G2 .../strat_lib_refactor_handout.md's future AIParams field) isn't
+// justified until a second agent actually needs one. Not part of the public
+// strategy-framework API; only value_based_set_params()/_reset_params() below
+// and the calibration harness are meant to touch these.
+static float g_cost_floor[2]       = { VB_COST_FLOOR, VB_COST_FLOOR };
+static float g_defend_threshold[2] = { VB_DEFEND_THRESHOLD, VB_DEFEND_THRESHOLD };
+
+void value_based_set_params(PlayerID player, float cost_floor, float defend_threshold)
+{ g_cost_floor[player] = cost_floor;
+  g_defend_threshold[player] = defend_threshold;
+} // value_based_set_params
+
+void value_based_reset_params(void)
+{ g_cost_floor[PLAYER_A] = g_cost_floor[PLAYER_B] = VB_COST_FLOOR;
+  g_defend_threshold[PLAYER_A] = g_defend_threshold[PLAYER_B] = VB_DEFEND_THRESHOLD;
+} // value_based_reset_params
+
 typedef struct
 { uint8_t card_index;
   float efficiency;
 } RankedChampion;
 
-// contribution(c) / (cost(c) + VB_COST_FLOOR). contribution is expected
+// contribution(c) / (cost(c) + g_cost_floor[player]). contribution is expected
 // attack or expected defense depending on `for_attack`. Deliberately not
 // fullDeck[].attack_efficiency/defense_efficiency -- those precomputed
 // fields divide by cost directly (with a 0.25 floor baked in for cost-0
 // cards instead of a tunable one), which is exactly the denominator
-// blow-up VB_COST_FLOOR exists to control, and isn't sweepable.
-static float card_efficiency(uint8_t card_idx, bool for_attack)
+// blow-up the cost floor exists to control, and isn't sweepable.
+static float card_efficiency(uint8_t card_idx, PlayerID player, bool for_attack)
 { float contribution = for_attack ? fullDeck[card_idx].expected_attack
                        : fullDeck[card_idx].expected_defense;
-  return contribution / (fullDeck[card_idx].cost + VB_COST_FLOOR);
+  return contribution / (fullDeck[card_idx].cost + g_cost_floor[player]);
 } // card_efficiency
 
 // Ordering used by the insertion sort below: true if `a` ranks ahead of `b`
@@ -91,7 +125,7 @@ static uint8_t build_ranked_champions(const struct gamestate* gstate, PlayerID p
   for(uint8_t i = 0; i < count; i++)
     out[i] = (RankedChampion)
   { .card_index = affordable[i],
-      .efficiency = card_efficiency(affordable[i], for_attack)
+      .efficiency = card_efficiency(affordable[i], player, for_attack)
   };
 
   for(uint8_t i = 1; i < count; i++)
@@ -133,13 +167,13 @@ static void play_attack_selection(struct gamestate* gstate, PlayerID player,
   }
 } // play_attack_selection
 
-// Defend iff the incoming threat justifies at least VB_DEFEND_THRESHOLD of
-// what `candidate` can absorb. Both sides are damage units, so this is
+// Defend iff the incoming threat justifies at least g_defend_threshold[defender]
+// of what `candidate` can absorb. Both sides are damage units, so this is
 // scale-free and needs no knowledge of the energy scale.
 static bool should_defend(const struct gamestate* gstate, PlayerID defender,
                           uint8_t candidate)
 { return expected_incoming_attack(gstate, defender) >=
-         VB_DEFEND_THRESHOLD * fullDeck[candidate].expected_defense;
+         g_defend_threshold[defender] * fullDeck[candidate].expected_defense;
 } // should_defend
 
 void value_based_attack_strategy(struct gamestate* gstate, GameContext* ctx)

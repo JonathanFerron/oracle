@@ -5,6 +5,80 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-21 — A1 Value Based parameter calibration; `aicalibsrc/` tooling
+
+Calibrated `VB_COST_FLOOR`/`VB_DEFEND_THRESHOLD` (`ai_strat_valuebased.c`) using
+new calibration infrastructure, built specifically because the vs-Random
+comparison used to validate A1 (see the entry below) turned out to be
+**ceiling-effected**: at ~90% vs Random, nearby parameter values are hard to
+tell apart. Self-play (same agent, two different parameter sets, head-to-head)
+doesn't have that ceiling, and was the actual mechanism used to find and
+compare candidates:
+
+- **`src/ai_strat/ai_strat_valuebased.c/h`**: added a calibration-only
+  per-player parameter override hook -- `value_based_set_params(PlayerID,
+  cost_floor, defend_threshold)` / `value_based_reset_params()` -- backed by
+  file-static per-player arrays instead of the `#define`s directly. This is
+  what makes "Player A runs Value Based with parameter set 1, Player B runs
+  Value Based with parameter set 2, in the same game" possible; previously
+  the parameters were compile-time constants shared by both seats, which the
+  engine had no way to differentiate per player. Deliberately scoped to this
+  one file rather than threaded through `AttackStrategyFunc`/`GameContext`/
+  `StrategySet` -- no other agent needs runtime-tunable parameters yet, so a
+  general mechanism isn't justified before a second instance exists. When A2
+  Combo Threshold or A3 Borealis need the same self-play calibration
+  capability (both likely, per design discussion), each gets the same
+  lightweight per-agent pattern rather than a shared framework built ahead of
+  need. Note for A3 specifically: its handout's `borealis_set_params(const
+  BorealisParams*)` is currently a single global setter, not per-player --
+  will need the same per-player adaptation `value_based_set_params()` used,
+  flagged in that handout as `## Note (2026-08-21)`.
+- **`aicalibsrc/value/calib_valuebased.c`** (new, `make calib_valuebased` ->
+  `bin/calib_valuebased`): links the engine directly (same pattern as
+  `testsrc/test_recall.c` etc.), takes `<numsim> <seed> <agent_a> <agent_b>
+  <cost_floor_a> <defend_threshold_a> <cost_floor_b> <defend_threshold_b>`,
+  runs `run_simulation()` in-process, prints one CSV result line. No
+  subprocess-spawn or text-parsing overhead per parameter combination --
+  ~27ms for 2500 games.
+- **`aicalibsrc/value/calibrate_valuebased.py`** (new): Python driver on top of that
+  binary. `sweep` subcommand: the handout's own univariate vs-Random
+  diagnostic (Sec 11), with Wilson-interval confidence bounds and an optional
+  plot. `selfplay` subcommand: round-robin over a parameter grid, both seat
+  orders, fits a Bradley-Terry model (`scipy.optimize`) to get a relative
+  strength per combo instead of trusting individual pairwise results (which
+  can be intransitive), then automatically validates the winner against
+  Random vs the shipped defaults. `validate` subcommand: the same
+  winner-vs-default-vs-Random comparison, standalone. Needs `numpy`, `pandas`,
+  `scipy`, `matplotlib`, `scikit-optimize` (system packages via apt on this
+  Debian/Ubuntu box -- `pip install` is blocked by PEP 668 without a venv,
+  and building a venv itself needs `python3.14-venv` from apt anyway).
+- **Calibration run and result**: with `VB_DEFEND_THRESHOLD` searched freely,
+  self-play favored increasingly high values (5, then 10, with no peak found
+  before stopping) -- i.e. "defend only against near-maximal attacks,
+  otherwise never." That measured stronger (~94% vs Random) but changes the
+  agent's designed character from "moderate, threshold-gated defender" to
+  "attacks almost exclusively," eroding the intended contrast with later
+  agents' defensive styles. Decision: hold `VB_DEFEND_THRESHOLD` at a
+  human-chosen, deliberately moderate `0.8` (up from `0.5`) instead of the
+  self-play-optimal value, and re-optimize only `VB_COST_FLOOR` with that
+  fixed. That search was noisier than expected -- a quadratic fit through the
+  cost_floor/strength data only reached R^2 ~=0.25-0.49 even at 7,040,000
+  games per candidate -- confirming the handout's own prediction that this
+  parameter's effect "should be mild": real, but smaller than what's cleanly
+  resolvable. 1.2-1.7 formed a consistently-better cluster than the extremes
+  tested; `1.3` was picked as a defensible value inside that cluster, not a
+  precise optimum.
+  **Shipped**: `VB_COST_FLOOR = 1.3` (was `1.0`), `VB_DEFEND_THRESHOLD = 0.8`
+  (was `0.5`). Measured win rate vs Random: **91.0% -> 92.4%** (both seats,
+  64,000 games, 95% CI [92.2%, 92.6%], non-overlapping with the old default's
+  [90.8%, 91.2%] -- a real, not noise, improvement). Verified against the
+  actual `bin/oracle` binary (not just the calibration harness) at `-n 10000`:
+  90.1% as Player A, 94.5% as Player B, averaging to the same ~92.3%.
+- Regression: `-a -p` output unchanged (Value Based isn't in the default
+  matchup, so this doesn't touch `bin/expectedresults.txt`); `test_combo`
+  (20/20), `test_recall` (10/10), `test_cash_exchange` (6/6) all still pass;
+  valgrind-clean on `-a -p -n 50 --ai.a=value --ai.b=value`.
+
 ## 2026-08-21 — A1 Value Based ("The Apprentice") implemented; strategy registry; per-player agent CLI options
 
 - **A1 Value Based** (`src/ai_strat/ai_strat_valuebased.c/h`) is implemented per

@@ -4,7 +4,7 @@
 | -------------------- | ------------------------------------------------------ |
 | Enum                 | `AI_STRATEGY_VALUE_BASED`                              |
 | Shorthand            | `value`                                                |
-| Est. Borealis rating | 15 — design intent; measured win rate vs Random is ~90% (see `doc/changelog.md`, 2026-08-21), well above the design intent, but a Bradley-Terry rating needs `A3` Borealis as benchmark first |
+| Est. Borealis rating | 15 — design intent; measured win rate vs Random is ~92.4% after calibration (`VB_COST_FLOOR=1.3`, `VB_DEFEND_THRESHOLD=0.8`, see `doc/changelog.md`, 2026-08-21), well above the design intent, but a Bradley-Terry rating needs `A3` Borealis as benchmark first |
 | Source file          | `src/ai_strat/ai_strat_valuebased.c` (implemented 2026-08-21) |
 | Status               | implemented -- see `doc/changelog.md`, 2026-08-21                       |
 

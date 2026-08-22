@@ -59,6 +59,19 @@ void            borealis_set_params(const BorealisParams* params);
 BorealisParams  borealis_get_default_params(void);
 ```
 
+**Note (2026-08-21):** `borealis_set_params()` above is a single global setter,
+not per-player. A1 Value Based's calibration work found that self-play
+(parameter set 1 vs. parameter set 2, head-to-head in one game) is a
+significantly more discriminating calibration signal than vs-Random, once
+vs-Random win rates saturate near a ceiling — see `doc/changelog.md`,
+2026-08-21. That requires a *per-player* override, which
+`value_based_set_params(PlayerID player, ...)` provides for A1
+(`src/ai_strat/ai_strat_valuebased.c/h`) and which this signature does not.
+When implementing A3, adapt to `borealis_set_params(PlayerID player, const
+BorealisParams* params)` following that same pattern (file-static per-player
+override arrays, calibration-only, not threaded through the general strategy
+framework) rather than porting this single-setter signature as written.
+
 **`luna_value` (λ) is the primary calibration dial.** It is the only parameter
 whose effect on strength is monotone and well understood — see §8. The others
 are behavioural switches, not strength knobs. Do not attempt to calibrate on

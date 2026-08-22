@@ -4,6 +4,7 @@
 CC := gcc
 SRCDIR := src
 TESTSRCDIR := testsrc
+AICALIBDIR := aicalibsrc
 BUILDDIR := obj
 BINDIR := bin
 TARGET := $(BINDIR)/oracle
@@ -63,6 +64,34 @@ TEST_CASH_SRCS := $(TESTSRCDIR)/test_cash_exchange.c \
 TEST_CASH_OBJS := $(BUILDDIR)/testsrc/test_cash_exchange.o \
                   $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_CASH_SRCS)))
 
+# Calibration harness for A1 Value Based's tunable parameters (see
+# aicalibsrc/value/). One subfolder per agent under aicalibsrc/ as more
+# agents get calibration tooling. Links the engine directly (same pattern as
+# the TEST_* targets above) plus stda_auto.c (for run_simulation()) and
+# player_config.c (stda_auto.c's own dependency, for
+# get_ai_strategies()/parse_ai_strategy_shorthand()).
+CALIB_VALUEBASED_TARGET := $(BINDIR)/calib_valuebased
+CALIB_VALUEBASED_SRCS := $(AICALIBDIR)/value/calib_valuebased.c \
+                         $(SRCDIR)/core/card_actions.c \
+                         $(SRCDIR)/core/combat.c \
+                         $(SRCDIR)/core/combo_bonus.c \
+                         $(SRCDIR)/core/game_constants.c \
+                         $(SRCDIR)/core/game_context.c \
+                         $(SRCDIR)/core/game_state.c \
+                         $(SRCDIR)/core/turn_logic.c \
+                         $(SRCDIR)/structures/card_collection.c \
+                         $(SRCDIR)/structures/deckstack.c \
+                         $(SRCDIR)/util/mtwister.c \
+                         $(SRCDIR)/util/rnd.c \
+                         $(SRCDIR)/ai_strat/ai_strategy.c \
+                         $(SRCDIR)/ai_strat/ai_strat_random.c \
+                         $(SRCDIR)/ai_strat/ai_strat_common.c \
+                         $(SRCDIR)/ai_strat/ai_strat_valuebased.c \
+                         $(SRCDIR)/roles/stda/stda_auto.c \
+                         $(SRCDIR)/ui/shared/player_config.c
+CALIB_VALUEBASED_OBJS := $(BUILDDIR)/aicalibsrc/value/calib_valuebased.o \
+                         $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_VALUEBASED_SRCS)))
+
 # Default target
 all: $(TARGET)
 
@@ -85,12 +114,18 @@ $(BUILDDIR)/testsrc/%.o: $(TESTSRCDIR)/%.$(SRCEXT)
 	@echo "Compiling $<..."
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+# Compile calibration source files to object files (kept out of $(AICALIBDIR) itself)
+$(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
+	@mkdir -p "$(@D)"
+	@echo "Compiling $<..."
+	$(CC) $(CFLAGS) -c -o $@ $<
+
 # Clean build artifacts
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange
-	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o
+	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/calib_valuebased
+	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
 # Debug build
@@ -132,6 +167,16 @@ $(TEST_CASH_TARGET): $(TEST_CASH_OBJS)
 	$(CC) $(TEST_CASH_OBJS) -o $(TEST_CASH_TARGET) $(LIBS)
 	@echo "Test build complete: $(TEST_CASH_TARGET)"
 
+# Calibration harness (see aicalibsrc/value/README.md or the file header for CLI usage)
+.PHONY: calib_valuebased
+calib_valuebased: $(CALIB_VALUEBASED_TARGET)
+
+$(CALIB_VALUEBASED_TARGET): $(CALIB_VALUEBASED_OBJS)
+	@echo "Linking calib_valuebased..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(CALIB_VALUEBASED_OBJS) -o $(CALIB_VALUEBASED_TARGET) $(LIBS)
+	@echo "Build complete: $(CALIB_VALUEBASED_TARGET)"
+
 .PHONY: format
 format:
 	astyle --project --suffix=none --recursive --exclude=ideas "*.c,*.h"
@@ -154,6 +199,7 @@ help:
 	@echo "  test_recall      - Build and run recall mechanic tests"
 	@echo "  test_cash_exchange - Build and run cash exchange tests"
 	@echo "  test_stda_auto   - Diff 'oracle -sa -p' output against bin/expectedresults.txt"
+	@echo "  calib_valuebased - Build the Value Based parameter calibration harness (aicalibsrc/)"
 	@echo "  format           - Format the c and h source files using astyle"
 	@echo "  help             - Show this help message"
 	@echo ""

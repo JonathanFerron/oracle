@@ -1,3 +1,38 @@
+## Status note (2026-08-21)
+
+This folder's design predates the `A1`-`A11` roster reorg and is stale in two
+ways worth knowing before reading further: (1) the struct list in
+`ai_params_h.txt` (`RandomParams`, `BalancedRulesParams`, `HeuristicParams`,
+`HBTHybridParams`, `SimpleMCParams`, `ProgressiveMCParams`, `ISMCTSParams`) has
+no entry for Value Based, Combo Threshold, or Borealis, and includes a
+`ProgressiveMCParams` that isn't in the current roster at all -- see
+`ideas/G1 AI agent general info/oracle_ai_agent_names.md` for the canonical
+list. (2) A1 Value Based's actual calibration (`doc/changelog.md`, 2026-08-21)
+did **not** use this design's unified `AIParams` union, `.ini` config loader,
+or C-side genetic-algorithm calibration framework. It used something much
+lighter: a per-agent, calibration-only override hook scoped to that one
+agent's `.c` file (`value_based_set_params()`/`_reset_params()` in
+`src/ai_strat/ai_strat_valuebased.c`), driven by a Python script
+(`aicalibsrc/value/calibrate_valuebased.py`) that shells out to a small C
+harness (`aicalibsrc/value/calib_valuebased.c`, linking the engine directly)
+and does the statistics/optimization in Python (`scipy`/`pandas`) instead of
+C. This was a deliberate choice, not an oversight: with only one agent
+actually needing runtime-tunable parameters, this design's shared
+infrastructure (union of per-strategy structs, `.ini` parser, C-side grid/
+random/genetic search) wasn't justified yet -- see the "Why self-play" section
+of `aicalibsrc/value/README.md` and the YAGNI reasoning in
+`ai_strat_valuebased.c`'s own comments.
+
+**When to revisit this design**: once 2-3 more agents (`A2` Combo Threshold,
+`A3` Borealis, and beyond) need the same kind of calibration and the
+per-agent-`.c`-file pattern (`<agent>_set_params()` + a small dedicated
+`aicalibsrc/<agent>/` folder each) starts feeling like real duplication rather
+than reasonable scoping, this folder's unified-struct/`.ini`/genetic-algorithm
+proposal becomes worth building for real. Until then, treat it as a forward
+reference, not a spec to implement piecemeal.
+
+---
+
 I'll help you design a robust system for AI agent parameter management, calibration, and configuration. Here's a comprehensive solution:
 
 ## AI Parameter Management SystemNow let me create an example AI config file and calibration framework:Now let me create the calibration framework:Now let me create an example usage file:Perfect! Now let me create a summary document explaining the complete system:## Summary
