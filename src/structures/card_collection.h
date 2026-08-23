@@ -10,9 +10,9 @@
 // ============================================================================
 // Hand Collection (max 10 cards in practice, but allow margin)
 // ============================================================================
-typedef struct {
-    uint8_t cards[12];  // Allow some margin beyond max of 10
-    uint8_t size;
+typedef struct
+{ uint8_t cards[12];  // Allow some margin beyond max of 10
+  uint8_t size;
 } Hand;
 
 void Hand_init(Hand* hand);
@@ -25,9 +25,9 @@ bool Hand_contains(const Hand* hand, uint8_t card);
 // ============================================================================
 // CombatZone Collection (max 3 cards)
 // ============================================================================
-typedef struct {
-    uint8_t cards[3];
-    uint8_t size;
+typedef struct
+{ uint8_t cards[3];
+  uint8_t size;
 } CombatZone;
 
 void CombatZone_init(CombatZone* zone);
@@ -39,9 +39,9 @@ uint8_t CombatZone_get(const CombatZone* zone, uint8_t index);
 // ============================================================================
 // Discard Collection (max 40 cards)
 // ============================================================================
-typedef struct {
-    uint8_t cards[40];
-    uint8_t size;
+typedef struct
+{ uint8_t cards[40];
+  uint8_t size;
 } Discard;
 
 void Discard_init(Discard* discard);

@@ -83,11 +83,11 @@ int handle_recall_choice(struct gamestate* gstate, PlayerID player,
 
     if(count != recall_num)
     { io->message(io, UI_MSG_ERROR, "%s %d %s",
-                 LOCALIZED_STRING("Error: You must recall exactly",
-                                  "Erreur: Vous devez rappeler exactement",
-                                  "Error: Debes recuperar exactamente"),
-                 recall_num,
-                 LOCALIZED_STRING("champion(s)", "champion(s)", "campeon(es)"));
+                  LOCALIZED_STRING("Error: You must recall exactly",
+                                   "Erreur: Vous devez rappeler exactement",
+                                   "Error: Debes recuperar exactamente"),
+                  recall_num,
+                  LOCALIZED_STRING("champion(s)", "champion(s)", "campeon(es)"));
       continue;
     }
 
@@ -117,9 +117,9 @@ int validate_and_recall_champions(struct gamestate* gstate, PlayerID player,
   }
 
   io->message(io, UI_MSG_SUCCESS, "%s %d %s",
-             LOCALIZED_STRING("Recalled", "Rappele", "Recuperado"),
-             count,
-             LOCALIZED_STRING("champion(s)", "champion(s)", "campeon(es)"));
+              LOCALIZED_STRING("Recalled", "Rappele", "Recuperado"),
+              count,
+              LOCALIZED_STRING("champion(s)", "champion(s)", "campeon(es)"));
 
   return ACTION_TAKEN;
 }
@@ -130,10 +130,10 @@ int handle_draw_command(struct gamestate* gstate, PlayerID player,
 { int idx = atoi(input);
   if(idx < 1 || idx > gstate->hand[player].size)
   { io->message(io, UI_MSG_ERROR, "%s (must be 1-%d)",
-               LOCALIZED_STRING("Error: Invalid card number",
-                                "Erreur: Numero de carte invalide",
-                                "Error: Numero de carta invalido"),
-               gstate->hand[player].size);
+                LOCALIZED_STRING("Error: Invalid card number",
+                                 "Erreur: Numero de carte invalide",
+                                 "Error: Numero de carta invalido"),
+                gstate->hand[player].size);
     return NO_ACTION;
   }
 
@@ -141,17 +141,17 @@ int handle_draw_command(struct gamestate* gstate, PlayerID player,
 
   if(fullDeck[card_idx].card_type != DRAW_CARD)
   { io->message(io, UI_MSG_ERROR, "%s",
-               LOCALIZED_STRING("Error: Not a draw card",
-                                "Erreur: Pas une carte piocher",
-                                "Error: No es una carta de robar"));
+                LOCALIZED_STRING("Error: Not a draw card",
+                                 "Erreur: Pas une carte piocher",
+                                 "Error: No es una carta de robar"));
     return NO_ACTION;
   }
 
   if(fullDeck[card_idx].cost > gstate->current_cash_balance[player])
   { io->message(io, UI_MSG_ERROR, "%s",
-               LOCALIZED_STRING("Error: Not enough lunas",
-                                "Erreur: Pas assez de lunas",
-                                "Error: No hay suficientes lunas"));
+                LOCALIZED_STRING("Error: Not enough lunas",
+                                 "Erreur: Pas assez de lunas",
+                                 "Error: No hay suficientes lunas"));
     return NO_ACTION;
   }
 
@@ -166,8 +166,8 @@ int handle_draw_command(struct gamestate* gstate, PlayerID player,
 
   play_draw_card(gstate, player, card_idx, ctx);
   io->message(io, UI_MSG_SUCCESS, "%s",
-             LOCALIZED_STRING("Played draw card", "Carte piocher jouee",
-                              "Carta de robar jugada"));
+              LOCALIZED_STRING("Played draw card", "Carte piocher jouee",
+                               "Carta de robar jugada"));
   return ACTION_TAKEN;
 }
 
@@ -194,12 +194,12 @@ int prompt_champion_exchange(Hand* hand, config_t* cfg, UiIO* io)
   int idx = atoi(input);
   if(idx < 1 || idx > count)
   { io->message(io, UI_MSG_ERROR, "%s %d (%s 1-%d)",
-               LOCALIZED_STRING("Error: Invalid index",
-                                "Erreur: Indice invalide",
-                                "Error: Indice invalido"),
-               idx,
-               LOCALIZED_STRING("must be", "doit etre", "debe ser"),
-               count);
+                LOCALIZED_STRING("Error: Invalid index",
+                                 "Erreur: Indice invalide",
+                                 "Error: Indice invalido"),
+                idx,
+                LOCALIZED_STRING("must be", "doit etre", "debe ser"),
+                count);
     return -1;
   }
 
@@ -212,10 +212,10 @@ int handle_cash_command(struct gamestate* gstate, PlayerID player,
 { int idx = atoi(input);
   if(idx < 1 || idx > gstate->hand[player].size)
   { io->message(io, UI_MSG_ERROR, "%s (must be 1-%d)",
-               LOCALIZED_STRING("Error: Invalid card number",
-                                "Erreur: Numero de carte invalide",
-                                "Error: Numero de carta invalido"),
-               gstate->hand[player].size);
+                LOCALIZED_STRING("Error: Invalid card number",
+                                 "Erreur: Numero de carte invalide",
+                                 "Error: Numero de carta invalido"),
+                gstate->hand[player].size);
     return NO_ACTION;
   }
 
@@ -223,17 +223,17 @@ int handle_cash_command(struct gamestate* gstate, PlayerID player,
 
   if(fullDeck[card_idx].card_type != CASH_CARD)
   { io->message(io, UI_MSG_ERROR, "%s",
-               LOCALIZED_STRING("Error: Not an exchange card",
-                                "Erreur: Pas une carte echange",
-                                "Error: No es una carta de intercambio"));
+                LOCALIZED_STRING("Error: Not an exchange card",
+                                 "Erreur: Pas une carte echange",
+                                 "Error: No es una carta de intercambio"));
     return NO_ACTION;
   }
 
   if(!has_champion_in_hand(&gstate->hand[player]))
   { io->message(io, UI_MSG_ERROR, "%s",
-               LOCALIZED_STRING("Error: No champions to exchange",
-                                "Erreur: Aucun champion a echanger",
-                                "Error: No hay campeones para intercambiar"));
+                LOCALIZED_STRING("Error: No champions to exchange",
+                                 "Erreur: Aucun champion a echanger",
+                                 "Error: No hay campeones para intercambiar"));
     return NO_ACTION;
   }
 
@@ -264,7 +264,7 @@ int handle_cash_command(struct gamestate* gstate, PlayerID player,
 
   play_cash_card_interactive(gstate, player, card_idx, (uint8_t)champion_idx, ctx);
   io->message(io, UI_MSG_SUCCESS, "%s %s",
-             LOCALIZED_STRING("Exchanged", "Echange", "Cambiado"),
-             CHAMPION_SPECIES_NAMES[fullDeck[champion_idx].species]);
+              LOCALIZED_STRING("Exchanged", "Echange", "Cambiado"),
+              CHAMPION_SPECIES_NAMES[fullDeck[champion_idx].species]);
   return ACTION_TAKEN;
 }

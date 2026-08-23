@@ -27,12 +27,12 @@ int parse_champion_indices(char* input, uint8_t* indices, int max_count,
   { int idx = atoi(token);
     if(idx < 1 || idx > hand_size)
     { io->message(io, UI_MSG_ERROR, "%s %d (%s 1-%d)",
-                 LOCALIZED_STRING("Error: Invalid card number",
-                                  "Erreur: Numero de carte invalide",
-                                  "Error: Numero de carta invalido"),
-                 idx,
-                 LOCALIZED_STRING("must be", "doit etre", "debe ser"),
-                 hand_size);
+                  LOCALIZED_STRING("Error: Invalid card number",
+                                   "Erreur: Numero de carte invalide",
+                                   "Error: Numero de carta invalido"),
+                  idx,
+                  LOCALIZED_STRING("must be", "doit etre", "debe ser"),
+                  hand_size);
       return -1;
     }
     indices[count++] = idx - 1; // convert to 0-based
@@ -53,12 +53,12 @@ int parse_card_indices_with_validation(char* input, uint8_t* indices,
   { int idx = atoi(token);
     if(idx < 1 || idx > hand_size)
     { io->message(io, UI_MSG_ERROR, "%s %d (%s 1-%d)",
-                 LOCALIZED_STRING("Error: Invalid card number",
-                                  "Erreur: Numero invalide",
-                                  "Error: Numero invalido"),
-                 idx,
-                 LOCALIZED_STRING("must be", "doit etre", "debe ser"),
-                 hand_size);
+                  LOCALIZED_STRING("Error: Invalid card number",
+                                   "Erreur: Numero invalide",
+                                   "Error: Numero invalido"),
+                  idx,
+                  LOCALIZED_STRING("must be", "doit etre", "debe ser"),
+                  hand_size);
       return -1;
     }
 
@@ -66,10 +66,10 @@ int parse_card_indices_with_validation(char* input, uint8_t* indices,
     for(int i = 0; i < count; i++)
     { if(indices[i] == (idx - 1))
       { io->message(io, UI_MSG_ERROR, "%s %d",
-                   LOCALIZED_STRING("Error: Duplicate card number",
-                                    "Erreur: Numero en double",
-                                    "Error: Numero duplicado"),
-                   idx);
+                    LOCALIZED_STRING("Error: Duplicate card number",
+                                     "Erreur: Numero en double",
+                                     "Error: Numero duplicado"),
+                    idx);
         return -1;
       }
     }
@@ -131,10 +131,10 @@ int validate_and_play_champions(struct gamestate* gstate, PlayerID player,
   { uint8_t card_idx = gstate->hand[player].cards[indices[i]];
     if(fullDeck[card_idx].card_type != CHAMPION_CARD)
     { io->message(io, UI_MSG_ERROR, "%s %d %s",
-                 LOCALIZED_STRING("Error: Card", "Erreur: Carte", "Error: Carta"),
-                 indices[i] + 1,
-                 LOCALIZED_STRING("is not a champion", "n'est pas un champion",
-                                  "no es un campeon"));
+                  LOCALIZED_STRING("Error: Card", "Erreur: Carte", "Error: Carta"),
+                  indices[i] + 1,
+                  LOCALIZED_STRING("is not a champion", "n'est pas un champion",
+                                   "no es un campeon"));
       return NO_ACTION;
     }
     total_cost += fullDeck[card_idx].cost;
@@ -142,13 +142,13 @@ int validate_and_play_champions(struct gamestate* gstate, PlayerID player,
 
   if(total_cost > gstate->current_cash_balance[player])
   { io->message(io, UI_MSG_ERROR, "%s (%s %d, %s %d)",
-               LOCALIZED_STRING("Error: Not enough lunas",
-                                "Erreur: Pas assez de lunas",
-                                "Error: No hay suficientes lunas"),
-               LOCALIZED_STRING("need", "besoin", "necesita"),
-               total_cost,
-               LOCALIZED_STRING("have", "avoir", "tienes"),
-               gstate->current_cash_balance[player]);
+                LOCALIZED_STRING("Error: Not enough lunas",
+                                 "Erreur: Pas assez de lunas",
+                                 "Error: No hay suficientes lunas"),
+                LOCALIZED_STRING("need", "besoin", "necesita"),
+                total_cost,
+                LOCALIZED_STRING("have", "avoir", "tienes"),
+                gstate->current_cash_balance[player]);
     return NO_ACTION;
   }
 
@@ -162,9 +162,9 @@ int validate_and_play_champions(struct gamestate* gstate, PlayerID player,
     play_champion(gstate, player, gstate->hand[player].cards[indices[i]], ctx);
 
   io->message(io, UI_MSG_SUCCESS, "%s %d %s",
-             LOCALIZED_STRING("Played", "Joue", "Jugado"),
-             count,
-             LOCALIZED_STRING("champion(s)", "champion(s)", "campeon(es)"));
+              LOCALIZED_STRING("Played", "Joue", "Jugado"),
+              count,
+              LOCALIZED_STRING("champion(s)", "champion(s)", "campeon(es)"));
   return ACTION_TAKEN;
 }
 
@@ -200,16 +200,16 @@ int game_process_attack_command(char* input_buffer, struct gamestate* gstate,
     return handle_cash_command(gstate, player, input_buffer + 5, ctx, cfg, io);
   else if(strcmp(input_buffer, "pass") == 0)
   { io->message(io, UI_MSG_WARNING, "%s",
-               LOCALIZED_STRING("Passed turn", "Tour passe", "Turno pasado"));
+                LOCALIZED_STRING("Passed turn", "Tour passe", "Turno pasado"));
     return ACTION_TAKEN;
   }
   else if(strcmp(input_buffer, "exit") == 0)
     return EXIT_SIGNAL;
 
   io->message(io, UI_MSG_ERROR, "%s",
-             LOCALIZED_STRING("Unknown command. Type 'help' for commands.",
-                              "Commande inconnue. Tapez 'help' pour les commandes.",
-                              "Comando desconocido. Escribe 'help' para comandos."));
+              LOCALIZED_STRING("Unknown command. Type 'help' for commands.",
+                               "Commande inconnue. Tapez 'help' pour les commandes.",
+                               "Comando desconocido. Escribe 'help' para comandos."));
   return NO_ACTION;
 }
 
@@ -222,9 +222,9 @@ int game_process_defense_command(char* input_buffer, struct gamestate* gstate,
     return EXIT_SIGNAL;
   else if(strcmp(input_buffer, "pass") == 0)
   { io->message(io, UI_MSG_WARNING, "%s",
-               LOCALIZED_STRING("Taking damage without defending",
-                                "Prendre des degats sans defendre",
-                                "Recibir dano sin defender"));
+                LOCALIZED_STRING("Taking damage without defending",
+                                 "Prendre des degats sans defendre",
+                                 "Recibir dano sin defender"));
     return NO_ACTION;
   }
   else if(strncmp(input_buffer, "cham ", 5) == 0)
@@ -234,25 +234,25 @@ int game_process_defense_command(char* input_buffer, struct gamestate* gstate,
     if(count > 0)
     { if(!validate_and_play_champions(gstate, player, indices, count, ctx, cfg, io))
         io->message(io, UI_MSG_WARNING, "%s",
-                   LOCALIZED_STRING("Taking damage without defending",
-                                    "Prendre des degats sans defendre",
-                                    "Recibir dano sin defender"));
+                    LOCALIZED_STRING("Taking damage without defending",
+                                     "Prendre des degats sans defendre",
+                                     "Recibir dano sin defender"));
     }
     else if(count == 0)
       io->message(io, UI_MSG_WARNING, "%s",
-                 LOCALIZED_STRING("No defenders specified, taking damage",
-                                  "Aucun defenseur specifie, prendre des degats",
-                                  "No se especificaron defensores, recibir dano"));
+                  LOCALIZED_STRING("No defenders specified, taking damage",
+                                   "Aucun defenseur specifie, prendre des degats",
+                                   "No se especificaron defensores, recibir dano"));
   }
   else
   { io->message(io, UI_MSG_ERROR, "%s",
-               LOCALIZED_STRING("Unknown command. Use 'cham <indices>' or 'pass'",
-                                "Commande inconnue. Utilisez 'cham <indices>' ou 'pass'",
-                                "Comando desconocido. Usa 'cham <indices>' o 'pass'"));
+                LOCALIZED_STRING("Unknown command. Use 'cham <indices>' or 'pass'",
+                                 "Commande inconnue. Utilisez 'cham <indices>' ou 'pass'",
+                                 "Comando desconocido. Usa 'cham <indices>' o 'pass'"));
     io->message(io, UI_MSG_WARNING, "%s",
-               LOCALIZED_STRING("Taking damage without defending",
-                                "Prendre des degats sans defendre",
-                                "Recibir dano sin defender"));
+                LOCALIZED_STRING("Taking damage without defending",
+                                 "Prendre des degats sans defendre",
+                                 "Recibir dano sin defender"));
   }
 
   return NO_ACTION;
@@ -272,8 +272,8 @@ int game_process_mulligan_command(char* input_buffer, struct gamestate* gstate,
 
   if(strcmp(input_buffer, "pass") == 0)
   { io->message(io, UI_MSG_SUCCESS, "%s",
-               LOCALIZED_STRING("Keeping current hand", "Conservation de la main",
-                                "Manteniendo mano actual"));
+                LOCALIZED_STRING("Keeping current hand", "Conservation de la main",
+                                 "Manteniendo mano actual"));
     return 1;
   }
   else if(strncmp(input_buffer, "mull ", 5) == 0)
@@ -283,25 +283,25 @@ int game_process_mulligan_command(char* input_buffer, struct gamestate* gstate,
     if(count < 0) return 0;
     if(count == 0)
     { io->message(io, UI_MSG_ERROR, "%s",
-                 LOCALIZED_STRING("Error: Must specify at least 1 card",
-                                  "Erreur: Specifier au moins 1 carte",
-                                  "Error: Debe especificar al menos 1 carta"));
+                  LOCALIZED_STRING("Error: Must specify at least 1 card",
+                                   "Erreur: Specifier au moins 1 carte",
+                                   "Error: Debe especificar al menos 1 carta"));
       return 0;
     }
 
     io->message(io, UI_MSG_SUCCESS, "%s %d %s...",
-               LOCALIZED_STRING("Mulliganing", "Defausse de", "Descartando"),
-               count,
-               LOCALIZED_STRING("card(s)", "carte(s)", "carta(s)"));
+                LOCALIZED_STRING("Mulliganing", "Defausse de", "Descartando"),
+                count,
+                LOCALIZED_STRING("card(s)", "carte(s)", "carta(s)"));
 
     discard_and_draw_cards(gstate, player, indices, count, true, ctx);
     return 1;
   }
 
   io->message(io, UI_MSG_ERROR, "%s",
-             LOCALIZED_STRING("Unknown command. Type 'help' for commands.",
-                              "Commande inconnue. 'help' pour aide.",
-                              "Comando desconocido. 'help' para ayuda."));
+              LOCALIZED_STRING("Unknown command. Type 'help' for commands.",
+                               "Commande inconnue. 'help' pour aide.",
+                               "Comando desconocido. 'help' para ayuda."));
   return 0;
 }
 
@@ -322,28 +322,28 @@ int game_process_discard_command(char* input_buffer, struct gamestate* gstate,
     if(count < 0) return 0;
     if(count != cards_to_discard)
     { io->message(io, UI_MSG_ERROR, "%s %d %s",
-                 LOCALIZED_STRING("Error: Must discard exactly",
-                                  "Erreur: Doit defausser exactement",
-                                  "Error: Debe descartar exactamente"),
-                 cards_to_discard,
-                 LOCALIZED_STRING(cards_to_discard > 1 ? "cards" : "card",
-                                  cards_to_discard > 1 ? "cartes" : "carte",
-                                  cards_to_discard > 1 ? "cartas" : "carta"));
+                  LOCALIZED_STRING("Error: Must discard exactly",
+                                   "Erreur: Doit defausser exactement",
+                                   "Error: Debe descartar exactamente"),
+                  cards_to_discard,
+                  LOCALIZED_STRING(cards_to_discard > 1 ? "cards" : "card",
+                                   cards_to_discard > 1 ? "cartes" : "carte",
+                                   cards_to_discard > 1 ? "cartas" : "carta"));
       return 0;
     }
 
     io->message(io, UI_MSG_SUCCESS, "%s %d %s...",
-               LOCALIZED_STRING("Discarding", "Defausse de", "Descartando"),
-               count,
-               LOCALIZED_STRING("card(s)", "carte(s)", "carta(s)"));
+                LOCALIZED_STRING("Discarding", "Defausse de", "Descartando"),
+                count,
+                LOCALIZED_STRING("card(s)", "carte(s)", "carta(s)"));
 
     discard_and_draw_cards(gstate, player, indices, count, false, ctx);
     return 1;
   }
 
   io->message(io, UI_MSG_ERROR, "%s",
-             LOCALIZED_STRING("Unknown command. Type 'help' for commands.",
-                              "Commande inconnue. 'help' pour aide.",
-                              "Comando desconocido. 'help' para ayuda."));
+              LOCALIZED_STRING("Unknown command. Type 'help' for commands.",
+                               "Commande inconnue. 'help' pour aide.",
+                               "Comando desconocido. 'help' para ayuda."));
   return 0;
 }

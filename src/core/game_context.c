@@ -7,11 +7,11 @@
 #include <stdio.h>
 
 GameContext* create_game_context(config_t* cfg)
-{     if (cfg == NULL) {
-        fprintf(stderr, "Error: config required for GameContext\n");
-        return NULL;
-    }
-    
+{ if(cfg == NULL)
+  { fprintf(stderr, "Error: config required for GameContext\n");
+    return NULL;
+  }
+
   GameContext* ctx = (GameContext*)malloc(sizeof(GameContext));
   if(ctx == NULL) return NULL;
 
