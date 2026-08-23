@@ -7,6 +7,7 @@
 /bin/test_recall
 /bin/test_cash_exchange
 /bin/calib_valuebased
+/bin/calib_combo_threshold
 *.o
 *.xls
 *.xlsx

@@ -21,16 +21,22 @@ uint8_t build_affordable_champions(const struct gamestate* gstate, PlayerID play
   return count;
 } // build_affordable_champions
 
-// Builds the CombatCard array calculate_combo_bonus() needs from a CombatZone.
-static int fill_combat_cards(const CombatZone* zone, CombatCard* out)
-{ for(uint8_t i = 0; i < zone->size; i++)
-  { const struct card* c = &fullDeck[zone->cards[i]];
+// Builds the CombatCard array calculate_combo_bonus() needs from a run of
+// fullDeck[] indices. Single construction site for both callers below.
+static void build_combat_cards(const uint8_t* card_indices, uint8_t n, CombatCard* out)
+{ for(uint8_t i = 0; i < n; i++)
+  { const struct card* c = &fullDeck[card_indices[i]];
     out[i] = (CombatCard)
     { .species = c->species, .color = c->color, .order = c->order
     };
   }
-  return zone->size;
-} // fill_combat_cards
+} // build_combat_cards
+
+int combo_bonus_for_selection(const uint8_t* card_indices, uint8_t n)
+{ CombatCard combat_cards[3];
+  build_combat_cards(card_indices, n, combat_cards);
+  return calculate_combo_bonus(combat_cards, n, DECK_RANDOM);
+} // combo_bonus_for_selection
 
 float expected_incoming_attack(const struct gamestate* gstate, PlayerID defender)
 { PlayerID attacker = 1 - defender;
@@ -40,9 +46,7 @@ float expected_incoming_attack(const struct gamestate* gstate, PlayerID defender
   for(uint8_t i = 0; i < zone->size; i++)
     total += fullDeck[zone->cards[i]].expected_attack;
 
-  CombatCard combat_cards[3];
-  int num_cards = fill_combat_cards(zone, combat_cards);
-  total += calculate_combo_bonus(combat_cards, num_cards, DECK_RANDOM);
+  total += combo_bonus_for_selection(zone->cards, zone->size);
 
   return total;
 } // expected_incoming_attack

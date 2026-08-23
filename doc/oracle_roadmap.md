@@ -14,11 +14,20 @@ work see `doc/changelog.md`. For architecture/design rationale see `doc/oracle_d
 ## Current Status
 
 Core game engine, CLI interactive mode, and TUI mode (Milestones 1 & 2 plus a polish
-pass) are done. Random and `A1` Value Based ("The Apprentice") AI strategies are
-implemented. **Active work**: `A2` Combo Threshold — see "Next Up" below.
+pass) are done. Random, `A1` Value Based ("The Apprentice"), and `A2` Combo Threshold
+("The Showboat") AI strategies are implemented. **Active work**: `A3` Borealis — see
+"Next Up" below.
 
 ### Recently Completed
 
+- **2026-08-22** — `A2` Combo Threshold ("The Showboat") implemented and calibrated:
+  threshold-gated combo chaser (pairs/triples must clear a tunable bonus threshold to
+  be pursued), probabilistic defense decline -- both deliberate character, not defects
+  (handout §3, §8). `aicalibsrc/combo/` calibration tooling added (`sweep`/`optimize`/
+  `selfplay`/`validate`), mirroring `aicalibsrc/value/` but with a `differential_evolution`
+  black-box search in place of a full grid (infeasible over 9 parameters vs `A1`'s 2).
+  Measured win rate vs `value`: 49.94% -> 58.77% after calibration; vs `rand`: 88.11% ->
+  92.78%. Full details: `doc/changelog.md`.
 - **2026-08-21** — `A1` Value Based ("The Apprentice") implemented: efficiency-ratio
   card ranking, no combo awareness, no attack-phase pass option (by design). A single
   `AIStrategyType -> function pointer` registry (`src/ai_strat/ai_strategy.c`) now
@@ -38,8 +47,8 @@ Full details: `doc/changelog.md`.
 
 ### What Needs Work
 
-- Only Random and `A1` Value Based implemented — everything from `A2` onward on the AI
-  ladder below is open.
+- Only Random, `A1` Value Based, and `A2` Combo Threshold implemented — everything from
+  `A3` onward on the AI ladder below is open.
 - Automated simulation mode (`stda_auto.c`) needs a refactor (see `doc/oracle_todo.md`).
 - No save/load, no config file system, no CSV export, no rating system, no network, no
   GUI, no `stda.sim`.
@@ -48,14 +57,19 @@ Full details: `doc/changelog.md`.
 
 ## Next Up (single authoritative order)
 
-1. **`A2` Combo Threshold** (`ideas/A2 ai agent combo threshold (the showboat)/`), then
-   `A3` in order. `A1` Value Based ("The Apprentice") is done (2026-08-21). This isn't
-   just easiest-first: the rating system (`ideas/5 rating system/`) needs the Borealis
-   benchmark agent (`A3`), which itself needs `A1`–`A2` implemented for comparison.
-   Support material that isn't itself an agent — general info and calibration tooling —
-   was moved off the A-line into `ideas/G1 AI agent general info/` and `ideas/G2 ai
-   agent parameters storing and optimization/` (2026-08-21 folder-sort pass), so it no
-   longer occupies an `AIStrategyType` enum slot or interrupts the A-line numbering.
+1. **`A3` Borealis** (`ideas/A3 ai agent greedy power (borealis)/`). `A1` Value Based
+   ("The Apprentice") and `A2` Combo Threshold ("The Showboat") are done (2026-08-21,
+   2026-08-22). This isn't just easiest-first: the rating system (`ideas/5 rating
+   system/`) needs the Borealis benchmark agent (`A3`), which itself needs `A1`–`A2`
+   implemented for comparison -- both now are. Support material that isn't itself an
+   agent — general info and calibration tooling — was moved off the A-line into
+   `ideas/G1 AI agent general info/` and `ideas/G2 ai agent parameters storing and
+   optimization/` (2026-08-21 folder-sort pass), so it no longer occupies an
+   `AIStrategyType` enum slot or interrupts the A-line numbering. Before or alongside
+   `A3`: give `discard_to_7_cards()`/`apply_mulligan()` an agent-specific override hook
+   (`doc/oracle_todo.md`'s "AI Strategies" section) -- Borealis's `hold_lethal_combos`
+   is the first agent that actually needs it, since the shared lowest-`power` heuristic
+   preferentially discards the expensive combo pieces it wants to hold.
 
    The CLI's `display_ai_strategy_menu()`/`get_ai_strategy_choice()`/
    `get_strategy_display_name()` (`src/ui/shared/player_config.c`) list all twelve

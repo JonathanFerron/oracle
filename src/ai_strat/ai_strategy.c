@@ -7,6 +7,7 @@
 #include "ai_strategy.h"
 #include "ai_strat_random.h"
 #include "ai_strat_valuebased.h"
+#include "ai_strat_combo_threshold.h"
 
 StrategySet* create_strategy_set(void)
 { StrategySet* strat = (StrategySet*)malloc(sizeof(StrategySet));
@@ -38,8 +39,9 @@ typedef struct
 } StrategyRegistryEntry;
 
 static const StrategyRegistryEntry STRATEGY_REGISTRY[AI_STRATEGY_COUNT] =
-{ [AI_STRATEGY_RANDOM]      = { random_attack_strategy, random_defense_strategy },
-  [AI_STRATEGY_VALUE_BASED] = { value_based_attack_strategy, value_based_defense_strategy },
+{ [AI_STRATEGY_RANDOM]           = { random_attack_strategy, random_defense_strategy },
+  [AI_STRATEGY_VALUE_BASED]      = { value_based_attack_strategy, value_based_defense_strategy },
+  [AI_STRATEGY_COMBO_THRESHOLD]  = { combo_threshold_attack_strategy, combo_threshold_defense_strategy },
   // All other entries default to {NULL, NULL} -- not yet implemented.
 };
 

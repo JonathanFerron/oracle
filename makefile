@@ -92,6 +92,34 @@ CALIB_VALUEBASED_SRCS := $(AICALIBDIR)/value/calib_valuebased.c \
 CALIB_VALUEBASED_OBJS := $(BUILDDIR)/aicalibsrc/value/calib_valuebased.o \
                          $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_VALUEBASED_SRCS)))
 
+# Calibration harness for A2 Combo Threshold's tunable parameters (see
+# aicalibsrc/combo/). Same pattern as CALIB_VALUEBASED_* above. Links
+# ai_strat_valuebased.c too, not just ai_strat_combo_threshold.c: ai_strategy.c's
+# STRATEGY_REGISTRY references both (plus Random), so anything that links
+# ai_strategy.c needs every agent it registers.
+CALIB_COMBO_TARGET := $(BINDIR)/calib_combo_threshold
+CALIB_COMBO_SRCS := $(AICALIBDIR)/combo/calib_combo_threshold.c \
+                    $(SRCDIR)/core/card_actions.c \
+                    $(SRCDIR)/core/combat.c \
+                    $(SRCDIR)/core/combo_bonus.c \
+                    $(SRCDIR)/core/game_constants.c \
+                    $(SRCDIR)/core/game_context.c \
+                    $(SRCDIR)/core/game_state.c \
+                    $(SRCDIR)/core/turn_logic.c \
+                    $(SRCDIR)/structures/card_collection.c \
+                    $(SRCDIR)/structures/deckstack.c \
+                    $(SRCDIR)/util/mtwister.c \
+                    $(SRCDIR)/util/rnd.c \
+                    $(SRCDIR)/ai_strat/ai_strategy.c \
+                    $(SRCDIR)/ai_strat/ai_strat_random.c \
+                    $(SRCDIR)/ai_strat/ai_strat_common.c \
+                    $(SRCDIR)/ai_strat/ai_strat_valuebased.c \
+                    $(SRCDIR)/ai_strat/ai_strat_combo_threshold.c \
+                    $(SRCDIR)/roles/stda/stda_auto.c \
+                    $(SRCDIR)/ui/shared/player_config.c
+CALIB_COMBO_OBJS := $(BUILDDIR)/aicalibsrc/combo/calib_combo_threshold.o \
+                    $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_COMBO_SRCS)))
+
 # Default target
 all: $(TARGET)
 
@@ -124,7 +152,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/calib_valuebased
+	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -177,6 +205,16 @@ $(CALIB_VALUEBASED_TARGET): $(CALIB_VALUEBASED_OBJS)
 	$(CC) $(CALIB_VALUEBASED_OBJS) -o $(CALIB_VALUEBASED_TARGET) $(LIBS)
 	@echo "Build complete: $(CALIB_VALUEBASED_TARGET)"
 
+# Calibration harness (see aicalibsrc/combo/README.md or the file header for CLI usage)
+.PHONY: calib_combo_threshold
+calib_combo_threshold: $(CALIB_COMBO_TARGET)
+
+$(CALIB_COMBO_TARGET): $(CALIB_COMBO_OBJS)
+	@echo "Linking calib_combo_threshold..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(CALIB_COMBO_OBJS) -o $(CALIB_COMBO_TARGET) $(LIBS)
+	@echo "Build complete: $(CALIB_COMBO_TARGET)"
+
 .PHONY: format
 format:
 	astyle --project --suffix=none --recursive --exclude=ideas "*.c,*.h"
@@ -200,6 +238,7 @@ help:
 	@echo "  test_cash_exchange - Build and run cash exchange tests"
 	@echo "  test_stda_auto   - Diff 'oracle -sa -p' output against bin/expectedresults.txt"
 	@echo "  calib_valuebased - Build the Value Based parameter calibration harness (aicalibsrc/)"
+	@echo "  calib_combo_threshold - Build the Combo Threshold parameter calibration harness (aicalibsrc/)"
 	@echo "  format           - Format the c and h source files using astyle"
 	@echo "  help             - Show this help message"
 	@echo ""

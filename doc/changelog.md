@@ -5,6 +5,125 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-22 — A2 Combo Threshold ("The Showboat") implemented and calibrated
+
+Implemented per `ideas/A2 ai agent combo threshold (the showboat)/
+combo_threshold_handout.md`: a threshold-gated combo chaser that prunes attack
+candidates to single champions plus pairs/triples whose combo bonus clears a
+tunable threshold, and defends probabilistically -- declining a fraction of the
+blocks it should take (handout §6.5 step 3). Both traits are the agent's
+designed character (handout §3, §8), not defects.
+
+- **`src/ai_strat/ai_strat_combo_threshold.c/h`** (new): `ComboThresholdParams`
+  ships nine fields, not the handout's seven -- `combo_weight` (the `w` in
+  §6.4 step 3's scoring formula) and `min_play_score_floor` (the cash-card
+  fallback's unnamed floor, §6.4 step 5) were referenced in the handout's
+  prose but never declared as struct fields; §9.1 flagged `combo_weight`
+  explicitly as an open question. Attack decomposes into
+  `eval_single_champions()`/`eval_two_card_combos()`/`eval_three_card_combos()`/
+  `eval_cash_fallback()` per handout §5.3 (the original draft's single
+  ~95-line function is exactly what that section says not to reproduce).
+  Defense's probabilistic decline uses `genRand(&ctx->rng)` directly, matching
+  `ai_strat_random.c`'s pattern -- no `rand()`, no static RNG state, per
+  handout §6.6. Two design facts drove the implementation: `combo_bonus.c`'s
+  species<->(color,order) mapping is a bijection (verified against all 102
+  champion rows in `game_constants.c`), so the three colors are exact stat
+  clones and combo choice is stat-neutral; and `discard_to_7_cards()`
+  discards the lowest `power` (an efficiency ratio, not strength), which
+  actively fights `save_big_combos_for_lethal`'s intent to hold expensive
+  combo pieces -- logged as a cross-cutting future item (see below), not
+  fixed here.
+- **`src/ai_strat/ai_strat_common.c/h`**: added `combo_bonus_for_selection()`
+  (a hand-subset variant of the existing `CombatZone`-only combo helper,
+  refactored to share one `build_combat_cards()` construction site) -- meant
+  for `A3` Borealis to reuse as-is, same as `build_affordable_champions()`/
+  `expected_incoming_attack()`/`try_play_draw_card()` already are.
+- **Strategy registry**: one line added to `ai_strategy.c`'s
+  `STRATEGY_REGISTRY[]` -- `AI_STRATEGY_COMBO_THRESHOLD` now dispatches to
+  `combo_threshold_attack_strategy`/`_defense_strategy`. Everything else
+  (enum slot, display names "The Showboat"/"Le Frimeur"/"El Fanfarron",
+  shorthand `combo`, CLI/TUI menu wiring) was already in place from the `A1`
+  folder-sort/registry work (2026-08-21) -- see `ai_strategy_is_implemented()`
+  in `src/ai_strat/ai_strategy.c`.
+- **Handout corrections found stale during implementation** (predated
+  `894409b`, the `A1` commit that moved `AIStrategyType` to `game_types.h` and
+  collapsed shorthands to one per agent): §2/§7.4's "`showboat` primary,
+  `combo` alias" is backwards -- `combo` is the sole canonical shorthand,
+  already shipped that way; §7.1's enum location/name (`AI_STRATEGY_COMBO_AWARE`
+  in `ui/shared/player_config.h`) is stale, it's `AI_STRATEGY_COMBO_THRESHOLD`
+  in `core/game_types.h`; §6.2's `combo_threshold_set_params()` needed to be
+  per-player (`PlayerID` argument), not a single global setter, for the same
+  reason `A1`'s `value_based_set_params()` needed it -- self-play calibration
+  requires each seat to run a different parameter set in one game.
+- **Regression**: `-a -p` output unchanged (Combo Threshold isn't in the
+  default matchup); `test_combo` (20/20), `test_recall` (10/10),
+  `test_cash_exchange` (6/6) all still pass; valgrind-clean on
+  `-a -p -n 50 --ai.a=combo --ai.b=combo`; deterministic (identical output
+  across repeated runs at a fixed seed).
+- **Measured strength, uncalibrated defaults** (n=10000, both seats): vs
+  `rand` 84.85%/91.11% (ceiling-effected, like `A1` was); vs `value` 44.98%/
+  55.35% (~50% average -- essentially at parity, unlike `A1`'s ~90%+ vs
+  Random, because vs-`value` doesn't saturate the way vs-Random does, making
+  it the more useful calibration target -- see below).
+- Also noted (not fixed here, tracked as a separate future item, `doc/
+  oracle_todo.md`): a consistent second-seat win-rate advantage visible
+  across `A1` and `A2` matchups regardless of which agent is stronger
+  (e.g. `combo` vs `rand` 84.85% as Player A vs 91.11% as Player B).
+
+### Calibration: `aicalibsrc/combo/` tooling; shipped parameters
+
+Followed the `aicalibsrc/value/` pattern (one self-contained subfolder per
+agent): `calib_combo_threshold.c` links the engine directly and takes
+`<numsim> <seed> <agent_a> <agent_b>` plus the nine `ComboThresholdParams`
+fields per seat; `calibrate_combo_threshold.py` adds a fourth subcommand
+beyond `A1`'s `sweep`/`selfplay`/`validate` -- `optimize`, a
+`scipy.optimize.differential_evolution` black-box search, because a full
+Cartesian grid (feasible for `A1`'s 2 parameters) is combinatorially
+infeasible over 9; `selfplay` here round-robins a small set of *named*
+JSON candidates instead of a full grid. Two bugs caught and fixed during
+tooling verification (cross-checked against `bin/oracle` at matching
+seeds): an off-by-one in `calib_combo_threshold.c`'s argv parsing (params
+were read one slot too early -- caught because round-tripped CSV output
+didn't match the CLI input); and `calibrate_combo_threshold.py`'s
+`summarize_selfplay()` computed `overall_win_rate` via a matrix-transpose
+trick that summed the *opponent's* wins for the "seated as defender" half
+instead of the candidate's own (the Bradley-Terry fit itself was
+unaffected -- it works directly off the win/game matrices -- only the
+display column was wrong).
+
+`optimize --opponent value` (differential evolution, all nine parameters
+free, 80,000-game validation) found `aggression_level=2.21,
+save_big_combos_for_lethal=false` at 77.3% vs `value`, but that result was
+**not shipped**: `aggression_level` divides both combo thresholds (handout
+§5.4), and at 2.21 that collapses `combo_bonus_threshold`'s effective value
+to ~5.0 -- low enough to admit every 2-card combo bonus including a plain
+color pair, erasing the "chases only the spectacular" selectivity that's
+this agent's stated identity (handout §1, §8; `about.md`'s "hoards big
+combos for a finishing blow", which `save_big_combos_for_lethal=false`
+removed outright). Both passed the tooling's automated personality-band
+check (`defend_probability_base`/`defend_damage_threshold`, the only two
+checked automatically) -- the drift was only visible by hand-computing the
+*effective* threshold, the same kind of interaction the handout's §3 named
+as why this design was disqualified as the benchmark. Hand-patched instead:
+`aggression_level` set to 1.3 (not the found 2.21) and
+`save_big_combos_for_lethal` restored to `true`, keeping the optimizer's
+other seven values. `11/1.3 ~= 8.46` and the untuned default's `10/1.0 = 10`
+both admit only the bonus-10 species-pair tier, so 2-card selectivity is
+unchanged from the handout's original design intent.
+**Shipped** (`CT_DEFAULTS`, `ai_strat_combo_threshold.c`):
+`aggression_level=1.3` (was 1.0), `combo_bonus_threshold=11` (was 10),
+`combo3_bonus_threshold=16` (was 14), `combo_weight=2.3626` (was 1.0),
+`min_play_score_floor=2.1184` (was 4.0), `defend_probability_base=0.4085`
+(was 0.55, still within the handout's 0.40-0.70 band),
+`defend_damage_threshold=8` (unchanged), `min_hand_size_target=5` (was 4),
+`save_big_combos_for_lethal=true` (unchanged). Measured win rate (80,000
+games, both seats): vs `value` **49.94% -> 58.77%** (+8.83pp, CI
+[58.29%, 59.26%]); vs `rand` **88.11% -> 92.78%** (+4.67pp, CI
+[92.52%, 93.03%]).
+- Regression re-checked against the shipped defaults: `-a -p` unchanged,
+  `test_combo`/`test_recall`/`test_cash_exchange` all still pass,
+  valgrind-clean.
+
 ## 2026-08-21 — A1 Value Based parameter calibration; `aicalibsrc/` tooling
 
 Calibrated `VB_COST_FLOOR`/`VB_DEFEND_THRESHOLD` (`ai_strat_valuebased.c`) using

@@ -1,5 +1,28 @@
 # Refactoring Task: Extract Shared AI Heuristics into `strat_lib.c/h`
 
+**Status note (2026-08-22):** this document predates the `src/` folder reorg --
+`strat_lib.c`, `strat_random.c`, `card_actions.c`, `cli_game.c` below mean today's
+`src/ai_strat/`, `src/ai_strat/ai_strat_random.c`, `src/core/card_actions.c`,
+`src/ui/cli/cli_game.c` (shared with `src/roles/stda/stda_tui_interactive.c` for the
+TUI path, which didn't exist when this was written); `StrategySet` is
+`src/ai_strat/ai_strategy.h`. Port the *intent* (Part 2's `mulligan_strategy[2]`/
+`discard_strategy[2]`/`exchange_select[2]` function-pointer arrays), not the literal
+file/function names.
+
+The trigger this doc predicted -- "once more than one AI strategy exists" -- has
+arrived: `discard_to_7_cards()` and `apply_mulligan()`'s shared lowest-`power`
+heuristic (`power` is an efficiency ratio, not card strength) actively fights `A3`
+Borealis's `hold_lethal_combos` and `A2` Combo Threshold's
+`save_big_combos_for_lethal`, both of which want to *keep* the expensive
+high-strength champions this heuristic preferentially throws away -- see
+`../A3 ai agent greedy power (borealis)/greedy_power_borealis_handout.md` §7's
+2026-08-22 note. Do this refactor before or alongside `A3`, not after: give
+`StrategySet` optional `mulligan_strategy[2]`/`discard_strategy[2]` hooks that
+default to today's shared power-based function when an agent doesn't override them,
+so Random and any weaker agent keep exact current behaviour (this is also why
+`bin/expectedresults.txt`, recorded with Random on both seats, is unaffected) while
+Borealis and later agents can supply combo-aware ones.
+
 ## Goal
 
 Create a new shared library module (`src/strat_lib.c` / `src/strat_lib.h`) that holds

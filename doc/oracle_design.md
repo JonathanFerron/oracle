@@ -321,26 +321,34 @@ intermediate action/move representation yet (see §11).
 
 ### Adding a new strategy
 
+As of `A1` (2026-08-21), dispatch is a single table-driven registry
+(`src/ai_strat/ai_strategy.c`'s `STRATEGY_REGISTRY[]`), not per-file hardcoding:
+
 1. Implement `<name>_attack_strategy()` / `<name>_defense_strategy()` in
    `src/ai_strat/ai_strat_<name>.c`.
-2. Register in strategy-set setup.
-3. Add to the CLI's AI strategy menu (`display_ai_strategy_menu()` /
-   `get_ai_strategy_choice()` / `get_strategy_display_name()` in
-   `src/ui/shared/player_config.c`) and wire the chosen `AIStrategyType` through to the
-   real functions instead of falling back to Random.
+2. Add one line to `ai_strategy.c`'s `STRATEGY_REGISTRY[]` table (plus the include).
+   `ai_strategy_is_implemented()` and `set_player_strategy_by_type()` are the single
+   dispatch point every mode (`stda.auto`, CLI, TUI) already goes through, so that one
+   line flips the interactive menu's "not yet implemented" label to "available" and
+   makes `-Aa`/`-Ab` accept the new shorthand everywhere, with no further edits.
+3. Add its shorthand to `AI_STRATEGY_SHORTHANDS[]` (`src/ui/shared/player_config.c`) if
+   not already present — the enum slot, menu label, and display name are typically
+   already there from the initial folder-sort/enum pass.
+
+See `doc/oracle_todo.md`'s "Checklist: Adding a New AI Strategy" for the full mechanical
+steps.
 
 ### Planned agent order
 
-The `AIStrategyType` enum and CLI menu (`src/ui/shared/player_config.h`) already list all
-eleven planned agents as "not yet implemented" stubs, each commented with its `ideas/A#`
-folder:
+The `AIStrategyType` enum and CLI menu (`src/ui/shared/player_config.h`) list all eleven
+planned agents, each commented with its `ideas/A#` folder:
 
 | Enum | Status | `ideas/` folder |
 | --- | --- | --- |
 | `AI_STRATEGY_RANDOM` | **implemented** | — |
-| `AI_STRATEGY_VALUE_BASED` | stub | `A1` (The Apprentice) |
-| `AI_STRATEGY_COMBO_THRESHOLD` | stub | `A2` (The Showboat) |
-| `AI_STRATEGY_BOREALIS` | stub | `A3` — the rating-scale benchmark agent |
+| `AI_STRATEGY_VALUE_BASED` | **implemented** (2026-08-21) | `A1` (The Apprentice) |
+| `AI_STRATEGY_COMBO_THRESHOLD` | **implemented** (2026-08-22) | `A2` (The Showboat) |
+| `AI_STRATEGY_BOREALIS` | stub — active work | `A3` — the rating-scale benchmark agent |
 | `AI_STRATEGY_BALANCED` | stub | `A4` (Bean Counter) |
 | `AI_STRATEGY_HEURISTIC` | stub | `A5` (ε-γ-δ) |
 | `AI_STRATEGY_TACTICAL` | stub | `A6` (Pressure Cooker) |
@@ -352,7 +360,7 @@ folder:
 
 Implementation order is `A1 → A2 → A3`, not just easiest-first: the rating system
 (`ideas/5`) needs the Borealis benchmark agent (`A3`), which itself needs `A1`–`A2` to
-exist for comparison. General info and calibration tooling live in
+exist for comparison — both now do. General info and calibration tooling live in
 `ideas/G1 AI agent general info/` and `ideas/G2 ai agent parameters storing and
 optimization/` — support material, not agents, so they carry no enum entry and no longer
 occupy a slot on the A-line.

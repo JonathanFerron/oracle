@@ -1,6 +1,10 @@
 # Handout — Implement the Combo Threshold AI Agent ("The Showboat")
 
-**Status:** design decisions, not yet implemented
+**Status:** implemented and calibrated (2026-08-22) — see `doc/changelog.md` and this
+folder's `about.md` for the shipped parameters and measured strength. This document is
+kept as implementation history/rationale; a few details below (marked inline) went stale
+between when this was written and when `A1` Value Based landed (2026-08-21) — the code is
+authoritative where they conflict.
 **History:** this document was originally titled "Oracle — AI Agent Roadmap & Borealis
 Benchmark" and specified the rating-scale benchmark agent. The benchmark role was
 **reassigned to Greedy Power** (`A3 ai agent greedy power (borealis)/`) — see
@@ -29,8 +33,8 @@ reads as a legible, beatable roster rung instead.
 |---|---|
 | Roster position | Between Value Based (`A1`) and Borealis (`A3`) |
 | Est. rating | **37** — design-intent estimate, unmeasured (per the names file) |
-| Enum | `AI_STRATEGY_COMBO_THRESHOLD` (retired name: `AI_STRATEGY_COMBO_AWARE`) |
-| Shorthand | `showboat`, alias `combo` |
+| Enum | `AI_STRATEGY_COMBO_THRESHOLD` (retired name: `AI_STRATEGY_COMBO_AWARE`), declared in `src/core/game_types.h` as of `A1` (was `ui/shared/player_config.h` when this was drafted) |
+| Shorthand | `combo` (**stale below**: the line used to read "`showboat`, alias `combo`" — `A1`'s one-shorthand-per-agent cleanup, 2026-08-21, retired `showboat` before this agent shipped; `combo` is the sole canonical shorthand) |
 | File naming | `src/ai_strat/ai_strat_combo_threshold.c/h`, following the repo's `ai_strat_*` convention (not the `strat_*.c` naming this document originally proposed) |
 | Character | chases and hoards combo bonuses above a threshold; defends unreliably — see §8 |
 
@@ -177,6 +181,17 @@ void                  combo_threshold_set_params(const ComboThresholdParams* par
 ComboThresholdParams  combo_threshold_get_default_params(void);
 ```
 
+**Note (2026-08-22, shipped differently):** `combo_threshold_set_params()` above is a
+single global setter, not per-player — the same issue `A3`'s handout flagged for
+`borealis_set_params()` after `A1`'s calibration work showed self-play (parameter set 1
+vs. parameter set 2, head-to-head in one game) is a more discriminating calibration
+signal than vs-Random once vs-Random saturates near a ceiling. That requires a
+*per-player* override. Shipped:
+`combo_threshold_set_params(PlayerID player, const ComboThresholdParams* params)` /
+`combo_threshold_reset_params(void)`, file-static per-player override arrays, same
+pattern as `value_based_set_params()` (`src/ai_strat/ai_strat_valuebased.c/h`) —
+calibration-only, not threaded through the general strategy framework.
+
 Signatures must match `AttackStrategyFunc` / `DefenseStrategyFunc` in `ai_strategy.h`.
 
 ### 6.3 Tunable parameters
@@ -247,22 +262,37 @@ randomness must go through `ctx->rng`** so runs stay reproducible under a fixed
 
 ## 7. Integration points
 
-1. **Enum.** `AI_STRATEGY_COMBO_THRESHOLD` already exists in
+**Status (2026-08-22): all six items below are done.** Kept as a record of the plan;
+the "stale" notes describe how reality diverged from what this section originally said
+by the time implementation actually happened (`A1` landed in between, 2026-08-21).
+
+1. **Enum.** ~~`AI_STRATEGY_COMBO_THRESHOLD` already exists in
    `src/ui/shared/player_config.h`, currently under the retired name
-   `AI_STRATEGY_COMBO_AWARE` — see Part 5 of the folder-sort plan for the rename.
+   `AI_STRATEGY_COMBO_AWARE` — see Part 5 of the folder-sort plan for the rename.~~
+   **Stale**: `A1` moved `AIStrategyType` to `src/core/game_types.h` and completed the
+   `AI_STRATEGY_COMBO_AWARE` → `AI_STRATEGY_COMBO_THRESHOLD` rename before this agent's
+   own implementation started; nothing left to do here by the time it did.
 2. **`get_strategy_display_name()`** — flavour name "The Showboat" / "Le Frimeur" /
-   "El Fanfarrón", per the names file.
+   "El Fanfarrón", per the names file. Done (already present pre-implementation).
 3. **Interactive strategy menu** — drop the "not yet implemented" suffix once implemented.
-4. **Shorthands** — `showboat` primary, `combo` retained as alias so existing scripts and
-   saved configs keep working (per the names file).
-5. **Strategy dispatch** — register both functions in the `AIStrategyType` → `StrategySet`
-   mapping (currently only Random is wired).
-6. **`strat_lib`** — the combo-scoring helper (`CombatCard` construction +
+   Done, and automatic: `ai_strategy_is_implemented()` (`ai_strategy.c`) derives the label
+   from the registry (item 5) rather than a hardcoded per-strategy check.
+4. **Shorthands.** ~~`showboat` primary, `combo` retained as alias so existing scripts and
+   saved configs keep working (per the names file).~~ **Stale**: `A1`'s one-shorthand-
+   per-agent cleanup retired `showboat` before this agent existed. Shipped: `combo` is the
+   sole shorthand, no alias.
+5. **Strategy dispatch.** ~~register both functions in the `AIStrategyType` →
+   `StrategySet` mapping (currently only Random is wired).~~ **Stale**: by
+   implementation time `A1` was wired too; done with one line added to `ai_strategy.c`'s
+   `STRATEGY_REGISTRY[]`.
+6. **`strat_lib`.** ~~the combo-scoring helper (`CombatCard` construction +
    `calculate_combo_bonus()` wrapper) is shared AI heuristic logic; coordinate with
    `../G1 AI agent general info/strat_lib_refactor_handout.md` rather than duplicating it
-   here. This agent will also share `build_affordable_champions()` /
-   `expected_incoming_attack()` with `A1`/`A3` — see those folders' handouts for the
-   `ai_strat_common` extraction plan.
+   here.~~ **Stale**: `strat_lib` is scoped to *non-turn* heuristics (mulligan,
+   discard-to-N, cash-exchange selection) — this combo-scoring helper is turn-strategy
+   logic, so it went into `ai_strat_common.c/h` instead
+   (`combo_bonus_for_selection()`), alongside `build_affordable_champions()`/
+   `expected_incoming_attack()`/`try_play_draw_card()`, all reused as-is from `A1`.
 
 ---
 

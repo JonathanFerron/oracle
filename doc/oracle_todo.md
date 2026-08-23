@@ -7,12 +7,12 @@ see `doc/oracle_design.md`. For a dated history of finished work see `doc/change
 **Quick Status**: Core game loop, all interactive-mode features (recall, cash exchange,
 mulligan, discard-to-7, combat/discard display), the source folder structure cleanup, and
 TUI Milestones 1–2 + polish pass are complete — see `doc/changelog.md`. `A1` Value Based
-("The Apprentice") is implemented (2026-08-21); `A2` Combo Threshold is next; see
-`doc/oracle_roadmap.md`'s "Next Up" for the authoritative order and rationale
-(`A1 → A2 → A3`). The strategy-set build sites also gained a shared
-`AIStrategyType -> function pointer` registry (`ai_strategy.c`) as part of `A1` -- see
-"Checklist: Adding a New AI Strategy" below, which now reflects that mechanism rather
-than the old per-file hardcoding.
+("The Apprentice", 2026-08-21) and `A2` Combo Threshold ("The Showboat", 2026-08-22,
+calibrated) are implemented; `A3` Borealis is next; see `doc/oracle_roadmap.md`'s "Next Up"
+for the authoritative order and rationale (`A1 → A2 → A3`). The strategy-set build sites
+also gained a shared `AIStrategyType -> function pointer` registry (`ai_strategy.c`) as
+part of `A1` -- see "Checklist: Adding a New AI Strategy" below, which now reflects that
+mechanism rather than the old per-file hardcoding.
 
 ---
 
@@ -37,7 +37,14 @@ target_folder_structure_v4.md`'s ownership table for the full picture):
 
 **Back burner (explicitly deferred)**: save/load game state
 (`ideas/6 save and load gamestate/`), configuration file system
-(`ideas/7 config file/`).
+(`ideas/7 config file/`). Also noted as a separate future project (2026-08-22, not
+started): investigate first-player-vs-second-player advantage (visible across multiple
+agent matchups during `A2` measurement -- e.g. `combo` beat `rand` 84.85% seated as
+Player A vs 91.11% seated as Player B, `n=10000` each; `A1` showed the same pattern at
+90.1%/94.5%) and whether tuning game-rule parameters such as the mulligan card count
+(`AVERAGE_POWER_FOR_MULLIGAN`'s `max_cards = 2` in `apply_mulligan()`, `stda_auto.c`)
+changes it -- these are genuine game-design levers, not just engine bugs, since the
+game rules are original and adjustable.
 
 ---
 
@@ -85,6 +92,21 @@ See `doc/oracle_roadmap.md`'s "Phase: AI Development" for the full agent ladder 
 `AIStrategyType` enum ordinal; see `ideas/G1 AI agent general info/oracle_ai_agent_names.md`
 for the canonical roster). Below are the two agents with enough design-note detail
 already sketched out to break into sub-tasks.
+
+- [ ] **Agent-specific discard-to-7 / mulligan / cash-exchange-selection.**
+  `discard_to_7_cards()`/`apply_mulligan()`/`select_champion_for_cash_exchange()`
+  (`src/core/card_actions.c`, `src/roles/stda/stda_auto.c`) all share one lowest-`power`
+  heuristic today, used unconditionally regardless of which AI is playing. That actively
+  works against any agent that wants to *hold* expensive combo pieces across turns --
+  `A3` Borealis's `hold_lethal_combos` and `A2`'s `save_big_combos_for_lethal` both do.
+  Give `StrategySet` (`src/ai_strat/ai_strategy.h`) optional
+  `mulligan_strategy[2]`/`discard_strategy[2]`/`exchange_select[2]` hooks, defaulting to
+  today's shared power-based function so Random and any agent that doesn't override stays
+  byte-identical (including `bin/expectedresults.txt`, recorded with Random on both
+  seats). See `ideas/G1 AI agent general info/strat_lib_refactor_handout.md` (2026-08-22
+  status note) and `ideas/A3 ai agent greedy power (borealis)/
+  greedy_power_borealis_handout.md` §7's 2026-08-22 note. Do this before or alongside
+  `A3`, since Borealis is the first agent that actually needs it.
 
 ### `A4` Balanced Rules Strategy (`ai_strat_balancedrules1.c`)
 

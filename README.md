@@ -23,7 +23,8 @@ Oracle is an open-source implementation of a fixed-pool strategic dueling card g
 This project serves as a testbed for AI development, progressing from simple to sophisticated (11 planned agents, `A1`–`A11`; see `doc/oracle_roadmap.md`):
 
 - ✅ **Random strategy** (baseline, functional)
-- 📋 Value-based, greedy-power, combo-aware (Borealis benchmark), balanced rules, heuristic, hybrid (HBT), HBT 2-ply, simple Monte Carlo, IS-MCTS, IS-MCTS + neural network — all designed, not yet implemented
+- ✅ **Value Based** ("The Apprentice", `A1`) and **Combo Threshold** ("The Showboat", `A2`) — implemented and calibrated
+- 📋 Greedy-power (Borealis benchmark), balanced rules, heuristic, hybrid (HBT), HBT 2-ply, simple Monte Carlo, IS-MCTS, IS-MCTS + neural network — all designed, not yet implemented
 
 A Bradley-Terry rating system for objective AI strength measurement is designed but not yet built.
 

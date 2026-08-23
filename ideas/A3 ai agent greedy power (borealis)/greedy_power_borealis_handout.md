@@ -190,6 +190,29 @@ Two things to watch:
   so this cannot deadlock — but confirm the agent still attacks with non-combo
   plays while holding.
 
+**Note (2026-08-22):** the interaction above is sharpened by a defect already
+flagged for A2 (`../A2 ai agent combo threshold (the showboat)/
+combo_threshold_handout.md` §5.1): `discard_to_7_cards()` (`card_actions.c`)
+and `apply_mulligan()` (`stda_auto.c`) both discard/mulligan the *lowest
+`power`* card, i.e. they preferentially throw away expensive high-strength
+champions (exactly the pieces a held combo needs) and keep cheap weak ones.
+Plan to make both **AI-agent-specific** rather than one hardcoded
+power-based rule shared by everyone: Random and the weaker roster agents can
+keep the existing lowest-power heuristic (it's an acceptable, even
+thematically fitting, unsophisticated rule for them), but Borealis — and any
+stronger agent built after it — should get a heuristic that accounts for
+held combo pieces (and for A2, the analogous `save_big_combos_for_lethal`
+holdings) instead of discarding/mulliganing them away by accident. Route
+this through `strat_lib` (`../G1 AI agent general info/
+strat_lib_refactor_handout.md`) as a per-strategy hook (e.g. an optional
+`AttackStrategyFunc`-adjacent discard/mulligan callback in `StrategySet`,
+defaulting to today's power-based function when an agent doesn't override
+it) rather than branching on `AIStrategyType` inside `card_actions.c`/
+`stda_auto.c` directly. **Does not affect `bin/expectedresults.txt`**: that
+baseline is `-a -p` with both seats on Random, and Random keeps the existing
+shared behaviour unconditionally — only agents that opt into an override
+would see different discard/mulligan choices.
+
 ---
 
 ## 8. Calibration — λ Is the Dial

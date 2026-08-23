@@ -32,6 +32,13 @@ uint8_t build_affordable_champions(const struct gamestate* gstate, PlayerID play
 // attacker's committed champions.
 float expected_incoming_attack(const struct gamestate* gstate, PlayerID defender);
 
+// Combo bonus a selection of up to 3 fullDeck[] indices would score if
+// played together, via calculate_combo_bonus() with the same DECK_RANDOM
+// argument combat.c always passes -- so this matches how combat actually
+// resolves. n must be 0-3; returns 0 outside 2-3 (calculate_combo_bonus()'s
+// own range check), same as calling it directly.
+int combo_bonus_for_selection(const uint8_t* card_indices, uint8_t n);
+
 // Borealis's placeholder draw heuristic (greedy_power_borealis_handout.md
 // Sec.9): if hand size < min_hand_size and opponent energy > opp_energy_floor
 // and an affordable DRAW_CARD is held, play the cheapest one and return true.
