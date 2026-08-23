@@ -24,7 +24,7 @@ void play_turn(struct gamestats* gstats, struct gamestate* gstate,
   { return; // Game ended
   }
 
-  end_of_turn(gstate, ctx); // need to pass cfg pointer to provide game mode information
+  end_of_turn(gstate, player_strategies, ctx); // need to pass cfg pointer to provide game mode information
 } // play_turn
 
 // TODO: add a 'UICallbacks* uicb' parameter to this function that will have a function pointer to a function in the UI code that can be called to display the card drawn
@@ -60,9 +60,9 @@ void defense_phase(struct gamestate* gstate, StrategySet* strategies, GameContex
     strategies->defense_strategy[defender](gstate, ctx);
 }
 
-void end_of_turn(struct gamestate* gstate, GameContext* ctx)
+void end_of_turn(struct gamestate* gstate, StrategySet* strategies, GameContext* ctx)
 { collect_1_luna(gstate);
-  discard_to_7_cards(gstate, ctx); // need to pass cfg pointer to provide game mode information
+  discard_to_7_cards(gstate, strategies, ctx); // need to pass cfg pointer to provide game mode information
   change_current_player(gstate);
 
   DEBUG_PRINT(" End round %.4u, turn %.4u\n",

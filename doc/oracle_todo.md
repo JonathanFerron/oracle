@@ -7,12 +7,15 @@ see `doc/oracle_design.md`. For a dated history of finished work see `doc/change
 **Quick Status**: Core game loop, all interactive-mode features (recall, cash exchange,
 mulligan, discard-to-7, combat/discard display), the source folder structure cleanup, and
 TUI Milestones 1–2 + polish pass are complete — see `doc/changelog.md`. `A1` Value Based
-("The Apprentice", 2026-08-21) and `A2` Combo Threshold ("The Showboat", 2026-08-22,
-calibrated) are implemented; `A3` Borealis is next; see `doc/oracle_roadmap.md`'s "Next Up"
-for the authoritative order and rationale (`A1 → A2 → A3`). The strategy-set build sites
+("The Apprentice", 2026-08-21), `A2` Combo Threshold ("The Showboat", 2026-08-22,
+calibrated), and `A3` Borealis (the Bradley-Terry benchmark, 2026-08-23, calibrated) are
+implemented; the Bradley-Terry rating system itself is next — see `doc/oracle_roadmap.md`'s
+"Next Up" for the authoritative order and rationale. The strategy-set build sites
 also gained a shared `AIStrategyType -> function pointer` registry (`ai_strategy.c`) as
 part of `A1` -- see "Checklist: Adding a New AI Strategy" below, which now reflects that
-mechanism rather than the old per-file hardcoding.
+mechanism rather than the old per-file hardcoding. As of `A3`, that registry also carries
+optional per-agent `mulligan_strategy[]`/`discard_strategy[]` hooks (`ai_strategy.h`),
+defaulting to the shared power-based heuristic (`ai_strat_lib_heuristics.c`).
 
 ---
 
@@ -93,20 +96,45 @@ See `doc/oracle_roadmap.md`'s "Phase: AI Development" for the full agent ladder 
 for the canonical roster). Below are the two agents with enough design-note detail
 already sketched out to break into sub-tasks.
 
-- [ ] **Agent-specific discard-to-7 / mulligan / cash-exchange-selection.**
-  `discard_to_7_cards()`/`apply_mulligan()`/`select_champion_for_cash_exchange()`
-  (`src/core/card_actions.c`, `src/roles/stda/stda_auto.c`) all share one lowest-`power`
-  heuristic today, used unconditionally regardless of which AI is playing. That actively
-  works against any agent that wants to *hold* expensive combo pieces across turns --
-  `A3` Borealis's `hold_lethal_combos` and `A2`'s `save_big_combos_for_lethal` both do.
-  Give `StrategySet` (`src/ai_strat/ai_strategy.h`) optional
-  `mulligan_strategy[2]`/`discard_strategy[2]`/`exchange_select[2]` hooks, defaulting to
-  today's shared power-based function so Random and any agent that doesn't override stays
-  byte-identical (including `bin/expectedresults.txt`, recorded with Random on both
-  seats). See `ideas/G1 AI agent general info/strat_lib_refactor_handout.md` (2026-08-22
-  status note) and `ideas/A3 ai agent greedy power (borealis)/
-  greedy_power_borealis_handout.md` §7's 2026-08-22 note. Do this before or alongside
-  `A3`, since Borealis is the first agent that actually needs it.
+- [x] **Agent-specific discard-to-7 / mulligan hooks** — done 2026-08-23, landed alongside
+  `A3` as planned. `StrategySet` (`src/ai_strat/ai_strategy.h`) gained optional
+  `mulligan_strategy[2]`/`discard_strategy[2]` function-pointer slots; `ai_strategy.c`'s
+  `STRATEGY_REGISTRY` fills any unset slot with the shared power-based default (moved
+  verbatim into new `src/ai_strat/ai_strat_lib_heuristics.c/.h`), so Random/`A1`/`A2` stay
+  byte-identical (`bin/expectedresults.txt` reverified unchanged). `A3` Borealis is the
+  first agent to override them, protecting held combo pieces per its handout §7. See
+  `doc/changelog.md`, 2026-08-23.
+  - [ ] **`exchange_select` was *not* added** — deliberately deferred, not forgotten.
+    `select_champion_for_cash_exchange()` is called from inside each agent's own
+    `*_attack_strategy()` (`ai_strat_random.c`, `ai_strat_combo_threshold.c`), which only
+    receive `(gstate, ctx)` — no `StrategySet*` in scope. Adding this hook would mean
+    widening `AttackStrategyFunc`'s signature for every existing agent, for a feature
+    nothing has needed yet. Revisit if a future agent's cash-exchange choice actually
+    needs to differ from the shared lowest-`power` heuristic.
+
+- [ ] **Calibration driver bug found during `A3`'s calibration, not yet fixed in
+  `aicalibsrc/value/`/`aicalibsrc/combo/`.** `run_many()`'s `ProcessPoolExecutor` +
+  `as_completed()` returns results in completion order, not submission order; both
+  drivers' `sweep`/`selfplay` commands (plus A1's `selfplay` specifically) reattach
+  external per-job metadata by list position afterward, which silently mismatches under
+  real parallelism. `calibrate_borealis.py` was fixed (tag results at the source via
+  `run_match(**tags)` instead); `calibrate_valuebased.py`/`calibrate_combo_threshold.py`
+  were left as-is (out of scope for `A3`'s session). This casts real doubt on A1's shipped
+  `VB_COST_FLOOR`/`VB_DEFEND_THRESHOLD` specifically, since those were chosen via
+  `selfplay` (the vulnerable path) — a re-run with the fix, and likely a re-calibration,
+  is worth doing before those values are trusted further. A2's shipped `CT_DEFAULTS` were
+  chosen via `optimize` (not vulnerable — see `doc/changelog.md`, 2026-08-23) and are fine
+  as shipped.
+
+- [ ] **`aicalibsrc/*/calibrate_*.py`'s `DEFAULTS` dicts drift from their shipped C
+  constants.** Noticed while writing `aicalibsrc/borealis/`: both `calibrate_valuebased.py`
+  and `calibrate_combo_threshold.py` hardcode the *pre-calibration* parameter values in
+  their own `DEFAULTS` dict (used as the baseline every `sweep`/`optimize`/`validate` run
+  compares against and as the fallback for partial candidate JSON), not the values actually
+  shipped in `VB_COST_FLOOR`/`VB_DEFEND_THRESHOLD`/`CT_DEFAULTS` today. A re-run of either
+  driver right now would silently compare against a stale baseline. Update both dicts (or
+  script a check that fails loudly if they drift from the C source), and keep
+  `aicalibsrc/borealis/`'s `DEFAULTS` in sync with `BOREALIS_DEFAULTS` going forward.
 
 ### `A4` Balanced Rules Strategy (`ai_strat_balancedrules1.c`)
 

@@ -13,7 +13,7 @@ void play_turn(struct gamestats* gstats, struct gamestate* gstate,
 
 // Turn phase functions
 void begin_of_turn(struct gamestate* gstate, GameContext* ctx);
-void end_of_turn(struct gamestate* gstate, GameContext* ctx);
+void end_of_turn(struct gamestate* gstate, StrategySet* strategies, GameContext* ctx);
 void attack_phase(struct gamestate* gstate, StrategySet* strategies, GameContext* ctx);
 void defense_phase(struct gamestate* gstate, StrategySet* strategies, GameContext* ctx);
 

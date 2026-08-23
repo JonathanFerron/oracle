@@ -289,7 +289,7 @@ bool tui_play_turn_with_humans(TuiScreen* screen, struct gamestate* gstate,
   if(pconfig->player_types[gstate->current_player] == INTERACTIVE_PLAYER)
     tui_handle_interactive_discard_to_7(screen, gstate, ctx, cfg);
   else
-    discard_to_7_cards(gstate, ctx);
+    discard_to_7_cards(gstate, strategies, ctx);
   change_current_player(gstate);
 
   return true;

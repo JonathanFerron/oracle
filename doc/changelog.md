@@ -5,7 +5,144 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
-## 2026-08-22 — A2 Combo Threshold ("The Showboat") implemented and calibrated
+## 2026-08-23 — A3 Borealis (the Bradley-Terry benchmark) implemented and calibrated
+
+Implemented per `ideas/A3 ai agent greedy power (borealis)/
+greedy_power_borealis_handout.md`: a one-ply agent that exhaustively enumerates
+every legal 0-3 champion subset (no pruning of any kind -- the explicit contrast
+with `A2` Combo Threshold's threshold-gated search), scores each by
+`Σ contribution + combo_bonus − λ·Σ cost` (defense caps the bracketed part at
+`expected_incoming_attack()`, handout §4), and plays the epsilon tie-break
+winner. This is the Bradley-Terry rating scale's anchor (rating 50 by
+definition) precisely because λ (`luna_value`) is a single, monotone strength
+dial -- win rate is unimodal in it -- rather than a personality trait like
+`A2`'s `aggression_level`.
+
+- **`src/ai_strat/ai_strat_borealis.c/.h`** (new, attack/defense orchestration,
+  parameter management, discard/mulligan overrides) **+
+  `ai_strat_borealis_enum.c/.h`** (new, candidate enumeration/scoring, split
+  out per the handout's §10 file-length guidance once the combined size
+  approached 400 lines). Reuses `build_affordable_champions()`,
+  `expected_incoming_attack()`, `combo_bonus_for_selection()`,
+  `try_play_draw_card()` from `ai_strat_common.h` -- all four were written for
+  or already used by `A1`/`A2` with exactly this reuse in mind. The handout's
+  `borealis_set_params(const BorealisParams*)` single global setter is
+  superseded by a per-player `borealis_set_params(PlayerID, ...)`, matching
+  `value_based_set_params()`/`combo_threshold_set_params()`, per the handout's
+  own 2026-08-21 note that self-play calibration needs each seat running a
+  different parameter set in one game.
+
+- **Per-agent mulligan/discard-to-7 hooks** (`doc/oracle_todo.md`'s
+  "do this before or alongside `A3`" item, landed alongside it as planned):
+  `discard_to_7_cards()` (`card_actions.c`) and `apply_mulligan()`
+  (`stda_auto.c`) are now thin dispatchers through new
+  `StrategySet.discard_strategy[]`/`mulligan_strategy[]` function-pointer
+  slots, defaulting to the shared power-based heuristic -- extracted verbatim,
+  unchanged, into new `src/ai_strat/ai_strat_lib_heuristics.c/.h` -- when an
+  agent's `STRATEGY_REGISTRY` entry (`ai_strategy.c`) leaves them `NULL`.
+  Random, `A1`, and `A2` all leave them unset and are therefore byte-identical
+  to before (`bin/expectedresults.txt`, which is Random-on-both-seats, was
+  re-verified unchanged). `A3` is the first agent to override them:
+  `borealis_discard_to_7()`/`borealis_mulligan()` protect the best 2- or
+  3-card champion combo in hand (by the same `lethal_combo_bonus` threshold
+  attack's holding logic uses) from being thrown away, discarding/mulliganing
+  by Borealis's own `expected_attack − λ·cost` valuation instead of the
+  shared `power` ratio, and only ever touching a protected card once nothing
+  unprotected remains (never stalls). `play_cash_card_ai()`'s analogous
+  `select_champion_for_cash_exchange()` was **not** given the same optional-
+  hook treatment: unlike discard/mulligan, it's called directly from inside
+  each agent's own `*_attack_strategy()` (`ai_strat_random.c`,
+  `ai_strat_combo_threshold.c`), which only receive `(gstate, ctx)` -- adding
+  a hook there would mean widening `AttackStrategyFunc`'s signature itself
+  for every existing agent, for a feature nothing currently needs.
+
+- **A bug found and fixed in the calibration *driver*, not the game engine**:
+  `aicalibsrc/{value,combo}/calibrate_*.py`'s `sweep`/`selfplay` commands (and
+  the new `calibrate_borealis.py`, copied from the `combo` template) tag each
+  parallel match job with external bookkeeping (which parameter value, which
+  grid cell) in a same-order Python list, then reattach it to the results
+  `DataFrame` by *list position* after `run_many()` returns. But
+  `run_many()` collects results via `ProcessPoolExecutor` + `as_completed()`,
+  which yields futures in **completion order, not submission order** --
+  under real parallelism (`--workers` > 1, the default) a job's win/loss
+  counts can and did end up reattached to the *wrong* parameter value.
+  Confirmed directly: a `luna_value` sweep vs `rand` showed a wildly erratic,
+  non-monotonic curve (e.g. 88% -> 50% -> 32% -> 51% at nearby lambda values)
+  under default parallel workers, and a smooth, sane curve (87-91%,
+  monotonically increasing) with `--workers 1` forcing sequential completion
+  -- and matched manual single-shot calls to `bin/calib_borealis` exactly.
+  Root cause confirmed by inspection: A1's `sweep` is *not* affected (its
+  `run_match()` keeps the echoed parameter values as real `DataFrame`
+  columns, so `summarize_sweep()` recovers "which value was this row" from
+  the row's own data), but A1's `selfplay`, A2's `sweep`/`selfplay`, and this
+  file's `sweep`/`selfplay` all use the vulnerable pattern.
+  **`calibrate_borealis.py`'s fix**: `run_match()` now accepts `**tags` that
+  get merged directly into the result dict it returns, so bookkeeping travels
+  *with* each result through the pool regardless of completion order --
+  `cmd_sweep()`/`cmd_selfplay()` no longer need (or do) any pop-and-reattach
+  step at all. **`aicalibsrc/value/` and `aicalibsrc/combo/` were not
+  patched** (out of scope for this session; see `doc/oracle_todo.md`), but
+  this casts real doubt on their previously-shipped results: A1's
+  `VB_COST_FLOOR`/`VB_DEFEND_THRESHOLD` were chosen via `selfplay` (the
+  vulnerable path) -- notably, that calibration run's own write-up
+  (2026-08-21, above) already flagged an unexpectedly low quadratic-fit R²
+  (~0.25-0.49) as noisier than the handout predicted, which this bug is a
+  plausible (unconfirmed) contributor to. A2's shipped `CT_DEFAULTS` were
+  chosen via `optimize` (differential evolution against `combo_win_rate()`,
+  which reads `agent_a`/`agent_b`/`wins_a`/`wins_b` directly off each
+  self-describing result row rather than external list-position metadata) and
+  are **not** affected by this bug.
+
+- **Calibration** (`aicalibsrc/borealis/`, new: `calib_borealis.c` +
+  `calibrate_borealis.py` + `README.md`, full `sweep`/`optimize`/`selfplay`/
+  `validate` parity with `aicalibsrc/combo/`). Because Borealis's only
+  identity-defining property is λ's *shape* (unimodal), not a fixed
+  acceptable range for any parameter, `optimize` replaces A2's static
+  personality-band check with a post-search re-sweep of λ (the other five
+  parameters held at the found values) fit to a quadratic -- concave-down
+  means still usable as an anchor; the same technique already used to
+  characterize `A1`'s `VB_COST_FLOOR` search.
+  - A manual `luna_value` sweep vs `rand` was monotonically increasing
+    through the handout's own §13 grid (0.0-2.0, 87.6% -> 96.0%) with no
+    peak in range -- expected, since Random is weak enough that added
+    caution keeps helping. Widened vs `combo` instead (real headroom: at
+    the handout's untuned defaults, 0.5, Borealis actually *lost* to `combo`,
+    43.6%) found the true peak far higher than the handout's guess: win rate
+    climbs from 36.5% at λ=0 to ~61-62% around λ=4.0-4.5 (quadratic fit
+    R²=0.976, vertex 4.098) before declining again by λ=6.0 (40.9%) --
+    confirming §8's unimodal-in-λ claim, just at a very different λ than
+    guessed. `BOUNDS["luna_value"]` in the driver was widened from an initial
+    (0.0, 3.0) to (0.0, 6.0) once this was found, so `optimize` wouldn't
+    silently cap short of the real peak.
+  - `optimize --opponent combo` (differential evolution, all six parameters
+    free) found `luna_value=4.5846, tiebreak_epsilon=0.3444,
+    hold_lethal_combos=true, lethal_combo_bonus=24, lethal_hold_ceiling=38,
+    min_hand_size_target=6` -- λ landing inside the manually-found peak, and
+    the post-search unimodality re-check confirmed concave-down (R²=0.908,
+    implied optimum 4.066, consistent with the manual sweep). `
+    lethal_combo_bonus`/`min_hand_size_target` both landed at their search
+    bounds (24, 6); unlike `A2`'s `aggression_level`/`combo_bonus_threshold`
+    these aren't identity-defining traits (handout §9 calls the draw-card
+    heuristic a placeholder outright), so this wasn't treated as a rejection
+    -- a follow-up pass with wider bounds on those two may find further
+    gains. An A/B (`hold_lethal_combos` true vs false, otherwise identical)
+    measured an exact 50.00% self-play tie -- `lethal_combo_bonus=24` is
+    high enough that holding rarely triggers either way, so it was left at
+    its optimizer-found `true` rather than forced off per handout §7's
+    fallback.
+  - **Shipped** (`BOREALIS_DEFAULTS`, `ai_strat_borealis.c`): the `optimize`
+    winner above, verbatim. Measured (validated, both seats): vs `combo`
+    43.63% -> **69.13%** [68.67%, 69.58%] (40,000 games); vs `value` 49.63%
+    -> **74.19%** [73.51%, 74.87%] (16,000 games); vs `rand` 93.13% ->
+    **99.33%** [99.19%, 99.45%] (16,000 games) -- confirmed against the
+    actual `bin/oracle` binary too (not just the calibration harness), e.g.
+    vs `combo` at `-n 5000`: 70.8% as Player A, 68.0% as Player B. Mirror
+    match (`borealis` vs `borealis`, shipped params both seats): ~55-57% for
+    Player A across two seeds, attributable to first-player advantage per
+    handout §13.
+
+Full details of this and future calibration runs will continue to accumulate
+in this file the way the `A1`/`A2` entries above do.
 
 Implemented per `ideas/A2 ai agent combo threshold (the showboat)/
 combo_threshold_handout.md`: a threshold-gated combo chaser that prunes attack

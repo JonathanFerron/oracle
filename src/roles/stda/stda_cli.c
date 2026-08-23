@@ -111,9 +111,9 @@ static int run_game_loop(struct gamestate* gstate, StrategySet* strategies,
     /* Discard-to-7 phase */
     PlayerConfig* pconfig = (PlayerConfig*)cfg->player_config;
     if(pconfig->player_types[gstate->current_player] == INTERACTIVE_PLAYER)
-      handle_interactive_discard_to_7(gstate, ctx, cfg);
+      handle_interactive_discard_to_7(gstate, strategies, ctx, cfg);
     else
-      discard_to_7_cards(gstate, ctx);
+      discard_to_7_cards(gstate, strategies, ctx);
 
     change_current_player(gstate);
   }
@@ -183,7 +183,7 @@ int run_mode_stda_cli(config_t* cfg)
   if(pconfig.player_types[PLAYER_B] == INTERACTIVE_PLAYER)
     handle_interactive_mulligan(gstate, ctx, cfg);
   else
-    apply_mulligan(gstate, ctx);
+    apply_mulligan(gstate, strategies, ctx);
 
   /* Run main game loop */
   int result = run_game_loop(gstate, strategies, ctx, cfg);

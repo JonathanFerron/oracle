@@ -273,7 +273,7 @@ static int process_discard_command(char* input_buffer,
   return done;
 }
 
-int handle_interactive_discard_to_7(struct gamestate* gstate,
+int handle_interactive_discard_to_7(struct gamestate* gstate, StrategySet* strategies,
                                     GameContext* ctx, config_t* cfg)
 { if(gstate->hand[gstate->current_player].size <= 7)
     return 0;
@@ -290,7 +290,7 @@ int handle_interactive_discard_to_7(struct gamestate* gstate,
              LOCALIZED_STRING("Input error, auto-discarding",
                               "Erreur, defausse automatique",
                               "Error, descarte automatico"));
-      discard_to_7_cards(gstate, ctx);
+      discard_to_7_cards(gstate, strategies, ctx);
       return 0;
     }
     discard_done = process_discard_command(input_buffer, gstate,

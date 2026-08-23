@@ -13,7 +13,7 @@ int run_mode_stda_auto(config_t* cfg);
 void run_simulation(uint16_t numsim, uint16_t initial_cash,
                     struct gamestats* gstats, StrategySet* strategies, GameContext* ctx);
 
-void apply_mulligan(struct gamestate* gstate, GameContext* ctx);
+void apply_mulligan(struct gamestate* gstate, StrategySet* strategies, GameContext* ctx);
 void play_stda_auto_game(uint16_t initial_cash, struct gamestats* gstats,
                          StrategySet* strategies, GameContext* ctx);
 

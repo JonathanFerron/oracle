@@ -69,7 +69,11 @@ TEST_CASH_OBJS := $(BUILDDIR)/testsrc/test_cash_exchange.o \
 # agents get calibration tooling. Links the engine directly (same pattern as
 # the TEST_* targets above) plus stda_auto.c (for run_simulation()) and
 # player_config.c (stda_auto.c's own dependency, for
-# get_ai_strategies()/parse_ai_strategy_shorthand()).
+# get_ai_strategies()/parse_ai_strategy_shorthand()). Links every agent
+# ai_strategy.c's STRATEGY_REGISTRY references (not just Value Based) plus
+# ai_strat_lib_heuristics.c (the shared mulligan/discard-to-7 default every
+# registry entry falls back to) -- anything that links ai_strategy.c needs
+# the whole roster it registers, updated here each time a new agent joins it.
 CALIB_VALUEBASED_TARGET := $(BINDIR)/calib_valuebased
 CALIB_VALUEBASED_SRCS := $(AICALIBDIR)/value/calib_valuebased.c \
                          $(SRCDIR)/core/card_actions.c \
@@ -86,17 +90,19 @@ CALIB_VALUEBASED_SRCS := $(AICALIBDIR)/value/calib_valuebased.c \
                          $(SRCDIR)/ai_strat/ai_strategy.c \
                          $(SRCDIR)/ai_strat/ai_strat_random.c \
                          $(SRCDIR)/ai_strat/ai_strat_common.c \
+                         $(SRCDIR)/ai_strat/ai_strat_lib_heuristics.c \
                          $(SRCDIR)/ai_strat/ai_strat_valuebased.c \
+                         $(SRCDIR)/ai_strat/ai_strat_combo_threshold.c \
+                         $(SRCDIR)/ai_strat/ai_strat_borealis.c \
+                         $(SRCDIR)/ai_strat/ai_strat_borealis_enum.c \
                          $(SRCDIR)/roles/stda/stda_auto.c \
                          $(SRCDIR)/ui/shared/player_config.c
 CALIB_VALUEBASED_OBJS := $(BUILDDIR)/aicalibsrc/value/calib_valuebased.o \
                          $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_VALUEBASED_SRCS)))
 
 # Calibration harness for A2 Combo Threshold's tunable parameters (see
-# aicalibsrc/combo/). Same pattern as CALIB_VALUEBASED_* above. Links
-# ai_strat_valuebased.c too, not just ai_strat_combo_threshold.c: ai_strategy.c's
-# STRATEGY_REGISTRY references both (plus Random), so anything that links
-# ai_strategy.c needs every agent it registers.
+# aicalibsrc/combo/). Same pattern as CALIB_VALUEBASED_* above, same
+# whole-roster reasoning.
 CALIB_COMBO_TARGET := $(BINDIR)/calib_combo_threshold
 CALIB_COMBO_SRCS := $(AICALIBDIR)/combo/calib_combo_threshold.c \
                     $(SRCDIR)/core/card_actions.c \
@@ -113,12 +119,44 @@ CALIB_COMBO_SRCS := $(AICALIBDIR)/combo/calib_combo_threshold.c \
                     $(SRCDIR)/ai_strat/ai_strategy.c \
                     $(SRCDIR)/ai_strat/ai_strat_random.c \
                     $(SRCDIR)/ai_strat/ai_strat_common.c \
+                    $(SRCDIR)/ai_strat/ai_strat_lib_heuristics.c \
                     $(SRCDIR)/ai_strat/ai_strat_valuebased.c \
                     $(SRCDIR)/ai_strat/ai_strat_combo_threshold.c \
+                    $(SRCDIR)/ai_strat/ai_strat_borealis.c \
+                    $(SRCDIR)/ai_strat/ai_strat_borealis_enum.c \
                     $(SRCDIR)/roles/stda/stda_auto.c \
                     $(SRCDIR)/ui/shared/player_config.c
 CALIB_COMBO_OBJS := $(BUILDDIR)/aicalibsrc/combo/calib_combo_threshold.o \
                     $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_COMBO_SRCS)))
+
+# Calibration harness for A3 Borealis's tunable parameters (see
+# aicalibsrc/borealis/). Same pattern and same whole-roster reasoning as
+# CALIB_VALUEBASED_*/CALIB_COMBO_* above.
+CALIB_BOREALIS_TARGET := $(BINDIR)/calib_borealis
+CALIB_BOREALIS_SRCS := $(AICALIBDIR)/borealis/calib_borealis.c \
+                       $(SRCDIR)/core/card_actions.c \
+                       $(SRCDIR)/core/combat.c \
+                       $(SRCDIR)/core/combo_bonus.c \
+                       $(SRCDIR)/core/game_constants.c \
+                       $(SRCDIR)/core/game_context.c \
+                       $(SRCDIR)/core/game_state.c \
+                       $(SRCDIR)/core/turn_logic.c \
+                       $(SRCDIR)/structures/card_collection.c \
+                       $(SRCDIR)/structures/deckstack.c \
+                       $(SRCDIR)/util/mtwister.c \
+                       $(SRCDIR)/util/rnd.c \
+                       $(SRCDIR)/ai_strat/ai_strategy.c \
+                       $(SRCDIR)/ai_strat/ai_strat_random.c \
+                       $(SRCDIR)/ai_strat/ai_strat_common.c \
+                       $(SRCDIR)/ai_strat/ai_strat_lib_heuristics.c \
+                       $(SRCDIR)/ai_strat/ai_strat_valuebased.c \
+                       $(SRCDIR)/ai_strat/ai_strat_combo_threshold.c \
+                       $(SRCDIR)/ai_strat/ai_strat_borealis.c \
+                       $(SRCDIR)/ai_strat/ai_strat_borealis_enum.c \
+                       $(SRCDIR)/roles/stda/stda_auto.c \
+                       $(SRCDIR)/ui/shared/player_config.c
+CALIB_BOREALIS_OBJS := $(BUILDDIR)/aicalibsrc/borealis/calib_borealis.o \
+                       $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_BOREALIS_SRCS)))
 
 # Default target
 all: $(TARGET)
@@ -152,7 +190,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold
+	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -215,6 +253,16 @@ $(CALIB_COMBO_TARGET): $(CALIB_COMBO_OBJS)
 	$(CC) $(CALIB_COMBO_OBJS) -o $(CALIB_COMBO_TARGET) $(LIBS)
 	@echo "Build complete: $(CALIB_COMBO_TARGET)"
 
+# Calibration harness (see aicalibsrc/borealis/README.md or the file header for CLI usage)
+.PHONY: calib_borealis
+calib_borealis: $(CALIB_BOREALIS_TARGET)
+
+$(CALIB_BOREALIS_TARGET): $(CALIB_BOREALIS_OBJS)
+	@echo "Linking calib_borealis..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(CALIB_BOREALIS_OBJS) -o $(CALIB_BOREALIS_TARGET) $(LIBS)
+	@echo "Build complete: $(CALIB_BOREALIS_TARGET)"
+
 .PHONY: format
 format:
 	astyle --project --suffix=none --recursive --exclude=ideas "*.c,*.h"
@@ -239,6 +287,7 @@ help:
 	@echo "  test_stda_auto   - Diff 'oracle -sa -p' output against bin/expectedresults.txt"
 	@echo "  calib_valuebased - Build the Value Based parameter calibration harness (aicalibsrc/)"
 	@echo "  calib_combo_threshold - Build the Combo Threshold parameter calibration harness (aicalibsrc/)"
+	@echo "  calib_borealis   - Build the Borealis parameter calibration harness (aicalibsrc/)"
 	@echo "  format           - Format the c and h source files using astyle"
 	@echo "  help             - Show this help message"
 	@echo ""

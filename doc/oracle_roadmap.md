@@ -14,12 +14,26 @@ work see `doc/changelog.md`. For architecture/design rationale see `doc/oracle_d
 ## Current Status
 
 Core game engine, CLI interactive mode, and TUI mode (Milestones 1 & 2 plus a polish
-pass) are done. Random, `A1` Value Based ("The Apprentice"), and `A2` Combo Threshold
-("The Showboat") AI strategies are implemented. **Active work**: `A3` Borealis — see
-"Next Up" below.
+pass) are done. Random, `A1` Value Based ("The Apprentice"), `A2` Combo Threshold
+("The Showboat"), and `A3` Borealis (the Bradley-Terry benchmark) AI strategies are all
+implemented and calibrated. **Active work**: the Bradley-Terry rating system itself —
+see "Next Up" below.
 
 ### Recently Completed
 
+- **2026-08-23** — `A3` Borealis (the Bradley-Terry benchmark) implemented and
+  calibrated: exhaustive 0-3 champion subset enumeration (no pruning), one monotone
+  strength dial (`luna_value`/lambda), epsilon tie-break randomisation, lethal-combo
+  holding. Landed alongside it: per-agent `mulligan_strategy[]`/`discard_strategy[]`
+  hooks in `StrategySet` (`src/ai_strat/ai_strategy.h`), so Borealis can protect held
+  combo pieces from the shared power-based discard/mulligan heuristic without changing
+  Random/`A1`/`A2`'s behaviour. `aicalibsrc/borealis/` calibration tooling added, full
+  `sweep`/`optimize`/`selfplay`/`validate` parity with `aicalibsrc/combo/`; also fixed a
+  parallel-execution result-misattribution bug in the driver pattern it was copied from
+  (present, unpatched, in `aicalibsrc/value/`'s and `aicalibsrc/combo/`'s `sweep`/
+  `selfplay` commands — see `doc/oracle_todo.md`). The handout's default lambda (0.5)
+  turned out far from optimal: measured win rate vs `combo` climbed from 43.6% to 69.1%
+  after calibration (lambda≈4.58, confirmed unimodal). Full details: `doc/changelog.md`.
 - **2026-08-22** — `A2` Combo Threshold ("The Showboat") implemented and calibrated:
   threshold-gated combo chaser (pairs/triples must clear a tunable bonus threshold to
   be pursued), probabilistic defense decline -- both deliberate character, not defects
@@ -47,38 +61,29 @@ Full details: `doc/changelog.md`.
 
 ### What Needs Work
 
-- Only Random, `A1` Value Based, and `A2` Combo Threshold implemented — everything from
-  `A3` onward on the AI ladder below is open.
+- Random, `A1` Value Based, `A2` Combo Threshold, and `A3` Borealis implemented —
+  everything from `A4` onward on the AI ladder below is open. The Bradley-Terry rating
+  system (`ideas/5 rating system/`) can now be built against a calibrated benchmark.
 - Automated simulation mode (`stda_auto.c`) needs a refactor (see `doc/oracle_todo.md`).
 - No save/load, no config file system, no CSV export, no rating system, no network, no
   GUI, no `stda.sim`.
+- Two calibration-driver items flagged during `A3`'s calibration, not yet actioned: a
+  parallel-execution result-misattribution bug unpatched in `aicalibsrc/value/`'s and
+  `aicalibsrc/combo/`'s `sweep`/`selfplay` (casts doubt on A1's shipped values
+  specifically, chosen via the vulnerable `selfplay` path), and both drivers' `DEFAULTS`
+  dicts having drifted from their shipped C constants. See `doc/oracle_todo.md`.
 
 ---
 
 ## Next Up (single authoritative order)
 
-1. **`A3` Borealis** (`ideas/A3 ai agent greedy power (borealis)/`). `A1` Value Based
-   ("The Apprentice") and `A2` Combo Threshold ("The Showboat") are done (2026-08-21,
-   2026-08-22). This isn't just easiest-first: the rating system (`ideas/5 rating
-   system/`) needs the Borealis benchmark agent (`A3`), which itself needs `A1`–`A2`
-   implemented for comparison -- both now are. Support material that isn't itself an
-   agent — general info and calibration tooling — was moved off the A-line into
-   `ideas/G1 AI agent general info/` and `ideas/G2 ai agent parameters storing and
-   optimization/` (2026-08-21 folder-sort pass), so it no longer occupies an
-   `AIStrategyType` enum slot or interrupts the A-line numbering. Before or alongside
-   `A3`: give `discard_to_7_cards()`/`apply_mulligan()` an agent-specific override hook
-   (`doc/oracle_todo.md`'s "AI Strategies" section) -- Borealis's `hold_lethal_combos`
-   is the first agent that actually needs it, since the shared lowest-`power` heuristic
-   preferentially discards the expensive combo pieces it wants to hold.
-
-   The CLI's `display_ai_strategy_menu()`/`get_ai_strategy_choice()`/
-   `get_strategy_display_name()` (`src/ui/shared/player_config.c`) list all twelve
-   planned agents, with availability now driven by a single registry
-   (`ai_strategy_is_implemented()` in `src/ai_strat/ai_strategy.c`, added alongside
-   `A1`) rather than hardcoded per strategy; remaining work per agent is implementing
-   its attack/defense functions in `src/ai_strat/` and adding one line to that
-   registry. See `doc/oracle_todo.md`'s "Checklist: Adding a New AI Strategy" for the
-   mechanical steps.
+1. **Bradley-Terry rating system** (`ideas/5 rating system/`). `A1` Value Based
+   ("The Apprentice"), `A2` Combo Threshold ("The Showboat"), and `A3` Borealis (the
+   benchmark agent, rating 50 by definition) are all done and calibrated (2026-08-21,
+   2026-08-22, 2026-08-23) — the rating system's prerequisite roster now exists. Core
+   Bradley-Terry calculations, adaptive learning rate, the Borealis keeper-benchmark
+   anchor, incremental + batch updates, CSV persistence, matchmaking — see the v2 spec
+   in `ideas/5 rating system/` for the full scope.
 
 **Back burner** (explicitly deferred): save/load game state
 (`ideas/6 save and load gamestate/`), configuration file system
@@ -127,14 +132,14 @@ error-handling polish (see `doc/oracle_todo.md`).
   archived accordingly — see `doc/changelog.md`.
 - `stda.sim` (simulation UI): not started.
 
-### Phase: AI Development — `A1` done, `A2` next
+### Phase: AI Development — `A1`–`A3` done, `A4` next
 
-Ladder: `A1` value-based (done, 2026-08-21) → `A2` combo threshold (The Showboat) → `A3`
-greedy power (Borealis benchmark) → `A4` balanced rules → `A5` heuristic → `A6` tactical
-→ `A7` hybrid (HBT) → `A8` simple MC → `A9` HBT 2-ply → `A10` IS-MCTS → `A11` IS-MCTS +
-neural network. One `ideas/A#` folder per agent, `A#` matching that agent's
-`AIStrategyType` enum ordinal (`src/core/game_types.h` as of `A1`; it previously lived in
-`src/ui/shared/player_config.h`). See "Next Up" above for why `A2→A3` comes next, and
+Ladder: `A1` value-based (done, 2026-08-21) → `A2` combo threshold (The Showboat, done,
+2026-08-22) → `A3` greedy power (Borealis benchmark, done, 2026-08-23) → `A4` balanced
+rules → `A5` heuristic → `A6` tactical → `A7` hybrid (HBT) → `A8` simple MC → `A9` HBT
+2-ply → `A10` IS-MCTS → `A11` IS-MCTS + neural network. One `ideas/A#` folder per agent,
+`A#` matching that agent's `AIStrategyType` enum ordinal (`src/core/game_types.h` as of
+`A1`; it previously lived in `src/ui/shared/player_config.h`). See
 `ideas/G1 AI agent general info/oracle_ai_agent_names.md` for the canonical roster,
 flavour names, and ratings.
 
@@ -144,11 +149,11 @@ CSV export (`ideas/4 match results export/`); interactive simulation UI, `stda.s
 (no dedicated `ideas/` folder yet, see `ideas/2 …/target_folder_structure_v4.md` for
 scoping notes); configuration file system (`ideas/7 config file/`, back-burnered).
 
-### Phase: Rating System — spec complete, ready for implementation
+### Phase: Rating System — spec complete, implementation next up
 
 Bradley-Terry core calculations, adaptive learning rate, keeper benchmark (rating 50 =
-the `A4` Borealis agent), incremental + batch updates, CSV persistence, matchmaking.
-`ideas/5 rating system/` (v2 spec).
+the `A3` Borealis agent, implemented and calibrated 2026-08-23), incremental + batch
+updates, CSV persistence, matchmaking. `ideas/5 rating system/` (v2 spec).
 
 ### Phase: Client/Server Architecture — design complete, major refactor required
 

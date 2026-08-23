@@ -105,9 +105,7 @@ static const char* strategy_menu_label(AIStrategyType type, ui_language_t lang)
                                 "Seuil de combo [Le Frimeur]",
                                 "Umbral de combo [El Fanfarron]");
     case AI_STRATEGY_BOREALIS: // ideas/A3 ai agent greedy power (borealis) -- the benchmark agent
-      return LOCALIZED_STRING_L(lang, "Greedy Power [Borealis benchmark]",
-                                "Puissance gloutonne [reference Borealis]",
-                                "Poder codicioso [referencia Borealis]");
+      return LOCALIZED_STRING_L(lang, "Borealis", "Borealis", "Borealis");
     case AI_STRATEGY_BALANCED: // ideas/A4 ai agent balanced rules (bean counter)
       return LOCALIZED_STRING_L(lang, "Balanced Rules", "Regles equilibrees",
                                 "Reglas equilibradas");

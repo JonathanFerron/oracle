@@ -81,12 +81,16 @@ R_B = 50    // Borealis / cote boréale / puntuación boreal — rating
 ## Files Requiring "Keeper" → "Borealis" Replacement
 
 ### Rating system implementation
-- `ideas/14 rating system/rating system BT v2/oracle_rating_system_h.txt`
-- `ideas/14 rating system/rating system BT v2/oracle_rating_system_c.txt`
-- `ideas/14 rating system/rating system BT v2/oracle_rating_test.txt`
-- `ideas/14 rating system/rating system BT v2/oracle_rating_guide.md`
-- `ideas/14 rating system/rating system BT v2/oracle_rating_readme.md`
-- `ideas/14 rating system/rating system BT v2/rating_strength_analysis.html`
+(Path corrected 2026-08-23 -- `ideas/14 rating system/` was renamed/renumbered to
+`ideas/5 rating system/` before this checklist was ever acted on; check these files for
+any surviving "Keeper" references when the rating system is actually implemented, since
+`A3` is now shipped as "Borealis" throughout `src/`.)
+- `ideas/5 rating system/v2 Bradley-Terry (BT) Rating System/oracle_rating_system.h`
+- `ideas/5 rating system/v2 Bradley-Terry (BT) Rating System/oracle_rating_system.c`
+- `ideas/5 rating system/v2 Bradley-Terry (BT) Rating System/oracle_rating_test.c`
+- `ideas/5 rating system/v2 Bradley-Terry (BT) Rating System/oracle_rating_guide.md`
+- `ideas/5 rating system/v2 Bradley-Terry (BT) Rating System/oracle_rating_readme.md`
+- `ideas/5 rating system/v2 Bradley-Terry (BT) Rating System/rating_strength_analysis.html`
 
 ### Main documentation
 - `README.md`

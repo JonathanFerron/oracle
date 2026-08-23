@@ -348,7 +348,7 @@ planned agents, each commented with its `ideas/A#` folder:
 | `AI_STRATEGY_RANDOM` | **implemented** | — |
 | `AI_STRATEGY_VALUE_BASED` | **implemented** (2026-08-21) | `A1` (The Apprentice) |
 | `AI_STRATEGY_COMBO_THRESHOLD` | **implemented** (2026-08-22) | `A2` (The Showboat) |
-| `AI_STRATEGY_BOREALIS` | stub — active work | `A3` — the rating-scale benchmark agent |
+| `AI_STRATEGY_BOREALIS` | **implemented and calibrated** (2026-08-23) | `A3` — the rating-scale benchmark agent |
 | `AI_STRATEGY_BALANCED` | stub | `A4` (Bean Counter) |
 | `AI_STRATEGY_HEURISTIC` | stub | `A5` (ε-γ-δ) |
 | `AI_STRATEGY_TACTICAL` | stub | `A6` (Pressure Cooker) |
@@ -358,9 +358,11 @@ planned agents, each commented with its `ideas/A#` folder:
 | `AI_STRATEGY_ISMCTS` | stub | `A10` (The Omniscient) |
 | `AI_STRATEGY_ISMCTS_NN` | stub | `A11` (AlphaOracle Prime) |
 
-Implementation order is `A1 → A2 → A3`, not just easiest-first: the rating system
-(`ideas/5`) needs the Borealis benchmark agent (`A3`), which itself needs `A1`–`A2` to
-exist for comparison — both now do. General info and calibration tooling live in
+Implementation order was `A1 → A2 → A3`, not just easiest-first: the rating system
+(`ideas/5`) needs the Borealis benchmark agent (`A3`), which itself needed `A1`–`A2` to
+exist for comparison. All three are now implemented and calibrated (2026-08-21,
+2026-08-22, 2026-08-23) — the rating system's prerequisite roster is complete, and it's
+next up (see `doc/oracle_roadmap.md`). General info and calibration tooling live in
 `ideas/G1 AI agent general info/` and `ideas/G2 ai agent parameters storing and
 optimization/` — support material, not agents, so they carry no enum entry and no longer
 occupy a slot on the A-line.
@@ -520,8 +522,9 @@ spec.
 - **SDL3 GUI** — `ideas/9 gui/oracle_sdl3_gui_plan.md`. Long-horizon; ignore unless a
   task specifically targets it.
 - **Bradley-Terry rating system** — `ideas/5 rating system/` (v2 spec). Each AI has a
-  rating (1–99, displayed) and internal strength; the Borealis (`A4`) agent is the
-  rating-50 benchmark. Needs `A1`–`A4` implemented first.
+  rating (1–99, displayed) and internal strength; the Borealis (`A3`) agent is the
+  rating-50 benchmark, implemented and calibrated 2026-08-23. `A1`–`A3` are now done;
+  next up.
 - **CSV export** — `ideas/4 match results export/`. Per-game and summary CSVs for
   external (R/Python) analysis of simulation runs. Planned to ride along with the
   `stda_auto.c` split (see `ideas/2 …/stda_auto_split_plan.md`) since both touch the

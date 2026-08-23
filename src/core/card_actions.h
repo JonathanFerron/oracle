@@ -6,6 +6,7 @@
 
 #include "game_types.h"
 #include "game_context.h"
+#include "../ai_strat/ai_strategy.h" // StrategySet, for discard_to_7_cards()'s per-agent dispatch
 
 // Card playing functions
 void play_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx);
@@ -23,6 +24,6 @@ uint8_t collect_champions(const uint8_t* cards, uint8_t n, uint8_t* out, bool so
 // Game action functions
 void draw_1_card(struct gamestate* gstate, PlayerID player, GameContext* ctx);
 void shuffle_discard_and_form_deck(Discard* discard, struct deck_stack* deck, GameContext* ctx);
-void discard_to_7_cards(struct gamestate* gstate, GameContext* ctx);
+void discard_to_7_cards(struct gamestate* gstate, StrategySet* strategies, GameContext* ctx);
 
 #endif // CARD_ACTIONS_H

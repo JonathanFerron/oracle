@@ -8,7 +8,6 @@
 #include "../../ai_strat/ai_strategy.h"
 #include "../../core/game_state.h"
 #include "../../core/turn_logic.h"
-#include "../../core/card_actions.h"
 #include "../../util/debug.h"
 #include "../../ui/shared/player_config.h"
 #include "stats_constants.h"
@@ -76,7 +75,7 @@ void play_stda_auto_game(uint16_t initial_cash, struct gamestats* gstats,
   setup_game(initial_cash, &gstate, ctx);
 
   // Apply mulligan for player B: when in interactive mode (CLI, TUI, GUI), this needs to be delegated to the user or AI to make a choice of what to mulligan (if anything)
-  apply_mulligan(&gstate, ctx);
+  apply_mulligan(&gstate, strategies, ctx);
 
   DEBUG_PRINT("Game started with %d A, %d B cash; %d A, %d B energy\n",
               gstate.current_cash_balance[PLAYER_A],
@@ -108,47 +107,13 @@ void play_stda_auto_game(uint16_t initial_cash, struct gamestats* gstats,
   DeckStk_emptyOut(&gstate.deck[PLAYER_B]);
 } // play_game
 
-// TODO: look at moving the automated (AI) apply_mulligan() function to the strategy code instead as that's where it really belongs: this implementation is based on the power heuristic
-void apply_mulligan(struct gamestate* gstate, GameContext* ctx)
-{ uint8_t max_nbr_cards_to_mulligan = 2;
-
-  // Count cards to mulligan
-  uint8_t nbr_cards_to_mulligan = 0;
-
-  for(uint8_t i = 0; (i < gstate->hand[PLAYER_B].size) &&
-      (nbr_cards_to_mulligan < max_nbr_cards_to_mulligan); i++)
-  { uint8_t card_idx = gstate->hand[PLAYER_B].cards[i];
-    if(fullDeck[card_idx].power < AVERAGE_POWER_FOR_MULLIGAN)
-      nbr_cards_to_mulligan++;
-  }
-
-  DEBUG_PRINT("Number of cards to mulligan: %u\n", nbr_cards_to_mulligan);
-
-  // Discard lowest power cards
-  float minpower;
-  uint8_t card_with_lowest_power;
-  uint8_t nbr_cards_left_to_mulligan = nbr_cards_to_mulligan;
-
-  while(nbr_cards_left_to_mulligan > 0)
-  { minpower = 100.0;
-    card_with_lowest_power = 0;
-
-    for(uint8_t i = 0; i < gstate->hand[PLAYER_B].size; i++)
-    { uint8_t card_idx = gstate->hand[PLAYER_B].cards[i];
-      if(fullDeck[card_idx].power < minpower)
-      { minpower = fullDeck[card_idx].power;
-        card_with_lowest_power = card_idx;
-      }
-    }
-
-    Hand_remove(&gstate->hand[PLAYER_B], card_with_lowest_power);
-    Discard_add(&gstate->discard[PLAYER_B], card_with_lowest_power);
-    nbr_cards_left_to_mulligan--;
-  }
-
-  // Draw replacement cards
-  for(uint8_t i = 0; i < nbr_cards_to_mulligan; i++)
-    draw_1_card(gstate, PLAYER_B, ctx);
+// Dispatches to Player B's mulligan hook (StrategySet's mulligan_strategy[],
+// filled in by set_player_strategy_by_type() -- the shared power-based
+// default, strat_lib_mulligan(), for any agent that doesn't override it; see
+// ai_strat_lib_heuristics.h). Which player mulligans is this function's own
+// decision, not the hook's -- today always PLAYER_B.
+void apply_mulligan(struct gamestate* gstate, StrategySet* strategies, GameContext* ctx)
+{ strategies->mulligan_strategy[PLAYER_B](gstate, PLAYER_B, ctx);
 } // apply_mulligan
 
 void record_final_stats(struct gamestats* gstats, struct gamestate* gstate) // need to accept cfg pointer to see game mode information

@@ -184,33 +184,16 @@ void shuffle_discard_and_form_deck(Discard* discard, struct deck_stack* deck, Ga
   Discard_clear(discard);
 }
 
-// TODO: this function should be moved to the strategy code as it is an AI agent method that could vary from one AI implementation to another. This implementation uses power heuristics that would
-// likely be good enough for the random, balanced, value based, combo aware (Borealis benchmark agent), greedy power and heuristic AI agent, and could be improved upon for the
-// more advanced AI agents (Monte Carlo based ones and perhaps also the 2 ply HBT one)
-void discard_to_7_cards(struct gamestate* gstate, GameContext* ctx)
-{ if(gstate->hand[gstate->current_player].size <= 7) return;
+// Dispatches to the current player's discard-to-7 hook (StrategySet's
+// discard_strategy[], filled in by set_player_strategy_by_type() -- the
+// shared power-based default, strat_lib_discard_to_7(), for any agent that
+// doesn't override it; see ai_strat_lib_heuristics.h). The >7 guard lives
+// here so every override can assume it's only called when a discard is
+// actually needed.
+void discard_to_7_cards(struct gamestate* gstate, StrategySet* strategies, GameContext* ctx)
+{ PlayerID player = gstate->current_player;
+  if(gstate->hand[player].size <= 7) return;
 
-  float minpower;
-  uint8_t card_with_lowest_power;
-
-  while(gstate->hand[gstate->current_player].size > 7)
-  { // Find card with lowest power
-    minpower = 100.0;
-    card_with_lowest_power = 0;
-
-    for(uint8_t i = 0; i < gstate->hand[gstate->current_player].size; i++)
-    { uint8_t card_idx = gstate->hand[gstate->current_player].cards[i];
-      if(fullDeck[card_idx].power < minpower)
-      { minpower = fullDeck[card_idx].power;
-        card_with_lowest_power = card_idx;
-      }
-    }
-
-    // Discard it
-    Hand_remove(&gstate->hand[gstate->current_player],
-                card_with_lowest_power);
-    Discard_add(&gstate->discard[gstate->current_player],
-                card_with_lowest_power);
-  }
+  strategies->discard_strategy[player](gstate, player, ctx);
 }
 

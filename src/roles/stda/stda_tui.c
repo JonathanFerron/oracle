@@ -73,7 +73,7 @@ static bool tui_setup(config_t* cfg, PlayerConfig* pconfig, GameContext* ctx,
     tui_handle_interactive_mulligan(*screen_out, *gstate_out, ctx, cfg);
   }
   else
-    apply_mulligan(*gstate_out, ctx);
+    apply_mulligan(*gstate_out, *strategies_out, ctx);
 
   return true;
 }

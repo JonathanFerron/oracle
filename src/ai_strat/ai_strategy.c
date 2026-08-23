@@ -8,6 +8,8 @@
 #include "ai_strat_random.h"
 #include "ai_strat_valuebased.h"
 #include "ai_strat_combo_threshold.h"
+#include "ai_strat_borealis.h"
+#include "ai_strat_lib_heuristics.h"
 
 StrategySet* create_strategy_set(void)
 { StrategySet* strat = (StrategySet*)malloc(sizeof(StrategySet));
@@ -29,20 +31,31 @@ void free_strategy_set(StrategySet* strat)
     free(strat);
 }
 
-// Registry entry pair, indexed by AIStrategyType. {NULL, NULL} means "not yet
-// implemented" -- ai_strategy_is_implemented() and set_player_strategy_by_type()
-// both key off that. Keep in sync with AIStrategyType (game_types.h) and with
+// Registry entry, indexed by AIStrategyType. {NULL, NULL, ..., ...} means
+// "not yet implemented" -- ai_strategy_is_implemented() and
+// set_player_strategy_by_type() both key off the attack/defense pair. Keep
+// in sync with AIStrategyType (game_types.h) and with
 // display_ai_strategy_menu()/AI_STRATEGY_SHORTHANDS (player_config.c).
+// mulligan/discard are optional even for an implemented agent: leaving
+// either NULL means "use the shared power-based default"
+// (ai_strat_lib_heuristics.h), which set_player_strategy_by_type() fills in
+// below -- so Random and every agent that doesn't override them keeps
+// exactly today's behaviour.
 typedef struct
 { AttackStrategyFunc attack;
   DefenseStrategyFunc defense;
+  MulliganStrategyFunc mulligan; // NULL = strat_lib_mulligan default
+  DiscardStrategyFunc discard;   // NULL = strat_lib_discard_to_7 default
 } StrategyRegistryEntry;
 
 static const StrategyRegistryEntry STRATEGY_REGISTRY[AI_STRATEGY_COUNT] =
 { [AI_STRATEGY_RANDOM]           = { random_attack_strategy, random_defense_strategy },
   [AI_STRATEGY_VALUE_BASED]      = { value_based_attack_strategy, value_based_defense_strategy },
   [AI_STRATEGY_COMBO_THRESHOLD]  = { combo_threshold_attack_strategy, combo_threshold_defense_strategy },
-  // All other entries default to {NULL, NULL} -- not yet implemented.
+  [AI_STRATEGY_BOREALIS]         = { borealis_attack_strategy, borealis_defense_strategy,
+    borealis_mulligan, borealis_discard_to_7
+  },
+  // All other entries default to {NULL, NULL, NULL, NULL} -- not yet implemented.
 };
 
 bool ai_strategy_is_implemented(AIStrategyType type)
@@ -60,4 +73,11 @@ void set_player_strategy_by_type(StrategySet* strat, PlayerID player,
   set_player_strategy(strat, player,
                       STRATEGY_REGISTRY[type].attack,
                       STRATEGY_REGISTRY[type].defense);
+
+  strat->mulligan_strategy[player] = STRATEGY_REGISTRY[type].mulligan ?
+                                     STRATEGY_REGISTRY[type].mulligan :
+                                     strat_lib_mulligan;
+  strat->discard_strategy[player] = STRATEGY_REGISTRY[type].discard ?
+                                    STRATEGY_REGISTRY[type].discard :
+                                    strat_lib_discard_to_7;
 }
