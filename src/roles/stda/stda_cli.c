@@ -23,6 +23,7 @@
 #include "../../ui/shared/player_config.h"
 #include "../../core/card_actions.h"
 #include "stda_auto.h"
+#include "stda_rating_track.h"
 
 /* ANSI color codes */
 #define RESET   "\033[0m"
@@ -174,6 +175,12 @@ int run_mode_stda_cli(config_t* cfg)
   /* Display player configuration summary */
   display_configuration_summary(&pconfig, cfg);
 
+  /* Bradley-Terry human rating tracking (--rating.track, off by default;
+     a no-op for anything other than a single human-vs-AI game -- see
+     stda_rating_track.h) */
+  RatingSystem rating_sys;
+  RatingTrackState rating_track = stda_rating_track_start(cfg, &pconfig, &rating_sys);
+
   /* Display game start */
   printf("\n=== %s ===\n",
          LOCALIZED_STRING("Game Start", "Début du jeu", "Inicio del juego"));
@@ -194,6 +201,8 @@ int run_mode_stda_cli(config_t* cfg)
 
   /* Display game summary */
   display_game_summary(gstate, cfg);
+
+  stda_rating_track_finish(cfg, &rating_track, &rating_sys, gstate);
 
   /* Cleanup */
   cleanup_cli_game(gstate, strategies, ctx);

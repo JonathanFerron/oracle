@@ -10,20 +10,25 @@ win percentage against the Borealis benchmark agent.
 
 ## Agent Roster
 
-| Tech/Math Name | English | Français | Español | Est. Borealis Rating |
-|---|---|---|---|---|
-| Random | The Gambler | Le Parieur | El Apostador | 5 |
-| Value Based | The Apprentice | L'Apprenti | El Aprendiz | 15 |
-| Combo Threshold | The Showboat | Le Frimeur | El Fanfarrón | 37 |
-| Greedy Power *(benchmark)* | Borealis | Borealis | Borealis | 50 |
-| Balanced Rules | Bean Counter | Compteur de Fèves | Contador de Frijoles | 62 |
-| Heuristic | ε-γ-δ | ε-γ-δ | ε-γ-δ | 70 |
-| Tactical | Pressure Cooker | Cocotte-Minute | Olla a Presión | 74 |
-| Hybrid (HBT) | The Grandmaster | Le Grand Maître | El Gran Maestro | 78 |
-| Simple Monte Carlo | The Soothsayer | Le Devin | El Adivino | 82 |
-| HBT 2-Ply | Grandmaster II | Grand Maître II | Gran Maestro II | 85 |
-| IS-MCTS | The Omniscient | L'Omniscient | El Omnisciente | 92 |
-| IS-MCTS + NN | AlphaOracle Prime | AlphaOracle Prime | AlphaOracle Prime | 97 |
+The last column is the original design-intent guess made before any agent existed;
+`Measured` (2026-08-23, `--stda.rating` round-robin, `src/rating/`) is the actual
+Bradley-Terry fit now that `Random`/`A1`/`A2`/`A3` are all implemented. See
+`doc/changelog.md`'s 2026-08-23 rating-system entry for the run this came from.
+
+| Tech/Math Name | English | Français | Español | Measured | Est. Borealis Rating |
+|---|---|---|---|---|---|
+| Random | The Gambler | Le Parieur | El Apostador | 2 | 5 |
+| Value Based | The Apprentice | L'Apprenti | El Aprendiz | 24 | 15 |
+| Combo Threshold | The Showboat | Le Frimeur | El Fanfarrón | 30 | 37 |
+| Greedy Power *(benchmark)* | Borealis | Borealis | Borealis | 50 | 50 |
+| Balanced Rules | Bean Counter | Compteur de Fèves | Contador de Frijoles | — | 62 |
+| Heuristic | ε-γ-δ | ε-γ-δ | ε-γ-δ | — | 70 |
+| Tactical | Pressure Cooker | Cocotte-Minute | Olla a Presión | — | 74 |
+| Hybrid (HBT) | The Grandmaster | Le Grand Maître | El Gran Maestro | — | 78 |
+| Simple Monte Carlo | The Soothsayer | Le Devin | El Adivino | — | 82 |
+| HBT 2-Ply | Grandmaster II | Grand Maître II | Gran Maestro II | — | 85 |
+| IS-MCTS | The Omniscient | L'Omniscient | El Omnisciente | — | 92 |
+| IS-MCTS + NN | AlphaOracle Prime | AlphaOracle Prime | AlphaOracle Prime | — | 97 |
 
 ---
 

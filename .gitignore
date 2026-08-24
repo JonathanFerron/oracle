@@ -6,6 +6,7 @@
 /bin/test_combo
 /bin/test_recall
 /bin/test_cash_exchange
+/bin/test_rating
 /bin/calib_valuebased
 /bin/calib_combo_threshold
 /bin/calib_borealis

@@ -452,3 +452,14 @@ void print_ai_agent_shorthand_codes(void)
 { for(size_t i = 0; i < AI_STRATEGY_SHORTHAND_COUNT; i++)
     printf("%s\n", AI_STRATEGY_SHORTHANDS[i].shorthand);
 }
+
+// Inverse of parse_ai_strategy_shorthand() -- e.g. for naming a
+// src/rating/ entrant after the agent that plays it (stda_rating.c).
+// NULL for AI_STRATEGY_COUNT or any other out-of-range value.
+const char* get_ai_strategy_shorthand(AIStrategyType strategy)
+{ for(size_t i = 0; i < AI_STRATEGY_SHORTHAND_COUNT; i++)
+    if(AI_STRATEGY_SHORTHANDS[i].strategy == strategy)
+      return AI_STRATEGY_SHORTHANDS[i].shorthand;
+
+  return NULL;
+}

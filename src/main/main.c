@@ -15,6 +15,7 @@
 #include "../roles/stda/stda_auto.h"
 #include "../roles/stda/stda_cli.h"
 #include "../roles/stda/stda_tui.h"
+#include "../roles/stda/stda_rating.h"
 
 /* Main entry point */
 int main(int argc, char** argv)
@@ -68,6 +69,9 @@ int main(int argc, char** argv)
       break;
     case MODE_STDA_GUI:
       ret = run_mode_stda_gui(&cfg);
+      break;
+    case MODE_STDA_RATING:
+      ret = run_mode_stda_rating(&cfg);
       break;
     case MODE_SERVER:
       ret = run_mode_server(&cfg);
@@ -136,4 +140,5 @@ void cleanup_config(config_t* cfg)
 { if(cfg->input_file) free(cfg->input_file);
   if(cfg->output_file) free(cfg->output_file);
   if(cfg->ai_agent) free(cfg->ai_agent);
+  if(cfg->rating_file) free(cfg->rating_file);
 }

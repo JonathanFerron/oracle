@@ -16,11 +16,24 @@ work see `doc/changelog.md`. For architecture/design rationale see `doc/oracle_d
 Core game engine, CLI interactive mode, and TUI mode (Milestones 1 & 2 plus a polish
 pass) are done. Random, `A1` Value Based ("The Apprentice"), `A2` Combo Threshold
 ("The Showboat"), and `A3` Borealis (the Bradley-Terry benchmark) AI strategies are all
-implemented and calibrated. **Active work**: the Bradley-Terry rating system itself —
-see "Next Up" below.
+implemented and calibrated, and the Bradley-Terry rating system itself is now built on
+top of them. **Active work**: `A4` Balanced Rules — see "Next Up" below.
 
 ### Recently Completed
 
+- **2026-08-23** — Bradley-Terry rating system implemented (`src/rating/`): ports the
+  math/design of `ideas/5 rating system/v2 Bradley-Terry (BT) Rating System/`, fixing a
+  dozen-plus defects on the way (win-count overflow, leaderboard underflow, batch
+  convergence-vs-normalisation ordering, draw handling, incremental-update
+  path-dependence, a diverging unnormalised gradient step). Ships two batch solvers —
+  MM (Minorization-Maximization, the standard method, default) and gradient ascent
+  (kept for cross-checking) — plus the incremental `A^delta` path for live play, CSV
+  persistence, and the new `--stda.rating` round-robin benchmark mode (every
+  implemented agent, both seats, Borealis anchored at rating 50) and `--rating.track`
+  opt-in human rating tracking in `stda.cli`/`stda.tui` with a matchmaking suggestion.
+  Measured leaderboard: `borealis` 50 (anchor), `combo` 30, `value` 24, `rand` 2 —
+  cross-validated against `A3`'s own independently-measured win rates below. Full
+  details: `doc/changelog.md`.
 - **2026-08-23** — `A3` Borealis (the Bradley-Terry benchmark) implemented and
   calibrated: exhaustive 0-3 champion subset enumeration (no pruning), one monotone
   strength dial (`luna_value`/lambda), epsilon tie-break randomisation, lethal-combo
@@ -61,12 +74,12 @@ Full details: `doc/changelog.md`.
 
 ### What Needs Work
 
-- Random, `A1` Value Based, `A2` Combo Threshold, and `A3` Borealis implemented —
-  everything from `A4` onward on the AI ladder below is open. The Bradley-Terry rating
-  system (`ideas/5 rating system/`) can now be built against a calibrated benchmark.
+- Random, `A1` Value Based, `A2` Combo Threshold, and `A3` Borealis implemented, and the
+  Bradley-Terry rating system now built on top of them — everything from `A4` onward on
+  the AI ladder below is open, and is what the rating system will next measure.
 - Automated simulation mode (`stda_auto.c`) needs a refactor (see `doc/oracle_todo.md`).
-- No save/load, no config file system, no CSV export, no rating system, no network, no
-  GUI, no `stda.sim`.
+- No save/load, no config file system, no general match-result CSV export (the rating
+  system's own CSV persistence is separate and done), no network, no GUI, no `stda.sim`.
 - Two calibration-driver items flagged during `A3`'s calibration, not yet actioned: a
   parallel-execution result-misattribution bug unpatched in `aicalibsrc/value/`'s and
   `aicalibsrc/combo/`'s `sweep`/`selfplay` (casts doubt on A1's shipped values
@@ -77,13 +90,10 @@ Full details: `doc/changelog.md`.
 
 ## Next Up (single authoritative order)
 
-1. **Bradley-Terry rating system** (`ideas/5 rating system/`). `A1` Value Based
-   ("The Apprentice"), `A2` Combo Threshold ("The Showboat"), and `A3` Borealis (the
-   benchmark agent, rating 50 by definition) are all done and calibrated (2026-08-21,
-   2026-08-22, 2026-08-23) — the rating system's prerequisite roster now exists. Core
-   Bradley-Terry calculations, adaptive learning rate, the Borealis keeper-benchmark
-   anchor, incremental + batch updates, CSV persistence, matchmaking — see the v2 spec
-   in `ideas/5 rating system/` for the full scope.
+1. **`A4` Balanced Rules** ("Bean Counter", `ideas/A4 ai agent balanced rules/`). The
+   next rung on the AI ladder — `A1`-`A3` are all implemented and calibrated, and the
+   Bradley-Terry rating system (2026-08-23, `src/rating/`) can now measure it against
+   Borealis via `--stda.rating` as soon as it exists.
 
 **Back burner** (explicitly deferred): save/load game state
 (`ideas/6 save and load gamestate/`), configuration file system
@@ -149,11 +159,13 @@ CSV export (`ideas/4 match results export/`); interactive simulation UI, `stda.s
 (no dedicated `ideas/` folder yet, see `ideas/2 …/target_folder_structure_v4.md` for
 scoping notes); configuration file system (`ideas/7 config file/`, back-burnered).
 
-### Phase: Rating System — spec complete, implementation next up
+### Phase: Rating System — done (2026-08-23)
 
-Bradley-Terry core calculations, adaptive learning rate, keeper benchmark (rating 50 =
-the `A3` Borealis agent, implemented and calibrated 2026-08-23), incremental + batch
-updates, CSV persistence, matchmaking. `ideas/5 rating system/` (v2 spec).
+Bradley-Terry core calculations (MM + gradient-ascent batch solvers), adaptive
+learning rate, the Borealis (`A3`) benchmark anchor (rating 50 by definition),
+incremental + batch updates, CSV persistence, matchmaking, and the `--stda.rating`
+round-robin benchmark mode. `src/rating/`; ports `ideas/5 rating system/` (v2 spec)'s
+design, not the file — see `doc/changelog.md` for the defects fixed on port.
 
 ### Phase: Client/Server Architecture — design complete, major refactor required
 
@@ -189,7 +201,9 @@ strategy framework for pluggable AIs?
 ## Success Criteria
 
 - [ ] At least 3 different AI strategies working
-- [ ] Rating system accurately ranks AI strength
+- [x] Rating system accurately ranks AI strength (2026-08-23, `src/rating/`) — the
+      `--stda.rating` round-robin table currently orders `rand` < `value` < `combo` <
+      `borealis` (50, anchor by definition), matching the intended ladder
 - [ ] CSV export generates usable data for R/Python analysis
 - [ ] TUI mode provides a good user experience *(largely met already — Milestones 1–2 +
       polish pass done; see "Left for a future pass" in `doc/oracle_todo.md`)*

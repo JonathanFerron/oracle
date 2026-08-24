@@ -96,9 +96,10 @@ platforms).
 
 **AI Strategies**: everything past Random — see §7 and `doc/oracle_todo.md`.
 
-**Features**: save/load game state, configuration file system, CSV export, rating
-system, network multiplayer, GUI mode, `stda.sim` mode. All designed, none built — see
-§11.
+**Features**: save/load game state, configuration file system, general match-result CSV
+export, network multiplayer, GUI mode, `stda.sim` mode still all designed, none built —
+see §11. The Bradley-Terry rating system is the exception: implemented 2026-08-23
+(`src/rating/`).
 
 ---
 
@@ -242,7 +243,11 @@ src/
 │                 hand/discard/combat-zone)
 ├── util/         mtwister.c, rnd.c, prng_seed.c, debug.h
 ├── main/         main.c (mode dispatch), cmdline.c (arg parsing → config_t)
-└── actions/, rating/, visibility/  planning notes only, no implementation
+├── rating/       rating.h (public API), rating_core.c (registration/lookup/math),
+│                 rating_update.c (incremental A^delta), rating_batch.c (MM +
+│                 gradient-ascent MLE fit), rating_csv.c (persistence) —
+│                 implemented 2026-08-23; see doc/changelog.md
+└── actions/, visibility/  planning notes only, no implementation
 ```
 
 **Directories that don't exist yet**: `deck_formats/`, `game_rules/`, `network/`,
@@ -359,10 +364,11 @@ planned agents, each commented with its `ideas/A#` folder:
 | `AI_STRATEGY_ISMCTS_NN` | stub | `A11` (AlphaOracle Prime) |
 
 Implementation order was `A1 → A2 → A3`, not just easiest-first: the rating system
-(`ideas/5`) needs the Borealis benchmark agent (`A3`), which itself needed `A1`–`A2` to
-exist for comparison. All three are now implemented and calibrated (2026-08-21,
-2026-08-22, 2026-08-23) — the rating system's prerequisite roster is complete, and it's
-next up (see `doc/oracle_roadmap.md`). General info and calibration tooling live in
+(`src/rating/`) needed the Borealis benchmark agent (`A3`), which itself needed `A1`–`A2`
+to exist for comparison. All three were implemented and calibrated (2026-08-21,
+2026-08-22, 2026-08-23), and the rating system itself followed the same day
+(2026-08-23) — see `doc/changelog.md`. `A4` onward is next up (see
+`doc/oracle_roadmap.md`). General info and calibration tooling live in
 `ideas/G1 AI agent general info/` and `ideas/G2 ai agent parameters storing and
 optimization/` — support material, not agents, so they carry no enum entry and no longer
 occupy a slot on the A-line.
@@ -521,10 +527,6 @@ spec.
   out. Not started; don't scaffold `sh_`/`sr_`/`cl_`/`pr_`-style modules ahead of this.
 - **SDL3 GUI** — `ideas/9 gui/oracle_sdl3_gui_plan.md`. Long-horizon; ignore unless a
   task specifically targets it.
-- **Bradley-Terry rating system** — `ideas/5 rating system/` (v2 spec). Each AI has a
-  rating (1–99, displayed) and internal strength; the Borealis (`A3`) agent is the
-  rating-50 benchmark, implemented and calibrated 2026-08-23. `A1`–`A3` are now done;
-  next up.
 - **CSV export** — `ideas/4 match results export/`. Per-game and summary CSVs for
   external (R/Python) analysis of simulation runs. Planned to ride along with the
   `stda_auto.c` split (see `ideas/2 …/stda_auto_split_plan.md`) since both touch the

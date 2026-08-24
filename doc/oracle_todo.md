@@ -9,8 +9,9 @@ mulligan, discard-to-7, combat/discard display), the source folder structure cle
 TUI Milestones 1–2 + polish pass are complete — see `doc/changelog.md`. `A1` Value Based
 ("The Apprentice", 2026-08-21), `A2` Combo Threshold ("The Showboat", 2026-08-22,
 calibrated), and `A3` Borealis (the Bradley-Terry benchmark, 2026-08-23, calibrated) are
-implemented; the Bradley-Terry rating system itself is next — see `doc/oracle_roadmap.md`'s
-"Next Up" for the authoritative order and rationale. The strategy-set build sites
+implemented, and the Bradley-Terry rating system itself (2026-08-23, `src/rating/`) is now
+built on top of them — see `doc/oracle_roadmap.md`'s "Next Up" for what's next (`A4`). The
+strategy-set build sites
 also gained a shared `AIStrategyType -> function pointer` registry (`ai_strategy.c`) as
 part of `A1` -- see "Checklist: Adding a New AI Strategy" below, which now reflects that
 mechanism rather than the old per-file hardcoding. As of `A3`, that registry also carries
@@ -253,12 +254,15 @@ See `ideas/4 match results export/` for the full specification.
 
 ### Rating System
 
-See `ideas/5 rating system/` for the complete spec.
-
-- [ ] `rating.c/h` implementation, `RatingSystem` structure, Bradley-Terry calculations,
-  `rating_init()`, `rating_register_player()`, `rating_update_match()`,
-  `rating_win_probability()`, adaptive A function, keeper rebalancing, CSV persistence,
-  batch gradient ascent, calibration tools
+- [x] Bradley-Terry rating system implemented (2026-08-23, `src/rating/`) — ported the
+  math/design of `ideas/5 rating system/v2 Bradley-Terry (BT) Rating System/`, not the
+  prototype file, fixing a dozen-plus defects along the way. `rating_init()`,
+  `rating_register_ai()`/`_human()`, `rating_update_match()` (incremental A^delta),
+  `rating_win_probability()`, adaptive-A, Borealis rebalancing (the spec's "keeper
+  rebalancing" — Borealis is the anchor, not a separate "Keeper" concept), CSV
+  persistence, two batch solvers (MM default, gradient ascent kept for cross-checking),
+  and the `--stda.rating` round-robin benchmark + `--rating.track` human tracking. See
+  `doc/changelog.md`'s 2026-08-23 entry for the full defect list and measured results.
 
 ---
 

@@ -80,17 +80,24 @@ R_B = 50    // Borealis / cote boréale / puntuación boreal — rating
 
 ## Files Requiring "Keeper" → "Borealis" Replacement
 
-### Rating system implementation
+**Status update (2026-08-23): resolved.** The rating system is now implemented
+(`src/rating/`, see `doc/changelog.md`), ported from the v2 spec's *math and design*,
+not the file itself -- so the "Keeper" → "Borealis" replacement never needed to run
+against the prototype text below. Every identifier and string in shipped code uses
+"Borealis" throughout (`BOREALIS_RATING`, `borealis_id`, `AI_STRATEGY_BOREALIS`, etc.).
+The `ideas/5 rating system/` folder itself is left untouched as a historical archive --
+it predates the 2026-07-27 rename and was never meant to be edited in place, only
+mined for design intent (see `CLAUDE.md`'s `ideas/` guidance). `rating_strength_analysis.html`
+was checked and has zero "Keeper" occurrences, so it never needed listing here.
+
+### Rating system implementation (archived, not edited — see above)
 (Path corrected 2026-08-23 -- `ideas/14 rating system/` was renamed/renumbered to
-`ideas/5 rating system/` before this checklist was ever acted on; check these files for
-any surviving "Keeper" references when the rating system is actually implemented, since
-`A3` is now shipped as "Borealis" throughout `src/`.)
+`ideas/5 rating system/` before this checklist was ever acted on.)
 - `ideas/5 rating system/v2 Bradley-Terry (BT) Rating System/oracle_rating_system.h`
 - `ideas/5 rating system/v2 Bradley-Terry (BT) Rating System/oracle_rating_system.c`
 - `ideas/5 rating system/v2 Bradley-Terry (BT) Rating System/oracle_rating_test.c`
 - `ideas/5 rating system/v2 Bradley-Terry (BT) Rating System/oracle_rating_guide.md`
 - `ideas/5 rating system/v2 Bradley-Terry (BT) Rating System/oracle_rating_readme.md`
-- `ideas/5 rating system/v2 Bradley-Terry (BT) Rating System/rating_strength_analysis.html`
 
 ### Main documentation
 - `README.md`

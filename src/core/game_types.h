@@ -138,6 +138,7 @@ typedef enum
   MODE_STDA_CLI,     /* Standalone text command line interface */
   MODE_STDA_TUI,     /* Standalone text UI */
   MODE_STDA_GUI,     /* Standalone graphical UI */
+  MODE_STDA_RATING,  /* Standalone Bradley-Terry rating benchmark -- see src/rating/ */
   MODE_SERVER,       /* Server mode */
   MODE_CLIENT_SIM,   /* Client simulation */
   MODE_CLIENT_CLI,   /* Client text command line interface */
@@ -204,6 +205,17 @@ typedef struct
                                --stda.auto (see cmdline.c). Index by PlayerID. */
   bool agent_set[2];        /* whether agent[i] was actually given on the CLI,
                                vs. left at its AI_STRATEGY_RANDOM zero-value. */
+  int rating_games;         /* --rating.games: games per seat-orientation for
+                                MODE_STDA_RATING. 0 = use the mode's own default. */
+  char* rating_file;        /* --rating.file: CSV to seed from (if present) and
+                                write. NULL = no persistence. */
+  bool rating_method_gradient; /* --rating.method=gradient (default: MM). A
+                                   plain bool, not a RatingBatchMethod, to
+                                   avoid game_types.h depending on
+                                   src/rating/rating.h (same reasoning as
+                                   player_config's void*, above). */
+  bool rating_track;        /* --rating.track: enable human rating tracking
+                                in stda.cli/stda.tui. Off by default. */
 } config_t;
 
 #include "game_constants.h"

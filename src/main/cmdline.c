@@ -11,6 +11,7 @@
 #include "../util/prng_seed.h"
 #include "../ui/shared/player_config.h"
 #include "../ai_strat/ai_strategy.h"
+#include "../roles/stda/stda_rating.h"
 
 /* Hidden option for shell completion scripts; deliberately absent from print_usage() */
 #define OPT_ORACLE_COMPLETE 1000
@@ -20,6 +21,14 @@
    AI-agent client mode and is left untouched. */
 #define OPT_AGENT_A 1001
 #define OPT_AGENT_B 1002
+
+/* --rating.games/.file/.method/.track: MODE_STDA_RATING options (see
+   src/roles/stda/stda_rating.c). Mode selection itself is -r/-sr/--stda.rating,
+   a plain single-letter mode switch like -a/-l/-t, so it needs no OPT_* id. */
+#define OPT_RATING_GAMES 1003
+#define OPT_RATING_FILE 1004
+#define OPT_RATING_METHOD 1005
+#define OPT_RATING_TRACK 1006
 
 /* Parse language code from string */
 static ui_language_t parse_language(const char* lang_str)
@@ -88,6 +97,15 @@ void print_usage(const char* prog)
   printf("  -Ab, -ai.b, --ai.b=AGENT      Player B's agent for --stda.auto [default: rand]\n");
   printf("                                See --oracle-complete=agents for the list.\n");
   printf("                                Only implemented agents may be selected.\n\n");
+  printf("  -r,  -sr, --stda.rating       Bradley-Terry rating benchmark (round-robin\n");
+  printf("                                over every implemented agent, Borealis anchored\n");
+  printf("                                at rating 50; see src/rating/)\n");
+  printf("  -rg, --rating.games=N         Games per seat orientation [default: %d]\n",
+         RATING_DEFAULT_GAMES_PER_ORIENTATION);
+  printf("  -rf, --rating.file=PATH       Write the fitted ratings to PATH as CSV\n");
+  printf("  -rm, --rating.method=mm|gradient  Batch solver [default: mm]\n");
+  printf("       --rating.track           Track a human's rating across --stda.cli/\n");
+  printf("                                --stda.tui games [default: off]\n\n");
   printf("Examples:\n");
   printf("  %s -a -p                      Automated AI vs AI, fixed default seed\n", prog);
   printf("  %s -a -p --ai.a=value --ai.b=rand   Value Based vs Random\n", prog);
@@ -123,6 +141,7 @@ static struct option long_options[] =
   {"T",          no_argument,       0, 'T'},
   {"G",          no_argument,       0, 'G'},
   {"A",          optional_argument, 0, 'A'},
+  {"r",          no_argument,       0, 'r'},
   /* Two letter options */
   {"he",         no_argument,       0, 'h'},
   {"vb",         no_argument,       0, 'v'},
@@ -145,6 +164,10 @@ static struct option long_options[] =
   {"ai",         optional_argument, 0, 'A'},
   {"Aa",         required_argument, 0, OPT_AGENT_A},
   {"Ab",         required_argument, 0, OPT_AGENT_B},
+  {"sr",         no_argument,       0, 'r'},
+  {"rg",         required_argument, 0, OPT_RATING_GAMES},
+  {"rf",         required_argument, 0, OPT_RATING_FILE},
+  {"rm",         required_argument, 0, OPT_RATING_METHOD},
   /* Long form options */
   {"help",       no_argument,       0, 'h'},
   {"verbose",    no_argument,       0, 'v'},
@@ -166,6 +189,11 @@ static struct option long_options[] =
   {"client.gui", no_argument,       0, 'G'},
   {"ai.a",       required_argument, 0, OPT_AGENT_A},
   {"ai.b",       required_argument, 0, OPT_AGENT_B},
+  {"stda.rating", no_argument,      0, 'r'},
+  {"rating.games", required_argument, 0, OPT_RATING_GAMES},
+  {"rating.file", required_argument, 0, OPT_RATING_FILE},
+  {"rating.method", required_argument, 0, OPT_RATING_METHOD},
+  {"rating.track", no_argument,     0, OPT_RATING_TRACK},
   {"oracle-complete", optional_argument, 0, OPT_ORACLE_COMPLETE},
   {0, 0, 0, 0}
 };
@@ -233,7 +261,7 @@ int parse_options(int argc, char** argv, config_t* cfg)
   cfg->prng_seed = 0;
 
   while((opt = getopt_long_only(argc, argv,
-                                "hvVn:i:o:u::p::asltgSCLTGA::",
+                                "hvVn:i:o:u::p::asltgrSCLTGA::",
                                 long_options, &option_index)) != -1)
   { switch(opt)
     { case 'h':
@@ -288,6 +316,9 @@ int parse_options(int argc, char** argv, config_t* cfg)
       case 'g':
         cfg->mode = MODE_STDA_GUI;
         break;
+      case 'r':
+        cfg->mode = MODE_STDA_RATING;
+        break;
       case 'S':
         cfg->mode = MODE_SERVER;
         break;
@@ -323,6 +354,29 @@ int parse_options(int argc, char** argv, config_t* cfg)
         if(result != EXIT_SUCCESS) return result;
         break;
       }
+      case OPT_RATING_GAMES:
+        cfg->rating_games = atoi(optarg);
+        if(cfg->rating_games <= 0)
+        { fprintf(stderr, "Error: rating.games must be positive\n");
+          return 1;
+        }
+        break;
+      case OPT_RATING_FILE:
+        cfg->rating_file = strdup(optarg);
+        break;
+      case OPT_RATING_METHOD:
+        if(strcmp(optarg, "mm") == 0)
+          cfg->rating_method_gradient = false;
+        else if(strcmp(optarg, "gradient") == 0)
+          cfg->rating_method_gradient = true;
+        else
+        { fprintf(stderr, "Error: rating.method must be 'mm' or 'gradient'\n");
+          return 1;
+        }
+        break;
+      case OPT_RATING_TRACK:
+        cfg->rating_track = true;
+        break;
       default:
         print_usage(argv[0]);
         return 1;

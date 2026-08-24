@@ -14,6 +14,7 @@
 #include "stda_tui.h"
 #include "stda_auto.h"
 #include "stda_tui_interactive.h"
+#include "stda_rating_track.h"
 #include "../../core/game_constants.h"
 #include "../../core/game_context.h"
 #include "../../core/turn_logic.h"
@@ -171,6 +172,13 @@ int run_mode_stda_tui(config_t* cfg)
   get_player_assignment(&pconfig, cfg);
   apply_player_assignment(&pconfig, cfg, ctx);
 
+  /* Bradley-Terry human rating tracking (--rating.track, off by default;
+     a no-op for anything other than a single human-vs-AI game -- see
+     stda_rating_track.h). Set up before tui_screen_create() touches the
+     terminal, same as player configuration above. */
+  RatingSystem rating_sys;
+  RatingTrackState rating_track = stda_rating_track_start(cfg, &pconfig, &rating_sys);
+
   struct gamestate* gstate;
   StrategySet* strategies;
   TuiScreen* screen;
@@ -185,7 +193,12 @@ int run_mode_stda_tui(config_t* cfg)
 
   tui_run_loop(screen, gstate, strategies, ctx, cfg, &pconfig);
 
+  /* Print after tui_screen_destroy() -- ncurses must be torn down first
+     so the rating summary lands on the normal terminal, not the ncurses
+     screen buffer. */
   tui_screen_destroy(screen);
+  stda_rating_track_finish(cfg, &rating_track, &rating_sys, gstate);
+
   cleanup_cli_game(gstate, strategies, ctx);
   return EXIT_SUCCESS;
 }

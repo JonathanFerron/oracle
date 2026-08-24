@@ -64,6 +64,17 @@ TEST_CASH_SRCS := $(TESTSRCDIR)/test_cash_exchange.c \
 TEST_CASH_OBJS := $(BUILDDIR)/testsrc/test_cash_exchange.o \
                   $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_CASH_SRCS)))
 
+# src/rating/ is dependency-free (game_types.h + libc only -- see rating.h),
+# so this test needs no engine objects beyond the rating module itself.
+TEST_RATING_TARGET := $(BINDIR)/test_rating
+TEST_RATING_SRCS := $(TESTSRCDIR)/test_rating.c \
+                    $(SRCDIR)/rating/rating_core.c \
+                    $(SRCDIR)/rating/rating_update.c \
+                    $(SRCDIR)/rating/rating_batch.c \
+                    $(SRCDIR)/rating/rating_csv.c
+TEST_RATING_OBJS := $(BUILDDIR)/testsrc/test_rating.o \
+                    $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_RATING_SRCS)))
+
 # Calibration harness for A1 Value Based's tunable parameters (see
 # aicalibsrc/value/). One subfolder per agent under aicalibsrc/ as more
 # agents get calibration tooling. Links the engine directly (same pattern as
@@ -190,7 +201,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis
+	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -232,6 +243,17 @@ $(TEST_CASH_TARGET): $(TEST_CASH_OBJS)
 	@mkdir -p $(BINDIR)
 	$(CC) $(TEST_CASH_OBJS) -o $(TEST_CASH_TARGET) $(LIBS)
 	@echo "Test build complete: $(TEST_CASH_TARGET)"
+
+# Test the Bradley-Terry rating system (src/rating/)
+.PHONY: test_rating
+test_rating: $(TEST_RATING_TARGET)
+	./$(TEST_RATING_TARGET)
+
+$(TEST_RATING_TARGET): $(TEST_RATING_OBJS)
+	@echo "Linking test_rating..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(TEST_RATING_OBJS) -o $(TEST_RATING_TARGET) $(LIBS)
+	@echo "Test build complete: $(TEST_RATING_TARGET)"
 
 # Calibration harness (see aicalibsrc/value/README.md or the file header for CLI usage)
 .PHONY: calib_valuebased
@@ -284,6 +306,7 @@ help:
 	@echo "  test_combo       - Build and run combo bonus tests"
 	@echo "  test_recall      - Build and run recall mechanic tests"
 	@echo "  test_cash_exchange - Build and run cash exchange tests"
+	@echo "  test_rating      - Build and run Bradley-Terry rating system tests"
 	@echo "  test_stda_auto   - Diff 'oracle -sa -p' output against bin/expectedresults.txt"
 	@echo "  calib_valuebased - Build the Value Based parameter calibration harness (aicalibsrc/)"
 	@echo "  calib_combo_threshold - Build the Combo Threshold parameter calibration harness (aicalibsrc/)"

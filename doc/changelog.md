@@ -5,6 +5,159 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-23 — Bradley-Terry rating system implemented
+
+Ports the math and design of `ideas/5 rating system/v2 Bradley-Terry (BT) Rating
+System/` (a self-contained ~2300-line prototype/guide), not the file itself --
+the prototype predates `A1`-`A3` and this session's own two-solver decision, and
+carries a dozen-plus defects fixed on port (see below). Every entrant (AI agent
+or human) gets a rating on a 1-99 scale that *is* their percent win probability
+against Borealis (`A3`, `AI_STRATEGY_BOREALIS`), the anchor fixed at strength
+1.0 / rating 50 by definition -- this is precisely the role `A3` was built for
+(see its entry below).
+
+- **`src/rating/rating.h`** (new) -- the single public header:
+  `RatingEntry`/`RatingSystem`/`MatchResult`/`RatingConfig`/opaque
+  `RatingBatchData`. Deliberately depends only on `game_types.h` (for
+  `AIStrategyType`) and libc -- no `src/ui/`, no `src/ai_strat/` -- so the
+  module is unit-testable standalone and mirrors why `AIStrategyType` itself
+  lives in `game_types.h` rather than `ui/shared/`. `MatchResult`'s win counts
+  are `uint32_t`, not the spec's `uint8_t` (which overflows past 255 games --
+  this system's benchmark mode runs thousands per pairing).
+- **`src/rating/rating_core.c`** (new) -- registration, lookup, and the pure
+  strength<->rating math (`rating = 100*s/(s+1)`, clamped [1,99]), adaptive-A
+  formula (`A(g) = a_min + (a_max-a_min)*e^(-g/tau)`), win probability,
+  rebalance-to-Borealis, a proper Wilson-interval confidence estimate
+  (replacing the spec's under-10-games/Wald hybrid), and `rating_find_opponent()`
+  (nearest-rating matchmaking, excluding self and the anchor).
+- **`src/rating/rating_update.c`** (new) -- the incremental `A^delta` path for
+  real-time play. Two path-dependence bugs fixed vs. the spec: `games_played`
+  now advances *per game* (so adaptive A actually decays within a match, not
+  only between matches -- the spec's ordering left a 10,000-game batch running
+  the entire way at `a_max`), and wins/losses/draws are interleaved
+  proportionally (a deterministic largest-remainder merge, no RNG) rather than
+  applied as three separate all-or-nothing blocks, which was a systematic bias
+  given the update is inherently path-dependent.
+- **`src/rating/rating_batch.c`** (new) -- order-independent MLE fit over
+  accumulated match results, dispatching on two solvers:
+  - `RATING_BATCH_MM` (default) -- the standard Bradley-Terry fixed point
+    (Minorization-Maximization, a.k.a. the Zermelo/Newman/Hunter algorithm):
+    `s_i <- W_i / sum_j N_ij/(s_i+s_j)`, renormalized to the anchor every
+    iteration. Parameter-free and provably monotone in the log-likelihood --
+    the standard method in the rating literature, not the spec's gradient
+    ascent.
+  - `RATING_BATCH_GRADIENT` -- the spec's gradient ascent, kept for
+    cross-checking against MM, with three defects fixed: the hardcoded
+    `learning_rate = 0.01` moved into `RatingConfig`; the convergence check
+    moved to run *after* renormalization (the spec compared an unnormalized
+    new value against a normalized old one, so it could never actually
+    converge); and the gradient normalized by total game count -- **found
+    diverging in testing**: the spec's raw gradient scales with dataset size,
+    so a learning rate stable on a handful of games (as in the spec's own
+    demo) diverges outright at the round-robin benchmark's thousands of games
+    per pairing (one entrant's strength was observed running away to
+    `5.3 x 10^12` before this fix). Also fixed: draws now contribute 0.5 wins
+    to each side in the win/games matrices (the spec inflated games without
+    ever crediting a win for a draw, biasing both players' fit downward), and
+    an optional `prior_games` separation guard (fictitious win+loss vs the
+    anchor) for entrants that are undefeated or winless against the field.
+- **`src/rating/rating_csv.c`** (new) -- `rating_export_csv()`/`_import_csv()`.
+  The first file I/O anywhere in `src/` (the only prior precedent is
+  `main.c`'s `-o/--output` stdout redirection and `prng_seed.c`'s
+  `/dev/urandom` read) -- deliberately independent of `-o`, since that flag
+  redirects stdout and would otherwise swallow the CSV. Names containing a
+  comma are rejected at registration (the format doesn't quote fields).
+- **`testsrc/test_rating.c`** (new, `make test_rating`, 41 assertions) --
+  unlike the spec's own `oracle_rating_test.c` (prints tables for a human to
+  eyeball, `srand(time(NULL))`, almost no real assertions), every check here
+  is deterministic pass/fail: scale round-trip, the Borealis anchor property,
+  probability symmetry, adaptive-A monotonicity, MM recovering known synthetic
+  strengths to within 5%, MM/gradient agreement, CSV round-trip (including a
+  human entrant), the `uint32_t` win-count regression, empty/one-entrant
+  leaderboard safety (the spec's `rating_print_leaderboard()` underflows an
+  unsigned loop bound on zero entrants -- fixed in `rating_report.c` below),
+  roster-full handling, and an all-draws match leaving equal-strength
+  entrants unchanged.
+- **`src/ui/shared/rating_report.c/h`** (new) -- localized leaderboard/detail
+  rendering (`LOCALIZED_STRING_L`, per `CLAUDE.md`'s trilingual-UI rule),
+  kept in `src/ui/` rather than `src/rating/` so the library itself stays
+  UI-free. Sorted by rating descending via a selection sort that starts from
+  an explicit `num_entrants == 0` check, not the spec's unsigned-underflow-prone
+  loop bound.
+- **`src/roles/stda/stda_rating.c/h`** (new) -- `MODE_STDA_RATING`
+  (`-r`/`-sr`/`--stda.rating`), the round-robin benchmark and this project's
+  first real, reproducible rating table. Registers every agent
+  `ai_strategy_is_implemented()` returns true for (filtering matters: only 4
+  of 12 `AIStrategyType` slots are implemented, and
+  `set_player_strategy_by_type()` silently falls back to Random for the
+  rest, so an unfiltered round-robin would rate eight silent aliases of
+  Random), plays every unordered pair both seats-swapped (canceling
+  first-player advantage, the same pattern
+  `aicalibsrc/*/build_selfplay_jobs()` uses), reuses `run_simulation()`
+  (`stda_auto.c`, the same in-process pattern `aicalibsrc/*/calib_*.c` use)
+  per orientation, and fits via `rating_batch_compute()`. New options:
+  `--rating.games=N` (games per orientation, default 2000), `--rating.file=PATH`
+  (CSV output), `--rating.method=mm|gradient`.
+- **`src/roles/stda/stda_rating_track.c/h`** (new) -- optional
+  (`--rating.track`, off by default) human rating tracking wired into both
+  `stda.cli` and `stda.tui`. A no-op for anything other than a single
+  human-vs-AI game, so normal play is completely unaffected when the flag is
+  unset. Loads/creates a caller-owned `RatingSystem` local (no global rating
+  state -- see the spec's file-scope-global convention conflict, avoided
+  here the same way `A1`-`A3`'s calibration params avoid it), prints an
+  optional matchmaking suggestion (`rating_find_opponent()`, never an
+  override of the agent actually configured), applies the incremental update
+  after the game, and persists back to `--rating.file`. **Bug found and
+  fixed during testing**: a player quitting mid-game (the CLI/TUI's
+  `EXIT_SIGNAL` path) leaves `gstate->game_state == ACTIVE` rather than a
+  real outcome; the first version of `stda_rating_track_finish()` read that
+  as "not a win, not a draw" and silently recorded a fake loss -- fixed with
+  an explicit `game_state == ACTIVE` guard that skips tracking entirely
+  rather than guessing. Verified end-to-end (win/loss/draw, and reload
+  across separate process invocations via the CSV) with a throwaway harness
+  driving `stda_rating_track_start()`/`_finish()` directly, since scripting a
+  full interactive game to natural completion through `testsrc/cli_scripts/`
+  was impractical; all four existing canned scripts still run unchanged.
+- **`src/core/game_types.h`**: `MODE_STDA_RATING` added to `game_mode_t`;
+  `config_t` gained `rating_games`/`rating_file`/`rating_method_gradient`
+  (a plain `bool`, not a `RatingBatchMethod`, to avoid `game_types.h`
+  depending on `src/rating/rating.h` -- same reasoning as the existing
+  `player_config` `void*`)/`rating_track`.
+- **`src/main/cmdline.c`**: `-r`/`-sr`/`--stda.rating` mode switch;
+  `--rating.games`/`--rating.file`/`--rating.method`/`--rating.track` (no
+  short forms for the last one, per the plan). `--ai.a`/`--ai.b` (also
+  `required_argument`) already don't get special shell-completion value
+  suggestions, so `--rating.method`'s two values weren't special-cased either
+  -- consistent with that existing precedent rather than inventing a new one.
+- **`src/ui/shared/player_config.c/h`**: added `get_ai_strategy_shorthand()`,
+  the inverse of the existing `parse_ai_strategy_shorthand()` -- needed so
+  `stda_rating.c`/`stda_rating_track.c` can name a rating entrant after the
+  agent's CLI shorthand rather than duplicating the table.
+- **`makefile`**: `TEST_RATING_*` block copying the `TEST_RECALL_*` pattern
+  (the `patsubst`/`filter` idiom, not `test_combo`'s hand-listed objects);
+  since `src/rating/` is dependency-free the test needs no engine objects
+  beyond the rating module itself.
+- **Measured** (`./bin/oracle -r -p --rating.games=2000`, MM solver, both
+  seats-swapped orientations, deterministic under the fixed seed): `borealis`
+  50 (anchor), `combo` (`A2`) **30**, `value` (`A1`) **24**, `rand` **2**.
+  Cross-validated against `A3`'s own entry below, whose independently
+  *measured* Borealis-vs-X win rates (69.13% vs `combo`, 74.19% vs `value`,
+  99.33% vs `rand`) imply ratings of ~31/~26/~1 respectively -- close
+  agreement despite the two measurements coming from unrelated runs (a
+  direct pairwise win rate vs. a transitive multi-pairing MLE fit).
+  `RATING_BATCH_GRADIENT` reproduces the same table. This also supersedes
+  the placeholder design-intent estimates in
+  `ideas/G1 AI agent general info/oracle_ai_agent_names.md` (`rand` 5,
+  `value` 15, `combo` 37) -- `A1`'s estimate of 15 was the largest miss
+  against the measured ~24-26.
+- Regression: `-a -p` output unchanged (byte-identical vs
+  `bin/expectedresults.txt`); `test_combo` (20/20), `test_recall` (10/10),
+  `test_cash_exchange` (6/6), `test_rating` (41/41) all pass; valgrind-clean
+  on `--stda.rating` and on a `--rating.track` CLI session; deterministic
+  (`--stda.rating` under a fixed seed, and the incremental path via the
+  standalone harness above); all four `testsrc/cli_scripts/` scripts still
+  run unchanged with `--rating.track` unset.
+
 ## 2026-08-23 — A3 Borealis (the Bradley-Terry benchmark) implemented and calibrated
 
 Implemented per `ideas/A3 ai agent greedy power (borealis)/
@@ -143,6 +296,12 @@ dial -- win rate is unimodal in it -- rather than a personality trait like
 
 Full details of this and future calibration runs will continue to accumulate
 in this file the way the `A1`/`A2` entries above do.
+
+## 2026-08-22 — A2 Combo Threshold ("The Showboat") implemented and calibrated
+
+(This entry was missing its own heading until the rating-system pass below
+noticed the A2 content below reading as an A3 subsection -- fixed here, no
+content changed.)
 
 Implemented per `ideas/A2 ai agent combo threshold (the showboat)/
 combo_threshold_handout.md`: a threshold-gated combo chaser that prunes attack
