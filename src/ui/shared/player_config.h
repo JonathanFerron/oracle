@@ -57,6 +57,12 @@ void print_ai_agent_shorthand_list(config_t* cfg);
 // shorthand (AI_STRATEGY_COUNT or otherwise out of range).
 const char* get_ai_strategy_shorthand(AIStrategyType strategy);
 
+// Borealis-scale rating (1-99) for `strategy` -- see AI_STRATEGY_RATINGS's
+// comment in player_config.c. *is_measured is set to true for a real
+// --stda.rating fit, false for a design-intent estimate; may be NULL.
+// Returns -1 (and *is_measured = false) for an out-of-range strategy.
+int8_t get_ai_strategy_rating(AIStrategyType strategy, bool* is_measured);
+
 // Bare shorthand codes only, one per line, no localized names/header
 // (shell completion; see tools/oracle-completion.bash).
 void print_ai_agent_shorthand_codes(void);

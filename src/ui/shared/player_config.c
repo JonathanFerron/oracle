@@ -10,6 +10,7 @@
 #include "../../util/rnd.h"
 #include "ui_constants.h"
 #include "../../ai_strat/ai_strategy.h"
+#include "../../rating/rating.h"
 
 void init_player_config(PlayerConfig* pconfig)
 { // Default player types (Human vs AI)
@@ -92,7 +93,10 @@ void get_player_names(config_t* cfg, PlayerConfig* pconfig)
 // Menu label per AIStrategyType, in ideas/A1-A11 roster order. Availability
 // (shown alongside each label) is no longer hardcoded here -- it comes from
 // ai_strategy_is_implemented(), the same registry set_player_strategy_by_type()
-// consults, so this menu can never drift from what actually plays.
+// consults, so this menu can never drift from what actually plays. The
+// bracketed flavour name (e.g. "[The Showboat]") is *not* part of this
+// label -- format_menu_name() appends get_strategy_display_name() to it, so
+// keep flavour names out of the literals below.
 static const char* strategy_menu_label(AIStrategyType type, ui_language_t lang)
 { switch(type)
   { case AI_STRATEGY_RANDOM:
@@ -101,9 +105,8 @@ static const char* strategy_menu_label(AIStrategyType type, ui_language_t lang)
       return LOCALIZED_STRING_L(lang, "Value Based", "Base sur la valeur",
                                 "Basado en valor");
     case AI_STRATEGY_COMBO_THRESHOLD: // ideas/A2 ai agent combo threshold (the showboat)
-      return LOCALIZED_STRING_L(lang, "Combo Threshold [The Showboat]",
-                                "Seuil de combo [Le Frimeur]",
-                                "Umbral de combo [El Fanfarron]");
+      return LOCALIZED_STRING_L(lang, "Combo Threshold", "Seuil de combo",
+                                "Umbral de combo");
     case AI_STRATEGY_BOREALIS: // ideas/A3 ai agent greedy power (borealis) -- the benchmark agent
       return LOCALIZED_STRING_L(lang, "Borealis", "Borealis", "Borealis");
     case AI_STRATEGY_BALANCED: // ideas/A4 ai agent balanced rules (bean counter)
@@ -132,6 +135,54 @@ static const char* strategy_menu_label(AIStrategyType type, ui_language_t lang)
   }
 }
 
+// Borealis-scale rating per agent (1-99; the rating *is* the expected win
+// percentage vs Borealis, the rating-50 anchor -- see src/rating/rating.h).
+// `measured` distinguishes a real --stda.rating fit (doc/changelog.md's
+// 2026-08-23 entry) from the design-intent estimate in
+// ideas/G1 AI agent general info/oracle_ai_agent_names.md, which the menu
+// prints with a "~" prefix. When a new agent is benchmarked, replace its
+// estimate here and flip `measured` -- an implemented-but-unbenchmarked
+// agent legitimately keeps measured = false.
+typedef struct
+{ int8_t rating;
+  bool measured;
+} AIStrategyRating;
+
+static const AIStrategyRating AI_STRATEGY_RATINGS[AI_STRATEGY_COUNT] =
+{ [AI_STRATEGY_RANDOM]           = {  2, true  },
+  [AI_STRATEGY_VALUE_BASED]      = { 24, true  },
+  [AI_STRATEGY_COMBO_THRESHOLD]  = { 30, true  },
+  [AI_STRATEGY_BOREALIS]         = { BOREALIS_RATING, true },
+  [AI_STRATEGY_BALANCED]         = { 62, false },
+  [AI_STRATEGY_HEURISTIC]        = { 70, false },
+  [AI_STRATEGY_TACTICAL]         = { 74, false },
+  [AI_STRATEGY_HYBRID_HBT]       = { 78, false },
+  [AI_STRATEGY_SIMPLE_MC]        = { 82, false },
+  [AI_STRATEGY_HBT_2PLY]         = { 85, false },
+  [AI_STRATEGY_ISMCTS]           = { 92, false },
+  [AI_STRATEGY_ISMCTS_NN]        = { 97, false },
+};
+
+// "Random [The Gambler]", or just "Borealis" when the technical label and
+// the flavour name (get_strategy_display_name()) are identical strings.
+static void format_menu_name(AIStrategyType type, ui_language_t lang,
+                             char* buf, size_t n)
+{ const char* label = strategy_menu_label(type, lang);
+  const char* flavour = get_strategy_display_name(type, lang);
+
+  if(strcmp(label, flavour) == 0)
+    snprintf(buf, n, "%s", label);
+  else
+    snprintf(buf, n, "%s [%s]", label, flavour);
+}
+
+// "50" for a measured rating, "~62" for a design-intent estimate.
+static void format_menu_rating(AIStrategyType type, char* buf, size_t n)
+{ const AIStrategyRating* r = &AI_STRATEGY_RATINGS[type];
+
+  snprintf(buf, n, "%s%d", r->measured ? "" : "~", r->rating);
+}
+
 static void display_ai_strategy_menu(ui_language_t lang)
 { printf("\n%s:\n",
          LOCALIZED_STRING_L(lang,
@@ -144,9 +195,12 @@ static void display_ai_strategy_menu(ui_language_t lang)
                                ? LOCALIZED_STRING_L(lang, "available", "disponible", "disponible")
                                : LOCALIZED_STRING_L(lang, "not yet implemented",
                                                     "pas encore implemente", "no implementado");
+    char name[80], rating[8];
+    format_menu_name(type, lang, name, sizeof(name));
+    format_menu_rating(type, rating, sizeof(rating));
 
-    printf("  [%d] %s (%s)\n", type + 1,
-           strategy_menu_label(type, lang), availability);
+    printf("  [%d] %s (%s) [%s] (%s)\n", type + 1, name, availability,
+           rating, get_ai_strategy_shorthand(type));
   }
 }
 
@@ -462,4 +516,18 @@ const char* get_ai_strategy_shorthand(AIStrategyType strategy)
       return AI_STRATEGY_SHORTHANDS[i].shorthand;
 
   return NULL;
+}
+
+// Borealis-scale rating lookup (see AI_STRATEGY_RATINGS's comment above).
+// Returns -1 and sets *is_measured = false for an out-of-range strategy;
+// is_measured may be NULL.
+int8_t get_ai_strategy_rating(AIStrategyType strategy, bool* is_measured)
+{ if(strategy < 0 || strategy >= AI_STRATEGY_COUNT)
+  { if(is_measured) *is_measured = false;
+    return -1;
+  }
+
+  const AIStrategyRating* r = &AI_STRATEGY_RATINGS[strategy];
+  if(is_measured) *is_measured = r->measured;
+  return r->rating;
 }

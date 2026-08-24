@@ -365,9 +365,13 @@ As of `A1` (2026-08-21), strategy dispatch is a single table-driven registry
    design doc's speculative win-rate estimate is correct -- `A1`'s handout guessed
    ~60-70% vs Random and the measured result was ~90%, for reasons documented in the
    changelog; investigate discrepancies before trusting either the doc or the code
-8. [ ] Document in `STRATEGY_GUIDE.md` (create it once ≥2 agents exist — see
+8. [ ] Once a `--stda.rating` fit exists for the new agent, update its entry in
+   `player_config.c`'s `AI_STRATEGY_RATINGS[]` (measured rating, `measured = true`)
+   so the interactive AI strategy menu (`display_ai_strategy_menu()`) stops showing
+   the `~`-prefixed design-intent estimate
+9. [ ] Document in `STRATEGY_GUIDE.md` (create it once ≥2 agents exist — see
    "Documentation Tasks")
-9. [ ] Update `doc/oracle_roadmap.md`'s "Recently Completed" / status
+10. [ ] Update `doc/oracle_roadmap.md`'s "Recently Completed" / status
 
 ---
 

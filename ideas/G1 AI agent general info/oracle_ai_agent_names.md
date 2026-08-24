@@ -131,6 +131,12 @@ to it teaches something, which makes it a reasonable rung below the benchmark.
 - All other values are **placeholder design-intent estimates**, not measured
   results. Replace each with a measured rating from simulated games against
   Borealis once the agent is implemented.
+- This roster's `Measured`/`Est. Borealis Rating` columns are mirrored in code by
+  `AI_STRATEGY_RATINGS[]` (`src/ui/shared/player_config.c`), which the interactive
+  AI strategy menu (`display_ai_strategy_menu()`, CLI and TUI) reads to print each
+  agent's rating -- `~`-prefixed for a design-intent estimate, bare for a measured
+  one. When an agent goes from estimate to measured here, update that table too
+  (see "Checklist: Adding a New AI Strategy", `doc/oracle_todo.md`).
 - Ordering constraints established during design:
   - Combo Threshold sits between Value Based and Borealis.
   - Simple Monte Carlo is weaker than HBT 2-Ply.

@@ -5,6 +5,38 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-24 — AI strategy menu shows Borealis rating, flavour name, and `-A` shorthand
+
+The "Available AI Strategies" menu (`display_ai_strategy_menu()`,
+`src/ui/shared/player_config.c`, shared by `stda.cli` and `stda.tui` -- both
+call `get_ai_strategies()`) previously printed only a technical label and
+availability, e.g. `Combo Threshold [The Showboat] (available)`, with the
+flavour name hardcoded into just that one agent's label literal. Now every
+row reads e.g. `Random [The Gambler] (available) [2] (rand)`:
+
+- **Flavour name** for all 12 agents, not just Combo Threshold: the previously
+  hardcoded `[The Showboat]` text was removed from `strategy_menu_label()`'s
+  `AI_STRATEGY_COMBO_THRESHOLD` case; a new `format_menu_name()` helper appends
+  `get_strategy_display_name()` in brackets for every agent, and omits the
+  brackets when the two strings are identical (Borealis only).
+- **Rating** in a second bracket: a new `AI_STRATEGY_RATINGS[]` table
+  (`player_config.c`, indexed by `AIStrategyType`) holds the Borealis-scale
+  rating and a `measured` flag per agent. `rand`/`value`/`combo`/`borealis`
+  carry the 2026-08-23 measured values (2/24/30/50, see that entry below);
+  the eight unimplemented agents carry the `ideas/G1 AI agent general info/
+  oracle_ai_agent_names.md` design-intent estimates, printed with a `~`
+  prefix (`format_menu_rating()`) so they read as a target, not a result.
+  A `get_ai_strategy_rating()` accessor exposes the same table for reuse.
+- **`-A`/`--ai` shorthand** in a trailing parenthesis, via the existing
+  `get_ai_strategy_shorthand()` -- doubles as a mnemonic for the CLI flag.
+- No new localized strings: the rating/shorthand fields are language-neutral;
+  verified against `-u fr`/`-u es` (accented flavour names render correctly,
+  no row overflow/mangling).
+- Regression: `-a -p` byte-identical to `bin/expectedresults.txt` (this menu
+  is never rendered in `stda.auto`); `test_combo` (20/20), `test_recall`
+  (10/10), `test_cash_exchange` (6/6), `test_rating` (41/41) all pass;
+  valgrind-clean on a `testsrc/cli_scripts/` run.
+
 ## 2026-08-23 — Bradley-Terry rating system implemented
 
 Ports the math and design of `ideas/5 rating system/v2 Bradley-Terry (BT) Rating
