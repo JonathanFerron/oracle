@@ -5,6 +5,8 @@
 #include "../core/game_constants.h"
 #include "../core/card_actions.h"
 #include "../core/combo_bonus.h"
+// card_actions.h (above) already declares has_champion_in_hand()/
+// play_cash_card_ai() for try_play_cash_fallback() below.
 
 uint8_t build_affordable_champions(const struct gamestate* gstate, PlayerID player,
                                    uint16_t budget, uint8_t* out)
@@ -84,3 +86,20 @@ bool try_play_draw_card(struct gamestate* gstate, PlayerID player,
   play_draw_card(gstate, player, card_idx, ctx);
   return true;
 } // try_play_draw_card
+
+void try_play_cash_fallback(struct gamestate* gstate, PlayerID player,
+                            uint8_t affordable_champion_count, GameContext* ctx)
+{ if(affordable_champion_count > 0) return;
+  if(!has_champion_in_hand(&gstate->hand[player])) return;
+
+  const Hand* hand = &gstate->hand[player];
+  uint16_t budget = gstate->current_cash_balance[player];
+
+  for(uint8_t i = 0; i < hand->size; i++)
+  { uint8_t card_idx = hand->cards[i];
+    if(fullDeck[card_idx].card_type == CASH_CARD && fullDeck[card_idx].cost <= budget)
+    { play_cash_card_ai(gstate, player, card_idx, ctx);
+      return;
+    }
+  }
+} // try_play_cash_fallback

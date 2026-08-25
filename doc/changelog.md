@@ -5,6 +5,136 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-24 — A4 Balanced Rules ("Bean Counter") implemented and calibrated
+
+Implemented per `ideas/A4 ai agent balanced rules (bean counter)/about.md` and its
+only written spec, `src/ai_strat/ai_strat_balancedrules1.c`'s design-comment stub
+(now deleted -- its prose lives on in `ai_strat_balanced_rules.h`'s header comment
+and in `about.md`): a closed-form, no-search agent that derives a target cash
+reserve and target effective hand size from the opponent's current energy (linear
+formulas), spends/holds to hit those targets, and defends by a variance-aware rule,
+`E[Total Def] <= E[Total Attack] - beta*sigma`, that can rationally decline a block
+outright rather than always countering. Deliberately combo-blind on card selection
+(`combo_weight` ships at `0.0`) -- combo scoring as a primary signal belongs to
+`A2`/`A3`, per `about.md`'s explicit scope boundary.
+
+- **`src/ai_strat/ai_strat_balanced_rules.c/.h`** (new; replaces the 120-line
+  comment-only stub `ai_strat_balancedrules1.c`, deleted). Reuses
+  `build_affordable_champions()`, `expected_incoming_attack()`,
+  `combo_bonus_for_selection()` from `ai_strat_common.h`. `try_play_cash_fallback()`
+  (previously `A3`-only, `static` in `ai_strat_borealis.c`) was promoted into
+  `ai_strat_common.{c,h}` as a small preparatory refactor (verified
+  behavior-preserving: `-a -p` byte-identical to `bin/expectedresults.txt` both
+  before and after, since neither Random-vs-Random path touches either agent) --
+  `A4` needed the identical "no champion affordable but a cash card is" fallback,
+  and duplicating it a third time wasn't worth it. No mulligan/discard-to-7
+  override: unlike `A3`, the shared `strat_lib_discard_to_7()` only ever discards
+  *champions* by lowest `power`, which doesn't conflict with this agent's
+  draw-card-based effective-hand-size accounting, so both `StrategySet` hooks stay
+  `NULL` (shared default).
+
+- **Two corrections to the design docs, found while implementing, not just while
+  calibrating:**
+  1. `ideas/G1 .../balanced_tactical_hbt_comparison.md` and
+     `ideas/G2 .../ai_params_guide.md` both state
+     `target_cash = (opp_energy-8)*19/91 + 8` and
+     `target_cards = (opp_energy-8)*5/91 + 3`, but the stub's own numeric tables
+     (cash 19->0, cards 5->0 as energy goes 99->8) fit `slope*(E-8)` with
+     **intercept 0** exactly at every tabulated point -- the `+8`/`+3` were a
+     misreading of the stub's inverse form
+     (`Enemy Energy = 91/19 * cash + 8`). Shipped with intercept `0.0` (now a
+     tunable field, since calibration below moved it off zero anyway).
+  2. The `19`-luna cash-ladder ceiling is itself a fossil of an obsolete rule
+     set -- starting cash is `INITIAL_CASH_DEFAULT = 30` today
+     (`game_constants.h`), not 19. The initial implementation re-anchored the
+     slope to `INITIAL_CASH_DEFAULT/91 (~0.3297)`, preserving the original
+     *shape* (hold the full starting stack while the opponent is healthy, spend
+     down to zero near a kill) at today's actual starting cash. This turned out
+     to be a genuine bug in the shape, not just an untuned guess -- see below.
+
+- **A real bug found by playtracing, not just poor calibration**: at
+  `target_cash_slope = INITIAL_CASH_DEFAULT/91`, the cash surplus
+  (`effective_cash - target_cash`) is `~0` by construction at full opponent
+  energy (both start at exactly 30), and since `target_cash` tracks the
+  *opponent's* energy (which barely falls while this agent is too cash-starved to
+  attack with), the agent gets stuck unable to spend for many consecutive turns. A
+  single traced game (`balanced` vs `value`, fixed seed) showed the agent passing
+  outright on 4 of its first 5 turns despite holding playable champions in hand at
+  every one of them -- not a selection-logic defect (confirmed by direct
+  instrumentation: `build_affordable_champions()`/`select_attack_champions()`
+  correctly returned zero *candidates*, not zero despite candidates existing), but
+  the resource-target formula itself producing a self-reinforcing "cannot
+  bootstrap" trap. Measured at the initial re-anchored default: `balanced` lost to
+  `value` (a *weaker* rung, measured rating 24-26) ~14-20% of the time in both
+  seats -- confirmed via a `target_cash_slope` sweep vs `borealis`
+  (0.0 -> 25.1%, 0.05 -> 26.1%, 0.10 -> 25.75%, 0.20 -> 21.6%, 0.33 (the
+  re-anchored default) -> 5.3%, 0.45 -> 0.06%, 0.6 -> 0.0%, all at 1600
+  games/value) that shows the cliff directly.
+
+- **Calibration** (`aicalibsrc/balanced/`, new: `calib_balanced.c` +
+  `calibrate_balanced.py` + `README.md`, `sweep`/`optimize`/`selfplay`/`validate`
+  parity with `aicalibsrc/borealis/`). `calib_balanced.c` adds a
+  `--print-defaults` mode (dumps the compiled `BALANCED_DEFAULTS` as JSON) that
+  the three earlier harnesses lack; `calibrate_balanced.py`'s own `DEFAULTS` dict
+  is read from it at import time rather than hand-copied, so it structurally
+  cannot drift from the shipped C constants the way the other three drivers'
+  copies already have (`doc/oracle_todo.md`).
+  - Two free `optimize` runs (all ten parameters, vs `combo`) independently
+    drove `target_cash_slope`/`target_cards_slope` toward `0` (spend everything,
+    ignore opponent energy entirely) and `defense_beta` past `2.0` (rarely
+    defend) -- each measuring *stronger* (up to 70.7% vs `combo`) but eroding
+    exactly the traits that make this agent "Bean Counter" rather than a worse
+    `A2`/`A3`. Flagged by a new `check_personality_flags()` (slope-degeneracy and
+    `defense_beta`-band checks, plus a `combo_weight > 0.5` check -- this
+    agent's combo-blindness is a scope boundary from `about.md`, not a
+    negotiable personality trait), the same protocol as `A2`'s rejected
+    `aggression_level = 2.21` (2026-08-22, above): a result that measures
+    stronger by eroding the agent's designed character is not shipped as-is.
+  - Rather than hand-pick a compromise from limited sweep data, added
+    `optimize --identity-safe`, which re-runs the search inside a narrower
+    `BOUNDS_IDENTITY_SAFE` that keeps both resource-target slopes non-degenerate
+    and `defense_beta` in `[0.25, 2.0]` by construction (and always fixes
+    `combo_weight = 0.0` regardless of `--params`) -- the best this agent can do
+    while still being this agent. Two such runs, targeting `combo` and then
+    `borealis` separately from different starting points, converged to
+    statistically indistinguishable ~34-35% win rates vs `borealis` -- a stable
+    result, not an artifact of one search. A 3-way self-play round-robin
+    (defaults vs both `--identity-safe` candidates, 24,000 games/pairing) picked
+    the `borealis`-targeted one (72.1% vs 71.4% Bradley-Terry-fit win rate
+    against the other two).
+  - **Shipped** (`BALANCED_DEFAULTS`): `target_cash_slope=0.0810`,
+    `target_cash_intercept=-2.728`, `target_cards_slope=0.0357`,
+    `target_cards_intercept=-0.991`, `defense_beta=1.935`,
+    `late_game_aggro=2.091`, `combo_weight=0.0` (unchanged, blind by design),
+    `lethal_horizon=9`, `draw2_hand_threshold=6`, `draw3_hand_threshold=6`.
+    Measured (validated, both seats): vs `borealis` 5.8% -> **34.3%**
+    [33.8%, 34.7%] (40,000 games); vs `combo` -> ~59.7% (9,000 games); vs
+    `value` -> ~58.1% (6,000 games); vs `rand` -> ~98.5% (6,000 games,
+    ceiling-effected like `A1`/`A2`/`A3`).
+
+- **Rating**: the design-intent estimate of 62 (`ideas/G1 .../
+  oracle_ai_agent_names.md`, `~62` in the menu) does not survive measurement --
+  `./bin/oracle -r -p --rating.games=2000`'s roster-wide Bradley-Terry fit places
+  `Bean Counter` at **rating 36** (below the Borealis anchor at 50, above `The
+  Showboat`/`A2` at 29 and `The Apprentice`/`A1` at 25), consistent with the
+  direct pairwise vs-`borealis` measurement above. This is a legitimate,
+  informative result, not a defect: a closed-form agent with no subset search is
+  not guaranteed to beat a lambda-tuned exhaustive 0-3-champion enumerator, and
+  measurement says it doesn't, at least not within the parameter region that
+  keeps it recognizably "Bean Counter." `AI_STRATEGY_RATINGS[AI_STRATEGY_BALANCED]`
+  (`player_config.c`) updated from `{ 62, false }` to `{ 36, true }`.
+
+- **Verification**: `make` clean (no new warnings); `-a -p` byte-identical to
+  `bin/expectedresults.txt`; `test_combo` (20/20), `test_recall` (10/10),
+  `test_cash_exchange` (6/6), `test_rating` (41/41) all pass; vs `rand` 98.6-99.3%
+  both seats (well above the `doc/oracle_todo.md` 70% bar, itself a stale,
+  near-useless discriminator at this point in the roster -- every implemented
+  agent clears it comfortably); vs `value`/`combo` ~58-60% both seats;
+  valgrind-clean (`--leak-check=full --track-origins=yes`,
+  `balanced` vs `balanced`, 20 games).
+
+---
+
 ## 2026-08-24 — AI strategy menu shows Borealis rating, flavour name, and `-A` shorthand
 
 The "Available AI Strategies" menu (`display_ai_strategy_menu()`,

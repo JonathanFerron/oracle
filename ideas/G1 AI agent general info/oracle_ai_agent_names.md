@@ -11,9 +11,12 @@ win percentage against the Borealis benchmark agent.
 ## Agent Roster
 
 The last column is the original design-intent guess made before any agent existed;
-`Measured` (2026-08-23, `--stda.rating` round-robin, `src/rating/`) is the actual
-Bradley-Terry fit now that `Random`/`A1`/`A2`/`A3` are all implemented. See
-`doc/changelog.md`'s 2026-08-23 rating-system entry for the run this came from.
+`Measured` (2026-08-23, `--stda.rating` round-robin, `src/rating/`; `A4` added
+2026-08-24) is the actual Bradley-Terry fit now that `Random`/`A1`/`A2`/`A3`/`A4` are
+all implemented. See `doc/changelog.md`'s 2026-08-23 and 2026-08-24 entries for the
+runs these came from. `A4`'s measured rating (36) landed well below its own
+design-intent estimate (62) and below the Borealis anchor -- a legitimate, calibrated
+result (`doc/changelog.md`), the largest design-intent miss on this table so far.
 
 | Tech/Math Name | English | Français | Español | Measured | Est. Borealis Rating |
 |---|---|---|---|---|---|
@@ -21,7 +24,7 @@ Bradley-Terry fit now that `Random`/`A1`/`A2`/`A3` are all implemented. See
 | Value Based | The Apprentice | L'Apprenti | El Aprendiz | 24 | 15 |
 | Combo Threshold | The Showboat | Le Frimeur | El Fanfarrón | 30 | 37 |
 | Greedy Power *(benchmark)* | Borealis | Borealis | Borealis | 50 | 50 |
-| Balanced Rules | Bean Counter | Compteur de Fèves | Contador de Frijoles | — | 62 |
+| Balanced Rules | Bean Counter | Compteur de Fèves | Contador de Frijoles | 36 | 62 |
 | Heuristic | ε-γ-δ | ε-γ-δ | ε-γ-δ | — | 70 |
 | Tactical | Pressure Cooker | Cocotte-Minute | Olla a Presión | — | 74 |
 | Hybrid (HBT) | The Grandmaster | Le Grand Maître | El Gran Maestro | — | 78 |
@@ -149,12 +152,19 @@ to it teaches something, which makes it a reasonable rung below the benchmark.
 Children aged 11–14 with moderate to frequent experience should average a
 45–55% win rate against Borealis.
 
-That is a wide age range for a single agent to serve. The difficulty screen
-mitigates this: with The Apprentice below and Bean Counter above, players
-self-select, and the calibration burden on Borealis alone becomes much more
-forgiving. Tune λ against playtest data, not against simulation win rates —
-simulation finds the λ that maximises strength, which is not necessarily the λ
-that hits the target band.
+That is a wide age range for a single agent to serve. The difficulty screen was
+meant to mitigate this by bracketing Borealis with a weaker and a stronger
+neighbour so players self-select, easing the calibration burden on Borealis
+alone. **That bracketing did not survive measurement**: Bean Counter (`A4`) was
+designed to sit above Borealis (est. 62) but measured at **36** — below the
+anchor, in the same neighbourhood as Combo Threshold (30) rather than above
+Borealis (`doc/changelog.md`, 2026-08-24). Until a later agent (`A5` onward)
+measures reliably above 50, Borealis currently has no *measured* stronger
+neighbour to bracket with, only weaker ones below it (`A4`, `A2`, `A1`,
+Random) — worth revisiting once `A5`-`A7` are implemented and measured. Tune λ
+against playtest data, not against simulation win rates — simulation finds the
+λ that maximises strength, which is not necessarily the λ that hits the target
+band.
 
 ---
 

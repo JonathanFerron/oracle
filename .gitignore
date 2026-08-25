@@ -10,6 +10,7 @@
 /bin/calib_valuebased
 /bin/calib_combo_threshold
 /bin/calib_borealis
+/bin/calib_balanced
 *.o
 *.xls
 *.xlsx

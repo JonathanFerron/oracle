@@ -47,4 +47,16 @@ bool try_play_draw_card(struct gamestate* gstate, PlayerID player,
                         uint8_t min_hand_size, uint8_t opp_energy_floor,
                         GameContext* ctx);
 
+// No champion is affordable, but the hand still holds one (just not
+// affordable) alongside an affordable cash card -- trade it for lunas
+// instead of passing outright. Originally A3 Borealis's Sec.9 placeholder
+// (greedy_power_borealis_handout.md); promoted here once A4 Balanced Rules
+// needed the identical fallback, mirroring ai_strat_random.c's guard against
+// playing a cash card with no champions in hand at all.
+// `affordable_champion_count` is the caller's own build_affordable_champions()
+// count -- passed in rather than recomputed so this stays a cheap no-op check
+// when a champion was actually affordable.
+void try_play_cash_fallback(struct gamestate* gstate, PlayerID player,
+                            uint8_t affordable_champion_count, GameContext* ctx);
+
 #endif // AI_STRAT_COMMON_H

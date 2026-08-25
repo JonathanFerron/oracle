@@ -1,5 +1,17 @@
 AI Idea 2
 
+**Correction note (2026-08-24, added on `A4` implementation)**: this file's
+`+8`/`+3` intercepts below do not reproduce
+`ai_strat_balancedrules1.c`'s (the original stub, now deleted) own numeric
+tables, which fit `slope*(Enemy_Energy-8)` with intercept **0** — the `+8`
+here was a misreading of the stub's inverse form. The `19/91` cash slope is
+additionally a fossil of an obsolete 19-luna starting-cash rule (today's
+`INITIAL_CASH_DEFAULT` is 30). Both are superseded by the shipped, calibrated
+values in `src/ai_strat/ai_strat_balanced_rules.h`/`.c` and
+`ideas/A4 ai agent balanced rules (bean counter)/about.md` — treat every
+formula/code sketch below as historical exploration, not current spec, per
+`CLAUDE.md`'s rule on `ideas/`.
+
 Excellent question! Let me analyze the three strategies comparatively:
 
 ## Strategic Comparison

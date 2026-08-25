@@ -3,9 +3,12 @@
 // ideas/A3 ai agent greedy power (borealis)/greedy_power_borealis_handout.md.
 // Attack/defense orchestration and parameter management; candidate
 // enumeration and scoring live in ai_strat_borealis_enum.c (Sec.10's
-// file-length guidance). draw-card/cash-card fallbacks (Sec.9) and the
-// discard-to-7/mulligan overrides (Sec.7) are placeholder heuristics,
-// clearly marked below -- the first things a stronger agent should replace.
+// file-length guidance). The draw-card fallback (Sec.9, try_play_draw_card())
+// and the cash-card fallback (Sec.9, try_play_cash_fallback() -- promoted to
+// ai_strat_common.{c,h} once A4 Balanced Rules needed the identical logic)
+// are placeholder heuristics shared across agents; the discard-to-7/mulligan
+// overrides below (Sec.7) are Borealis-specific and clearly marked -- the
+// first things a stronger agent should replace.
 
 #include "ai_strat_borealis.h"
 #include "ai_strat_borealis_enum.h"
@@ -72,27 +75,6 @@ void borealis_reset_params(void)
   g_params[PLAYER_A] = defaults;
   g_params[PLAYER_B] = defaults;
 } // borealis_reset_params
-
-// Sec.9 placeholder: no champion is affordable, but the hand still holds
-// one (just not affordable) alongside an affordable cash card -- trade it
-// for lunas instead of passing outright. Mirrors ai_strat_random.c's guard
-// against playing a cash card with no champions in hand at all.
-static void try_play_cash_fallback(struct gamestate* gstate, PlayerID player,
-                                   uint8_t affordable_champion_count, GameContext* ctx)
-{ if(affordable_champion_count > 0) return;
-  if(!has_champion_in_hand(&gstate->hand[player])) return;
-
-  const Hand* hand = &gstate->hand[player];
-  uint16_t budget = gstate->current_cash_balance[player];
-
-  for(uint8_t i = 0; i < hand->size; i++)
-  { uint8_t card_idx = hand->cards[i];
-    if(fullDeck[card_idx].card_type == CASH_CARD && fullDeck[card_idx].cost <= budget)
-    { play_cash_card_ai(gstate, player, card_idx, ctx);
-      return;
-    }
-  }
-} // try_play_cash_fallback
 
 void borealis_attack_strategy(struct gamestate* gstate, GameContext* ctx)
 { PlayerID player = gstate->current_player;

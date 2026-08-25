@@ -107,6 +107,20 @@ typedef struct {
 - `threshold_defense_beta`: How conservative to be on defense (lower = more aggressive)
 - `behavior_late_game_aggro`: Aggression multiplier when opponent low energy
 
+**Correction note (2026-08-24, added on `A4` implementation)**: the
+`0.2088 (19/91)` cash slope and `+8.0`/`+3.0` intercepts above are both stale.
+The intercepts don't reproduce the original design stub's own numeric tables
+(fit `slope*(opp_energy-8)` with intercept 0, not `+8`/`+3` — a misreading of
+the stub's inverse form); the `19/91` slope is a fossil of an obsolete
+19-luna starting-cash rule (`INITIAL_CASH_DEFAULT` is 30 today) and, even
+re-anchored to 30, turned out to be a genuine bug in the resource-target
+*shape*, not just an untuned guess (see `doc/changelog.md`, 2026-08-24). The
+implemented struct (`src/ai_strat/ai_strat_balanced_rules.h`) also drops
+`threshold_mulligan_power`/`enabled`/`description` (no agent in this codebase
+carries those fields -- see this folder's own top-of-file status note) and
+adds `combo_weight` (shipped blind, `0.0`). Shipped, calibrated values:
+`ideas/A4 ai agent balanced rules (bean counter)/about.md`.
+
 ### Heuristic Strategy
 ```c
 typedef struct {

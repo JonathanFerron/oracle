@@ -8,10 +8,11 @@ see `doc/oracle_design.md`. For a dated history of finished work see `doc/change
 mulligan, discard-to-7, combat/discard display), the source folder structure cleanup, and
 TUI Milestones 1–2 + polish pass are complete — see `doc/changelog.md`. `A1` Value Based
 ("The Apprentice", 2026-08-21), `A2` Combo Threshold ("The Showboat", 2026-08-22,
-calibrated), and `A3` Borealis (the Bradley-Terry benchmark, 2026-08-23, calibrated) are
-implemented, and the Bradley-Terry rating system itself (2026-08-23, `src/rating/`) is now
-built on top of them — see `doc/oracle_roadmap.md`'s "Next Up" for what's next (`A4`). The
-strategy-set build sites
+calibrated), `A3` Borealis (the Bradley-Terry benchmark, 2026-08-23, calibrated), and `A4`
+Balanced Rules ("Bean Counter", 2026-08-24, calibrated, measured rating 36 — below the
+Borealis anchor, see `doc/changelog.md`) are implemented, and the Bradley-Terry rating
+system itself (2026-08-23, `src/rating/`) is now built on top of them — see
+`doc/oracle_roadmap.md`'s "Next Up" for what's next (`A5`). The strategy-set build sites
 also gained a shared `AIStrategyType -> function pointer` registry (`ai_strategy.c`) as
 part of `A1` -- see "Checklist: Adding a New AI Strategy" below, which now reflects that
 mechanism rather than the old per-file hardcoding. As of `A3`, that registry also carries
@@ -125,7 +126,9 @@ already sketched out to break into sub-tasks.
   `selfplay` (the vulnerable path) — a re-run with the fix, and likely a re-calibration,
   is worth doing before those values are trusted further. A2's shipped `CT_DEFAULTS` were
   chosen via `optimize` (not vulnerable — see `doc/changelog.md`, 2026-08-23) and are fine
-  as shipped.
+  as shipped. `calibrate_balanced.py` (`A4`, 2026-08-24) was written with the fix from the
+  start, so it's not affected — this item is now specifically about porting the fix into
+  the two older drivers.
 
 - [ ] **`aicalibsrc/*/calibrate_*.py`'s `DEFAULTS` dicts drift from their shipped C
   constants.** Noticed while writing `aicalibsrc/borealis/`: both `calibrate_valuebased.py`
@@ -133,24 +136,13 @@ already sketched out to break into sub-tasks.
   their own `DEFAULTS` dict (used as the baseline every `sweep`/`optimize`/`validate` run
   compares against and as the fallback for partial candidate JSON), not the values actually
   shipped in `VB_COST_FLOOR`/`VB_DEFEND_THRESHOLD`/`CT_DEFAULTS` today. A re-run of either
-  driver right now would silently compare against a stale baseline. Update both dicts (or
-  script a check that fails loudly if they drift from the C source), and keep
-  `aicalibsrc/borealis/`'s `DEFAULTS` in sync with `BOREALIS_DEFAULTS` going forward.
-
-### `A4` Balanced Rules Strategy (`ai_strat_balancedrules1.c`)
-
-- [ ] In `stda.cli` mode, when AI-vs-AI play is selected, use "AI strategy name + (A or
-  B)" as the player name instead of asking for player 1's name and not player 2's
-- [ ] Design decision framework (see `ai_strat_balancedrules1.c` notes)
-- [ ] Attack heuristics: when to play 0-cost champions; when to play draw/recall vs
-  champions; target hand size based on opponent energy; target cash balance based on
-  opponent energy
-- [ ] Defense heuristics: when to defend vs decline; which defenders to play;
-  E[Total Def] ≤ E[Total Attack] − β·σ rule; prioritize low attack-efficiency cards for
-  defense
-- [ ] Card selection: best attacker/defender selection; power/efficiency calculations
-- [ ] Parameter tuning: calibrate target cash/hand formulas; optimize defend
-  probability; test vs Random AI (should win >70%)
+  driver right now would silently compare against a stale baseline. `calibrate_borealis.py`
+  still has this problem too. `calibrate_balanced.py` (`A4`, 2026-08-24) does not: its
+  `calib_balanced.c` harness gained a `--print-defaults` mode that dumps the compiled
+  `BALANCED_DEFAULTS` as JSON, and the Python driver reads `DEFAULTS` from it at import
+  time — structurally can't drift. Port the same `--print-defaults` fix into the three
+  older harnesses (or script a check that fails loudly if a hand-copied dict drifts from
+  the C source) rather than hand-syncing them going forward.
 
 ### `A5` Heuristic Strategy (`ai_strat_heuristic1.c`)
 
@@ -158,7 +150,10 @@ already sketched out to break into sub-tasks.
   `ai_strat_heuristic1.c` notes for the formulas)
 - [ ] 1-move lookahead, action evaluation
 - [ ] Parameters: ε (epsilon) for energy weight, γ (gamma) for cards weight
-- [ ] Calibration against `A4` Balanced AI
+- [ ] Calibration against `A4` Balanced Rules AI
+- [ ] In `stda.cli` mode, when AI-vs-AI play is selected, use "AI strategy name + (A or
+  B)" as the player name instead of asking for player 1's name and not player 2's (moved
+  here from the old `A4` section — unrelated to any specific agent, just never done)
 
 ---
 
@@ -349,9 +344,10 @@ As of `A1` (2026-08-21), strategy dispatch is a single table-driven registry
    can be reused instead of re-derived)
 2. [ ] Implement `<name>_attack_strategy()`
 3. [ ] Implement `<name>_defense_strategy()`
-4. [ ] Add one line to `ai_strategy.c`'s `STRATEGY_REGISTRY[]` table:
+4. [ ] Add one line to `ai_strategy.c`'s `STRATEGY_REGISTRY[]` table, e.g. (as
+   landed for `A4`, 2026-08-24):
    ```c
-   [AI_STRATEGY_BALANCED] = { balancedrules1_attack_strategy, balancedrules1_defense_strategy },
+   [AI_STRATEGY_BALANCED] = { balanced_rules_attack_strategy, balanced_rules_defense_strategy },
    ```
    That single line is now sufficient: `ai_strategy_is_implemented()` flips the
    interactive menu's "not yet implemented" label to "available" and drops the

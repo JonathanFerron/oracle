@@ -218,9 +218,11 @@ src/
 ├── core/         game_types.h (start here), game_constants.c/h, game_state.c,
 │                 card_actions.c, combat.c, combo_bonus.c, turn_logic.c,
 │                 game_context.c/h
-├── ai_strat/     ai_strategy.h/.c (StrategySet framework), ai_strat_random.c
-│                 (functional), ai_strat_{balancedrules1,heuristic1,simplemc1,
-│                 ismcts1}.c (design-note stubs, one per future agent)
+├── ai_strat/     ai_strategy.h/.c (StrategySet framework), ai_strat_random.c,
+│                 ai_strat_valuebased.c, ai_strat_combo_threshold.c,
+│                 ai_strat_borealis{,_enum}.c, ai_strat_balanced_rules.c
+│                 (all functional), ai_strat_{heuristic1,simplemc1,ismcts1}.c
+│                 (design-note stubs, one per future agent)
 ├── roles/stda/   stda_auto.c (batch sim), stda_cli.c (interactive loop glue),
 │                 stda_tui.c + stda_tui_interactive.c (TUI setup/loop + human-turn
 │                 handlers)
@@ -354,7 +356,7 @@ planned agents, each commented with its `ideas/A#` folder:
 | `AI_STRATEGY_VALUE_BASED` | **implemented** (2026-08-21) | `A1` (The Apprentice) |
 | `AI_STRATEGY_COMBO_THRESHOLD` | **implemented** (2026-08-22) | `A2` (The Showboat) |
 | `AI_STRATEGY_BOREALIS` | **implemented and calibrated** (2026-08-23) | `A3` — the rating-scale benchmark agent |
-| `AI_STRATEGY_BALANCED` | stub | `A4` (Bean Counter) |
+| `AI_STRATEGY_BALANCED` | **implemented and calibrated** (2026-08-24) | `A4` (Bean Counter) |
 | `AI_STRATEGY_HEURISTIC` | stub | `A5` (ε-γ-δ) |
 | `AI_STRATEGY_TACTICAL` | stub | `A6` (Pressure Cooker) |
 | `AI_STRATEGY_HYBRID_HBT` | stub | `A7` (The Grandmaster — synthesis of `A4`/`A5`/`A6`) |
@@ -367,8 +369,10 @@ Implementation order was `A1 → A2 → A3`, not just easiest-first: the rating 
 (`src/rating/`) needed the Borealis benchmark agent (`A3`), which itself needed `A1`–`A2`
 to exist for comparison. All three were implemented and calibrated (2026-08-21,
 2026-08-22, 2026-08-23), and the rating system itself followed the same day
-(2026-08-23) — see `doc/changelog.md`. `A4` onward is next up (see
-`doc/oracle_roadmap.md`). General info and calibration tooling live in
+(2026-08-23) — see `doc/changelog.md`. `A4` followed the ladder order (2026-08-24,
+measured rating 36 — below the Borealis anchor, a legitimate result, not a defect).
+`A5` onward is next up (see `doc/oracle_roadmap.md`). General info and calibration
+tooling live in
 `ideas/G1 AI agent general info/` and `ideas/G2 ai agent parameters storing and
 optimization/` — support material, not agents, so they carry no enum entry and no longer
 occupy a slot on the A-line.

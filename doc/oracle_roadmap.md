@@ -15,12 +15,29 @@ work see `doc/changelog.md`. For architecture/design rationale see `doc/oracle_d
 
 Core game engine, CLI interactive mode, and TUI mode (Milestones 1 & 2 plus a polish
 pass) are done. Random, `A1` Value Based ("The Apprentice"), `A2` Combo Threshold
-("The Showboat"), and `A3` Borealis (the Bradley-Terry benchmark) AI strategies are all
-implemented and calibrated, and the Bradley-Terry rating system itself is now built on
-top of them. **Active work**: `A4` Balanced Rules — see "Next Up" below.
+("The Showboat"), `A3` Borealis (the Bradley-Terry benchmark), and `A4` Balanced Rules
+("Bean Counter") AI strategies are all implemented and calibrated, and the
+Bradley-Terry rating system itself is now built on top of them. **Active work**: `A5`
+Heuristic — see "Next Up" below.
 
 ### Recently Completed
 
+- **2026-08-24** — `A4` Balanced Rules ("Bean Counter") implemented and calibrated:
+  closed-form resource accounting (target cash/hand-size scale linearly with opponent
+  energy), variance-aware defense (`E[Def] <= E[Attack] - beta*sigma`, can decline a
+  block outright). The re-anchored spec-derived cash-target slope
+  (`INITIAL_CASH_DEFAULT/91`) turned out to be a genuine bug, not just untuned — it
+  produces ~0 cash surplus at full opponent energy, trapping the agent unable to spend
+  for many early turns (confirmed by playtrace and a parameter sweep). Free
+  `differential_evolution` search eroded the agent's resource-conservation identity
+  (slopes toward 0, defense_beta toward "never defend") while measuring stronger,
+  mirroring `A2`'s rejected `aggression_level=2.21` — so calibration added
+  `optimize --identity-safe` (`aicalibsrc/balanced/`), which searches a narrower,
+  character-preserving bound instead. Measured rating (roster-wide `--stda.rating` fit):
+  **36** — below the Borealis anchor (50) and below the `~62` design-intent estimate, a
+  legitimate result, not a defect (see `doc/changelog.md`). Its calibration harness also
+  fixed the `DEFAULTS`-drift item below for itself, via a new `--print-defaults` mode.
+  Full details: `doc/changelog.md`.
 - **2026-08-23** — Bradley-Terry rating system implemented (`src/rating/`): ports the
   math/design of `ideas/5 rating system/v2 Bradley-Terry (BT) Rating System/`, fixing a
   dozen-plus defects on the way (win-count overflow, leaderboard underflow, batch
@@ -74,24 +91,27 @@ Full details: `doc/changelog.md`.
 
 ### What Needs Work
 
-- Random, `A1` Value Based, `A2` Combo Threshold, and `A3` Borealis implemented, and the
-  Bradley-Terry rating system now built on top of them — everything from `A4` onward on
-  the AI ladder below is open, and is what the rating system will next measure.
+- Random, `A1` Value Based, `A2` Combo Threshold, `A3` Borealis, and `A4` Balanced
+  Rules implemented, and the Bradley-Terry rating system now built on top of them —
+  everything from `A5` onward on the AI ladder below is open, and is what the rating
+  system will next measure.
 - Automated simulation mode (`stda_auto.c`) needs a refactor (see `doc/oracle_todo.md`).
 - No save/load, no config file system, no general match-result CSV export (the rating
   system's own CSV persistence is separate and done), no network, no GUI, no `stda.sim`.
-- Two calibration-driver items flagged during `A3`'s calibration, not yet actioned: a
-  parallel-execution result-misattribution bug unpatched in `aicalibsrc/value/`'s and
-  `aicalibsrc/combo/`'s `sweep`/`selfplay` (casts doubt on A1's shipped values
-  specifically, chosen via the vulnerable `selfplay` path), and both drivers' `DEFAULTS`
-  dicts having drifted from their shipped C constants. See `doc/oracle_todo.md`.
+- Two calibration-driver items flagged during `A3`'s calibration, not yet actioned for
+  `aicalibsrc/value/`/`aicalibsrc/combo/` (both fixed for `A4`'s own driver from the
+  start): a parallel-execution result-misattribution bug unpatched in `aicalibsrc/
+  value/`'s and `aicalibsrc/combo/`'s `sweep`/`selfplay` (casts doubt on A1's shipped
+  values specifically, chosen via the vulnerable `selfplay` path), and both drivers'
+  `DEFAULTS` dicts having drifted from their shipped C constants (`aicalibsrc/
+  borealis/`'s still does too). See `doc/oracle_todo.md`.
 
 ---
 
 ## Next Up (single authoritative order)
 
-1. **`A4` Balanced Rules** ("Bean Counter", `ideas/A4 ai agent balanced rules/`). The
-   next rung on the AI ladder — `A1`-`A3` are all implemented and calibrated, and the
+1. **`A5` Heuristic** ("ε-γ-δ", `ideas/A5 ai agent heuristic (eps-gam-del)/`). The next
+   rung on the AI ladder — `A1`-`A4` are all implemented and calibrated, and the
    Bradley-Terry rating system (2026-08-23, `src/rating/`) can now measure it against
    Borealis via `--stda.rating` as soon as it exists.
 
@@ -142,12 +162,13 @@ error-handling polish (see `doc/oracle_todo.md`).
   archived accordingly — see `doc/changelog.md`.
 - `stda.sim` (simulation UI): not started.
 
-### Phase: AI Development — `A1`–`A3` done, `A4` next
+### Phase: AI Development — `A1`–`A4` done, `A5` next
 
 Ladder: `A1` value-based (done, 2026-08-21) → `A2` combo threshold (The Showboat, done,
 2026-08-22) → `A3` greedy power (Borealis benchmark, done, 2026-08-23) → `A4` balanced
-rules → `A5` heuristic → `A6` tactical → `A7` hybrid (HBT) → `A8` simple MC → `A9` HBT
-2-ply → `A10` IS-MCTS → `A11` IS-MCTS + neural network. One `ideas/A#` folder per agent,
+rules (Bean Counter, done, 2026-08-24) → `A5` heuristic → `A6` tactical → `A7` hybrid
+(HBT) → `A8` simple MC → `A9` HBT 2-ply → `A10` IS-MCTS → `A11` IS-MCTS + neural
+network. One `ideas/A#` folder per agent,
 `A#` matching that agent's `AIStrategyType` enum ordinal (`src/core/game_types.h` as of
 `A1`; it previously lived in `src/ui/shared/player_config.h`). See
 `ideas/G1 AI agent general info/oracle_ai_agent_names.md` for the canonical roster,
