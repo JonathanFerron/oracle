@@ -221,7 +221,7 @@ src/
 ├── ai_strat/     ai_strategy.h/.c (StrategySet framework), ai_strat_random.c,
 │                 ai_strat_valuebased.c, ai_strat_combo_threshold.c,
 │                 ai_strat_borealis{,_enum}.c, ai_strat_balanced_rules.c,
-│                 ai_strat_heuristic.c (all functional),
+│                 ai_strat_heuristic.c, ai_strat_tactical.c (all functional),
 │                 ai_strat_{simplemc1,ismcts1}.c (design-note stubs, one per
 │                 future agent)
 ├── roles/stda/   stda_auto.c (batch sim), stda_cli.c (interactive loop glue),
@@ -359,7 +359,7 @@ planned agents, each commented with its `ideas/A#` folder:
 | `AI_STRATEGY_BOREALIS` | **implemented and calibrated** (2026-08-23) | `A3` — the rating-scale benchmark agent |
 | `AI_STRATEGY_BALANCED` | **implemented and calibrated** (2026-08-24) | `A4` (Bean Counter) |
 | `AI_STRATEGY_HEURISTIC` | **implemented and calibrated** (2026-08-25) | `A5` (ε-γ-δ) — measured rating 60, above the Borealis anchor |
-| `AI_STRATEGY_TACTICAL` | stub | `A6` (Pressure Cooker) |
+| `AI_STRATEGY_TACTICAL` | **implemented and calibrated** (2026-08-25) | `A6` (Pressure Cooker) — measured rating 52, above the Borealis anchor |
 | `AI_STRATEGY_HYBRID_HBT` | stub | `A7` (The Grandmaster — synthesis of `A4`/`A5`/`A6`) |
 | `AI_STRATEGY_SIMPLE_MC` | stub | `A8` (The Soothsayer) |
 | `AI_STRATEGY_HBT_2PLY` | stub | `A9` (Grandmaster II) |
@@ -373,7 +373,8 @@ to exist for comparison. All three were implemented and calibrated (2026-08-21,
 (2026-08-23) — see `doc/changelog.md`. `A4` followed the ladder order (2026-08-24,
 measured rating 36 — below the Borealis anchor, a legitimate result, not a defect).
 `A5` followed (2026-08-25, measured rating 60 — above the Borealis anchor, the first
-agent in the roster to clear it). `A6` onward is next up (see
+agent in the roster to clear it), then `A6` (2026-08-25, measured rating 52 — also
+above the anchor). `A7` onward is next up (see
 `doc/oracle_roadmap.md`). General info and calibration tooling live in
 `ideas/G1 AI agent general info/` and `ideas/G2 ai agent parameters storing and
 optimization/` — support material, not agents, so they carry no enum entry and no longer

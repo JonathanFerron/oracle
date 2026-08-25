@@ -103,3 +103,29 @@ void try_play_cash_fallback(struct gamestate* gstate, PlayerID player,
     }
   }
 } // try_play_cash_fallback
+
+float champion_variance(uint8_t card_idx)
+{ float n = (float)fullDeck[card_idx].defense_dice;
+  return (n * n - 1.0f) / 12.0f;
+} // champion_variance
+
+void effective_hand_and_cash(const struct gamestate* gstate, PlayerID player,
+                             float* out_hand, float* out_cash)
+{ const Hand* hand = &gstate->hand[player];
+  uint16_t cash = gstate->current_cash_balance[player];
+
+  float extra_cards = 0.0f;
+  uint16_t held_draw_cost = 0;
+
+  for(uint8_t i = 0; i < hand->size; i++)
+  { uint8_t card_idx = hand->cards[i];
+    if(fullDeck[card_idx].card_type != DRAW_CARD) continue;
+    if(fullDeck[card_idx].cost > cash) continue;
+
+    held_draw_cost += fullDeck[card_idx].cost;
+    extra_cards += (fullDeck[card_idx].draw_num == 3) ? 2.0f : 1.0f;
+  }
+
+  *out_hand = (float)hand->size + extra_cards;
+  *out_cash = (float)cash - (float)held_draw_cost;
+} // effective_hand_and_cash

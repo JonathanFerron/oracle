@@ -12,6 +12,7 @@
 /bin/calib_borealis
 /bin/calib_balanced
 /bin/calib_heuristic
+/bin/calib_tactical
 *.o
 *.xls
 *.xlsx

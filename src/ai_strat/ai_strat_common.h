@@ -59,4 +59,23 @@ bool try_play_draw_card(struct gamestate* gstate, PlayerID player,
 void try_play_cash_fallback(struct gamestate* gstate, PlayerID player,
                             uint8_t affordable_champion_count, GameContext* ctx);
 
+// V[Dn] = (n*n - 1)/12 -- combat.c rolls the same defense_dice for both the
+// attack and defense contribution of a champion, so one formula covers both
+// phases and any agent that needs a variance-aware defense estimate.
+// Promoted here from A4 Balanced Rules once A6 Tactical needed the identical
+// formula (doc/changelog.md).
+float champion_variance(uint8_t card_idx);
+
+// Effective hand size = actual hand size + 1*(affordable held Draw-2 cards)
+// + 2*(affordable held Draw-3 cards); effective cash = actual cash - the
+// total cost of those same cards. "Affordable" is checked against actual
+// current cash independently per card (not sequentially depleting a running
+// balance) -- only one card can be played per turn regardless, so this is a
+// forward-looking estimate of drawing potential, not a same-turn spending
+// plan. Promoted here from A4 Balanced Rules once A6 Tactical needed the
+// hand-size half (doc/changelog.md) -- a caller that only needs one output
+// can pass a throwaway pointer for the other.
+void effective_hand_and_cash(const struct gamestate* gstate, PlayerID player,
+                             float* out_hand, float* out_cash);
+
 #endif // AI_STRAT_COMMON_H

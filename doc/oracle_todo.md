@@ -10,11 +10,13 @@ TUI Milestones 1–2 + polish pass are complete — see `doc/changelog.md`. `A1`
 ("The Apprentice", 2026-08-21), `A2` Combo Threshold ("The Showboat", 2026-08-22,
 calibrated), `A3` Borealis (the Bradley-Terry benchmark, 2026-08-23, calibrated), `A4`
 Balanced Rules ("Bean Counter", 2026-08-24, calibrated, measured rating 36 — below the
-Borealis anchor, see `doc/changelog.md`), and `A5` Heuristic ("Eps-Gam-Del", 2026-08-25,
+Borealis anchor, see `doc/changelog.md`), `A5` Heuristic ("Eps-Gam-Del", 2026-08-25,
 calibrated, measured rating 60 — above the Borealis anchor, the first agent to clear
-it, see `doc/changelog.md`) are implemented, and the Bradley-Terry rating system itself
-(2026-08-23, `src/rating/`) is now built on top of them — see
-`doc/oracle_roadmap.md`'s "Next Up" for what's next (`A6`). The strategy-set build sites
+it), and `A6` Tactical ("Pressure Cooker", 2026-08-25, calibrated, measured rating 52 —
+also above the Borealis anchor, see `doc/changelog.md`) are implemented, and the
+Bradley-Terry rating system itself (2026-08-23, `src/rating/`) is now built on top of
+them — see `doc/oracle_roadmap.md`'s "Next Up" for what's next (`A7`). The strategy-set
+build sites
 also gained a shared `AIStrategyType -> function pointer` registry (`ai_strategy.c`) as
 part of `A1` -- see "Checklist: Adding a New AI Strategy" below, which now reflects that
 mechanism rather than the old per-file hardcoding. As of `A3`, that registry also carries
@@ -177,6 +179,40 @@ already sketched out to break into sub-tasks.
 - [ ] In `stda.cli` mode, when AI-vs-AI play is selected, use "AI strategy name + (A or
   B)" as the player name instead of asking for player 1's name and not player 2's (moved
   here from the old `A4` section — unrelated to any specific agent, just never done)
+
+### `A6` Tactical Strategy (`ai_strat_tactical.c`) — done, 2026-08-25
+
+No pre-written checklist existed for this agent (unlike `A5`, which had a
+comment-only stub source file) — `about.md` and `tactical_design_notes.md` were the
+only design material.
+
+- [x] Phase classification (`GamePhase`: early/mid/late/critical by energy
+  thresholds) and a single 0.0-1.0 aggression factor derived from energy
+  difference, hand power, and cash surplus — see `ai_strat_tactical.h`'s header
+  comment for the formulas. The sketch's `GamePhase` thresholds and its separate
+  aggression "smell blood" cutoffs were unified onto one tunable 3-threshold set
+  shared by both, rather than kept as two independent step functions.
+- [x] `decide_num_attackers()` — called but never implemented in the sketch;
+  filled in as aggression-scaled champion count (see the bug fix below for the
+  final mechanism, fixed aggression bands rather than the first attempt's
+  proportional rounding).
+- [x] **Bug found by playtracing, not just poor calibration**: the first
+  `decide_num_attackers()` fill-in (`round(aggression * min(3, affordable))`) put
+  the single-affordable-champion case's decision boundary exactly on
+  `aggression_factor`'s neutral baseline (0.5), causing the agent to pass on its
+  only affordable champion far more often than intended — measured **losing to
+  Random**, the only implemented agent ever to do so. Fixed with four fixed
+  aggression bands instead of proportional rounding; see `doc/changelog.md`.
+- [x] Calibration against `borealis` (`aicalibsrc/tactical/`) — sixteen free
+  parameters, the largest search space of any agent so far. No `--identity-safe`
+  run was needed (the first unconstrained search reported no personality flags,
+  unlike `A4`'s and `A5`'s free-search runs). Measured rating 52, above the
+  Borealis anchor — the second agent, after `A5`, to clear it.
+- [x] This agent's own identity-erosion check (`check_personality_flags()` in
+  `calibrate_tactical.py`) — not a per-parameter ratio test like `A4`'s/`A5`'s,
+  since `about.md` names the exact failure mode ("a static version of this agent
+  is a worse Heuristic, not a Tactical agent"): computes `aggression_factor`
+  across a synthetic-position battery and flags if its range collapses.
 
 ---
 

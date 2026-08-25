@@ -5,6 +5,122 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-25 — A6 Tactical ("Pressure Cooker") implemented and calibrated
+
+Implemented per `ideas/A6 ai agent tactical (pressure cooker)/about.md` and
+`tactical_design_notes.md` (a full but partially-unfinished code sketch -- unlike
+`A5`, no comment-only stub source file existed beforehand). Classifies the game into
+a phase (early/mid/late/critical, by energy thresholds) and derives a single
+0.0-1.0 aggression factor from energy difference, hand power, and cash surplus,
+then scales how many champions to commit by that factor -- "turns up the heat as
+the position sharpens." The first agent whose decision rule is a phase-classified,
+continuously-adaptive weighting rather than a fixed advantage function (`A5`),
+resource-target formulas (`A4`), or subset-value maximisation (`A3`).
+
+- **`src/ai_strat/ai_strat_tactical.c/.h`** (new). Two design-sketch gaps filled
+  in rather than left ambiguous: (1) the sketch's `GamePhase` thresholds (75/40/15)
+  and its aggression "smell blood" cutoffs (independently 20/40) were two separate
+  step functions over the same energy axis -- unified onto one tunable 3-threshold
+  set shared by both, so "classify into a phase, then read the position" is one
+  coherent mechanism; (2) the sketch calls `decide_num_attackers()` but never
+  implements it -- filled in as aggression-scaled champion count (see the bug
+  below for the exact mechanism). Card selection is greedy combo-aware ranking
+  (A4's `attack_selection_score()`/`select_attack_champions()` shape), not `A3`'s
+  exhaustive enumeration -- `about.md` doesn't forbid enumeration for `A6`, but
+  this keeps the complexity budget on the phase/aggression mechanism, this
+  agent's actual identity. Unlike `A4`, combo-awareness is unconditionally on (no
+  `combo_weight` field), matching the sketch's "always evaluate 2-3 card
+  combinations." No resource-target formula (`A4`'s explicit exclusion for this
+  agent) -- cash/hand-size decisions flow from the phase-and-aggression-derived
+  attack count and a reused `try_play_draw_card()` trigger. Defense is a
+  standalone EV comparison independent of `aggression_factor` (the sketch's own
+  defense function never references it), walking the greedy defense-efficiency
+  ranking's prefixes of length 0-3 and keeping whichever maximises
+  `value = -(damage*defense_damage_weight + cost*defense_cash_weight)` against a
+  *conservative* (inflated, not capped) attack estimate -- the opposite sign from
+  `A4`'s `E[Attack] - beta*sigma` cap. Two helpers (`champion_variance()`,
+  `effective_hand_and_cash()`) were promoted from `ai_strat_balanced_rules.c` into
+  `ai_strat_common.{c,h}` for reuse, following the project's established
+  "promote on second use" convention (`try_play_cash_fallback`'s history) --
+  verified behavior-preserving (`-a -p` byte-identical before and after).
+
+- **A real bug found by playtracing, not just poor calibration** (the same
+  discovery method that found `A4`'s cash-ladder trap): the original
+  `decide_num_attackers()` fill-in, `num_attackers = round(aggression_factor *
+  min(3, affordable_champion_count))`, put `max_playable=1`'s *sole* decision
+  boundary exactly on `aggression_factor`'s neutral baseline (0.5). Since routine
+  negative signals (e.g. the hand-power penalty) push aggression just below 0.5
+  often, the agent was passing on its only affordable champion far more often
+  than intended -- measured **losing to Random** (41.7%/39.15% both seats), the
+  only implemented agent ever to do so. No calibration of the *weights* could
+  have fixed this: it's structural to `round()` landing exactly on the formula's
+  resting point, not a magnitude problem. Fixed by switching to four fixed
+  aggression bands (>=0.75 -> 3, >=0.5 -> 2, >=0.25 -> 1, else -> 0, capped at
+  `max_playable`) -- the neutral baseline now lands in the ">=0.25" tier instead
+  of exactly on a boundary. Confirmed the fix: 76.2%/77.65% vs `rand` (both
+  seats), in line with every other implemented agent.
+
+- **Calibration** (`aicalibsrc/tactical/`, new: `calib_tactical.c` +
+  `calibrate_tactical.py` + `README.md`, `sweep`/`optimize`/`selfplay`/`validate`
+  parity with `aicalibsrc/heuristic/`, including its `--print-defaults`/`**tags`
+  discipline). Sixteen free parameters -- the largest search space of any agent
+  calibrated so far (`A4`'s ten was the previous max) -- targeted at `borealis`
+  (the rating-50 anchor). A univariate sweep at spec defaults first showed every
+  individual parameter's effect was small and mostly flat (win rate stuck around
+  12-15% vs `borealis`, a floor effect); the real gains came from the joint
+  search, which finished in ~20 seconds despite the dimensionality.
+  - This agent's identity check is not a per-parameter ratio test like `A4`'s/
+    `A5`'s: `about.md` names the exact failure mode ("a static version of this
+    agent is a worse Heuristic, not a Tactical agent"), so
+    `check_personality_flags()` computes `aggression_factor` across a battery of
+    synthetic positions spanning the input space and flags if its range
+    collapses (i.e. the position stops mattering), plus an inverted
+    phase-threshold ordering check.
+  - The first unconstrained `optimize` run (all sixteen free, `--opponent
+    borealis`) came back with **no personality flags** -- phase ordering stayed
+    intact (18 < 41 < 67) and the aggression range stayed well above the
+    collapse threshold -- so, unlike `A4` (two free runs eroded its resource
+    slopes) and `A5` (one free run needed playtracing to confirm a large weight
+    was legitimate, not degenerate), no `--identity-safe` run was needed here;
+    the first result shipped directly.
+  - `defense_damage_weight` landed very small (0.042) relative to
+    `defense_cash_weight` (1.623) -- declining a block became comparatively
+    cheap. Playtracing (turn-by-turn energy deltas, `tactical` vs `borealis`)
+    confirmed a real risk-tolerant defensive posture, not a "never defend"
+    degenerate pattern -- both sides traded damage in a visibly competitive
+    exchange, consistent with the near-50/50 measured result.
+  - **Shipped** (`TACTICAL_DEFAULTS`): `phase_mid_threshold=67`,
+    `phase_late_threshold=41`, `phase_critical_threshold=18`,
+    `aggression_energy_diff_weight=0.0008`, `aggression_opp_late_bonus=0.126`,
+    `aggression_opp_critical_bonus=0.282`, `aggression_self_late_penalty=0.053`,
+    `aggression_self_critical_penalty=0.148`, `aggression_hand_power_bonus=0.248`,
+    `aggression_hand_power_penalty=0.154`, `aggression_cash_surplus_threshold=10`,
+    `aggression_cash_surplus_bonus=0.230`, `defense_damage_weight=0.042`,
+    `defense_cash_weight=1.623`, `defense_conservative_stdev_mult=1.233`,
+    `draw_min_hand_size=5`. Measured (validated, both seats): vs `borealis` ->
+    **53.56%** [53.07%, 54.05%] (40,000 games); vs `rand` -> 98.68% [98.50%,
+    98.83%] (18,000 games); vs `value` -> 77.81% [77.20%, 78.41%] (18,000
+    games); vs `combo` -> 70.19% [69.52%, 70.85%] (18,000 games); vs `balanced`
+    -> 70.43% [69.76%, 71.10%] (18,000 games); vs `heuristic` -> 39.30% [38.59%,
+    40.02%] (18,000 games) -- the one agent this measures below, consistent
+    with `heuristic` being the highest-rated agent so far.
+
+- **Rating**: the design-intent estimate of 74 (`ideas/G1 .../
+  oracle_ai_agent_names.md`) is exceeded -- `./bin/oracle -r -p
+  --rating.games=2000`'s roster-wide Bradley-Terry fit places `Pressure Cooker`
+  at **rating 52**, above the Borealis anchor (50) -- the second agent, after
+  `A5` (61 in this same run), to measure above the anchor.
+  `AI_STRATEGY_RATINGS[AI_STRATEGY_TACTICAL]` (`player_config.c`) updated from
+  `{ 74, false }` to `{ 52, true }`.
+
+- **Verification**: `make` clean (no new warnings); `-a -p` byte-identical to
+  `bin/expectedresults.txt`; `test_combo` (20/20), `test_recall` (10/10),
+  `test_cash_exchange` (6/6), `test_rating` (41/41) all pass; valgrind-clean
+  (`--leak-check=full --track-origins=yes`, `tactical` vs `tactical`, 20 games);
+  strategy menu confirmed showing `Tactical [Pressure Cooker] (available) [52]`.
+
+---
+
 ## 2026-08-25 — A5 Heuristic ("Eps-Gam-Del") implemented and calibrated
 
 Implemented per `ideas/A5 ai agent heuristic (eps-gam-del)/about.md` and

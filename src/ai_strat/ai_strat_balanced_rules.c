@@ -93,37 +93,11 @@ void balanced_rules_reset_params(void)
 } // balanced_rules_reset_params
 
 /* ========================================================================
-   Resource accounting: effective hand size, effective cash, and the two
-   opponent-energy-driven targets (ai_strat_balanced_rules.h's header comment).
+   Resource accounting: effective hand size, effective cash (promoted to
+   ai_strat_common.{c,h} once A6 Tactical needed the identical formula --
+   see doc/changelog.md), and the opponent-energy-driven targets
+   (ai_strat_balanced_rules.h's header comment).
    ======================================================================== */
-
-// Effective hand size = actual hand size + 1*(affordable held Draw-2 cards)
-// + 2*(affordable held Draw-3 cards); effective cash = actual cash - the
-// total cost of those same cards. "Affordable" is checked against actual
-// current cash independently per card (not sequentially depleting a running
-// balance) -- only one card can be played per turn regardless (Finding 3,
-// ai_strat_balanced_rules.h), so this is a forward-looking estimate of
-// drawing potential, not a same-turn spending plan.
-static void effective_hand_and_cash(const struct gamestate* gstate, PlayerID player,
-                                    float* out_hand, float* out_cash)
-{ const Hand* hand = &gstate->hand[player];
-  uint16_t cash = gstate->current_cash_balance[player];
-
-  float extra_cards = 0.0f;
-  uint16_t held_draw_cost = 0;
-
-  for(uint8_t i = 0; i < hand->size; i++)
-  { uint8_t card_idx = hand->cards[i];
-    if(fullDeck[card_idx].card_type != DRAW_CARD) continue;
-    if(fullDeck[card_idx].cost > cash) continue;
-
-    held_draw_cost += fullDeck[card_idx].cost;
-    extra_cards += (fullDeck[card_idx].draw_num == 3) ? 2.0f : 1.0f;
-  }
-
-  *out_hand = (float)hand->size + extra_cards;
-  *out_cash = (float)cash - (float)held_draw_cost;
-} // effective_hand_and_cash
 
 // target = slope*(opp_energy - 8) + intercept, clamped at >= 0, divided by
 // late_game_aggro once opp_energy drops to/below lethal_horizon (spends
@@ -148,13 +122,6 @@ static void resource_targets(uint8_t opp_energy, const BalancedRulesParams* para
   *out_target_cash = target_cash;
   *out_target_cards = target_cards;
 } // resource_targets
-
-// V[Dn] = (n*n - 1)/12 -- combat.c rolls the same defense_dice for both the
-// attack and defense contribution of a champion, so one formula covers both.
-static float champion_variance(uint8_t card_idx)
-{ float n = (float)fullDeck[card_idx].defense_dice;
-  return (n * n - 1.0f) / 12.0f;
-} // champion_variance
 
 /* ========================================================================
    Draw step (attack phase only) -- the stub's two-threshold rule. Skipped

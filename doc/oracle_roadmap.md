@@ -16,13 +16,29 @@ work see `doc/changelog.md`. For architecture/design rationale see `doc/oracle_d
 Core game engine, CLI interactive mode, and TUI mode (Milestones 1 & 2 plus a polish
 pass) are done. Random, `A1` Value Based ("The Apprentice"), `A2` Combo Threshold
 ("The Showboat"), `A3` Borealis (the Bradley-Terry benchmark), `A4` Balanced Rules
-("Bean Counter"), and `A5` Heuristic ("Eps-Gam-Del") AI strategies are all implemented
-and calibrated, and the Bradley-Terry rating system itself is now built on top of
-them. `A5` is the first agent to measure above the Borealis anchor (rating 60).
-**Active work**: `A6` Tactical — see "Next Up" below.
+("Bean Counter"), `A5` Heuristic ("Eps-Gam-Del"), and `A6` Tactical ("Pressure
+Cooker") AI strategies are all implemented and calibrated, and the Bradley-Terry
+rating system itself is now built on top of them. `A5` (rating 60) and `A6` (rating
+52) are the first two agents to measure above the Borealis anchor. **Active work**:
+`A7` Hybrid HBT — see "Next Up" below.
 
 ### Recently Completed
 
+- **2026-08-25** — `A6` Tactical ("Pressure Cooker") implemented and calibrated:
+  classifies the game into a phase (early/mid/late/critical, by energy thresholds)
+  and derives a single 0.0-1.0 aggression factor from energy difference, hand power,
+  and cash surplus, scaling how many champions to commit by that factor. Playtracing
+  found a real bug in the first `decide_num_attackers()` fill-in (proportional
+  rounding put the single-affordable-champion case's decision boundary exactly on
+  aggression's neutral baseline, causing the agent to measure **losing to Random** --
+  the only implemented agent ever to do so); fixed with four fixed aggression bands
+  instead. Calibration (`aicalibsrc/tactical/`) targeted `borealis`, sixteen free
+  parameters -- the largest search space so far -- and the first unconstrained
+  `optimize` run came back with no personality flags (unlike `A4`'s and `A5`'s free
+  searches), so it shipped directly with no `--identity-safe` run needed. Measured
+  rating (roster-wide `--stda.rating` fit): **52** -- above the Borealis anchor (50),
+  the second agent after `A5` to clear it, against a `~74` design-intent estimate.
+  Full details: `doc/changelog.md`.
 - **2026-08-25** — `A5` Heuristic ("Eps-Gam-Del") implemented and calibrated: reduces
   the whole position to one weighted advantage function,
   `Advantage = epsilon*EnergyAdv + taper*gamma*CardsAdv + taper*delta*CashAdv`, and
@@ -115,9 +131,9 @@ Full details: `doc/changelog.md`.
 ### What Needs Work
 
 - Random, `A1` Value Based, `A2` Combo Threshold, `A3` Borealis, `A4` Balanced Rules,
-  and `A5` Heuristic implemented, and the Bradley-Terry rating system now built on top
-  of them — everything from `A6` onward on the AI ladder below is open, and is what the
-  rating system will next measure.
+  `A5` Heuristic, and `A6` Tactical implemented, and the Bradley-Terry rating system
+  now built on top of them — everything from `A7` onward on the AI ladder below is
+  open, and is what the rating system will next measure.
 - Automated simulation mode (`stda_auto.c`) needs a refactor (see `doc/oracle_todo.md`).
 - No save/load, no config file system, no general match-result CSV export (the rating
   system's own CSV persistence is separate and done), no network, no GUI, no `stda.sim`.
@@ -133,8 +149,8 @@ Full details: `doc/changelog.md`.
 
 ## Next Up (single authoritative order)
 
-1. **`A6` Tactical** ("Pressure Cooker", `ideas/A6 ai agent tactical (pressure cooker)/`).
-   The next rung on the AI ladder — `A1`-`A5` are all implemented and calibrated, and
+1. **`A7` Hybrid HBT** ("The Grandmaster", `ideas/A7 ai agent hybrid hbt (the grandmaster)/`).
+   The next rung on the AI ladder — `A1`-`A6` are all implemented and calibrated, and
    the Bradley-Terry rating system (2026-08-23, `src/rating/`) can now measure it
    against Borealis via `--stda.rating` as soon as it exists.
 
@@ -185,13 +201,13 @@ error-handling polish (see `doc/oracle_todo.md`).
   archived accordingly — see `doc/changelog.md`.
 - `stda.sim` (simulation UI): not started.
 
-### Phase: AI Development — `A1`–`A5` done, `A6` next
+### Phase: AI Development — `A1`–`A6` done, `A7` next
 
 Ladder: `A1` value-based (done, 2026-08-21) → `A2` combo threshold (The Showboat, done,
 2026-08-22) → `A3` greedy power (Borealis benchmark, done, 2026-08-23) → `A4` balanced
 rules (Bean Counter, done, 2026-08-24) → `A5` heuristic (Eps-Gam-Del, done, 2026-08-25)
-→ `A6` tactical → `A7` hybrid (HBT) → `A8` simple MC → `A9` HBT 2-ply → `A10` IS-MCTS
-→ `A11` IS-MCTS + neural
+→ `A6` tactical (Pressure Cooker, done, 2026-08-25) → `A7` hybrid (HBT) → `A8` simple MC
+→ `A9` HBT 2-ply → `A10` IS-MCTS → `A11` IS-MCTS + neural
 network. One `ideas/A#` folder per agent,
 `A#` matching that agent's `AIStrategyType` enum ordinal (`src/core/game_types.h` as of
 `A1`; it previously lived in `src/ui/shared/player_config.h`). See
