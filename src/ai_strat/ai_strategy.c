@@ -12,6 +12,7 @@
 #include "ai_strat_balanced_rules.h"
 #include "ai_strat_heuristic.h"
 #include "ai_strat_tactical.h"
+#include "ai_strat_hbt.h"
 #include "ai_strat_lib_heuristics.h"
 
 StrategySet* create_strategy_set(void)
@@ -66,6 +67,9 @@ static const StrategyRegistryEntry STRATEGY_REGISTRY[AI_STRATEGY_COUNT] =
   },
   [AI_STRATEGY_TACTICAL]         = { tactical_attack_strategy,
     tactical_defense_strategy
+  },
+  [AI_STRATEGY_HYBRID_HBT]       = { hbt_attack_strategy, hbt_defense_strategy,
+    hbt_mulligan, hbt_discard_to_7
   },
   // All other entries default to {NULL, NULL, NULL, NULL} -- not yet implemented.
 };

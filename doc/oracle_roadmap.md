@@ -16,13 +16,30 @@ work see `doc/changelog.md`. For architecture/design rationale see `doc/oracle_d
 Core game engine, CLI interactive mode, and TUI mode (Milestones 1 & 2 plus a polish
 pass) are done. Random, `A1` Value Based ("The Apprentice"), `A2` Combo Threshold
 ("The Showboat"), `A3` Borealis (the Bradley-Terry benchmark), `A4` Balanced Rules
-("Bean Counter"), `A5` Heuristic ("Eps-Gam-Del"), and `A6` Tactical ("Pressure
-Cooker") AI strategies are all implemented and calibrated, and the Bradley-Terry
-rating system itself is now built on top of them. `A5` (rating 60) and `A6` (rating
-52) are the first two agents to measure above the Borealis anchor. **Active work**:
-`A7` Hybrid HBT — see "Next Up" below.
+("Bean Counter"), `A5` Heuristic ("Eps-Gam-Del"), `A6` Tactical ("Pressure
+Cooker"), and `A7` Hybrid HBT ("The Grandmaster") AI strategies are all implemented
+and calibrated, and the Bradley-Terry rating system itself is now built on top of
+them. `A5` (rating 61 in the current roster fit), `A6` (rating 53), and `A7`
+(rating 62, the highest measured so far) all measure above the Borealis anchor.
+**Active work**: `A8` Simple Monte Carlo — see "Next Up" below.
 
 ### Recently Completed
+
+- **2026-08-25** — `A7` Hybrid HBT ("The Grandmaster") implemented and calibrated: a
+  fixed three-layer synthesis of `A4` (resource targets, entering as a soft penalty
+  rather than a hard filter -- see `doc/changelog.md` for why), `A6` (phase/aggression
+  modulating the advantage weights), and `A5` (the closed-form enumerate-and-rank
+  mechanism itself), plus `A3`'s lethal-combo hold and combo-protecting mulligan/
+  discard, added deliberately so the hybrid wouldn't be combo-blind next to Borealis
+  in human play. Calibration was staged (34 parameters, double `A6`'s previous max):
+  stage 1 froze every inherited field at its source agent's own shipped value and
+  freed only the eight parameters new to this agent, reaching 60.96% vs `borealis`
+  (40,000 games) with no personality flags; stage 2's joint re-fit of `A5`'s own
+  weights found no significant improvement, so stage 1 shipped. Measured rating
+  (roster-wide `--stda.rating` fit): **62** -- above all three of its ingredients in
+  the same fit (`A5` 61, `A6` 53, `A4` 34) despite a clear pairwise loss to `A5`
+  specifically (26.0%), reported honestly rather than tuned away. See
+  `doc/changelog.md` for the full entry.
 
 - **2026-08-25** — `A6` Tactical ("Pressure Cooker") implemented and calibrated:
   classifies the game into a phase (early/mid/late/critical, by energy thresholds)
@@ -131,9 +148,10 @@ Full details: `doc/changelog.md`.
 ### What Needs Work
 
 - Random, `A1` Value Based, `A2` Combo Threshold, `A3` Borealis, `A4` Balanced Rules,
-  `A5` Heuristic, and `A6` Tactical implemented, and the Bradley-Terry rating system
-  now built on top of them — everything from `A7` onward on the AI ladder below is
-  open, and is what the rating system will next measure.
+  `A5` Heuristic, `A6` Tactical, and `A7` Hybrid HBT implemented, and the
+  Bradley-Terry rating system now built on top of them — everything from `A8`
+  onward on the AI ladder below is open, and is what the rating system will next
+  measure.
 - Automated simulation mode (`stda_auto.c`) needs a refactor (see `doc/oracle_todo.md`).
 - No save/load, no config file system, no general match-result CSV export (the rating
   system's own CSV persistence is separate and done), no network, no GUI, no `stda.sim`.
@@ -149,8 +167,8 @@ Full details: `doc/changelog.md`.
 
 ## Next Up (single authoritative order)
 
-1. **`A7` Hybrid HBT** ("The Grandmaster", `ideas/A7 ai agent hybrid hbt (the grandmaster)/`).
-   The next rung on the AI ladder — `A1`-`A6` are all implemented and calibrated, and
+1. **`A8` Simple Monte Carlo** ("The Soothsayer", `ideas/A8 ai agent simple monte carlo (the soothsayer)/`).
+   The next rung on the AI ladder — `A1`-`A7` are all implemented and calibrated, and
    the Bradley-Terry rating system (2026-08-23, `src/rating/`) can now measure it
    against Borealis via `--stda.rating` as soon as it exists.
 
@@ -201,12 +219,13 @@ error-handling polish (see `doc/oracle_todo.md`).
   archived accordingly — see `doc/changelog.md`.
 - `stda.sim` (simulation UI): not started.
 
-### Phase: AI Development — `A1`–`A6` done, `A7` next
+### Phase: AI Development — `A1`–`A7` done, `A8` next
 
 Ladder: `A1` value-based (done, 2026-08-21) → `A2` combo threshold (The Showboat, done,
 2026-08-22) → `A3` greedy power (Borealis benchmark, done, 2026-08-23) → `A4` balanced
 rules (Bean Counter, done, 2026-08-24) → `A5` heuristic (Eps-Gam-Del, done, 2026-08-25)
-→ `A6` tactical (Pressure Cooker, done, 2026-08-25) → `A7` hybrid (HBT) → `A8` simple MC
+→ `A6` tactical (Pressure Cooker, done, 2026-08-25) → `A7` hybrid HBT (The Grandmaster,
+done, 2026-08-25) → `A8` simple MC
 → `A9` HBT 2-ply → `A10` IS-MCTS → `A11` IS-MCTS + neural
 network. One `ideas/A#` folder per agent,
 `A#` matching that agent's `AIStrategyType` enum ordinal (`src/core/game_types.h` as of

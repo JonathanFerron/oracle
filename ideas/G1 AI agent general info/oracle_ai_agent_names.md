@@ -12,14 +12,17 @@ win percentage against the Borealis benchmark agent.
 
 The last column is the original design-intent guess made before any agent existed;
 `Measured` (2026-08-23, `--stda.rating` round-robin, `src/rating/`; `A4` added
-2026-08-24, `A5` and `A6` added 2026-08-25) is the actual Bradley-Terry fit now that
-`Random`/`A1`/`A2`/`A3`/`A4`/`A5`/`A6` are all implemented. See `doc/changelog.md`'s
-2026-08-23, 2026-08-24, and 2026-08-25 entries for the runs these came from. `A4`'s
-measured rating (36) landed well below its own design-intent estimate (62) and below
-the Borealis anchor -- a legitimate, calibrated result (`doc/changelog.md`), the
-largest design-intent miss on this table so far. `A5`'s measured rating (60) and
-`A6`'s (52) both landed below their own estimates (70, 74) but *above* the Borealis
-anchor -- the first two agents on this table to clear it.
+2026-08-24, `A5`/`A6` added 2026-08-25, `A7` added 2026-08-25) is the actual
+Bradley-Terry fit now that `Random`/`A1`/`A2`/`A3`/`A4`/`A5`/`A6`/`A7` are all
+implemented. See `doc/changelog.md`'s 2026-08-23, 2026-08-24, and 2026-08-25 entries
+for the runs these came from. `A4`'s measured rating (36) landed well below its own
+design-intent estimate (62) and below the Borealis anchor -- a legitimate, calibrated
+result (`doc/changelog.md`), the largest design-intent miss on this table so far.
+`A5`'s and `A6`'s measured ratings both landed below their own estimates (70, 74) but
+*above* the Borealis anchor. `A7`'s measured rating (62) is the highest on this table
+so far, above all three of the agents it synthesizes (`A4`/`A5`/`A6`) in the same
+roster-wide fit -- despite measuring a clear pairwise loss to `A5` specifically
+(26.0%, see `doc/changelog.md`), a result reported rather than tuned away.
 
 | Tech/Math Name | English | Français | Español | Measured | Est. Borealis Rating |
 |---|---|---|---|---|---|
@@ -30,7 +33,7 @@ anchor -- the first two agents on this table to clear it.
 | Balanced Rules | Bean Counter | Compteur de Fèves | Contador de Frijoles | 36 | 62 |
 | Heuristic | ε-γ-δ | ε-γ-δ | ε-γ-δ | 60 | 70 |
 | Tactical | Pressure Cooker | Cocotte-Minute | Olla a Presión | 52 | 74 |
-| Hybrid (HBT) | The Grandmaster | Le Grand Maître | El Gran Maestro | — | 78 |
+| Hybrid (HBT) | The Grandmaster | Le Grand Maître | El Gran Maestro | 62 | 78 |
 | Simple Monte Carlo | The Soothsayer | Le Devin | El Adivino | — | 82 |
 | HBT 2-Ply | Grandmaster II | Grand Maître II | Gran Maestro II | — | 85 |
 | IS-MCTS | The Omniscient | L'Omniscient | El Omnisciente | — | 92 |

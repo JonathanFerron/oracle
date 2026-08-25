@@ -12,6 +12,17 @@ values in `src/ai_strat/ai_strat_balanced_rules.h`/`.c` and
 formula/code sketch below as historical exploration, not current spec, per
 `CLAUDE.md`'s rule on `ideas/`.
 
+**Second correction note (2026-08-25, added on `A7` implementation)**: the
+hybrid sketch's own line `target_cash *= (1.0 + (state.aggression_factor -
+0.5) * 0.4);` has the sign backwards — it makes higher aggression *raise* the
+cash reserve target, i.e. spend *less* while aggressive. That contradicts
+`A4`'s own `late_game_aggro` (which *divides* targets down, spending *more*,
+as a kill nears) and this very file's own prose immediately above the
+snippet ("delta decreases as opponent energy drops — spend cash to finish
+them"). `src/ai_strat/ai_strat_hbt.c` ships the opposite sign,
+`target *= (1 - scale * (aggression - 0.5))`; see its header comment and
+`doc/changelog.md`'s 2026-08-25 entry.
+
 Excellent question! Let me analyze the three strategies comparatively:
 
 ## Strategic Comparison

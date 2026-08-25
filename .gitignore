@@ -13,6 +13,7 @@
 /bin/calib_balanced
 /bin/calib_heuristic
 /bin/calib_tactical
+/bin/calib_hbt
 *.o
 *.xls
 *.xlsx

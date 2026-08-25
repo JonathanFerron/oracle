@@ -5,6 +5,139 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-25 — A7 Hybrid HBT ("The Grandmaster") implemented and calibrated
+
+Implemented per `ideas/A7 ai agent hybrid hbt (the grandmaster)/about.md` and
+`hbt_design_notes.md`/`strat_hbt_sketch.h` (a full LLM-drafted design sketch,
+not a hand-written stub). A fixed three-layer synthesis of the three agents
+below it on the ladder -- `A4` Balanced Rules, `A6` Tactical, `A5` Heuristic --
+plus `A3` Borealis's lethal-combo hold, added deliberately: the requesting brief
+for this agent explicitly called for "combo awareness to a good extent" beyond
+what `A4`/`A5`/`A6` alone provide, on the grounds that a hybrid of three
+combo-blind-or-implicit agents would "feel dumb" next to Borealis in human play.
+`about.md`'s own "any mechanism not already present in A4/A5/A6 is out of scope"
+line is updated to note this one deliberate exception.
+
+- **`src/ai_strat/ai_strat_hbt.{c,h}`, `ai_strat_hbt_enum.{c,h}`,
+  `ai_strat_hbt_cards.c`** (new). Move generation and the advantage function are
+  `A5`'s verbatim mechanism (closed-form 1-move lookahead, argmax over
+  {pass, every affordable 1-3 champion subset, every affordable draw card, every
+  affordable cash card} -- no `clone_gamestate()`, the same RNG-perturbation
+  constraint `A5`'s own changelog entry established). Two deliberate deviations
+  from the design docs' literal text, both recorded in `ai_strat_hbt.h`'s header
+  comment:
+  - **`A4` enters as a soft penalty on the advantage function, not a hard
+    filter**, despite `about.md`'s own wording ("`A4` Balanced Rules filters
+    viable moves by resource constraints"). `A4`'s own `BALANCED_DEFAULTS`
+    comment documents why a hard filter is risky: a traced game under the
+    original spec-derived slope showed 4 of 5 early turns passing outright
+    because the filter left no legal move, and `A4` is the weakest of the three
+    source agents (rating 36 vs `A5`'s 60 and `A6`'s 52). A penalty
+    (`penalty_cash_weight`/`penalty_cards_weight` times the shortfall below
+    `A4`'s own resource targets) can shape the ranking without ever deleting a
+    move the ranking would otherwise pick.
+  - **Corrected sign versus `ideas/G1 .../balanced_tactical_hbt_comparison.md`'s
+    sketch**, which scales `target_cash` by `(1 + (aggression - 0.5) * 0.4)` --
+    higher aggression means a *larger* cash reserve target, i.e. spending *less*
+    while aggressive. That contradicts `A4`'s own `late_game_aggro` (divides
+    targets *down*, spending *more*, as a kill nears) and the same design doc's
+    own prose two paragraphs later ("delta decreases as opponent energy drops --
+    spend cash to finish them"). Shipped with the opposite sign; a correction
+    note was added to that file.
+  - `A6`'s phase/aggression formula is ported verbatim and modulates `A5`'s
+    weights instead of gating an attacker count (`A5`'s enumerator already
+    considers every subset size, so there is no count decision to gate):
+    `eps_eff = eps*(1 + aggr_energy_gain*2*(a-0.5))`,
+    `gamma_eff/delta_eff = gamma/delta*(1 - aggr_resource_fade*2*(a-0.5))`, with
+    an extra `critical_epsilon_mult` multiplier when the opponent is
+    `PHASE_CRITICAL` (`hbt_design_notes.md`'s own "epsilon increases 50% in
+    critical phases," generalised from a step on `opp_energy` to a step on the
+    richer aggression scalar).
+  - `A3`'s `is_held_combo()` is ported verbatim (attack only) to exclude a
+    combo-scoring subset from consideration when it's not yet lethal and the
+    opponent isn't near-death -- `A5`'s own enumeration already scores the
+    *realized* combo bonus for every subset, so this is the one piece of
+    combo-awareness `A5` cannot supply on its own (recognising a combo worth
+    holding, not just scoring one already committed to).
+  - `hbt_mulligan()`/`hbt_discard_to_7()` are a **local port** of `A3`'s
+    combo-protecting mulligan/discard shape, not a call into `A3`'s own
+    functions -- calling `A3`'s directly would read Borealis's own
+    calibratable `g_params[player]`, coupling this agent's discard behaviour to
+    Borealis's tuning and breaking under `calib_hbt --opponent borealis`.
+  - Defense unifies `A4`'s deflating `E[Attack] - beta*sigma` cap and `A6`'s
+    inflating `+mult*sigma` estimate into one signed `defense_stdev_mult` dial
+    (negative reproduces `A4`, positive reproduces `A6`, zero recovers `A5`'s
+    plain expected value), scored by `A5`'s full 0-3 subset enumeration rather
+    than `A6`'s cheaper prefix walk.
+
+- **Calibration** (`aicalibsrc/hbt/`, new: `calib_hbt.c` + `calibrate_hbt.py` +
+  `README.md`, `sweep`/`optimize`/`selfplay`/`validate` parity with
+  `aicalibsrc/tactical/`). Thirty-four parameters -- roughly double `A6`'s
+  sixteen (the previous largest space) -- so calibration was staged rather than
+  run as one unconstrained search, and `weight_cash_advantage` (`A5`'s own
+  scale-invariance pin) and `hold_lethal_combos` (a fixed design decision, not a
+  dial to search away) are pinned in every stage.
+  - **Stage 1** froze every `A3`/`A4`/`A5`/`A6`-sourced field at its *source
+    agent's own shipped default* and freed only the eight parameters new to this
+    agent (the T->H and B->H coupling terms, the two target-aggression scales,
+    `defense_stdev_mult`) against `borealis`. `check_personality_flags()` (a
+    three-part check -- T's aggression range, B's penalty weights and target
+    slopes not eroding toward `BOUNDS`' own non-zero floors, H's epsilon/delta
+    ratio and taper -- since `about.md`'s framing is "the personality *is* the
+    fixed three-layer synthesis," all three must still be doing work) reported
+    **no flags**. Validated: **60.96%** [60.48%, 61.43%] vs `borealis` (40,000
+    games) -- already above `A5`'s own 58.99%, using none of `A5`'s tuned
+    weights, only its shape.
+  - **Stage 2** additionally freed `A5`'s own four non-pinned weights (twelve
+    free total), re-deriving them jointly. Result was statistically
+    indistinguishable (61.36% [60.88%, 61.83%], 40,000 games; a direct
+    stage-1-vs-stage-2 head-to-head measured 49.11% [48.56%, 49.66%], a tie
+    within noise) at the cost of `weight_cards_advantage` drifting to 10.72
+    (`A5`'s own shipped value is 1.96) and `opp_card_discount` to 2.75 (near its
+    3.0 search ceiling) -- no measurable gain for abandoning "H ranks with
+    `A5`'s own tuned advantage function," so **stage 1 shipped**. Stage 3
+    (jointly freeing `A6`'s twelve aggression/phase fields too) was skipped:
+    stage 1 already clears all three source agents without touching their own
+    tuned values, and `about.md`'s framing is a synthesis of three
+    *already-calibrated* agents, not a fourth from-scratch fit.
+  - **Shipped**: every H/T/B/combo-hold field at its source agent's own value;
+    new fields `aggr_energy_gain=0.16112`, `aggr_resource_fade=0.07171`,
+    `critical_epsilon_mult=2.46429`, `target_aggr_cash_scale=0.09639`,
+    `target_aggr_cards_scale=0.20157`, `penalty_cash_weight=0.74932`,
+    `penalty_cards_weight=0.86105`, `defense_stdev_mult=0.71117`. Measured
+    (both seats): vs `borealis` 60.96% (validated, 40,000 games); vs `balanced`
+    77.6% (18,000 games); vs `tactical` 60.9% (18,000 games); vs `heuristic`
+    **26.0%** (40,000 games) -- a clear loss to the very agent whose ranking
+    layer this agent reuses. Turn-count histograms (`-sa -p`, avg 7.3 turns,
+    max 14) rule out a stall/hoarding bug: both sides finish games fast and
+    decisively. Read as: `B`'s penalty and `T`'s weight modulation perturb
+    `A5`'s advantage function away from `A5`'s own unperturbed optimum, and
+    that perturbation costs more against an opponent using the exact
+    unperturbed mechanism than it gains elsewhere -- not tuned away, per this
+    project's honesty policy on measured results (`A4`'s 36, `A6`'s 39.30% vs
+    `heuristic` are the precedents for reporting a real weakness rather than
+    hiding it).
+
+- **Rating**: despite the pairwise loss to `heuristic` above,
+  `./bin/oracle -r -p --rating.games=2000`'s roster-wide Bradley-Terry fit
+  places `The Grandmaster` at **rating 62** -- higher than all three of its
+  ingredients in this same fit (`Eps-Gam-Del` 61, `Pressure Cooker` 53,
+  `Bean Counter` 34) and above the Borealis anchor (50), the same way `A6`'s own
+  pairwise loss to `heuristic` (39.30%) didn't stop it from rating above `A4`.
+  This satisfies the design goal stated for this agent: a better Borealis
+  rating than any of the three agents it combines.
+  `AI_STRATEGY_RATINGS[AI_STRATEGY_HYBRID_HBT]` (`player_config.c`) updated
+  from `{ 78, false }` (design-intent estimate) to `{ 62, true }`.
+
+- **Verification**: `make` clean (no new warnings); `-a -p` byte-identical to
+  `bin/expectedresults.txt`; `test_combo` (20/20), `test_recall` (10/10),
+  `test_cash_exchange` (6/6), `test_rating` (41/41) all pass; valgrind-clean
+  (`--leak-check=full --track-origins=yes`, `hbt` vs `hbt` and `hbt` vs
+  `borealis`, 20 games each); strategy menu confirmed showing
+  `Hybrid (HBT) [The Grandmaster] (available) [62]`.
+
+---
+
 ## 2026-08-25 — A6 Tactical ("Pressure Cooker") implemented and calibrated
 
 Implemented per `ideas/A6 ai agent tactical (pressure cooker)/about.md` and

@@ -12,10 +12,14 @@ calibrated), `A3` Borealis (the Bradley-Terry benchmark, 2026-08-23, calibrated)
 Balanced Rules ("Bean Counter", 2026-08-24, calibrated, measured rating 36 — below the
 Borealis anchor, see `doc/changelog.md`), `A5` Heuristic ("Eps-Gam-Del", 2026-08-25,
 calibrated, measured rating 60 — above the Borealis anchor, the first agent to clear
-it), and `A6` Tactical ("Pressure Cooker", 2026-08-25, calibrated, measured rating 52 —
-also above the Borealis anchor, see `doc/changelog.md`) are implemented, and the
+it), `A6` Tactical ("Pressure Cooker", 2026-08-25, calibrated, measured rating 52 —
+also above the Borealis anchor, see `doc/changelog.md`), and `A7` Hybrid HBT
+("The Grandmaster", 2026-08-25, calibrated, measured rating 62 — the highest measured
+rating so far, above all three agents it combines (`A4`/`A5`/`A6`) in the same
+roster-wide fit despite a pairwise loss to `A5` specifically, see `doc/changelog.md`)
+are implemented, and the
 Bradley-Terry rating system itself (2026-08-23, `src/rating/`) is now built on top of
-them — see `doc/oracle_roadmap.md`'s "Next Up" for what's next (`A7`). The strategy-set
+them — see `doc/oracle_roadmap.md`'s "Next Up" for what's next (`A8`). The strategy-set
 build sites
 also gained a shared `AIStrategyType -> function pointer` registry (`ai_strategy.c`) as
 part of `A1` -- see "Checklist: Adding a New AI Strategy" below, which now reflects that
