@@ -25,6 +25,21 @@ hand/deck consistent with what's publicly known, builds/grows a UCT tree over th
 - Sampling dice rolls via Monte Carlo — `mcts_depth_strategy.md` (this folder) shows dice
   have closed-form mean/variance; use that instead of rollout sampling for the dice
   component specifically.
+- Treating a player's whole remaining deck as one uniform unknown pool once a reshuffle
+  has happened — see the correctness note below.
+
+## Correctness note: reshuffle narrows the determinization, don't discard that
+
+`card_actions.c`'s `shuffle_discard_and_form_deck()` reshuffles a player's *own* discard
+back into their own deck when it empties (per-player, not shared). After that reshuffle,
+that deck's **composition is exactly known** (it's precisely the prior discard pile,
+which was visible) — only the **draw order** is still hidden. A determinization that
+samples card identities uniformly from "everything not in hand, not yet played" throws
+away that composition information post-reshuffle. Determinize by sampling *permutations
+of the known composition* for any player-deck that has been reshuffled, not by treating
+the whole remaining pool as uniformly unknown. Full reasoning and the downstream
+implications for opponent-hand inference and `A11`'s state encoding:
+`../A11 ai agent is-mcts + nn (alphaoracle prime)/local_training_plan.md`.
 
 ## Design sources
 
@@ -34,3 +49,6 @@ hand/deck consistent with what's publicly known, builds/grows a UCT tree over th
   that affects achievable search depth given Oracle's branching factor.
 - `../A11 ai agent is-mcts + nn (alphaoracle prime)/nn_mcts_overview.md` — the next rung,
   replaces this agent's rollouts/heuristics with a trained network.
+- `../A11 ai agent is-mcts + nn (alphaoracle prime)/local_training_plan.md` — includes the
+  reshuffle-aware determinization note above, in full, plus a hardware-grounded local
+  training plan for `A11`.

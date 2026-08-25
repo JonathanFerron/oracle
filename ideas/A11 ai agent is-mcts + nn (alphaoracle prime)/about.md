@@ -29,6 +29,13 @@ self-play. "Search plus learned intuition" (names file).
 
 - `nn_mcts_overview.md` (this folder) — network architecture (policy/value heads),
   self-play training loop, four-stage implementation path, and the IS-MCTS vs NN+MCTS
-  comparison table.
+  comparison table. Its "Expected Training Requirements" section assumes GPU-scale
+  (RTX 4090/KataGo) training — superseded for this project's actual hardware by
+  `local_training_plan.md` (this folder).
+- `local_training_plan.md` (this folder) — hardware-grounded training plan for the
+  actual local machine (no GPU): deployed-model sizing, why disk/corpus size isn't
+  the real constraint, the single-pass-distillation-from-A10 recipe, and the
+  reshuffle-aware information-set encoding note (composition becomes known, order
+  stays hidden).
 - `../A10 ai agent is-mcts (the omniscient)/ismcts_overview.md` — the prerequisite
   foundation this agent builds on.
