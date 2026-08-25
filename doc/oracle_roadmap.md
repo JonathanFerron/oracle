@@ -15,13 +15,36 @@ work see `doc/changelog.md`. For architecture/design rationale see `doc/oracle_d
 
 Core game engine, CLI interactive mode, and TUI mode (Milestones 1 & 2 plus a polish
 pass) are done. Random, `A1` Value Based ("The Apprentice"), `A2` Combo Threshold
-("The Showboat"), `A3` Borealis (the Bradley-Terry benchmark), and `A4` Balanced Rules
-("Bean Counter") AI strategies are all implemented and calibrated, and the
-Bradley-Terry rating system itself is now built on top of them. **Active work**: `A5`
-Heuristic — see "Next Up" below.
+("The Showboat"), `A3` Borealis (the Bradley-Terry benchmark), `A4` Balanced Rules
+("Bean Counter"), and `A5` Heuristic ("Eps-Gam-Del") AI strategies are all implemented
+and calibrated, and the Bradley-Terry rating system itself is now built on top of
+them. `A5` is the first agent to measure above the Borealis anchor (rating 60).
+**Active work**: `A6` Tactical — see "Next Up" below.
 
 ### Recently Completed
 
+- **2026-08-25** — `A5` Heuristic ("Eps-Gam-Del") implemented and calibrated: reduces
+  the whole position to one weighted advantage function,
+  `Advantage = epsilon*EnergyAdv + taper*gamma*CardsAdv + taper*delta*CashAdv`, and
+  picks the 1-move-lookahead legal move that maximises it, closed-form (no
+  clone-and-apply, to keep the shared RNG stream undisturbed). The first agent whose
+  decision rule is a tunable weighted sum over whole-position features rather than
+  per-card scoring/threshold gates/subset enumeration/resource-target formulas.
+  Calibration (`aicalibsrc/heuristic/`) targeted `borealis` (not `A4` as the original
+  todo item said — superseded once `A4` itself measured below the anchor). A manual
+  sweep found `weight_cards_advantage`'s useful range far exceeds the spec's
+  illustrative 0.15 (peak ~48.7% vs `borealis` around gamma=6-8); an unconstrained
+  `optimize` run found gamma=9.815 at 59.67% validated, flagged by
+  `check_personality_flags()`, but playtracing ruled out the "hoard forever" failure
+  mode the flag exists to catch (still finishes <20 turns, 99.8% vs `rand`) — a large
+  weight changing which moves the one mechanism prefers, not erosion of the mechanism.
+  `optimize --identity-safe` converged to a statistically indistinguishable 58.99% at
+  gamma=1.962, and shipped instead (same measured strength, weights closer to the
+  spec). Measured rating (roster-wide `--stda.rating` fit): **60** — above the
+  Borealis anchor (50), though below the `~70` design-intent estimate — unlike `A4`
+  (which undershot both its own estimate and the anchor), `A5` undershot its estimate
+  but still cleared the anchor, the first agent in the roster to do so. Full details:
+  `doc/changelog.md`.
 - **2026-08-24** — `A4` Balanced Rules ("Bean Counter") implemented and calibrated:
   closed-form resource accounting (target cash/hand-size scale linearly with opponent
   energy), variance-aware defense (`E[Def] <= E[Attack] - beta*sigma`, can decline a
@@ -91,10 +114,10 @@ Full details: `doc/changelog.md`.
 
 ### What Needs Work
 
-- Random, `A1` Value Based, `A2` Combo Threshold, `A3` Borealis, and `A4` Balanced
-  Rules implemented, and the Bradley-Terry rating system now built on top of them —
-  everything from `A5` onward on the AI ladder below is open, and is what the rating
-  system will next measure.
+- Random, `A1` Value Based, `A2` Combo Threshold, `A3` Borealis, `A4` Balanced Rules,
+  and `A5` Heuristic implemented, and the Bradley-Terry rating system now built on top
+  of them — everything from `A6` onward on the AI ladder below is open, and is what the
+  rating system will next measure.
 - Automated simulation mode (`stda_auto.c`) needs a refactor (see `doc/oracle_todo.md`).
 - No save/load, no config file system, no general match-result CSV export (the rating
   system's own CSV persistence is separate and done), no network, no GUI, no `stda.sim`.
@@ -110,10 +133,10 @@ Full details: `doc/changelog.md`.
 
 ## Next Up (single authoritative order)
 
-1. **`A5` Heuristic** ("ε-γ-δ", `ideas/A5 ai agent heuristic (eps-gam-del)/`). The next
-   rung on the AI ladder — `A1`-`A4` are all implemented and calibrated, and the
-   Bradley-Terry rating system (2026-08-23, `src/rating/`) can now measure it against
-   Borealis via `--stda.rating` as soon as it exists.
+1. **`A6` Tactical** ("Pressure Cooker", `ideas/A6 ai agent tactical (pressure cooker)/`).
+   The next rung on the AI ladder — `A1`-`A5` are all implemented and calibrated, and
+   the Bradley-Terry rating system (2026-08-23, `src/rating/`) can now measure it
+   against Borealis via `--stda.rating` as soon as it exists.
 
 **Back burner** (explicitly deferred): save/load game state
 (`ideas/6 save and load gamestate/`), configuration file system
@@ -162,12 +185,13 @@ error-handling polish (see `doc/oracle_todo.md`).
   archived accordingly — see `doc/changelog.md`.
 - `stda.sim` (simulation UI): not started.
 
-### Phase: AI Development — `A1`–`A4` done, `A5` next
+### Phase: AI Development — `A1`–`A5` done, `A6` next
 
 Ladder: `A1` value-based (done, 2026-08-21) → `A2` combo threshold (The Showboat, done,
 2026-08-22) → `A3` greedy power (Borealis benchmark, done, 2026-08-23) → `A4` balanced
-rules (Bean Counter, done, 2026-08-24) → `A5` heuristic → `A6` tactical → `A7` hybrid
-(HBT) → `A8` simple MC → `A9` HBT 2-ply → `A10` IS-MCTS → `A11` IS-MCTS + neural
+rules (Bean Counter, done, 2026-08-24) → `A5` heuristic (Eps-Gam-Del, done, 2026-08-25)
+→ `A6` tactical → `A7` hybrid (HBT) → `A8` simple MC → `A9` HBT 2-ply → `A10` IS-MCTS
+→ `A11` IS-MCTS + neural
 network. One `ideas/A#` folder per agent,
 `A#` matching that agent's `AIStrategyType` enum ordinal (`src/core/game_types.h` as of
 `A1`; it previously lived in `src/ui/shared/player_config.h`). See

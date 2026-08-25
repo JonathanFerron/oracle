@@ -8,11 +8,13 @@ see `doc/oracle_design.md`. For a dated history of finished work see `doc/change
 mulligan, discard-to-7, combat/discard display), the source folder structure cleanup, and
 TUI Milestones 1–2 + polish pass are complete — see `doc/changelog.md`. `A1` Value Based
 ("The Apprentice", 2026-08-21), `A2` Combo Threshold ("The Showboat", 2026-08-22,
-calibrated), `A3` Borealis (the Bradley-Terry benchmark, 2026-08-23, calibrated), and `A4`
+calibrated), `A3` Borealis (the Bradley-Terry benchmark, 2026-08-23, calibrated), `A4`
 Balanced Rules ("Bean Counter", 2026-08-24, calibrated, measured rating 36 — below the
-Borealis anchor, see `doc/changelog.md`) are implemented, and the Bradley-Terry rating
-system itself (2026-08-23, `src/rating/`) is now built on top of them — see
-`doc/oracle_roadmap.md`'s "Next Up" for what's next (`A5`). The strategy-set build sites
+Borealis anchor, see `doc/changelog.md`), and `A5` Heuristic ("Eps-Gam-Del", 2026-08-25,
+calibrated, measured rating 60 — above the Borealis anchor, the first agent to clear
+it, see `doc/changelog.md`) are implemented, and the Bradley-Terry rating system itself
+(2026-08-23, `src/rating/`) is now built on top of them — see
+`doc/oracle_roadmap.md`'s "Next Up" for what's next (`A6`). The strategy-set build sites
 also gained a shared `AIStrategyType -> function pointer` registry (`ai_strategy.c`) as
 part of `A1` -- see "Checklist: Adding a New AI Strategy" below, which now reflects that
 mechanism rather than the old per-file hardcoding. As of `A3`, that registry also carries
@@ -144,13 +146,34 @@ already sketched out to break into sub-tasks.
   older harnesses (or script a check that fails loudly if a hand-copied dict drifts from
   the C source) rather than hand-syncing them going forward.
 
-### `A5` Heuristic Strategy (`ai_strat_heuristic1.c`)
+### `A5` Heuristic Strategy (`ai_strat_heuristic.c`) — done, 2026-08-25
 
-- [ ] Advantage function (energy advantage, cards advantage, cash advantage — see
-  `ai_strat_heuristic1.c` notes for the formulas)
-- [ ] 1-move lookahead, action evaluation
-- [ ] Parameters: ε (epsilon) for energy weight, γ (gamma) for cards weight
-- [ ] Calibration against `A4` Balanced Rules AI
+- [x] Advantage function (energy advantage, cards advantage, cash advantage — see
+  `ai_strat_heuristic.h`'s header comment for the formulas). The parameter is ε/γ/δ
+  (three weights, not just ε/γ as this checklist item originally said — that was
+  stale against `about.md`'s own three-weight framing; δ (cash weight) is pinned
+  during calibration since the argmax is scale-invariant to the three weights
+  together, so one is redundant, but it stays a real `HeuristicParams` field)
+- [x] 1-move lookahead, action evaluation — closed-form, not clone-and-apply (cloning
+  `gamestate` and replaying a move through `card_actions.c` would pull from the
+  shared RNG stream and perturb every downstream game); see `doc/changelog.md`
+- [x] Parameters: ε (epsilon) for energy weight, γ (gamma) for cards weight, δ
+  (delta, pinned) for cash weight, plus a taper exponent (`weight_taper_exponent`)
+  and an opponent-hand-size discount (`opp_card_discount`) — the taper collapses
+  the design docs' separately-proposed `weight_cards_decay_rate`/
+  `weight_cash_decay_rate`/`weight_energy_critical_mult` (`ideas/G2 .../
+  ai_params_guide.md`) into one dial rather than three, per `about.md`'s "fixed
+  weights per game" framing (0.0 recovers strictly fixed weights)
+- [x] Calibration against `borealis` (not `A4` Balanced Rules as this item
+  originally said — `A4` itself measured rating 36, below the anchor, so that
+  target was superseded before running any search; see `aicalibsrc/heuristic/`
+  and `doc/changelog.md`). Measured rating 60, above the Borealis anchor — the
+  first agent in the roster to clear it.
+- [ ] **Deferred, not forgotten**: the stub's hand-power / probability-weighted
+  combo-potential term (`ai_strat_heuristic.h`'s header comment quotes the
+  original proposal) — `about.md` calls it an open question and out of scope as
+  primary logic for `A5`. Revisit only if measurement shows this agent losing to
+  hand-quality blindness; not merely because a richer model is possible.
 - [ ] In `stda.cli` mode, when AI-vs-AI play is selected, use "AI strategy name + (A or
   B)" as the player name instead of asking for player 1's name and not player 2's (moved
   here from the old `A4` section — unrelated to any specific agent, just never done)

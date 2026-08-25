@@ -12,11 +12,14 @@ win percentage against the Borealis benchmark agent.
 
 The last column is the original design-intent guess made before any agent existed;
 `Measured` (2026-08-23, `--stda.rating` round-robin, `src/rating/`; `A4` added
-2026-08-24) is the actual Bradley-Terry fit now that `Random`/`A1`/`A2`/`A3`/`A4` are
-all implemented. See `doc/changelog.md`'s 2026-08-23 and 2026-08-24 entries for the
-runs these came from. `A4`'s measured rating (36) landed well below its own
-design-intent estimate (62) and below the Borealis anchor -- a legitimate, calibrated
-result (`doc/changelog.md`), the largest design-intent miss on this table so far.
+2026-08-24, `A5` added 2026-08-25) is the actual Bradley-Terry fit now that
+`Random`/`A1`/`A2`/`A3`/`A4`/`A5` are all implemented. See `doc/changelog.md`'s
+2026-08-23, 2026-08-24, and 2026-08-25 entries for the runs these came from. `A4`'s
+measured rating (36) landed well below its own design-intent estimate (62) and below
+the Borealis anchor -- a legitimate, calibrated result (`doc/changelog.md`), the
+largest design-intent miss on this table so far. `A5`'s measured rating (60) landed
+below its own estimate (70) but *above* the Borealis anchor -- the first agent on this
+table to clear it.
 
 | Tech/Math Name | English | Français | Español | Measured | Est. Borealis Rating |
 |---|---|---|---|---|---|
@@ -25,7 +28,7 @@ result (`doc/changelog.md`), the largest design-intent miss on this table so far
 | Combo Threshold | The Showboat | Le Frimeur | El Fanfarrón | 30 | 37 |
 | Greedy Power *(benchmark)* | Borealis | Borealis | Borealis | 50 | 50 |
 | Balanced Rules | Bean Counter | Compteur de Fèves | Contador de Frijoles | 36 | 62 |
-| Heuristic | ε-γ-δ | ε-γ-δ | ε-γ-δ | — | 70 |
+| Heuristic | ε-γ-δ | ε-γ-δ | ε-γ-δ | 60 | 70 |
 | Tactical | Pressure Cooker | Cocotte-Minute | Olla a Presión | — | 74 |
 | Hybrid (HBT) | The Grandmaster | Le Grand Maître | El Gran Maestro | — | 78 |
 | Simple Monte Carlo | The Soothsayer | Le Devin | El Adivino | — | 82 |
@@ -155,16 +158,17 @@ Children aged 11–14 with moderate to frequent experience should average a
 That is a wide age range for a single agent to serve. The difficulty screen was
 meant to mitigate this by bracketing Borealis with a weaker and a stronger
 neighbour so players self-select, easing the calibration burden on Borealis
-alone. **That bracketing did not survive measurement**: Bean Counter (`A4`) was
-designed to sit above Borealis (est. 62) but measured at **36** — below the
-anchor, in the same neighbourhood as Combo Threshold (30) rather than above
-Borealis (`doc/changelog.md`, 2026-08-24). Until a later agent (`A5` onward)
-measures reliably above 50, Borealis currently has no *measured* stronger
-neighbour to bracket with, only weaker ones below it (`A4`, `A2`, `A1`,
-Random) — worth revisiting once `A5`-`A7` are implemented and measured. Tune λ
-against playtest data, not against simulation win rates — simulation finds the
-λ that maximises strength, which is not necessarily the λ that hits the target
-band.
+alone. **The weaker-neighbour half of that bracketing did not survive
+measurement**: Bean Counter (`A4`) was designed to sit above Borealis (est. 62)
+but measured at **36** — below the anchor, in the same neighbourhood as Combo
+Threshold (30) rather than above Borealis (`doc/changelog.md`, 2026-08-24). The
+stronger-neighbour half arrived the following day: Eps-Gam-Del (`A5`) measured
+**60** — above the anchor, though below its own 70 estimate
+(`doc/changelog.md`, 2026-08-25) — so Borealis now has a genuine measured
+stronger neighbour, just not (yet) a measured weaker one nearer 40-45 than
+`A4`'s 36. Tune λ against playtest data, not against simulation win rates —
+simulation finds the λ that maximises strength, which is not necessarily the λ
+that hits the target band.
 
 ---
 

@@ -10,6 +10,7 @@
 #include "ai_strat_combo_threshold.h"
 #include "ai_strat_borealis.h"
 #include "ai_strat_balanced_rules.h"
+#include "ai_strat_heuristic.h"
 #include "ai_strat_lib_heuristics.h"
 
 StrategySet* create_strategy_set(void)
@@ -58,6 +59,9 @@ static const StrategyRegistryEntry STRATEGY_REGISTRY[AI_STRATEGY_COUNT] =
   },
   [AI_STRATEGY_BALANCED]         = { balanced_rules_attack_strategy,
     balanced_rules_defense_strategy
+  },
+  [AI_STRATEGY_HEURISTIC]        = { heuristic_attack_strategy,
+    heuristic_defense_strategy
   },
   // All other entries default to {NULL, NULL, NULL, NULL} -- not yet implemented.
 };

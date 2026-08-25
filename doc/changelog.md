@@ -5,6 +5,127 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-25 — A5 Heuristic ("Eps-Gam-Del") implemented and calibrated
+
+Implemented per `ideas/A5 ai agent heuristic (eps-gam-del)/about.md` and
+`src/ai_strat/ai_strat_heuristic1.c`'s original design-comment stub (now deleted,
+its prose preserved in `ai_strat_heuristic.h`'s header comment and in `about.md`):
+reduces the whole position to one weighted advantage function,
+`Advantage = epsilon*EnergyAdv + taper*gamma*CardsAdv + taper*delta*CashAdv`, and
+picks the legal move (1-move lookahead, no opponent-response simulation) that
+maximises it after being applied. The first agent in the roster whose decision rule
+is a tunable weighted sum over whole-position features rather than per-card scoring
+(`A1`), threshold gates (`A2`), subset-value maximisation (`A3`), or resource-target
+formulas (`A4`) -- every sibling agent's `about.md` explicitly cedes this mechanism
+to `A5`.
+
+- **`src/ai_strat/ai_strat_heuristic.c/.h`** (new; replaces the 26-line comment-only
+  stub `ai_strat_heuristic1.c`, deleted). Move evaluation is closed-form, not
+  clone-and-apply: the design docs' `clone_gamestate()`/`apply_move()`/
+  `simulate_expected_defense_response()` sketch (`ideas/G1 .../
+  balanced_tactical_hbt_comparison.md`) was not built, since applying a move to a
+  clone would pull `draw_1_card()` from the shared `GameContext` RNG stream and
+  perturb every downstream game. Cash and hand-size deltas are computed exactly
+  from `card_actions.c`'s actual play functions; only the opponent's post-move
+  energy is a prediction, `min(opp_energy, Sigma(expected_attack)+combo_bonus)` --
+  deliberately no opponent-block term (a constant-fraction block model is a
+  positive rescaling of the attack term, already absorbed into epsilon, so it
+  would be a redundant, unidentifiable parameter). Reuses
+  `build_affordable_champions()`, `expected_incoming_attack()`,
+  `combo_bonus_for_selection()` from `ai_strat_common.h`; enumeration is the same
+  3-nested-loop 0-3 champion subset pattern as `A3`'s `collect_candidates()`, with
+  pass/draw-card/cash-card candidates scored by the same advantage function. No
+  mulligan/discard override -- both `StrategySet` hooks stay `NULL` (shared
+  default), same as `A1`/`A2`/`A4`.
+
+- **Two `about.md`-vs-design-docs tensions resolved during implementation, not left
+  ambiguous:**
+  1. `about.md` excludes "dynamic/adaptive weights" as `A6` Tactical's territory,
+     but the stub, the G1 sketch, and `ideas/G2 .../ai_params_guide.md` all call
+     for gamma/delta to taper with opponent energy. Read as: `about.md`'s exclusion
+     targets `A6`'s game-phase *state machine*, not a smooth function of one public
+     scalar -- shipped as a single `weight_taper_exponent` dial (0.0 recovers
+     strictly fixed weights; 1.0 reproduces the G1 sketch's linear
+     `opp_energy/99`).
+  2. `about.md` lists "subset enumeration ... as primary logic" out of scope, but
+     that targets `A3`'s *decision rule* (maximise raw subset value); here
+     enumeration is only the move generator the stub itself demands ("among all
+     the possible moves") -- the decision rule is the weighted sum.
+  The stub's further proposal of a hand-power / probability-weighted combo-potential
+  term was deferred entirely (tracked in `doc/oracle_todo.md` as a follow-up), since
+  `about.md` calls it an open question and out of scope as primary logic.
+
+- **Calibration** (`aicalibsrc/heuristic/`, new: `calib_heuristic.c` +
+  `calibrate_heuristic.py` + `README.md`, `sweep`/`optimize`/`selfplay`/`validate`
+  parity with `aicalibsrc/balanced/`, including its `--print-defaults`/`**tags`
+  discipline so this driver's `DEFAULTS` cannot drift from the shipped C constants).
+  `weight_cash_advantage` (delta) is pinned throughout: the argmax of a three-term
+  weighted sum is invariant to a positive rescaling of all three weights, so one is
+  redundant (`ideas/G2 .../calibration_example.txt` reaches the same conclusion).
+  `doc/oracle_todo.md`'s original "calibrate against `A4` Balanced Rules" note was
+  superseded before running any search -- `A4` itself measured rating 36, below the
+  anchor, so `borealis` (the rating-50 anchor) was used instead, with
+  `balanced`/`combo`/`value`/`rand` as cross-checks.
+  - A manual univariate sweep of `weight_cards_advantage` (gamma) at spec defaults
+    otherwise found a far larger useful range than the spec's own 0.15: win rate vs
+    `borealis` climbed from 26.8% at gamma=1 to a peak of ~48.7% around gamma=6-8
+    before collapsing to 19.1% at gamma=12 (clear unimodal shape) -- `BOUNDS` was
+    widened to 15.0 before searching, the same lesson `A3`'s `luna_value` bound and
+    `A4`'s `target_cash_slope` bound each record.
+  - An unconstrained `optimize` run (all four free params, `--opponent borealis`)
+    found `weight_cards_advantage=9.815` -- more than 60x the spec's illustrative
+    0.15 -- at 59.67% [59.18%, 60.14%] validated vs `borealis` (40,000 games),
+    flagged by `check_personality_flags()` the same "measured stronger by eroding
+    character is not automatically a win" protocol as `A2`'s rejected
+    `aggression_level=2.21` and `A4`'s rejected free-search slopes. Unlike those
+    precedents, playtracing this candidate (turn-count histograms via `-sa -p`, not
+    just the aggregate rate) ruled out the failure mode the flag exists to catch:
+    it still finishes nearly every game in under 20 turns and wins 99.8% vs `rand`
+    -- a fast, decisive strategy, not a "hoard forever" stall. A large gamma
+    changes which moves this agent's one weighted-sum mechanism prefers; unlike
+    `A2`/`A4`'s rejected extremes, it does not disable an explicit rule the
+    agent's identity depends on -- `about.md`'s own statement of this agent's
+    identity is "its entire identity is its three weights," so this is a
+    legitimate calibration finding, not erosion.
+  - `optimize --identity-safe` (gamma capped at 2.0, epsilon kept away from 0,
+    taper capped at 2.0) was still run as the character-preserving comparison per
+    protocol: it converged to `weight_cards_advantage=1.962` (pinned against its
+    own ceiling) at a statistically indistinguishable 58.99% [58.51%, 59.47%] vs
+    `borealis`. A 3-way self-play round-robin (defaults vs both candidates, 48,000
+    games/pairing) confirmed the two are inseparable (Bradley-Terry strength
+    1.1294 vs 1.1098) and both far ahead of the spec defaults (0.0) -- the
+    identity-safe candidate shipped: statistically the same measured strength,
+    every weight closer to the stub's own illustrative numbers.
+  - **Shipped** (`HEURISTIC_DEFAULTS`): `weight_energy_advantage=0.34929208`,
+    `weight_cards_advantage=1.96227051`, `weight_cash_advantage=1.0` (pinned),
+    `weight_taper_exponent=0.10115113`, `opp_card_discount=0.98660043`. Measured
+    (validated, both seats): vs `borealis` 0% (uncalibrated design-comment
+    illustration) -> **58.99%** [58.51%, 59.47%] (40,000 games); vs `rand` ->
+    99.85% [99.78%, 99.90%] (18,000 games); vs `combo` -> 77.09% [76.47%, 77.70%]
+    (18,000 games); vs `value` -> 81.81% [81.24%, 82.37%] (18,000 games); vs
+    `balanced` -> 74.24% [73.59%, 74.87%] (18,000 games).
+
+- **Rating**: the design-intent estimate of 70 (`ideas/G1 .../
+  oracle_ai_agent_names.md`, `~70` in the menu) is exceeded -- `./bin/oracle -r -p
+  --rating.games=2000`'s roster-wide Bradley-Terry fit places `Eps-Gam-Del` at
+  **rating 60**, above the Borealis anchor (50) and above every other implemented
+  agent (`Bean Counter` 36, `The Showboat` 30, `The Apprentice` 25, `The Gambler`
+  2) -- the first agent in the roster to measure stronger than the anchor,
+  consistent with the direct pairwise vs-`borealis` measurement above. This was not
+  assumed going in -- `A4` measured well below its own design-intent estimate the
+  session before, and per this project's stated calibration policy the job is to
+  measure honestly, not to force a particular outcome either direction.
+  `AI_STRATEGY_RATINGS[AI_STRATEGY_HEURISTIC]` (`player_config.c`) updated from
+  `{ 70, false }` to `{ 60, true }`.
+
+- **Verification**: `make` clean (no new warnings); `-a -p` byte-identical to
+  `bin/expectedresults.txt`; `test_combo` (20/20), `test_recall` (10/10),
+  `test_cash_exchange` (6/6), `test_rating` (41/41) all pass; valgrind-clean
+  (`--leak-check=full --track-origins=yes`, `heuristic` vs `heuristic`, 20 games);
+  strategy menu confirmed showing `Heuristic [Eps-Gam-Del] (available) [60]`.
+
+---
+
 ## 2026-08-24 — A4 Balanced Rules ("Bean Counter") implemented and calibrated
 
 Implemented per `ideas/A4 ai agent balanced rules (bean counter)/about.md` and its
