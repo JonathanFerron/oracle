@@ -447,6 +447,17 @@ const char* get_player_display_name(PlayerID player, PlayerConfig* pconfig)
 { return pconfig->player_names[player];
 }
 
+void format_player_label(PlayerID player, PlayerConfig* pconfig, ui_language_t lang,
+                         char* buf, size_t n)
+{ if(pconfig->player_types[player] == INTERACTIVE_PLAYER)
+  { snprintf(buf, n, "%s", pconfig->player_names[player]);
+    return;
+  }
+
+  const char* flavour = get_strategy_display_name(pconfig->ai_strategies[player], lang);
+  snprintf(buf, n, "%s - %s", LOCALIZED_STRING_L(lang, "AI", "IA", "IA"), flavour);
+} // format_player_label
+
 // Shorthand code for `-A`/`--ai` (lowercase letters/digits, <=10 chars).
 // Exactly one per strategy -- AI_STRATEGY_BOREALIS and
 // AI_STRATEGY_COMBO_THRESHOLD used to also accept their pre-rename/flavour

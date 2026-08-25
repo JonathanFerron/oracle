@@ -35,8 +35,17 @@ TEST_COMBO_OBJS := $(BUILDDIR)/testsrc/test_combo_bonus.o \
                    $(BUILDDIR)/core/game_constants.o
 
 TEST_RECALL_TARGET := $(BINDIR)/test_recall
+# ui/shared/player_config.c pulls in the whole AI-strategy roster transitively
+# (display_ai_strategy_menu()/get_ai_strategy_choice() call
+# ai_strategy_is_implemented(), which needs ai_strategy.c's STRATEGY_REGISTRY
+# populated -- same "linking player_config.c means linking the roster it
+# depends on" reasoning as the CALIB_*_SRCS lists below), even though this
+# test itself never touches AI strategy selection -- format_player_label()
+# (cli_display.c/cli_action_display.c, added alongside A4) is the only reason
+# player_config.c is linked here at all.
 TEST_RECALL_SRCS := $(TESTSRCDIR)/test_recall.c \
                     $(SRCDIR)/core/card_actions.c \
+                    $(SRCDIR)/core/combo_bonus.c \
                     $(SRCDIR)/core/game_constants.c \
                     $(SRCDIR)/core/game_context.c \
                     $(SRCDIR)/ui/cli/cli_input.c \
@@ -45,6 +54,16 @@ TEST_RECALL_SRCS := $(TESTSRCDIR)/test_recall.c \
                     $(SRCDIR)/ui/cli/cli_action_display.c \
                     $(SRCDIR)/ui/interactive/game_commands.c \
                     $(SRCDIR)/ui/interactive/game_commands_cards.c \
+                    $(SRCDIR)/ui/shared/player_config.c \
+                    $(SRCDIR)/ai_strat/ai_strategy.c \
+                    $(SRCDIR)/ai_strat/ai_strat_random.c \
+                    $(SRCDIR)/ai_strat/ai_strat_common.c \
+                    $(SRCDIR)/ai_strat/ai_strat_lib_heuristics.c \
+                    $(SRCDIR)/ai_strat/ai_strat_valuebased.c \
+                    $(SRCDIR)/ai_strat/ai_strat_combo_threshold.c \
+                    $(SRCDIR)/ai_strat/ai_strat_borealis.c \
+                    $(SRCDIR)/ai_strat/ai_strat_borealis_enum.c \
+                    $(SRCDIR)/ai_strat/ai_strat_balanced_rules.c \
                     $(SRCDIR)/structures/card_collection.c \
                     $(SRCDIR)/structures/deckstack.c \
                     $(SRCDIR)/util/mtwister.c \

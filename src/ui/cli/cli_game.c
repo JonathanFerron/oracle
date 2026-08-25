@@ -31,9 +31,9 @@ int handle_interactive_attack(struct gamestate* gstate,
   int action_taken = NO_ACTION;
 
   PlayerConfig* pconfig = (PlayerConfig*)cfg->player_config;
-  //const char* player_name = pconfig->player_names[player];
   PlayerID opponent = 1 - player;
-  const char* opponent_name = pconfig->player_names[opponent];
+  char opponent_label[MAX_PLAYER_LABEL_LEN];
+  format_player_label(opponent, pconfig, cfg->language, opponent_label, sizeof(opponent_label));
 
   while(!action_taken && !gstate->someone_has_zero_energy)
   { printf("\n=== (%s %d, %s %d) ===\n",
@@ -42,7 +42,7 @@ int handle_interactive_attack(struct gamestate* gstate,
            LOCALIZED_STRING("Round", "Manche", "Ronda"),
            (uint16_t)((gstate->turn - 1) * 0.5 + 1));
     printf("\n=== %s (%s) ===\n",
-           opponent_name,
+           opponent_label,
            LOCALIZED_STRING("Defender", "Defenseur", "Defensor"));
     display_player_prompt(opponent, gstate, 1, cfg);
     printf(" %s:%d\n",
@@ -75,9 +75,9 @@ int handle_interactive_defense(struct gamestate* gstate,
 { char input_buffer[MAX_COMMAND_LEN];
 
   PlayerConfig* pconfig = (PlayerConfig*)cfg->player_config;
-  //const char* player_name = pconfig->player_names[player];
   PlayerID opponent = 1 - player;
-  const char* opponent_name = pconfig->player_names[opponent];
+  char opponent_label[MAX_PLAYER_LABEL_LEN];
+  format_player_label(opponent, pconfig, cfg->language, opponent_label, sizeof(opponent_label));
 
   printf("\n=== (%s %d, %s %d) ===\n",
          LOCALIZED_STRING("Turn", "Tour", "Turno"),
@@ -87,7 +87,7 @@ int handle_interactive_defense(struct gamestate* gstate,
   display_attack_state(gstate, cfg);
 
   printf("\n=== %s (%s) ===\n",
-         opponent_name,
+         opponent_label,
          LOCALIZED_STRING("Attacker", "Attaquant", "Atacante"));
   display_player_prompt(opponent, gstate, 0, cfg);
   printf(" %s:%d\n",
@@ -124,6 +124,46 @@ int handle_interactive_defense(struct gamestate* gstate,
    Game Turn Execution
    ======================================================================== */
 
+// When the AI attacker commits zero champions, the combat block below never
+// runs, so neither a Turn header nor anything else gets printed for that
+// turn -- it silently vanishes from the transcript even though gstate->turn
+// did advance normally. Distinguishes "drew/recalled" (hand grew), "played a
+// cash card" (hand shrank), and "passed outright" (hand unchanged) purely
+// from the hand-size delta, since attack_phase() returns no signal of its
+// own about what the strategy did. Only called for a human-vs-AI game (the
+// caller gates on the opponent being interactive), matching this file's
+// existing "only narrate when a human is watching" scoping for the detailed
+// combat breakdown below.
+static void report_ai_no_combat_action(struct gamestate* gstate, PlayerID attacker,
+                                       uint8_t hand_before, config_t* cfg)
+{ PlayerConfig* pconfig = (PlayerConfig*)cfg->player_config;
+  char label[MAX_PLAYER_LABEL_LEN];
+  format_player_label(attacker, pconfig, cfg->language, label, sizeof(label));
+  uint8_t hand_after = gstate->hand[attacker].size;
+
+  printf("\n=== (%s %d, %s %d) ===\n",
+         LOCALIZED_STRING("Turn", "Tour", "Turno"),
+         gstate->turn,
+         LOCALIZED_STRING("Round", "Manche", "Ronda"),
+         (uint16_t)((gstate->turn - 1) * 0.5 + 1));
+
+  if(hand_after > hand_before)
+    printf("%s %s.\n", label,
+           LOCALIZED_STRING("drew/recalled cards instead of attacking",
+                            "a pioche/rappele des cartes au lieu d'attaquer",
+                            "robo/recupero cartas en lugar de atacar"));
+  else if(hand_after < hand_before)
+    printf("%s %s.\n", label,
+           LOCALIZED_STRING("exchanged a champion for cash instead of attacking",
+                            "a echange un champion contre des lunas au lieu d'attaquer",
+                            "cambio un campeon por lunas en lugar de atacar"));
+  else
+    printf("%s %s.\n", label,
+           LOCALIZED_STRING("passed (no affordable or worthwhile play)",
+                            "a passe (aucun coup jouable ou utile)",
+                            "paso (sin jugada asequible o util)"));
+} // report_ai_no_combat_action
+
 int execute_game_turn(struct gamestate* gstate, StrategySet* strategies,
                       GameContext* ctx, config_t* cfg)
 { begin_of_turn(gstate, ctx);
@@ -136,7 +176,18 @@ int execute_game_turn(struct gamestate* gstate, StrategySet* strategies,
     if(result == EXIT_SIGNAL) return EXIT_SIGNAL;
   }
   else
+  { PlayerID attacker = gstate->current_player;
+    uint8_t hand_before = gstate->hand[attacker].size;
     attack_phase(gstate, strategies, ctx);
+
+    /* AI committed no champions: the combat block below never runs, so
+       narrate the turn here instead -- but only when the opponent is
+       human (AI-vs-AI CLI play stays silent, matching the combat-detail
+       gate a few lines down). */
+    if(gstate->combat_zone[attacker].size == 0 &&
+       pconfig->player_types[1 - attacker] == INTERACTIVE_PLAYER)
+      report_ai_no_combat_action(gstate, attacker, hand_before, cfg);
+  }
 
   /* Defense phase - check if defender is interactive */
   if(gstate->combat_zone[gstate->current_player].size > 0)

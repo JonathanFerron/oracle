@@ -311,11 +311,14 @@ void display_combat_details_cli(struct gamestate* gstate, CombatDetails* details
   PlayerID defender = 1 - attacker;
   const char* attacker_color = (attacker == PLAYER_A) ? COLOR_P1 : COLOR_P2;
   const char* defender_color = (defender == PLAYER_A) ? COLOR_P1 : COLOR_P2;
+  char attacker_label[MAX_PLAYER_LABEL_LEN], defender_label[MAX_PLAYER_LABEL_LEN];
+  format_player_label(attacker, pconfig, cfg->language, attacker_label, sizeof(attacker_label));
+  format_player_label(defender, pconfig, cfg->language, defender_label, sizeof(defender_label));
 
   printf("\n" BOLD_WHITE "=== %s ===" RESET "\n",
          LOCALIZED_STRING("Combat Resolution", "Resolution du combat", "Resolucion del combate"));
 
-  printf("%s%s" RESET " (%s):\n", attacker_color, pconfig->player_names[attacker],
+  printf("%s%s" RESET " (%s):\n", attacker_color, attacker_label,
          LOCALIZED_STRING("Attacker", "Attaquant", "Atacante"));
   display_combat_side(details->num_attackers, details->attacker_species,
                       details->attacker_dice, details->attacker_rolls,
@@ -326,7 +329,7 @@ void display_combat_details_cli(struct gamestate* gstate, CombatDetails* details
   printf("  " BOLD_WHITE "%s: %d" RESET "\n",
          LOCALIZED_STRING("Total attack", "Attaque totale", "Ataque total"), details->total_attack);
 
-  printf("\n%s%s" RESET " (%s):\n", defender_color, pconfig->player_names[defender],
+  printf("\n%s%s" RESET " (%s):\n", defender_color, defender_label,
          LOCALIZED_STRING("Defender", "Defenseur", "Defensor"));
   if(details->num_defenders == 0)
     printf("  %s\n", LOCALIZED_STRING("No defense", "Aucune defense", "Sin defensa"));
@@ -352,6 +355,6 @@ void display_combat_details_cli(struct gamestate* gstate, CombatDetails* details
                             "Ataque bloqueado! Sin dano."));
 
   printf("%s%s" RESET ": " COLOR_ENERGY "%d" RESET " -> " COLOR_ENERGY "%d" RESET "\n",
-         defender_color, pconfig->player_names[defender],
+         defender_color, defender_label,
          details->defender_energy_before, details->defender_energy_after);
 }

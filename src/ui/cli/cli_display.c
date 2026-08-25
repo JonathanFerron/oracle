@@ -17,7 +17,8 @@ void display_player_prompt(PlayerID player, struct gamestate* gstate,
 { const char* player_color = (player == PLAYER_A) ? COLOR_P1 : COLOR_P2;
 
   PlayerConfig* pconfig = (PlayerConfig*)cfg->player_config;
-  const char* player_name = pconfig->player_names[player];
+  char player_label[MAX_PLAYER_LABEL_LEN];
+  format_player_label(player, pconfig, cfg->language, player_label, sizeof(player_label));
   const char* position = (player == PLAYER_A) ? "A" : "B";
 
   const char* phase_icon = is_defense ?
@@ -26,7 +27,7 @@ void display_player_prompt(PlayerID player, struct gamestate* gstate,
 
   printf("%s%s (%s)" RESET " [" COLOR_ENERGY "HP:%d" RESET " "
          COLOR_LUNA "L:%d" RESET "] %s " ICON_PROMPT " ",
-         player_color, player_name, position,
+         player_color, player_label, position,
          gstate->current_energy[player],
          gstate->current_cash_balance[player],
          phase_icon);
@@ -83,9 +84,12 @@ void display_game_status(struct gamestate* gstate, config_t* cfg)
 { printf("\n" BOLD_WHITE "=== %s ===" RESET "\n",
          LOCALIZED_STRING("Game Status", "Statut du jeu", "Estado del juego"));
   PlayerConfig* pconfig = (PlayerConfig*)cfg->player_config;
+  char label_a[MAX_PLAYER_LABEL_LEN], label_b[MAX_PLAYER_LABEL_LEN];
+  format_player_label(PLAYER_A, pconfig, cfg->language, label_a, sizeof(label_a));
+  format_player_label(PLAYER_B, pconfig, cfg->language, label_b, sizeof(label_b));
   printf(COLOR_P1 "%s (A)" RESET ": " COLOR_ENERGY "HP:%d" RESET
          " " COLOR_LUNA "L:%d" RESET " %s:%d %s:%d\n",
-         pconfig->player_names[PLAYER_A],
+         label_a,
          gstate->current_energy[PLAYER_A],
          gstate->current_cash_balance[PLAYER_A],
          LOCALIZED_STRING("Hand", "Main", "Mano"),
@@ -95,7 +99,7 @@ void display_game_status(struct gamestate* gstate, config_t* cfg)
   display_player_discard(PLAYER_A, gstate, cfg);
   printf(COLOR_P2 "%s (B)" RESET ": " COLOR_ENERGY "HP:%d" RESET
          " " COLOR_LUNA "L:%d" RESET " %s:%d %s:%d\n",
-         pconfig->player_names[PLAYER_B],
+         label_b,
          gstate->current_energy[PLAYER_B],
          gstate->current_cash_balance[PLAYER_B],
          LOCALIZED_STRING("Hand", "Main", "Mano"),
@@ -175,20 +179,20 @@ void display_game_summary(struct gamestate* gstate, config_t* cfg)
   printf("\n" BOLD_WHITE "=== %s ===" RESET "\n",
          LOCALIZED_STRING("Game Over", "Fin du jeu", "Juego terminado"));
 
-  const char* winner_name = NULL;
+  char winner_label[MAX_PLAYER_LABEL_LEN];
 
   switch(gstate->game_state)
   { case PLAYER_A_WINS:
-      winner_name = pconfig->player_names[PLAYER_A];
+      format_player_label(PLAYER_A, pconfig, cfg->language, winner_label, sizeof(winner_label));
       printf(GREEN "%s %s!\n" RESET,
-             winner_name,
+             winner_label,
              LOCALIZED_STRING("wins", "gagne", "gana"));
       break;
 
     case PLAYER_B_WINS:
-      winner_name = pconfig->player_names[PLAYER_B];
+      format_player_label(PLAYER_B, pconfig, cfg->language, winner_label, sizeof(winner_label));
       printf(GREEN "%s %s!\n" RESET,
-             winner_name,
+             winner_label,
              LOCALIZED_STRING("wins", "gagne", "gana"));
       break;
 
@@ -209,13 +213,14 @@ void display_game_summary(struct gamestate* gstate, config_t* cfg)
 
   for(int i = 0; i < 2; i++)
   { PlayerID pid = (PlayerID)i;
-    const char* name = pconfig->player_names[pid];
+    char label[MAX_PLAYER_LABEL_LEN];
+    format_player_label(pid, pconfig, cfg->language, label, sizeof(label));
     const char* pos = (pid == PLAYER_A) ? "A" : "B";
     const char* color = (pid == PLAYER_A) ? COLOR_P1 : COLOR_P2;
 
     printf("  %s%s (%s)" RESET ": " COLOR_ENERGY "HP:%d" RESET
            " " COLOR_LUNA "L:%d" RESET " %s:%d\n",
-           color, name, pos,
+           color, label, pos,
            gstate->current_energy[pid],
            gstate->current_cash_balance[pid],
            LOCALIZED_STRING("Cards", "Cartes", "Cartas"),
