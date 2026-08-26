@@ -5,6 +5,122 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-25 — A8 Simple Monte Carlo ("The Soothsayer") implemented, calibrated, and its ceiling diagnosed
+
+Implemented per `ideas/A8 ai agent simple monte carlo (the soothsayer)/about.md` and
+the design-comment stub that used to occupy `ai_strat_simplemc1.c`. The first agent on
+the ladder that actually simulates rather than scoring closed-form -- `A1`-`A7` all
+avoided `clone_gamestate()`/`apply_move()` specifically because cloning-and-replaying a
+turn draws from the shared `GameContext` RNG stream and perturbs every downstream game
+(`ai_strat_hbt.h`/`ai_strat_heuristic.h`'s own stated reason). Building this agent
+therefore required new shared engine infrastructure first, reusable by `A9`-`A11`:
+
+- **`src/actions/game_move.{c,h}` -> `move_gen.{c,h}`, `move_apply.{c,h}`** (new).
+  `GameMove`/`MoveType` (pass, 0-3 champion subsets, draw, recall, cash), and
+  `get_available_moves()`: attack phase enumerates the full space (recall and cash
+  capped via `MoveGenLimits` -- recall's `C(discard, choose_num)` is the real
+  worst-case branching-factor culprit, per `ideas/A10 .../mcts_depth_strategy.md`);
+  defense phase enumerates 0-3 champion subsets only, matching `defense_phase()`'s own
+  contract. `apply_move()` dispatches to the existing `play_champion()`/
+  `play_draw_card()`/`play_cash_card_interactive()` plus a new `play_recall_card()`
+  (`card_actions.c`) -- the headless engine counterpart to the interactive-only recall
+  path, which was previously reachable only through `UiIO`-coupled code.
+- **`src/ai_strat/ai_strat_playout.{c,h}`** (new). `mc_fork_context()` gives a
+  simulation its own `MTRand` stream (`GameContext` is `{MTRand rng; config_t* config;}`,
+  the RNG stored by value, so forking is two lines and the live `ctx->rng` is provably
+  untouched -- this is what actually resolves the A5/A7-documented objection).
+  `mc_determinize()` re-deals the information hidden from an observer (opponent's hand
+  and *both* players' remaining deck composition -- a player's own deck is genuinely
+  unknown to them too, not just the opponent's, per `setup_game()`'s shared-shuffle
+  design) while leaving the observer's own hand and both discards/combat zones (public)
+  untouched; deliberately not reshuffle-aware (`A10`'s job). `mc_playout()` resumes
+  mid-turn from an arbitrary root, applies the given move, mirrors
+  `attack_phase()`/`defense_phase()`'s own transitions, then plays to a terminal
+  win/loss/draw via uniformly-random play on both seats.
+- **`src/ai_strat/ai_strat_simplemc_search.{c,h}`, `ai_strat_simplemc1.{c,h}`** (new).
+  Progressive-pruning search: a 7-rollout seed round drops every 0-win candidate
+  outright, then repeated rounds add 25 more rollouts per surviving candidate and drop
+  any whose confidence-interval upper bound falls below the current leader's lower
+  bound (normal approximation to the binomial, `z=1.96` -- the stub's own second idea),
+  with the stub's *other* idea (fixed `N^(3/4)/N^(1/2)/N^(1/4)`, capped 30/10/4,
+  100/300/700-simulation schedule) enforced as hard survivor ceilings layered on top,
+  so the shipped agent matches `about.md`'s stated identity even where CI pruning alone
+  would keep more candidates alive longer. Stops at one survivor, 1500 cumulative
+  sims/candidate, or 25000 total rollouts, whichever comes first.
+- **Determinization is IN scope**, resolving a contradiction in the original design
+  material: `about.md`'s "deliberately out of scope" list named determinization as
+  `A10`'s job, but the design-comment stub itself explicitly called for
+  `clone_and_randomize_gamestate()` per simulation. The stub's own spec won; `about.md`
+  is corrected. `A10`'s distinguishing contribution narrows to the tree itself plus
+  *reshuffle-aware* determinization (`ideas/A11 .../local_training_plan.md`'s
+  narrowing note).
+- **`src/actions/move_gen.c`/`move_apply.c` folded into `ENGINE_SRCS`,
+  `ai_strat_playout.c`/`ai_strat_simplemc*.c` into `AGENT_SRCS`** (`makefile`) --
+  hoisted out of the seven-times-duplicated `CALIB_*_SRCS` lists first (570 -> 428
+  lines), specifically so this agent's five new files became a one-line addition to
+  each list instead of a seven-list edit, same motivation as `ai_strategy.c`'s registry
+  itself.
+
+**Calibration** (`aicalibsrc/simplemc/`, new: `calib_simplemc.c` + `calibrate_simplemc.py`
++ `README.md`). This agent's twenty parameters are a different shape than every prior
+agent's: most control how much the agent *searches*, and more searching is basically
+always at least as strong, just slower -- there is no interior optimum to tune for those
+fields, only a cost/strength curve. `calibrate_simplemc.py` splits them into
+`BUDGET_PARAMS` (7 fields, swept not optimized), `EFFICIENCY_PARAMS` (11 fields --
+pruning aggressiveness and enumeration caps, the ones `optimize` actually searches by
+default, since these trade real risk for real speed at a fixed budget), and two fields
+neither (`rollout_determinize`, a binary A/B question; `rollout_max_turns`, inert).
+
+**Playtracing three losses vs `borealis`** (seeds 100/106/111, turn/energy added to the
+decision trace) found no implementation bug -- decisions are internally coherent, and
+the agent's own win-probability estimate tracks the real game reasonably (e.g. correctly
+turning pessimistic before a big incoming hit rather than after). What it found instead:
+seed 111 shows the agent repeatedly choosing CASH/DRAW/RECALL over committing champions
+early against a strategic opponent that kept attacking, going from 99 to 7 energy while
+`borealis` barely moved off 99 -- a resource-building line that would pay off against a
+patient/random continuation and gets punished by a real one. This traces to a design
+fact, not a bug: `mc_playout()` sets *both* seats to `AI_STRATEGY_RANDOM` for every
+rollout regardless of who the real opponent is (per the design stub's own spec, "randomly
+... make moves 2+"), so every candidate move's win-probability estimate is "if the
+opponent now plays randomly forever" -- accurate against `rand`, systematically biased
+against a real strategic opponent that converts tempo into damage more reliably than a
+random continuation predicts.
+
+**Budget-vs-rating sweep** (both seats, 1500 games/point, vs `borealis`) confirms the
+above is a bias problem, not a variance one: scaling every `BUDGET_PARAMS` field by
+1.0x/1.75x/2.3x (shipped defaults through ~1.8x the rollout budget, measured at
+~5.6ms/~8ms/~10ms average decision time under the project's actual `-Og` build) produced
+statistically indistinguishable ratings -- 35.4% [33.0, 37.9], 38.2% [35.8, 40.7], 35.9%
+[33.5, 38.3]. If the ceiling were a search-depth problem, more rollouts should reduce
+noise and raise the estimate; a flat curve under 2.3x the budget is the expected
+signature of an estimator with a systematic bias that more sampling can't correct, not
+one that's merely under-searched.
+
+**Shipped as-is, honestly rated at 35** -- this agent was never intended to be
+competitive (the original design intent, restated directly when this result was
+reviewed: a tool for probing the value of every legal action from curated positions, to
+help mine new heuristics for future agents, not a strong opponent in its own right).
+Measured rating (both seats, `borealis`, 1500 games at shipped defaults, `rollout_seed_
+simulations=7`, `rollout_round_simulations=25`, ~5.6ms/decision): **35** -- below the
+Borealis anchor and in the same tier as `A2`/`A4`, and *not* raised by extra rollout
+budget per the sweep above. `AI_STRATEGY_RATINGS[AI_STRATEGY_SIMPLE_MC]`
+(`player_config.c`) updated from `{ 82, false }` (design-intent estimate) to
+`{ 35, true }`. A cheap (non-tree) heuristic rollout policy is the lever that could
+plausibly raise this -- deliberately not pursued here, kept as a live design question
+for whether/how to pick it up without drifting into `A9`/`A10`/`A11`'s territory.
+
+**Verification**: `make` clean (no new warnings) across the main binary, all four test
+suites, and all eight calibration harnesses; `-a -p` byte-identical to
+`bin/expectedresults.txt`; `test_combo` (20/20), `test_recall` (10/10),
+`test_cash_exchange` (6/6), `test_rating` (41/41), new `test_moves` (57/57, covering
+`move_gen`/`move_apply`/`ai_strat_playout` -- card-conservation and no-card-duplication
+invariants for `mc_determinize()`, and byte-identical parent-`ctx->rng` invariants for
+both `mc_fork_context()` alone and a full `mc_playout()`) all pass; valgrind-clean on
+`test_moves` and on live `simplemc` play; strategy menu confirmed showing
+`Simple Monte Carlo [The Soothsayer] (available) [35]`.
+
+---
+
 ## 2026-08-25 — A7 Hybrid HBT ("The Grandmaster") implemented and calibrated
 
 Implemented per `ideas/A7 ai agent hybrid hbt (the grandmaster)/about.md` and

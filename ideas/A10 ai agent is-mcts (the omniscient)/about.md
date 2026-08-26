@@ -28,6 +28,17 @@ hand/deck consistent with what's publicly known, builds/grows a UCT tree over th
 - Treating a player's whole remaining deck as one uniform unknown pool once a reshuffle
   has happened — see the correctness note below.
 
+## `A8`'s shipped determinization is deliberately not reshuffle-aware
+
+`A8` Simple Monte Carlo was implemented 2026-08-25 (`doc/changelog.md`) and, contrary to
+this document's own earlier framing, ended up including determinization
+(`ai_strat_playout.h`'s `mc_determinize()`) rather than leaving it entirely to this
+agent — the design-comment stub `A8` was built from called for it explicitly. `A8`'s
+version treats a player's whole remaining deck as one uniform unknown pool regardless of
+reshuffles, i.e. exactly the simplification the correctness note below says not to make.
+That gap is deliberate, not an oversight in `A8` (see its own `about.md`) -- it's what
+`A10` still adds beyond `A8`, alongside the tree itself.
+
 ## Correctness note: reshuffle narrows the determinization, don't discard that
 
 `card_actions.c`'s `shuffle_discard_and_form_deck()` reshuffles a player's *own* discard

@@ -12,6 +12,11 @@
 void play_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx);
 void play_champion(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx);
 void play_draw_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx);
+// Headless recall path -- see card_actions.c's header comment for
+// play_recall_card(). `champions` holds `count` fullDeck[] indices already
+// in gstate->discard[player]; no legality re-check is performed.
+void play_recall_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx,
+                      const uint8_t* champions, uint8_t count, GameContext* ctx);
 void play_cash_card_ai(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx);
 void play_cash_card_interactive(struct gamestate* gstate, PlayerID player,
                                 uint8_t card_idx, uint8_t champion_idx, GameContext* ctx);

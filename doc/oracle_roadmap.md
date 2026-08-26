@@ -17,14 +17,32 @@ Core game engine, CLI interactive mode, and TUI mode (Milestones 1 & 2 plus a po
 pass) are done. Random, `A1` Value Based ("The Apprentice"), `A2` Combo Threshold
 ("The Showboat"), `A3` Borealis (the Bradley-Terry benchmark), `A4` Balanced Rules
 ("Bean Counter"), `A5` Heuristic ("Eps-Gam-Del"), `A6` Tactical ("Pressure
-Cooker"), and `A7` Hybrid HBT ("The Grandmaster") AI strategies are all implemented
-and calibrated, and the Bradley-Terry rating system itself is now built on top of
-them. `A5` (rating 61 in the current roster fit), `A6` (rating 53), and `A7`
-(rating 62, the highest measured so far) all measure above the Borealis anchor.
-**Active work**: `A8` Simple Monte Carlo — see "Next Up" below.
+Cooker"), `A7` Hybrid HBT ("The Grandmaster"), and `A8` Simple Monte Carlo ("The
+Soothsayer") AI strategies are all implemented and calibrated, and the Bradley-Terry
+rating system itself is now built on top of them. `A5` (rating 61 in the current
+roster fit), `A6` (rating 53), and `A7` (rating 62, the highest measured so far) all
+measure above the Borealis anchor; `A8` measures 35 — legitimately below it and not
+raised by extra rollout budget, per its own diagnosis (`doc/changelog.md`) rather
+than a defect. **Active work**: `A9` HBT 2-Ply — see "Next Up" below.
 
 ### Recently Completed
 
+- **2026-08-25** — `A8` Simple Monte Carlo ("The Soothsayer") implemented and
+  calibrated: the first agent on the ladder that actually simulates (progressive-pruning
+  rollout search) rather than scoring closed-form, which required new shared engine
+  infrastructure first (`src/actions/` move enumeration/application,
+  `ai_strat_playout.c`'s forked-RNG-stream `mc_determinize()`/`mc_playout()`, reusable by
+  `A9`-`A11`). Playtracing three losses vs `borealis` plus a budget-vs-rating sweep
+  (1.0x/1.75x/2.3x the rollout budget, statistically indistinguishable ratings)
+  diagnosed the ceiling precisely: `mc_playout()`'s rollouts model *both* seats as
+  `AI_STRATEGY_RANDOM` regardless of the real opponent, so its win-probability estimates
+  are well-calibrated against `rand` and systematically biased against a real strategic
+  opponent — a bias more sampling can't correct, confirmed by the flat budget sweep.
+  Shipped as-is: this agent was never intended to be competitive (the original design
+  intent is a tool for probing per-action values from curated positions to help mine new
+  heuristics, not a strong opponent). Measured rating: **35** — below the Borealis
+  anchor, honestly reported per this project's convention (`A4`'s 36 is the precedent).
+  Full details: `doc/changelog.md`.
 - **2026-08-25** — `A7` Hybrid HBT ("The Grandmaster") implemented and calibrated: a
   fixed three-layer synthesis of `A4` (resource targets, entering as a soft penalty
   rather than a hard filter -- see `doc/changelog.md` for why), `A6` (phase/aggression
@@ -148,10 +166,10 @@ Full details: `doc/changelog.md`.
 ### What Needs Work
 
 - Random, `A1` Value Based, `A2` Combo Threshold, `A3` Borealis, `A4` Balanced Rules,
-  `A5` Heuristic, `A6` Tactical, and `A7` Hybrid HBT implemented, and the
-  Bradley-Terry rating system now built on top of them — everything from `A8`
-  onward on the AI ladder below is open, and is what the rating system will next
-  measure.
+  `A5` Heuristic, `A6` Tactical, `A7` Hybrid HBT, and `A8` Simple Monte Carlo
+  implemented, and the Bradley-Terry rating system now built on top of them —
+  everything from `A9` onward on the AI ladder below is open, and is what the rating
+  system will next measure.
 - Automated simulation mode (`stda_auto.c`) needs a refactor (see `doc/oracle_todo.md`).
 - No save/load, no config file system, no general match-result CSV export (the rating
   system's own CSV persistence is separate and done), no network, no GUI, no `stda.sim`.
@@ -167,10 +185,12 @@ Full details: `doc/changelog.md`.
 
 ## Next Up (single authoritative order)
 
-1. **`A8` Simple Monte Carlo** ("The Soothsayer", `ideas/A8 ai agent simple monte carlo (the soothsayer)/`).
-   The next rung on the AI ladder — `A1`-`A7` are all implemented and calibrated, and
-   the Bradley-Terry rating system (2026-08-23, `src/rating/`) can now measure it
-   against Borealis via `--stda.rating` as soon as it exists.
+1. **`A9` HBT 2-Ply** ("Grandmaster II", `ideas/A9 ai agent hbt 2 ply (grandmaster ii)/`).
+   The next rung on the AI ladder — `A1`-`A8` are all implemented and calibrated.
+   A live open question ahead of it: whether to give `A8` Simple Monte Carlo a cheap,
+   non-tree heuristic rollout policy (its uniformly-random rollouts are the diagnosed
+   cause of its below-anchor rating, see `doc/changelog.md`'s 2026-08-25 entry) without
+   drifting it toward `A9`/`A10`/`A11`'s own territory — not yet resolved.
 
 **Back burner** (explicitly deferred): save/load game state
 (`ideas/6 save and load gamestate/`), configuration file system
@@ -219,13 +239,14 @@ error-handling polish (see `doc/oracle_todo.md`).
   archived accordingly — see `doc/changelog.md`.
 - `stda.sim` (simulation UI): not started.
 
-### Phase: AI Development — `A1`–`A7` done, `A8` next
+### Phase: AI Development — `A1`–`A8` done, `A9` next
 
 Ladder: `A1` value-based (done, 2026-08-21) → `A2` combo threshold (The Showboat, done,
 2026-08-22) → `A3` greedy power (Borealis benchmark, done, 2026-08-23) → `A4` balanced
 rules (Bean Counter, done, 2026-08-24) → `A5` heuristic (Eps-Gam-Del, done, 2026-08-25)
 → `A6` tactical (Pressure Cooker, done, 2026-08-25) → `A7` hybrid HBT (The Grandmaster,
-done, 2026-08-25) → `A8` simple MC
+done, 2026-08-25) → `A8` simple MC (The Soothsayer, done, 2026-08-25, rating 35 --
+see `doc/changelog.md`)
 → `A9` HBT 2-ply → `A10` IS-MCTS → `A11` IS-MCTS + neural
 network. One `ideas/A#` folder per agent,
 `A#` matching that agent's `AIStrategyType` enum ordinal (`src/core/game_types.h` as of

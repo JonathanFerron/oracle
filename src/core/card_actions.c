@@ -103,6 +103,30 @@ void play_draw_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx,
   Discard_add(&gstate->discard[player], card_idx);
 }
 
+// Headless engine counterpart to the interactive-only recall path
+// (ui/interactive/game_commands_cards.c's validate_and_recall_champions()),
+// which is UiIO-coupled, prints a success message, and takes discard-list
+// *positions* rather than fullDeck[] indices. `champions` here holds `count`
+// fullDeck[] indices already in gstate->discard[player] -- the caller (e.g.
+// move_apply.c's apply_move()) is responsible for having chosen a legal
+// selection; this performs no validation, matching play_champion()/
+// play_draw_card()'s own no-recheck contract.
+void play_recall_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx,
+                      const uint8_t* champions, uint8_t count, GameContext* ctx)
+{ // Remove draw/recall card from hand, pay cost, discard it
+  Hand_remove(&gstate->hand[player], card_idx);
+  gstate->current_cash_balance[player] -= fullDeck[card_idx].cost;
+  Discard_add(&gstate->discard[player], card_idx);
+
+  // Recall the selected champions from discard to hand
+  for(uint8_t i = 0; i < count; i++)
+  { Discard_remove(&gstate->discard[player], champions[i]);
+    Hand_add(&gstate->hand[player], champions[i]);
+  }
+
+  DEBUG_PRINT(" Recalled %u champion(s) via card index %u\n", count, card_idx);
+} // play_recall_card
+
 
 // AI/automated path: auto-selects the lowest-power champion to exchange.
 void play_cash_card_ai(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx)

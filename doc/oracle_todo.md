@@ -13,13 +13,16 @@ Balanced Rules ("Bean Counter", 2026-08-24, calibrated, measured rating 36 — b
 Borealis anchor, see `doc/changelog.md`), `A5` Heuristic ("Eps-Gam-Del", 2026-08-25,
 calibrated, measured rating 60 — above the Borealis anchor, the first agent to clear
 it), `A6` Tactical ("Pressure Cooker", 2026-08-25, calibrated, measured rating 52 —
-also above the Borealis anchor, see `doc/changelog.md`), and `A7` Hybrid HBT
+also above the Borealis anchor, see `doc/changelog.md`), `A7` Hybrid HBT
 ("The Grandmaster", 2026-08-25, calibrated, measured rating 62 — the highest measured
 rating so far, above all three agents it combines (`A4`/`A5`/`A6`) in the same
-roster-wide fit despite a pairwise loss to `A5` specifically, see `doc/changelog.md`)
+roster-wide fit despite a pairwise loss to `A5` specifically, see `doc/changelog.md`),
+and `A8` Simple Monte Carlo ("The Soothsayer", 2026-08-25, calibrated, measured rating
+35 — below the Borealis anchor and not raised by extra rollout budget, a diagnosed and
+honestly-reported ceiling rather than a defect, see `doc/changelog.md`)
 are implemented, and the
 Bradley-Terry rating system itself (2026-08-23, `src/rating/`) is now built on top of
-them — see `doc/oracle_roadmap.md`'s "Next Up" for what's next (`A8`). The strategy-set
+them — see `doc/oracle_roadmap.md`'s "Next Up" for what's next (`A9`). The strategy-set
 build sites
 also gained a shared `AIStrategyType -> function pointer` registry (`ai_strategy.c`) as
 part of `A1` -- see "Checklist: Adding a New AI Strategy" below, which now reflects that
@@ -356,9 +359,13 @@ No known open bugs. Add entries here as they're found.
 
 ## Action Items (preparation for client/server and MCTS)
 
-- [ ] `get_available_moves()` function (legal-move enumeration, needed by both MC/MCTS
-  agents and the future action-validation layer)
-- [ ] Game state cloning, for MCTS rollouts
+- [x] `get_available_moves()` function (legal-move enumeration, needed by both MC/MCTS
+  agents and the future action-validation layer) — done 2026-08-25 as part of `A8`:
+  `src/actions/move_gen.{c,h}`, reusable by `A9`-`A11`. See `doc/changelog.md`.
+- [x] Game state cloning, for MCTS rollouts — done 2026-08-25 as part of `A8`: trivial
+  (`struct gamestate` is pure POD), the real work was `ai_strat_playout.c`'s forked-RNG
+  `GameContext` (`mc_fork_context()`) so a clone can actually be simulated forward
+  without perturbing the live game's RNG stream. See `doc/changelog.md`.
 - [ ] Phase state machine for cleaner turn flow (this is the `ideas/2 …` engine rework)
 
 ---

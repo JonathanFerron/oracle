@@ -218,12 +218,17 @@ src/
 ├── core/         game_types.h (start here), game_constants.c/h, game_state.c,
 │                 card_actions.c, combat.c, combo_bonus.c, turn_logic.c,
 │                 game_context.c/h
+├── actions/      move_gen.{c,h} (get_available_moves()), move_apply.{c,h}
+│                 (apply_move()) -- engine-level GameMove enumeration/application,
+│                 first built for `A8`, reusable by `A9`-`A11`
 ├── ai_strat/     ai_strategy.h/.c (StrategySet framework), ai_strat_random.c,
 │                 ai_strat_valuebased.c, ai_strat_combo_threshold.c,
 │                 ai_strat_borealis{,_enum}.c, ai_strat_balanced_rules.c,
-│                 ai_strat_heuristic.c, ai_strat_tactical.c (all functional),
-│                 ai_strat_{simplemc1,ismcts1}.c (design-note stubs, one per
-│                 future agent)
+│                 ai_strat_heuristic.c, ai_strat_tactical.c,
+│                 ai_strat_hbt{,_enum,_cards}.c, ai_strat_playout.c
+│                 (forked-RNG-stream simulation infra), ai_strat_simplemc1.c +
+│                 ai_strat_simplemc_search.c (all functional),
+│                 ai_strat_ismcts1.c (design-note stub, future agent)
 ├── roles/stda/   stda_auto.c (batch sim), stda_cli.c (interactive loop glue),
 │                 stda_tui.c + stda_tui_interactive.c (TUI setup/loop + human-turn
 │                 handlers)
@@ -360,8 +365,8 @@ planned agents, each commented with its `ideas/A#` folder:
 | `AI_STRATEGY_BALANCED` | **implemented and calibrated** (2026-08-24) | `A4` (Bean Counter) |
 | `AI_STRATEGY_HEURISTIC` | **implemented and calibrated** (2026-08-25) | `A5` (ε-γ-δ) — measured rating 60, above the Borealis anchor |
 | `AI_STRATEGY_TACTICAL` | **implemented and calibrated** (2026-08-25) | `A6` (Pressure Cooker) — measured rating 52, above the Borealis anchor |
-| `AI_STRATEGY_HYBRID_HBT` | stub | `A7` (The Grandmaster — synthesis of `A4`/`A5`/`A6`) |
-| `AI_STRATEGY_SIMPLE_MC` | stub | `A8` (The Soothsayer) |
+| `AI_STRATEGY_HYBRID_HBT` | **implemented and calibrated** (2026-08-25) | `A7` (The Grandmaster — synthesis of `A4`/`A5`/`A6`) — measured rating 62, above the Borealis anchor |
+| `AI_STRATEGY_SIMPLE_MC` | **implemented and calibrated** (2026-08-25) | `A8` (The Soothsayer) — measured rating 35, below the Borealis anchor (diagnosed, not a defect — see `doc/changelog.md`) |
 | `AI_STRATEGY_HBT_2PLY` | stub | `A9` (Grandmaster II) |
 | `AI_STRATEGY_ISMCTS` | stub | `A10` (The Omniscient) |
 | `AI_STRATEGY_ISMCTS_NN` | stub | `A11` (AlphaOracle Prime) |

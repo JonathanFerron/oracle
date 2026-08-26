@@ -22,7 +22,19 @@ result (`doc/changelog.md`), the largest design-intent miss on this table so far
 *above* the Borealis anchor. `A7`'s measured rating (62) is the highest on this table
 so far, above all three of the agents it synthesizes (`A4`/`A5`/`A6`) in the same
 roster-wide fit -- despite measuring a clear pairwise loss to `A5` specifically
-(26.0%, see `doc/changelog.md`), a result reported rather than tuned away.
+(26.0%, see `doc/changelog.md`), a result reported rather than tuned away. `A8`'s
+measured rating (35, added 2026-08-25) is **not** from a roster-wide `--stda.rating`
+fit like the others above -- this agent costs roughly 100x more per game than any
+closed-form agent (~5.6ms/decision, ~100ms/game), so a full round-robin against every
+other agent was skipped as impractical; it's a large-sample (1500 games, both seats)
+direct pairwise measurement against `borealis` specifically instead. Since this
+project's rating is defined as "the expected win percentage against Borealis" (top of
+this file) and `A8` was measured directly against exactly that opponent, this is not a
+lesser substitute for the roster-wide fit -- for the specific quantity "rating vs
+Borealis," it's arguably more direct. `A8`'s rating also did not improve under a
+budget-vs-rating sweep (1.0x/1.75x/2.3x the rollout count, statistically
+indistinguishable results) -- see `doc/changelog.md` for the full diagnosis (a
+rollout-policy bias, not a search-depth shortfall).
 
 | Tech/Math Name | English | Français | Español | Measured | Est. Borealis Rating |
 |---|---|---|---|---|---|
@@ -34,7 +46,7 @@ roster-wide fit -- despite measuring a clear pairwise loss to `A5` specifically
 | Heuristic | ε-γ-δ | ε-γ-δ | ε-γ-δ | 60 | 70 |
 | Tactical | Pressure Cooker | Cocotte-Minute | Olla a Presión | 52 | 74 |
 | Hybrid (HBT) | The Grandmaster | Le Grand Maître | El Gran Maestro | 62 | 78 |
-| Simple Monte Carlo | The Soothsayer | Le Devin | El Adivino | — | 82 |
+| Simple Monte Carlo | The Soothsayer | Le Devin | El Adivino | 35 | 82 |
 | HBT 2-Ply | Grandmaster II | Grand Maître II | Gran Maestro II | — | 85 |
 | IS-MCTS | The Omniscient | L'Omniscient | El Omnisciente | — | 92 |
 | IS-MCTS + NN | AlphaOracle Prime | AlphaOracle Prime | AlphaOracle Prime | — | 97 |

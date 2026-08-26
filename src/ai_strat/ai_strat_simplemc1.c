@@ -1,42 +1,75 @@
-/*
-   Monte Carlo Single Stage Analysis (strat_simplemc1):
-      manually create 100 distinct 'attack' phase game states at various stages of the game.
-        for each game state, use the MonteCarloSingleStageAnalysis strategy in the 'applyAttDefStrat(Att)' function, which will:
-        make a list of all possible moves by player A (Nm, maximum of 93 moves): getAvailableMoves(). Create a structure that will be able to represent a 'move', see below.
-        perform 100 simulations with all of the possible candidate moves: for each simulation
-          make a clone of the root gamestate and randomize in this clone the information not seen by player A at this stage:
-            clone_and_randomize_gamestate() (which can use the clone_gamestate() function)
-          for each possible move
-            make a clone of the randomized copy from last step above, to test this move
-            assume that first move is made (apply it to the new clone) and then
-            randomly (use the strat_random strategy) make moves 2+ (among legal moves) for each player alternately until
-            player A wins (1 point), loses (0), or there is a draw (0.5 points).
+// ai_strat_simplemc1.c
+// A8 Simple Monte Carlo ("The Soothsayer") -- see ai_strat_simplemc1.h.
 
-        discard worst candidate moves, keeping Nm ^ (¾) moves (max 30).
-        perform 200 more sim with the remaining candidate moves (same approach as above)
+#include "ai_strat_simplemc1.h"
+#include "ai_strat_simplemc_search.h"
+#include "ai_strat_playout.h"
+#include "../actions/move_apply.h"
+#include "../core/game_constants.h"
 
-        then prune to Nm ^ (½) moves (max 10),
-        perform 400 more sim,
+#define SIMPLEMC_DEFAULTS { \
+    .limit_recall_variants = 2, \
+    .limit_cash_variants = 3, \
+    .limit_max_candidates = 128, \
+    .rollout_seed_simulations = 7, \
+    .rollout_round_simulations = 25, \
+    .prune_zero_win_seed = true, \
+    .threshold_confidence_level = 1.96f, \
+    .threshold_stage1_keep_ratio = 0.75f, \
+    .threshold_stage2_keep_ratio = 0.50f, \
+    .threshold_stage3_keep_ratio = 0.25f, \
+    .limit_stage1_keep = 30, \
+    .limit_stage2_keep = 10, \
+    .limit_stage3_keep = 4, \
+    .limit_stage1_simulations = 100, \
+    .limit_stage2_simulations = 300, \
+    .limit_stage3_simulations = 700, \
+    .limit_max_simulations = 1500, \
+    .limit_total_rollouts = 25000, \
+    .rollout_determinize = true, \
+    .rollout_max_turns = MAX_NUMBER_OF_TURNS, \
+  }
 
-        then prune to Nm  ^ (¼) best moves (max 4).
-        perform 800 more sims (cumulative total of 1500 sims)
+static SimpleMcParams g_params[2] = { SIMPLEMC_DEFAULTS, SIMPLEMC_DEFAULTS };
 
-        display results for 4 best moves to the console.
-        return the best move
+SimpleMcParams simplemc_get_default_params(void)
+{ SimpleMcParams defaults = SIMPLEMC_DEFAULTS;
+  return defaults;
+} // simplemc_get_default_params
 
-      using a separate tool, analyse 4 best moves for each of the 100 game states to develop rules / decision tree / heuristics that would have generated the same best moves.
+void simplemc_set_params(PlayerID player, const SimpleMcParams* params)
+{ g_params[player] = *params;
+} // simplemc_set_params
 
-      re-do the exercise, starting from 100 manually created distinct 'defense' phase game states
+void simplemc_reset_params(void)
+{ SimpleMcParams defaults = SIMPLEMC_DEFAULTS;
+  g_params[PLAYER_A] = defaults;
+  g_params[PLAYER_B] = defaults;
+} // simplemc_reset_params
 
-      modify the 'MC single stage' strategy to also be applicable to an arbitrary starting game state to be able to use it as an "Interactive Mode AI assistant"
-        this is similar to the MCTS below, but the 'tree' only has one parent node with pointers to all of its children nodes (93 max), and anywhere between 100 and 1500
-        simulations for each children node. By contrast, the ISMCTS will have a 'deeper' tree and will concentrate more quickly on exploring 'promising' children nodes.
+// Draws exactly one value from the *live* context to seed a forked stream
+// -- ai_strat_playout.h's contract: the live GameContext advances by
+// exactly this one draw per decision, and nothing else in the search
+// touches it. The move this agent finally picks is still applied to the
+// real game with the live `ctx` itself (see decide_and_apply()), not this
+// fork -- only the search's internal rollouts run through the fork.
+static GameContext fork_for_decision(GameContext* ctx)
+{ uint32_t seed = genRandLong(&ctx->rng);
+  return mc_fork_context(ctx, seed);
+} // fork_for_decision
 
-   in mcts, use a pucb or puct approach with a prior prob of success of each move estimated from the expected advantage heuristic
+static void decide_and_apply(struct gamestate* gstate, PlayerID player, GameContext* ctx)
+{ const SimpleMcParams* params = &g_params[player];
+  GameContext sim_ctx = fork_for_decision(ctx);
 
-  in single stage monte carlo search strat, consider running 7 sim for each possible move, then discard any move with 0 win, do another sim for all remaining
-  possible moves, eventually discarding any move with prob of winning (using confidence interval) that is much less than winning % of the best candidate.
-  use normal approx to binomial dist to build conf int. put conditions in place to stop search such as max num of sim, or only one candidate left. see progressive pruning approach.
+  GameMove move = mc_search_best_move(gstate, player, &sim_ctx, params);
+  apply_move(gstate, player, &move, ctx);
+} // decide_and_apply
 
+void simplemc_attack_strategy(struct gamestate* gstate, GameContext* ctx)
+{ decide_and_apply(gstate, gstate->current_player, ctx);
+} // simplemc_attack_strategy
 
- * */
+void simplemc_defense_strategy(struct gamestate* gstate, GameContext* ctx)
+{ decide_and_apply(gstate, 1 - gstate->current_player, ctx);
+} // simplemc_defense_strategy

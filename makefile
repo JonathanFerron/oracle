@@ -21,6 +21,43 @@ OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
 # Compiler flags
 CFLAGS := -g -Og -Wall -std=c23
 
+# Shared source lists for anything that links the whole engine + AI-strategy
+# roster in-process (every CALIB_*_SRCS below, plus TEST_RECALL_SRCS). Before
+# A8, each of those seven-plus lists spelled out the same ~11 engine files and
+# ~14 agent files by hand; adding a new agent meant editing all of them. Now a
+# new agent's ai_strat_<name>*.c files are added to AGENT_SRCS exactly once.
+ENGINE_SRCS := $(SRCDIR)/core/card_actions.c \
+               $(SRCDIR)/core/combat.c \
+               $(SRCDIR)/core/combo_bonus.c \
+               $(SRCDIR)/core/game_constants.c \
+               $(SRCDIR)/core/game_context.c \
+               $(SRCDIR)/core/game_state.c \
+               $(SRCDIR)/core/turn_logic.c \
+               $(SRCDIR)/structures/card_collection.c \
+               $(SRCDIR)/structures/deckstack.c \
+               $(SRCDIR)/util/mtwister.c \
+               $(SRCDIR)/util/rnd.c \
+               $(SRCDIR)/actions/move_gen.c \
+               $(SRCDIR)/actions/move_apply.c
+
+AGENT_SRCS := $(SRCDIR)/ai_strat/ai_strategy.c \
+              $(SRCDIR)/ai_strat/ai_strat_random.c \
+              $(SRCDIR)/ai_strat/ai_strat_common.c \
+              $(SRCDIR)/ai_strat/ai_strat_lib_heuristics.c \
+              $(SRCDIR)/ai_strat/ai_strat_valuebased.c \
+              $(SRCDIR)/ai_strat/ai_strat_combo_threshold.c \
+              $(SRCDIR)/ai_strat/ai_strat_borealis.c \
+              $(SRCDIR)/ai_strat/ai_strat_borealis_enum.c \
+              $(SRCDIR)/ai_strat/ai_strat_balanced_rules.c \
+              $(SRCDIR)/ai_strat/ai_strat_heuristic.c \
+              $(SRCDIR)/ai_strat/ai_strat_tactical.c \
+              $(SRCDIR)/ai_strat/ai_strat_hbt.c \
+              $(SRCDIR)/ai_strat/ai_strat_hbt_enum.c \
+              $(SRCDIR)/ai_strat/ai_strat_hbt_cards.c \
+              $(SRCDIR)/ai_strat/ai_strat_playout.c \
+              $(SRCDIR)/ai_strat/ai_strat_simplemc_search.c \
+              $(SRCDIR)/ai_strat/ai_strat_simplemc1.c
+
 # Test targets
 # Object paths are mapped into $(BUILDDIR) (mirroring the main build's pattern rule
 # below) rather than left inside $(SRCDIR)/$(TESTSRCDIR), so test builds share objects
@@ -44,10 +81,6 @@ TEST_RECALL_TARGET := $(BINDIR)/test_recall
 # (cli_display.c/cli_action_display.c, added alongside A4) is the only reason
 # player_config.c is linked here at all.
 TEST_RECALL_SRCS := $(TESTSRCDIR)/test_recall.c \
-                    $(SRCDIR)/core/card_actions.c \
-                    $(SRCDIR)/core/combo_bonus.c \
-                    $(SRCDIR)/core/game_constants.c \
-                    $(SRCDIR)/core/game_context.c \
                     $(SRCDIR)/ui/cli/cli_input.c \
                     $(SRCDIR)/ui/cli/cli_io.c \
                     $(SRCDIR)/ui/cli/cli_display.c \
@@ -55,24 +88,8 @@ TEST_RECALL_SRCS := $(TESTSRCDIR)/test_recall.c \
                     $(SRCDIR)/ui/interactive/game_commands.c \
                     $(SRCDIR)/ui/interactive/game_commands_cards.c \
                     $(SRCDIR)/ui/shared/player_config.c \
-                    $(SRCDIR)/ai_strat/ai_strategy.c \
-                    $(SRCDIR)/ai_strat/ai_strat_random.c \
-                    $(SRCDIR)/ai_strat/ai_strat_common.c \
-                    $(SRCDIR)/ai_strat/ai_strat_lib_heuristics.c \
-                    $(SRCDIR)/ai_strat/ai_strat_valuebased.c \
-                    $(SRCDIR)/ai_strat/ai_strat_combo_threshold.c \
-                    $(SRCDIR)/ai_strat/ai_strat_borealis.c \
-                    $(SRCDIR)/ai_strat/ai_strat_borealis_enum.c \
-                    $(SRCDIR)/ai_strat/ai_strat_balanced_rules.c \
-                    $(SRCDIR)/ai_strat/ai_strat_heuristic.c \
-                    $(SRCDIR)/ai_strat/ai_strat_tactical.c \
-                    $(SRCDIR)/ai_strat/ai_strat_hbt.c \
-                    $(SRCDIR)/ai_strat/ai_strat_hbt_enum.c \
-                    $(SRCDIR)/ai_strat/ai_strat_hbt_cards.c \
-                    $(SRCDIR)/structures/card_collection.c \
-                    $(SRCDIR)/structures/deckstack.c \
-                    $(SRCDIR)/util/mtwister.c \
-                    $(SRCDIR)/util/rnd.c
+                    $(ENGINE_SRCS) \
+                    $(AGENT_SRCS)
 TEST_RECALL_OBJS := $(BUILDDIR)/testsrc/test_recall.o \
                     $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_RECALL_SRCS)))
 
@@ -87,6 +104,19 @@ TEST_CASH_SRCS := $(TESTSRCDIR)/test_cash_exchange.c \
                   $(SRCDIR)/util/rnd.c
 TEST_CASH_OBJS := $(BUILDDIR)/testsrc/test_cash_exchange.o \
                   $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_CASH_SRCS)))
+
+# Test move enumeration/application/playout (src/actions/,
+# ai_strat_playout.c) -- the engine-level infrastructure A8 Simple Monte
+# Carlo (and later A9-A11) builds on. src/actions/*.c live in ENGINE_SRCS and
+# ai_strat_playout.c/ai_strat_simplemc*.c live in AGENT_SRCS now that A8
+# registers and references them, so this target needs nothing beyond those
+# two shared lists plus its own test file.
+TEST_MOVES_TARGET := $(BINDIR)/test_moves
+TEST_MOVES_SRCS := $(TESTSRCDIR)/test_moves.c \
+                   $(ENGINE_SRCS) \
+                   $(AGENT_SRCS)
+TEST_MOVES_OBJS := $(BUILDDIR)/testsrc/test_moves.o \
+                   $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_MOVES_SRCS)))
 
 # src/rating/ is dependency-free (game_types.h + libc only -- see rating.h),
 # so this test needs no engine objects beyond the rating module itself.
@@ -111,31 +141,8 @@ TEST_RATING_OBJS := $(BUILDDIR)/testsrc/test_rating.o \
 # the whole roster it registers, updated here each time a new agent joins it.
 CALIB_VALUEBASED_TARGET := $(BINDIR)/calib_valuebased
 CALIB_VALUEBASED_SRCS := $(AICALIBDIR)/value/calib_valuebased.c \
-                         $(SRCDIR)/core/card_actions.c \
-                         $(SRCDIR)/core/combat.c \
-                         $(SRCDIR)/core/combo_bonus.c \
-                         $(SRCDIR)/core/game_constants.c \
-                         $(SRCDIR)/core/game_context.c \
-                         $(SRCDIR)/core/game_state.c \
-                         $(SRCDIR)/core/turn_logic.c \
-                         $(SRCDIR)/structures/card_collection.c \
-                         $(SRCDIR)/structures/deckstack.c \
-                         $(SRCDIR)/util/mtwister.c \
-                         $(SRCDIR)/util/rnd.c \
-                         $(SRCDIR)/ai_strat/ai_strategy.c \
-                         $(SRCDIR)/ai_strat/ai_strat_random.c \
-                         $(SRCDIR)/ai_strat/ai_strat_common.c \
-                         $(SRCDIR)/ai_strat/ai_strat_lib_heuristics.c \
-                         $(SRCDIR)/ai_strat/ai_strat_valuebased.c \
-                         $(SRCDIR)/ai_strat/ai_strat_combo_threshold.c \
-                         $(SRCDIR)/ai_strat/ai_strat_borealis.c \
-                         $(SRCDIR)/ai_strat/ai_strat_borealis_enum.c \
-                         $(SRCDIR)/ai_strat/ai_strat_balanced_rules.c \
-                         $(SRCDIR)/ai_strat/ai_strat_heuristic.c \
-                         $(SRCDIR)/ai_strat/ai_strat_tactical.c \
-                         $(SRCDIR)/ai_strat/ai_strat_hbt.c \
-                         $(SRCDIR)/ai_strat/ai_strat_hbt_enum.c \
-                         $(SRCDIR)/ai_strat/ai_strat_hbt_cards.c \
+                         $(ENGINE_SRCS) \
+                         $(AGENT_SRCS) \
                          $(SRCDIR)/roles/stda/stda_auto.c \
                          $(SRCDIR)/ui/shared/player_config.c
 CALIB_VALUEBASED_OBJS := $(BUILDDIR)/aicalibsrc/value/calib_valuebased.o \
@@ -146,31 +153,8 @@ CALIB_VALUEBASED_OBJS := $(BUILDDIR)/aicalibsrc/value/calib_valuebased.o \
 # whole-roster reasoning.
 CALIB_COMBO_TARGET := $(BINDIR)/calib_combo_threshold
 CALIB_COMBO_SRCS := $(AICALIBDIR)/combo/calib_combo_threshold.c \
-                    $(SRCDIR)/core/card_actions.c \
-                    $(SRCDIR)/core/combat.c \
-                    $(SRCDIR)/core/combo_bonus.c \
-                    $(SRCDIR)/core/game_constants.c \
-                    $(SRCDIR)/core/game_context.c \
-                    $(SRCDIR)/core/game_state.c \
-                    $(SRCDIR)/core/turn_logic.c \
-                    $(SRCDIR)/structures/card_collection.c \
-                    $(SRCDIR)/structures/deckstack.c \
-                    $(SRCDIR)/util/mtwister.c \
-                    $(SRCDIR)/util/rnd.c \
-                    $(SRCDIR)/ai_strat/ai_strategy.c \
-                    $(SRCDIR)/ai_strat/ai_strat_random.c \
-                    $(SRCDIR)/ai_strat/ai_strat_common.c \
-                    $(SRCDIR)/ai_strat/ai_strat_lib_heuristics.c \
-                    $(SRCDIR)/ai_strat/ai_strat_valuebased.c \
-                    $(SRCDIR)/ai_strat/ai_strat_combo_threshold.c \
-                    $(SRCDIR)/ai_strat/ai_strat_borealis.c \
-                    $(SRCDIR)/ai_strat/ai_strat_borealis_enum.c \
-                    $(SRCDIR)/ai_strat/ai_strat_balanced_rules.c \
-                    $(SRCDIR)/ai_strat/ai_strat_heuristic.c \
-                    $(SRCDIR)/ai_strat/ai_strat_tactical.c \
-                    $(SRCDIR)/ai_strat/ai_strat_hbt.c \
-                    $(SRCDIR)/ai_strat/ai_strat_hbt_enum.c \
-                    $(SRCDIR)/ai_strat/ai_strat_hbt_cards.c \
+                    $(ENGINE_SRCS) \
+                    $(AGENT_SRCS) \
                     $(SRCDIR)/roles/stda/stda_auto.c \
                     $(SRCDIR)/ui/shared/player_config.c
 CALIB_COMBO_OBJS := $(BUILDDIR)/aicalibsrc/combo/calib_combo_threshold.o \
@@ -181,31 +165,8 @@ CALIB_COMBO_OBJS := $(BUILDDIR)/aicalibsrc/combo/calib_combo_threshold.o \
 # CALIB_VALUEBASED_*/CALIB_COMBO_* above.
 CALIB_BOREALIS_TARGET := $(BINDIR)/calib_borealis
 CALIB_BOREALIS_SRCS := $(AICALIBDIR)/borealis/calib_borealis.c \
-                       $(SRCDIR)/core/card_actions.c \
-                       $(SRCDIR)/core/combat.c \
-                       $(SRCDIR)/core/combo_bonus.c \
-                       $(SRCDIR)/core/game_constants.c \
-                       $(SRCDIR)/core/game_context.c \
-                       $(SRCDIR)/core/game_state.c \
-                       $(SRCDIR)/core/turn_logic.c \
-                       $(SRCDIR)/structures/card_collection.c \
-                       $(SRCDIR)/structures/deckstack.c \
-                       $(SRCDIR)/util/mtwister.c \
-                       $(SRCDIR)/util/rnd.c \
-                       $(SRCDIR)/ai_strat/ai_strategy.c \
-                       $(SRCDIR)/ai_strat/ai_strat_random.c \
-                       $(SRCDIR)/ai_strat/ai_strat_common.c \
-                       $(SRCDIR)/ai_strat/ai_strat_lib_heuristics.c \
-                       $(SRCDIR)/ai_strat/ai_strat_valuebased.c \
-                       $(SRCDIR)/ai_strat/ai_strat_combo_threshold.c \
-                       $(SRCDIR)/ai_strat/ai_strat_borealis.c \
-                       $(SRCDIR)/ai_strat/ai_strat_borealis_enum.c \
-                       $(SRCDIR)/ai_strat/ai_strat_balanced_rules.c \
-                       $(SRCDIR)/ai_strat/ai_strat_heuristic.c \
-                       $(SRCDIR)/ai_strat/ai_strat_tactical.c \
-                       $(SRCDIR)/ai_strat/ai_strat_hbt.c \
-                       $(SRCDIR)/ai_strat/ai_strat_hbt_enum.c \
-                       $(SRCDIR)/ai_strat/ai_strat_hbt_cards.c \
+                       $(ENGINE_SRCS) \
+                       $(AGENT_SRCS) \
                        $(SRCDIR)/roles/stda/stda_auto.c \
                        $(SRCDIR)/ui/shared/player_config.c
 CALIB_BOREALIS_OBJS := $(BUILDDIR)/aicalibsrc/borealis/calib_borealis.o \
@@ -216,31 +177,8 @@ CALIB_BOREALIS_OBJS := $(BUILDDIR)/aicalibsrc/borealis/calib_borealis.o \
 # CALIB_VALUEBASED_*/CALIB_COMBO_*/CALIB_BOREALIS_* above.
 CALIB_BALANCED_TARGET := $(BINDIR)/calib_balanced
 CALIB_BALANCED_SRCS := $(AICALIBDIR)/balanced/calib_balanced.c \
-                       $(SRCDIR)/core/card_actions.c \
-                       $(SRCDIR)/core/combat.c \
-                       $(SRCDIR)/core/combo_bonus.c \
-                       $(SRCDIR)/core/game_constants.c \
-                       $(SRCDIR)/core/game_context.c \
-                       $(SRCDIR)/core/game_state.c \
-                       $(SRCDIR)/core/turn_logic.c \
-                       $(SRCDIR)/structures/card_collection.c \
-                       $(SRCDIR)/structures/deckstack.c \
-                       $(SRCDIR)/util/mtwister.c \
-                       $(SRCDIR)/util/rnd.c \
-                       $(SRCDIR)/ai_strat/ai_strategy.c \
-                       $(SRCDIR)/ai_strat/ai_strat_random.c \
-                       $(SRCDIR)/ai_strat/ai_strat_common.c \
-                       $(SRCDIR)/ai_strat/ai_strat_lib_heuristics.c \
-                       $(SRCDIR)/ai_strat/ai_strat_valuebased.c \
-                       $(SRCDIR)/ai_strat/ai_strat_combo_threshold.c \
-                       $(SRCDIR)/ai_strat/ai_strat_borealis.c \
-                       $(SRCDIR)/ai_strat/ai_strat_borealis_enum.c \
-                       $(SRCDIR)/ai_strat/ai_strat_balanced_rules.c \
-                       $(SRCDIR)/ai_strat/ai_strat_heuristic.c \
-                       $(SRCDIR)/ai_strat/ai_strat_tactical.c \
-                       $(SRCDIR)/ai_strat/ai_strat_hbt.c \
-                       $(SRCDIR)/ai_strat/ai_strat_hbt_enum.c \
-                       $(SRCDIR)/ai_strat/ai_strat_hbt_cards.c \
+                       $(ENGINE_SRCS) \
+                       $(AGENT_SRCS) \
                        $(SRCDIR)/roles/stda/stda_auto.c \
                        $(SRCDIR)/ui/shared/player_config.c
 CALIB_BALANCED_OBJS := $(BUILDDIR)/aicalibsrc/balanced/calib_balanced.o \
@@ -251,31 +189,8 @@ CALIB_BALANCED_OBJS := $(BUILDDIR)/aicalibsrc/balanced/calib_balanced.o \
 # CALIB_VALUEBASED_*/CALIB_COMBO_*/CALIB_BOREALIS_*/CALIB_BALANCED_* above.
 CALIB_HEURISTIC_TARGET := $(BINDIR)/calib_heuristic
 CALIB_HEURISTIC_SRCS := $(AICALIBDIR)/heuristic/calib_heuristic.c \
-                        $(SRCDIR)/core/card_actions.c \
-                        $(SRCDIR)/core/combat.c \
-                        $(SRCDIR)/core/combo_bonus.c \
-                        $(SRCDIR)/core/game_constants.c \
-                        $(SRCDIR)/core/game_context.c \
-                        $(SRCDIR)/core/game_state.c \
-                        $(SRCDIR)/core/turn_logic.c \
-                        $(SRCDIR)/structures/card_collection.c \
-                        $(SRCDIR)/structures/deckstack.c \
-                        $(SRCDIR)/util/mtwister.c \
-                        $(SRCDIR)/util/rnd.c \
-                        $(SRCDIR)/ai_strat/ai_strategy.c \
-                        $(SRCDIR)/ai_strat/ai_strat_random.c \
-                        $(SRCDIR)/ai_strat/ai_strat_common.c \
-                        $(SRCDIR)/ai_strat/ai_strat_lib_heuristics.c \
-                        $(SRCDIR)/ai_strat/ai_strat_valuebased.c \
-                        $(SRCDIR)/ai_strat/ai_strat_combo_threshold.c \
-                        $(SRCDIR)/ai_strat/ai_strat_borealis.c \
-                        $(SRCDIR)/ai_strat/ai_strat_borealis_enum.c \
-                        $(SRCDIR)/ai_strat/ai_strat_balanced_rules.c \
-                        $(SRCDIR)/ai_strat/ai_strat_heuristic.c \
-                        $(SRCDIR)/ai_strat/ai_strat_tactical.c \
-                        $(SRCDIR)/ai_strat/ai_strat_hbt.c \
-                        $(SRCDIR)/ai_strat/ai_strat_hbt_enum.c \
-                        $(SRCDIR)/ai_strat/ai_strat_hbt_cards.c \
+                        $(ENGINE_SRCS) \
+                        $(AGENT_SRCS) \
                         $(SRCDIR)/roles/stda/stda_auto.c \
                         $(SRCDIR)/ui/shared/player_config.c
 CALIB_HEURISTIC_OBJS := $(BUILDDIR)/aicalibsrc/heuristic/calib_heuristic.o \
@@ -287,31 +202,8 @@ CALIB_HEURISTIC_OBJS := $(BUILDDIR)/aicalibsrc/heuristic/calib_heuristic.o \
 # CALIB_HEURISTIC_* above.
 CALIB_TACTICAL_TARGET := $(BINDIR)/calib_tactical
 CALIB_TACTICAL_SRCS := $(AICALIBDIR)/tactical/calib_tactical.c \
-                       $(SRCDIR)/core/card_actions.c \
-                       $(SRCDIR)/core/combat.c \
-                       $(SRCDIR)/core/combo_bonus.c \
-                       $(SRCDIR)/core/game_constants.c \
-                       $(SRCDIR)/core/game_context.c \
-                       $(SRCDIR)/core/game_state.c \
-                       $(SRCDIR)/core/turn_logic.c \
-                       $(SRCDIR)/structures/card_collection.c \
-                       $(SRCDIR)/structures/deckstack.c \
-                       $(SRCDIR)/util/mtwister.c \
-                       $(SRCDIR)/util/rnd.c \
-                       $(SRCDIR)/ai_strat/ai_strategy.c \
-                       $(SRCDIR)/ai_strat/ai_strat_random.c \
-                       $(SRCDIR)/ai_strat/ai_strat_common.c \
-                       $(SRCDIR)/ai_strat/ai_strat_lib_heuristics.c \
-                       $(SRCDIR)/ai_strat/ai_strat_valuebased.c \
-                       $(SRCDIR)/ai_strat/ai_strat_combo_threshold.c \
-                       $(SRCDIR)/ai_strat/ai_strat_borealis.c \
-                       $(SRCDIR)/ai_strat/ai_strat_borealis_enum.c \
-                       $(SRCDIR)/ai_strat/ai_strat_balanced_rules.c \
-                       $(SRCDIR)/ai_strat/ai_strat_heuristic.c \
-                       $(SRCDIR)/ai_strat/ai_strat_tactical.c \
-                       $(SRCDIR)/ai_strat/ai_strat_hbt.c \
-                       $(SRCDIR)/ai_strat/ai_strat_hbt_enum.c \
-                       $(SRCDIR)/ai_strat/ai_strat_hbt_cards.c \
+                       $(ENGINE_SRCS) \
+                       $(AGENT_SRCS) \
                        $(SRCDIR)/roles/stda/stda_auto.c \
                        $(SRCDIR)/ui/shared/player_config.c
 CALIB_TACTICAL_OBJS := $(BUILDDIR)/aicalibsrc/tactical/calib_tactical.o \
@@ -323,35 +215,25 @@ CALIB_TACTICAL_OBJS := $(BUILDDIR)/aicalibsrc/tactical/calib_tactical.o \
 # CALIB_HEURISTIC_*/CALIB_TACTICAL_* above.
 CALIB_HBT_TARGET := $(BINDIR)/calib_hbt
 CALIB_HBT_SRCS := $(AICALIBDIR)/hbt/calib_hbt.c \
-                  $(SRCDIR)/core/card_actions.c \
-                  $(SRCDIR)/core/combat.c \
-                  $(SRCDIR)/core/combo_bonus.c \
-                  $(SRCDIR)/core/game_constants.c \
-                  $(SRCDIR)/core/game_context.c \
-                  $(SRCDIR)/core/game_state.c \
-                  $(SRCDIR)/core/turn_logic.c \
-                  $(SRCDIR)/structures/card_collection.c \
-                  $(SRCDIR)/structures/deckstack.c \
-                  $(SRCDIR)/util/mtwister.c \
-                  $(SRCDIR)/util/rnd.c \
-                  $(SRCDIR)/ai_strat/ai_strategy.c \
-                  $(SRCDIR)/ai_strat/ai_strat_random.c \
-                  $(SRCDIR)/ai_strat/ai_strat_common.c \
-                  $(SRCDIR)/ai_strat/ai_strat_lib_heuristics.c \
-                  $(SRCDIR)/ai_strat/ai_strat_valuebased.c \
-                  $(SRCDIR)/ai_strat/ai_strat_combo_threshold.c \
-                  $(SRCDIR)/ai_strat/ai_strat_borealis.c \
-                  $(SRCDIR)/ai_strat/ai_strat_borealis_enum.c \
-                  $(SRCDIR)/ai_strat/ai_strat_balanced_rules.c \
-                  $(SRCDIR)/ai_strat/ai_strat_heuristic.c \
-                  $(SRCDIR)/ai_strat/ai_strat_tactical.c \
-                  $(SRCDIR)/ai_strat/ai_strat_hbt.c \
-                  $(SRCDIR)/ai_strat/ai_strat_hbt_enum.c \
-                  $(SRCDIR)/ai_strat/ai_strat_hbt_cards.c \
+                  $(ENGINE_SRCS) \
+                  $(AGENT_SRCS) \
                   $(SRCDIR)/roles/stda/stda_auto.c \
                   $(SRCDIR)/ui/shared/player_config.c
 CALIB_HBT_OBJS := $(BUILDDIR)/aicalibsrc/hbt/calib_hbt.o \
                   $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_HBT_SRCS)))
+
+# Calibration harness for A8 Simple Monte Carlo's tunable parameters (see
+# aicalibsrc/simplemc/). Same pattern and same whole-roster reasoning as
+# CALIB_VALUEBASED_*/CALIB_COMBO_*/CALIB_BOREALIS_*/CALIB_BALANCED_*/
+# CALIB_HEURISTIC_*/CALIB_TACTICAL_*/CALIB_HBT_* above.
+CALIB_SIMPLEMC_TARGET := $(BINDIR)/calib_simplemc
+CALIB_SIMPLEMC_SRCS := $(AICALIBDIR)/simplemc/calib_simplemc.c \
+                       $(ENGINE_SRCS) \
+                       $(AGENT_SRCS) \
+                       $(SRCDIR)/roles/stda/stda_auto.c \
+                       $(SRCDIR)/ui/shared/player_config.c
+CALIB_SIMPLEMC_OBJS := $(BUILDDIR)/aicalibsrc/simplemc/calib_simplemc.o \
+                       $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_SIMPLEMC_SRCS)))
 
 # Default target
 all: $(TARGET)
@@ -385,7 +267,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt
+	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_simplemc
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -427,6 +309,17 @@ $(TEST_CASH_TARGET): $(TEST_CASH_OBJS)
 	@mkdir -p $(BINDIR)
 	$(CC) $(TEST_CASH_OBJS) -o $(TEST_CASH_TARGET) $(LIBS)
 	@echo "Test build complete: $(TEST_CASH_TARGET)"
+
+# Test move enumeration (src/actions/move_gen.c)
+.PHONY: test_moves
+test_moves: $(TEST_MOVES_TARGET)
+	./$(TEST_MOVES_TARGET)
+
+$(TEST_MOVES_TARGET): $(TEST_MOVES_OBJS)
+	@echo "Linking test_moves..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(TEST_MOVES_OBJS) -o $(TEST_MOVES_TARGET) $(LIBS)
+	@echo "Test build complete: $(TEST_MOVES_TARGET)"
 
 # Test the Bradley-Terry rating system (src/rating/)
 .PHONY: test_rating
@@ -509,6 +402,16 @@ $(CALIB_HBT_TARGET): $(CALIB_HBT_OBJS)
 	$(CC) $(CALIB_HBT_OBJS) -o $(CALIB_HBT_TARGET) $(LIBS)
 	@echo "Build complete: $(CALIB_HBT_TARGET)"
 
+# Calibration harness (see aicalibsrc/simplemc/README.md or the file header for CLI usage)
+.PHONY: calib_simplemc
+calib_simplemc: $(CALIB_SIMPLEMC_TARGET)
+
+$(CALIB_SIMPLEMC_TARGET): $(CALIB_SIMPLEMC_OBJS)
+	@echo "Linking calib_simplemc..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(CALIB_SIMPLEMC_OBJS) -o $(CALIB_SIMPLEMC_TARGET) $(LIBS)
+	@echo "Build complete: $(CALIB_SIMPLEMC_TARGET)"
+
 .PHONY: format
 format:
 	astyle --project --suffix=none --recursive --exclude=ideas "*.c,*.h"
@@ -531,6 +434,7 @@ help:
 	@echo "  test_recall      - Build and run recall mechanic tests"
 	@echo "  test_cash_exchange - Build and run cash exchange tests"
 	@echo "  test_rating      - Build and run Bradley-Terry rating system tests"
+	@echo "  test_moves       - Build and run move enumeration (src/actions/) tests"
 	@echo "  test_stda_auto   - Diff 'oracle -sa -p' output against bin/expectedresults.txt"
 	@echo "  calib_valuebased - Build the Value Based parameter calibration harness (aicalibsrc/)"
 	@echo "  calib_combo_threshold - Build the Combo Threshold parameter calibration harness (aicalibsrc/)"
@@ -539,6 +443,7 @@ help:
 	@echo "  calib_heuristic  - Build the Heuristic parameter calibration harness (aicalibsrc/)"
 	@echo "  calib_tactical   - Build the Tactical parameter calibration harness (aicalibsrc/)"
 	@echo "  calib_hbt        - Build the Hybrid HBT parameter calibration harness (aicalibsrc/)"
+	@echo "  calib_simplemc   - Build the Simple Monte Carlo parameter calibration harness (aicalibsrc/)"
 	@echo "  format           - Format the c and h source files using astyle"
 	@echo "  help             - Show this help message"
 	@echo ""

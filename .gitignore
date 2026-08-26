@@ -7,6 +7,7 @@
 /bin/test_recall
 /bin/test_cash_exchange
 /bin/test_rating
+/bin/test_moves
 /bin/calib_valuebased
 /bin/calib_combo_threshold
 /bin/calib_borealis
@@ -14,6 +15,7 @@
 /bin/calib_heuristic
 /bin/calib_tactical
 /bin/calib_hbt
+/bin/calib_simplemc
 *.o
 *.xls
 *.xlsx
