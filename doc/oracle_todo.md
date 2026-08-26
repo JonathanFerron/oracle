@@ -20,7 +20,9 @@ roster-wide fit despite a pairwise loss to `A5` specifically, see `doc/changelog
 and `A8` Simple Monte Carlo ("The Soothsayer", 2026-08-25, calibrated, measured rating
 35 — below the Borealis anchor and not raised by extra rollout budget, a diagnosed and
 honestly-reported ceiling rather than a defect, see `doc/changelog.md`)
-are implemented, and the
+are implemented. `A12` Clairvoyant ("The Clairvoyant", 2026-08-25, measured rating 31)
+was also implemented, as a side exploration of `A8`'s own diagnosis rather than the
+next ladder rung -- `A9` remains next, see below. The
 Bradley-Terry rating system itself (2026-08-23, `src/rating/`) is now built on top of
 them — see `doc/oracle_roadmap.md`'s "Next Up" for what's next (`A9`). The strategy-set
 build sites

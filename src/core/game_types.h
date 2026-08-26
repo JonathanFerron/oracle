@@ -186,6 +186,9 @@ typedef enum
   AI_STRATEGY_HBT_2PLY,        // ideas/A9 ai agent hbt 2 ply (grandmaster ii)
   AI_STRATEGY_ISMCTS,          // ideas/A10 ai agent is-mcts (the omniscient)
   AI_STRATEGY_ISMCTS_NN,       // ideas/A11 ai agent is-mcts + nn (alphaoracle prime)
+  AI_STRATEGY_CLAIRVOYANT,     // ideas/A12 ai agent clairvoyant -- A8's sibling: same
+  // progressive-pruning MC search, opponent-side rollouts
+  // use a cheap heuristic instead of pure random
   AI_STRATEGY_COUNT
 } AIStrategyType;
 

@@ -120,6 +120,34 @@ typedef struct
   uint16_t rollout_max_turns;           // MAX_NUMBER_OF_TURNS
 } SimpleMcParams;
 
+// The shipped defaults -- shared with ai_strat_clairvoyant1.c (A12), which
+// reuses SimpleMcParams as-is (see that agent's own header comment for why:
+// the search/budget shape has no reason to differ from A8's). Expanding
+// this macro requires MAX_NUMBER_OF_TURNS in scope (game_constants.h),
+// which both agents' .c files already include.
+#define SIMPLEMC_DEFAULTS { \
+    .limit_recall_variants = 2, \
+    .limit_cash_variants = 3, \
+    .limit_max_candidates = 128, \
+    .rollout_seed_simulations = 7, \
+    .rollout_round_simulations = 25, \
+    .prune_zero_win_seed = true, \
+    .threshold_confidence_level = 1.96f, \
+    .threshold_stage1_keep_ratio = 0.75f, \
+    .threshold_stage2_keep_ratio = 0.50f, \
+    .threshold_stage3_keep_ratio = 0.25f, \
+    .limit_stage1_keep = 30, \
+    .limit_stage2_keep = 10, \
+    .limit_stage3_keep = 4, \
+    .limit_stage1_simulations = 100, \
+    .limit_stage2_simulations = 300, \
+    .limit_stage3_simulations = 700, \
+    .limit_max_simulations = 1500, \
+    .limit_total_rollouts = 25000, \
+    .rollout_determinize = true, \
+    .rollout_max_turns = MAX_NUMBER_OF_TURNS, \
+  }
+
 void simplemc_attack_strategy(struct gamestate* gstate, GameContext* ctx);
 void simplemc_defense_strategy(struct gamestate* gstate, GameContext* ctx);
 

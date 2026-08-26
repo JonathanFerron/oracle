@@ -33,22 +33,24 @@ static uint8_t count_alive(const McCandidate* candidates, uint8_t n)
 // view), then mc_playout() with `move` as the first action.
 static float run_one_simulation(const struct gamestate* gstate, PlayerID player,
                                 const GameMove* move, GameContext* sim_ctx,
-                                const SimpleMcParams* params)
+                                const SimpleMcParams* params,
+                                const StrategySet* rollout_strats)
 { struct gamestate det = *gstate;
   if(params->rollout_determinize)
     mc_determinize(&det, player, sim_ctx);
-  return mc_playout(&det, player, move, sim_ctx, params->rollout_max_turns);
+  return mc_playout(&det, player, move, rollout_strats, sim_ctx, params->rollout_max_turns);
 } // run_one_simulation
 
 static void mc_run_round(McCandidate* candidates, uint8_t n, uint16_t sims_to_add,
                          const struct gamestate* gstate, PlayerID player,
-                         GameContext* sim_ctx, const SimpleMcParams* params)
+                         GameContext* sim_ctx, const SimpleMcParams* params,
+                         const StrategySet* rollout_strats)
 { for(uint8_t i = 0; i < n; i++)
   { if(!candidates[i].alive) continue;
 
     for(uint16_t s = 0; s < sims_to_add; s++)
       candidates[i].total_score += run_one_simulation(gstate, player, &candidates[i].move,
-                                                      sim_ctx, params);
+                                                      sim_ctx, params, rollout_strats);
     candidates[i].sims += sims_to_add;
   }
 } // mc_run_round
@@ -143,6 +145,7 @@ static void apply_stage_cap_if_due(McCandidate* candidates, uint8_t n, uint16_t 
 static void run_progressive_rounds(McCandidate* candidates, uint8_t n,
                                    const struct gamestate* gstate, PlayerID player,
                                    GameContext* sim_ctx, const SimpleMcParams* params,
+                                   const StrategySet* rollout_strats,
                                    uint32_t* total_rollouts, uint16_t cumulative)
 { bool stage1_done = false, stage2_done = false, stage3_done = false;
 
@@ -151,7 +154,7 @@ static void run_progressive_rounds(McCandidate* candidates, uint8_t n,
         *total_rollouts < params->limit_total_rollouts)
   { uint8_t alive_count = count_alive(candidates, n);
     mc_run_round(candidates, n, params->rollout_round_simulations, gstate, player,
-                 sim_ctx, params);
+                 sim_ctx, params, rollout_strats);
     *total_rollouts += (uint32_t)alive_count * params->rollout_round_simulations;
     cumulative += params->rollout_round_simulations;
 
@@ -194,7 +197,8 @@ static GameMove mc_select_best_move(const McCandidate* candidates, uint8_t n)
 } // mc_select_best_move
 
 GameMove mc_search_best_move(const struct gamestate* gstate, PlayerID player,
-                             GameContext* sim_ctx, const SimpleMcParams* params)
+                             GameContext* sim_ctx, const SimpleMcParams* params,
+                             const StrategySet* rollout_strats)
 { MoveGenLimits limits =
   { .max_recall_variants = params->limit_recall_variants,
     .max_cash_variants = params->limit_cash_variants
@@ -215,11 +219,12 @@ GameMove mc_search_best_move(const struct gamestate* gstate, PlayerID player,
   };
 
   uint32_t total_rollouts = (uint32_t)n * params->rollout_seed_simulations;
-  mc_run_round(candidates, n, params->rollout_seed_simulations, gstate, player, sim_ctx, params);
+  mc_run_round(candidates, n, params->rollout_seed_simulations, gstate, player, sim_ctx,
+               params, rollout_strats);
   if(params->prune_zero_win_seed) mc_prune_zero_win(candidates, n);
 
-  run_progressive_rounds(candidates, n, gstate, player, sim_ctx, params, &total_rollouts,
-                         params->rollout_seed_simulations);
+  run_progressive_rounds(candidates, n, gstate, player, sim_ctx, params, rollout_strats,
+                         &total_rollouts, params->rollout_seed_simulations);
 
   return mc_select_best_move(candidates, n);
 } // mc_search_best_move

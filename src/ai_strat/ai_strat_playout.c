@@ -88,22 +88,20 @@ static void resolve_first_move(struct gamestate* sim, PlayerID cur,
 } // resolve_first_move
 
 float mc_playout(const struct gamestate* root, PlayerID me, const GameMove* first,
-                 GameContext* sim_ctx, uint16_t max_turns)
+                 const StrategySet* rollout_strats, GameContext* sim_ctx,
+                 uint16_t max_turns)
 { struct gamestate sim = *root;
   PlayerID cur = sim.current_player;
-
-  StrategySet rollout_strats = {0};
-  set_player_strategy_by_type(&rollout_strats, PLAYER_A, AI_STRATEGY_RANDOM);
-  set_player_strategy_by_type(&rollout_strats, PLAYER_B, AI_STRATEGY_RANDOM);
+  StrategySet local_strats = *rollout_strats; // turn_logic.c's calls need non-const
 
   apply_move(&sim, me, first, sim_ctx);
-  resolve_first_move(&sim, cur, &rollout_strats, sim_ctx);
+  resolve_first_move(&sim, cur, &local_strats, sim_ctx);
 
   if(!sim.someone_has_zero_energy)
-    end_of_turn(&sim, &rollout_strats, sim_ctx);
+    end_of_turn(&sim, &local_strats, sim_ctx);
 
   while(!sim.someone_has_zero_energy && sim.turn < max_turns)
-    play_turn(NULL, &sim, &rollout_strats, sim_ctx);
+    play_turn(NULL, &sim, &local_strats, sim_ctx);
 
   if(!sim.someone_has_zero_energy)
     sim.game_state = DRAW; // hit max_turns without a winner

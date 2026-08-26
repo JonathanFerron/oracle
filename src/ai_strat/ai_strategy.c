@@ -14,6 +14,7 @@
 #include "ai_strat_tactical.h"
 #include "ai_strat_hbt.h"
 #include "ai_strat_simplemc1.h"
+#include "ai_strat_clairvoyant1.h"
 #include "ai_strat_lib_heuristics.h"
 
 StrategySet* create_strategy_set(void)
@@ -74,6 +75,9 @@ static const StrategyRegistryEntry STRATEGY_REGISTRY[AI_STRATEGY_COUNT] =
   },
   [AI_STRATEGY_SIMPLE_MC]        = { simplemc_attack_strategy,
     simplemc_defense_strategy
+  },
+  [AI_STRATEGY_CLAIRVOYANT]      = { clairvoyant_attack_strategy,
+    clairvoyant_defense_strategy
   },
   // All other entries default to {NULL, NULL, NULL, NULL} -- not yet implemented.
 };

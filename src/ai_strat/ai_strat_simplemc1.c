@@ -7,29 +7,6 @@
 #include "../actions/move_apply.h"
 #include "../core/game_constants.h"
 
-#define SIMPLEMC_DEFAULTS { \
-    .limit_recall_variants = 2, \
-    .limit_cash_variants = 3, \
-    .limit_max_candidates = 128, \
-    .rollout_seed_simulations = 7, \
-    .rollout_round_simulations = 25, \
-    .prune_zero_win_seed = true, \
-    .threshold_confidence_level = 1.96f, \
-    .threshold_stage1_keep_ratio = 0.75f, \
-    .threshold_stage2_keep_ratio = 0.50f, \
-    .threshold_stage3_keep_ratio = 0.25f, \
-    .limit_stage1_keep = 30, \
-    .limit_stage2_keep = 10, \
-    .limit_stage3_keep = 4, \
-    .limit_stage1_simulations = 100, \
-    .limit_stage2_simulations = 300, \
-    .limit_stage3_simulations = 700, \
-    .limit_max_simulations = 1500, \
-    .limit_total_rollouts = 25000, \
-    .rollout_determinize = true, \
-    .rollout_max_turns = MAX_NUMBER_OF_TURNS, \
-  }
-
 static SimpleMcParams g_params[2] = { SIMPLEMC_DEFAULTS, SIMPLEMC_DEFAULTS };
 
 SimpleMcParams simplemc_get_default_params(void)
@@ -58,11 +35,22 @@ static GameContext fork_for_decision(GameContext* ctx)
   return mc_fork_context(ctx, seed);
 } // fork_for_decision
 
+// A8's own rollout policy: uniformly random on both seats. See
+// ai_strat_simplemc_search.h's header comment -- A12 (ideas/A12 ai agent
+// clairvoyant/) reuses the same search with a different StrategySet here.
+static StrategySet random_rollout_strategy_set(void)
+{ StrategySet strats = {0};
+  set_player_strategy_by_type(&strats, PLAYER_A, AI_STRATEGY_RANDOM);
+  set_player_strategy_by_type(&strats, PLAYER_B, AI_STRATEGY_RANDOM);
+  return strats;
+} // random_rollout_strategy_set
+
 static void decide_and_apply(struct gamestate* gstate, PlayerID player, GameContext* ctx)
 { const SimpleMcParams* params = &g_params[player];
   GameContext sim_ctx = fork_for_decision(ctx);
+  StrategySet rollout_strats = random_rollout_strategy_set();
 
-  GameMove move = mc_search_best_move(gstate, player, &sim_ctx, params);
+  GameMove move = mc_search_best_move(gstate, player, &sim_ctx, params, &rollout_strats);
   apply_move(gstate, player, &move, ctx);
 } // decide_and_apply
 

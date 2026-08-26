@@ -14,6 +14,7 @@
 #include "../core/game_types.h"
 #include "../core/game_context.h"
 #include "../actions/game_move.h"
+#include "ai_strategy.h" // StrategySet
 
 // A GameContext with its own independent RNG stream, seeded separately from
 // `ctx`. Every call that threads the returned context through the engine
@@ -34,12 +35,19 @@ GameContext mc_fork_context(const GameContext* ctx, uint32_t seed);
 void mc_determinize(struct gamestate* sim, PlayerID observer, GameContext* sim_ctx);
 
 // Plays `first` for `me` from `root`'s current phase, finishes that turn,
-// then continues with uniformly-random play (both seats) until someone's
-// energy hits 0 or `max_turns` is reached. Returns 1.0 (me wins), 0.5 (draw
-// or the max_turns cap was hit without a winner), or 0.0 (me loses). `root`
-// is never modified; `sim_ctx`'s RNG stream advances -- pass a forked
-// context (mc_fork_context()), never the live game's own.
+// then continues playing out the rest of the game via `rollout_strats`
+// (both attack_strategy/defense_strategy AND mulligan_strategy/
+// discard_strategy must be populated -- discard_to_7_cards() dereferences
+// the latter even mid-rollout) until someone's energy hits 0 or `max_turns`
+// is reached. Returns 1.0 (me wins), 0.5 (draw or the max_turns cap was hit
+// without a winner), or 0.0 (me loses). `root` is never modified;
+// `sim_ctx`'s RNG stream advances -- pass a forked context
+// (mc_fork_context()), never the live game's own. Callers needing plain
+// uniformly-random rollouts on both seats (A8's own use) can build that
+// StrategySet with set_player_strategy_by_type(&s, p, AI_STRATEGY_RANDOM)
+// for both players.
 float mc_playout(const struct gamestate* root, PlayerID me, const GameMove* first,
-                 GameContext* sim_ctx, uint16_t max_turns);
+                 const StrategySet* rollout_strats, GameContext* sim_ctx,
+                 uint16_t max_turns);
 
 #endif // AI_STRAT_PLAYOUT_H

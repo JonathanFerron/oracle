@@ -5,6 +5,96 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-25 — A12 Clairvoyant ("The Clairvoyant") implemented: A8's sibling, a cheap opponent-rollout heuristic instead of pure random
+
+Not part of the `A1`-`A11` ladder's authoritative order (`A9` HBT 2-Ply remains next) --
+a side exploration of A8's own diagnosed ceiling: `mc_playout()`'s rollouts model *both*
+seats as `AI_STRATEGY_RANDOM` regardless of the real opponent, so its win-probability
+estimates are calibrated against `rand` specifically (see this file's 2026-08-25 A8
+entry). The question was whether a cheap, non-tree fix to just the *opponent's*
+simulated moves could raise the rating without drifting toward `A9`/`A10`/`A11`'s own
+territory (a tree, learned policy, or determinized multi-sample reasoning). Appended
+as a new roster slot (`AI_STRATEGY_CLAIRVOYANT`, enum ordinal after `AI_STRATEGY_ISMCTS_NN`,
+shorthand `clairvoy`) rather than inserted into the numbered ladder, so `A9`-`A11`'s own
+ordinals didn't need to shift for what is explicitly a secondary experiment, not the
+next rung.
+
+- **Shared search infrastructure generalized** (`src/ai_strat/ai_strat_playout.{c,h}`,
+  `ai_strat_simplemc_search.{c,h}`): `mc_playout()` and `mc_search_best_move()` now take
+  the rollout `StrategySet` as a parameter instead of building a hardcoded
+  random/random one internally. A8's own call site (`ai_strat_simplemc1.c`) is
+  unaffected -- it just builds and passes the same random/random set explicitly now,
+  verified behavior-identical (`-a -p` byte-identical to `bin/expectedresults.txt`
+  throughout). `SIMPLEMC_DEFAULTS` moved from `ai_strat_simplemc1.c` into
+  `ai_strat_simplemc1.h` so both agents' `.c` files can use it -- `SimpleMcParams`
+  itself is reused as-is by `A12`, unmodified; the budget/pruning shape has no reason
+  to differ between the two agents.
+- **`src/ai_strat/ai_strat_clairvoyant1.{c,h}`** (new). Same progressive-pruning search
+  as `A8`, same `SimpleMcParams`. The only difference: rollouts keep this agent's own
+  future moves uniformly random (still "a simple MC approach, no tree") but give the
+  *opponent's* simulated replies a cheap heuristic instead -- no move enumeration, no
+  per-subset search, no call into `A5`'s or any other agent's real mechanism. A single
+  fixed candidate (the top up to 3 affordable champions by `power`, a cheap O(n)
+  partial selection) scored by one closed-form formula and committed only if it clears
+  a threshold, else pass/decline.
+- **Two real defects found by playtracing, not by the aggregate number alone** -- the
+  first smoke test (500 games vs `borealis`, both seats) measured **26.6%**, clearly
+  *below* A8's own 35.4%, the opposite of the intended direction. Playtracing (turn/
+  energy-enriched trace lines added to the rollout policy itself, `CVRollout ATTACK`/
+  `CVRollout DEFENSE`) found why:
+  - **Attack score never weighed cost.** `expected_attack` is always positive, so
+    `score > 0` was a near-tautology: 176,875/176,875 (100.0%) of sampled attack
+    decisions committed. The simulated opponent wasn't deciding anything -- it threw
+    every affordable champion into the fight on every turn, modeling a strawman
+    always-all-in opponent rather than a sharper one. Fixed by subtracting
+    `cost_weight * total_cost` from the score, using Borealis's own calibrated
+    `luna_value`/lambda (4.5846, "damage-units per luna") as a first estimate, since
+    it's exactly the same quantity. This alone did *not* move the aggregate number
+    (still 26.6%, coincidentally identical to the pre-fix figure), but it did fix a
+    genuine defect (post-fix commit rate ~76.7%, varying sensibly with cost) and
+    shifted the seat balance a lot: 71/250 -> 87/250 as seat A, but 62/250 -> 46/250
+    as seat B -- the two shifts happened to net to the same total.
+  - **Defense didn't weigh cost at all either** (`defense_score >= incoming_attack`,
+    no cost term). Applying the identical fix -- mirroring Borealis's own defense
+    evaluation exactly (`ai_strat_borealis_enum.h`: "value(S) is capped at the incoming
+    threat"), i.e. `net = min(raw_defense, incoming) - cost_weight * total_cost`, commit
+    iff `net > 0` -- raised the rating to 30.6% [26.7, 34.8] and, as a side effect,
+    resolved the seat asymmetry the attack fix alone hadn't: spread went from 16.4pp
+    (34.8%/18.4%) down to 6.0pp (33.6%/27.6%), back in this project's normal range (A2's
+    own seat gap is 6.3pp). No separate asymmetry investigation was needed -- it was
+    downstream of the same missing-cost-term defect.
+- **`cost_weight` sweep** (`clairvoyant_set_cost_weight()`/`_get_cost_weight()`, a
+  runtime override rather than a compile-time constant specifically so it could be
+  swept without rebuilding): 14 values from 0.5 to 10.0, n=700 games/point (both seats)
+  vs `borealis`. A quadratic fit was genuinely unimodal (R^2=0.73), implying an optimum
+  near 3.86; Borealis's own lambda (4.5846) measured near the *low* edge of a fairly
+  flat 1-7 plateau (28.0%) rather than its center (~30-32%), and both extremes measured
+  clearly worse (0.5: 26.3%; 10.0: 19.4%, non-overlapping with the plateau -- too
+  conservative, declines far too often). Shipped at **3.0** (empirical peak, close to
+  the fitted optimum), a real but modest gain over the borrowed value.
+- **Final measured rating: 31** (n=1500, both seats, vs `borealis`, at `cost_weight=3.0`
+  -- 31.47%, seat spread 4.5pp). Consistently a few points below A8's own 35 across
+  every measurement in this investigation (26.6% -> 30.6% -> 31.3% (sweep's own n=700
+  point) -> 31.47% (final n=1500)) -- close, but not a clear win. A sweep of the
+  smaller `ROLLOUT_ENERGY_WEIGHT` term was considered and deliberately not run: it
+  contributes at most ~5-20% of the magnitude of the terms that actually decide most
+  commits (a single champion's `expected_attack` is 2.5-10; even one cheap champion's
+  cost term at `cost_weight=3.0` is -3.0; the energy term tops out around 0.3-0.5 in
+  observed traces), so a same-scale sweep was assessed at roughly 15-20% odds of a
+  >2-3pp gain -- not worth chasing given `A9`-`A11` are expected to be materially
+  stronger agents by design.
+- **Shipped as-is, not chased further.** `AI_STRATEGY_RATINGS[AI_STRATEGY_CLAIRVOYANT]`
+  (`player_config.c`) set to `{ 31, true }`. This agent stays in the roster, selectable
+  from every mode, as a legitimate but deliberately modest sibling of `A8` -- explicitly
+  accepted as a "fun, easy to beat" agent rather than one worth further investment.
+- **Verification**: `make` clean (no new warnings) across the main binary and all four
+  test suites; `-a -p` byte-identical to `bin/expectedresults.txt` at every stage
+  (the shared-infrastructure generalization, both rollout-policy fixes, and the final
+  `cost_weight` change); valgrind-clean on live `clairvoy` play; strategy menu confirmed
+  showing `Clairvoyant [The Clairvoyant] (available) [31]`.
+
+---
+
 ## 2026-08-25 — A8 Simple Monte Carlo ("The Soothsayer") implemented, calibrated, and its ceiling diagnosed
 
 Implemented per `ideas/A8 ai agent simple monte carlo (the soothsayer)/about.md` and

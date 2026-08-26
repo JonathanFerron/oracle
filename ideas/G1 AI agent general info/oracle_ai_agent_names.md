@@ -50,6 +50,7 @@ rollout-policy bias, not a search-depth shortfall).
 | HBT 2-Ply | Grandmaster II | Grand Maître II | Gran Maestro II | — | 85 |
 | IS-MCTS | The Omniscient | L'Omniscient | El Omnisciente | — | 92 |
 | IS-MCTS + NN | AlphaOracle Prime | AlphaOracle Prime | AlphaOracle Prime | — | 97 |
+| Clairvoyant *(A8's sibling, not on the A1-A11 ladder)* | The Clairvoyant | Le Voyant | El Clarividente | 31 | — |
 
 ---
 
@@ -74,6 +75,7 @@ than glyphs.
 | HBT 2-Ply | Grandmaster II | Grand Maitre II | Gran Maestro II |
 | IS-MCTS | The Omniscient | L'Omniscient | El Omnisciente |
 | IS-MCTS + NN | AlphaOracle Prime | AlphaOracle Prime | AlphaOracle Prime |
+| Clairvoyant | The Clairvoyant | Le Voyant | El Clarividente |
 
 Alternative ASCII forms for the Heuristic agent, in decreasing terseness:
 `E-G-D` · `Eps-Gam-Del` · `Epsilon-Gamma-Delta`
@@ -99,6 +101,7 @@ declaration order.
 | `AI_STRATEGY_HBT_2PLY` | `hbt2ply` | Grandmaster II |
 | `AI_STRATEGY_ISMCTS` | `ismcts` | The Omniscient |
 | `AI_STRATEGY_ISMCTS_NN` | `ismctsnn` | AlphaOracle Prime |
+| `AI_STRATEGY_CLAIRVOYANT` | `clairvoy` | The Clairvoyant |
 
 ### Required renames
 

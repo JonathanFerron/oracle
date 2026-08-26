@@ -130,6 +130,8 @@ static const char* strategy_menu_label(AIStrategyType type, ui_language_t lang)
       return LOCALIZED_STRING_L(lang, "IS-MCTS + Neural Network",
                                 "IS-MCTS + reseau de neurones",
                                 "IS-MCTS + red neuronal");
+    case AI_STRATEGY_CLAIRVOYANT: // ideas/A12 ai agent clairvoyant
+      return LOCALIZED_STRING_L(lang, "Clairvoyant", "Clairvoyant", "Clarividente");
     default:
       return "Unknown";
   }
@@ -161,6 +163,7 @@ static const AIStrategyRating AI_STRATEGY_RATINGS[AI_STRATEGY_COUNT] =
   [AI_STRATEGY_HBT_2PLY]         = { 85, false },
   [AI_STRATEGY_ISMCTS]           = { 92, false },
   [AI_STRATEGY_ISMCTS_NN]        = { 97, false },
+  [AI_STRATEGY_CLAIRVOYANT]      = { 31, true  },
 };
 
 // "Random [The Gambler]", or just "Borealis" when the technical label and
@@ -438,6 +441,9 @@ const char* get_strategy_display_name(AIStrategyType strategy,
     case AI_STRATEGY_ISMCTS_NN:
       return LOCALIZED_STRING_L(lang, "AlphaOracle Prime", "AlphaOracle Prime",
                                 "AlphaOracle Prime");
+    case AI_STRATEGY_CLAIRVOYANT:
+      return LOCALIZED_STRING_L(lang, "The Clairvoyant", "Le Voyant",
+                                "El Clarividente");
     default:
       return "Unknown";
   }
@@ -481,6 +487,7 @@ static const AIStrategyShorthand AI_STRATEGY_SHORTHANDS[] =
   { AI_STRATEGY_HBT_2PLY,         "hbt2ply" },
   { AI_STRATEGY_ISMCTS,           "ismcts" },
   { AI_STRATEGY_ISMCTS_NN,        "ismctsnn" },
+  { AI_STRATEGY_CLAIRVOYANT,      "clairvoy" },
 };
 #define AI_STRATEGY_SHORTHAND_COUNT \
   (sizeof(AI_STRATEGY_SHORTHANDS) / sizeof(AI_STRATEGY_SHORTHANDS[0]))

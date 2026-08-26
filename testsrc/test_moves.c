@@ -477,7 +477,10 @@ void test_mc_playout_isolated(TestSuite* suite)
 
   GameContext sim_ctx = mc_fork_context(ctx, 4242);
   GameMove first = { .type = MOVE_PASS };
-  float result = mc_playout(&gs, PLAYER_A, &first, &sim_ctx, MAX_NUMBER_OF_TURNS);
+  StrategySet rollout_strats = {0};
+  set_player_strategy_by_type(&rollout_strats, PLAYER_A, AI_STRATEGY_RANDOM);
+  set_player_strategy_by_type(&rollout_strats, PLAYER_B, AI_STRATEGY_RANDOM);
+  float result = mc_playout(&gs, PLAYER_A, &first, &rollout_strats, &sim_ctx, MAX_NUMBER_OF_TURNS);
 
   check(suite, "result is 0.0, 0.5, or 1.0",
         1, result == 0.0f || result == 0.5f || result == 1.0f);
@@ -496,6 +499,10 @@ void test_mc_playout_stress(TestSuite* suite)
   cfg.prng_seed = 1;
   GameContext* ctx = create_game_context(&cfg);
 
+  StrategySet rollout_strats = {0};
+  set_player_strategy_by_type(&rollout_strats, PLAYER_A, AI_STRATEGY_RANDOM);
+  set_player_strategy_by_type(&rollout_strats, PLAYER_B, AI_STRATEGY_RANDOM);
+
   int wins = 0, losses = 0, draws = 0;
   for(int i = 0; i < 200; i++)
   { struct gamestate gs = {0};
@@ -504,7 +511,7 @@ void test_mc_playout_stress(TestSuite* suite)
 
     GameContext sim_ctx = mc_fork_context(ctx, (uint32_t)(1000 + i));
     GameMove first = { .type = MOVE_PASS };
-    float result = mc_playout(&gs, PLAYER_A, &first, &sim_ctx, MAX_NUMBER_OF_TURNS);
+    float result = mc_playout(&gs, PLAYER_A, &first, &rollout_strats, &sim_ctx, MAX_NUMBER_OF_TURNS);
 
     if(result == 1.0f) wins++;
     else if(result == 0.0f) losses++;

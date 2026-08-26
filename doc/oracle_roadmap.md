@@ -23,10 +23,30 @@ rating system itself is now built on top of them. `A5` (rating 61 in the current
 roster fit), `A6` (rating 53), and `A7` (rating 62, the highest measured so far) all
 measure above the Borealis anchor; `A8` measures 35 — legitimately below it and not
 raised by extra rollout budget, per its own diagnosis (`doc/changelog.md`) rather
-than a defect. **Active work**: `A9` HBT 2-Ply — see "Next Up" below.
+than a defect. `A12` Clairvoyant ("The Clairvoyant") — `A8`'s sibling, not part of the
+`A1`-`A11` ladder's authoritative order — was also implemented as a side exploration,
+measuring 31; kept in the roster as a deliberately modest agent, not pursued further.
+**Active work**: `A9` HBT 2-Ply — see "Next Up" below.
 
 ### Recently Completed
 
+- **2026-08-25** — `A12` Clairvoyant ("The Clairvoyant") implemented: a side exploration
+  of whether a cheap (non-tree, no enumeration) fix to `A8`'s diagnosed rollout-policy
+  bias could raise its rating without drifting toward `A9`/`A10`/`A11`'s own territory.
+  Reuses `A8`'s identical progressive-pruning search verbatim (required generalizing
+  `mc_playout()`/`mc_search_best_move()` to take the rollout `StrategySet` as a
+  parameter -- `A8`'s own behavior confirmed unchanged throughout); the only
+  difference is that rollouts give the *opponent's* simulated moves a cheap
+  closed-form heuristic instead of `A8`'s uniformly-random policy. Playtracing found
+  and fixed two real defects in that heuristic (an attack score that never weighed
+  cost, committing 100% of the time; a defense formula with the same gap, once fixed
+  over-correcting until cost was weighed the same way on both sides) before a
+  `cost_weight` sweep (14 values, vs `borealis`) replaced a borrowed Borealis-lambda
+  starting estimate with an empirically better one. Measured rating: **31** — close to
+  but consistently a few points below `A8`'s own 35, not a clear improvement; shipped
+  anyway as a deliberately modest, "fun and easy to beat" roster member rather than
+  chased further, since `A9`-`A11` are expected to be materially stronger agents by
+  design. Full details: `doc/changelog.md`.
 - **2026-08-25** — `A8` Simple Monte Carlo ("The Soothsayer") implemented and
   calibrated: the first agent on the ladder that actually simulates (progressive-pruning
   rollout search) rather than scoring closed-form, which required new shared engine
@@ -250,7 +270,11 @@ see `doc/changelog.md`)
 → `A9` HBT 2-ply → `A10` IS-MCTS → `A11` IS-MCTS + neural
 network. One `ideas/A#` folder per agent,
 `A#` matching that agent's `AIStrategyType` enum ordinal (`src/core/game_types.h` as of
-`A1`; it previously lived in `src/ui/shared/player_config.h`). See
+`A1`; it previously lived in `src/ui/shared/player_config.h`). `A12` Clairvoyant (The
+Clairvoyant, done, 2026-08-25, rating 31) is appended after `A11` in enum ordinal but
+is **not** part of this authoritative ladder order -- it's `A8`'s sibling (same search,
+a cheap opponent-rollout heuristic instead of pure random), built as a side exploration
+rather than the next rung; see `doc/changelog.md`. See
 `ideas/G1 AI agent general info/oracle_ai_agent_names.md` for the canonical roster,
 flavour names, and ratings.
 

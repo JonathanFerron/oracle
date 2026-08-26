@@ -56,7 +56,8 @@ AGENT_SRCS := $(SRCDIR)/ai_strat/ai_strategy.c \
               $(SRCDIR)/ai_strat/ai_strat_hbt_cards.c \
               $(SRCDIR)/ai_strat/ai_strat_playout.c \
               $(SRCDIR)/ai_strat/ai_strat_simplemc_search.c \
-              $(SRCDIR)/ai_strat/ai_strat_simplemc1.c
+              $(SRCDIR)/ai_strat/ai_strat_simplemc1.c \
+              $(SRCDIR)/ai_strat/ai_strat_clairvoyant1.c
 
 # Test targets
 # Object paths are mapped into $(BUILDDIR) (mirroring the main build's pattern rule
