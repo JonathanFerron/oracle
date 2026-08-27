@@ -17,14 +17,18 @@ also above the Borealis anchor, see `doc/changelog.md`), `A7` Hybrid HBT
 ("The Grandmaster", 2026-08-25, calibrated, measured rating 62 — the highest measured
 rating so far, above all three agents it combines (`A4`/`A5`/`A6`) in the same
 roster-wide fit despite a pairwise loss to `A5` specifically, see `doc/changelog.md`),
-and `A8` Simple Monte Carlo ("The Soothsayer", 2026-08-25, calibrated, measured rating
+`A8` Simple Monte Carlo ("The Soothsayer", 2026-08-25, calibrated, measured rating
 35 — below the Borealis anchor and not raised by extra rollout budget, a diagnosed and
-honestly-reported ceiling rather than a defect, see `doc/changelog.md`)
+honestly-reported ceiling rather than a defect, see `doc/changelog.md`), and `A9` HBT
+2-Ply ("Grandmaster II", 2026-08-26, calibrated, measured rating 59 vs Borealis —
+above the anchor — but only 47.2% head-to-head vs `A7` specifically, below this
+agent's own design target; root cause precisely isolated to a pre-existing property of
+`A7`'s own defense formula, see `doc/changelog.md`)
 are implemented. `A12` Clairvoyant ("The Clairvoyant", 2026-08-25, measured rating 31)
 was also implemented, as a side exploration of `A8`'s own diagnosis rather than the
-next ladder rung -- `A9` remains next, see below. The
+next ladder rung. The
 Bradley-Terry rating system itself (2026-08-23, `src/rating/`) is now built on top of
-them — see `doc/oracle_roadmap.md`'s "Next Up" for what's next (`A9`). The strategy-set
+them — see `doc/oracle_roadmap.md`'s "Next Up" for what's next (`A10`). The strategy-set
 build sites
 also gained a shared `AIStrategyType -> function pointer` registry (`ai_strategy.c`) as
 part of `A1` -- see "Checklist: Adding a New AI Strategy" below, which now reflects that

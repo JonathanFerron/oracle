@@ -353,8 +353,9 @@ steps.
 
 ### Planned agent order
 
-The `AIStrategyType` enum and CLI menu (`src/ui/shared/player_config.h`) list all eleven
-planned agents, each commented with its `ideas/A#` folder:
+The `AIStrategyType` enum (`src/core/game_types.h`; the CLI/TUI menu itself lives in
+`src/ui/shared/player_config.c`) lists all twelve planned agents (`A1`–`A11` plus the
+side-exploration `A12`), each commented with its `ideas/A#` folder:
 
 | Enum | Status | `ideas/` folder |
 | --- | --- | --- |
@@ -367,9 +368,10 @@ planned agents, each commented with its `ideas/A#` folder:
 | `AI_STRATEGY_TACTICAL` | **implemented and calibrated** (2026-08-25) | `A6` (Pressure Cooker) — measured rating 52, above the Borealis anchor |
 | `AI_STRATEGY_HYBRID_HBT` | **implemented and calibrated** (2026-08-25) | `A7` (The Grandmaster — synthesis of `A4`/`A5`/`A6`) — measured rating 62, above the Borealis anchor |
 | `AI_STRATEGY_SIMPLE_MC` | **implemented and calibrated** (2026-08-25) | `A8` (The Soothsayer) — measured rating 35, below the Borealis anchor (diagnosed, not a defect — see `doc/changelog.md`) |
-| `AI_STRATEGY_HBT_2PLY` | stub | `A9` (Grandmaster II) |
+| `AI_STRATEGY_HBT_2PLY` | **implemented and calibrated** (2026-08-26) | `A9` (Grandmaster II — one opponent-response ply added to `A7`) — measures below A7 head-to-head; see `doc/changelog.md` for the full diagnosis |
 | `AI_STRATEGY_ISMCTS` | stub | `A10` (The Omniscient) |
 | `AI_STRATEGY_ISMCTS_NN` | stub | `A11` (AlphaOracle Prime) |
+| `AI_STRATEGY_CLAIRVOYANT` | **implemented and calibrated** (2026-08-25) | `A12` (The Clairvoyant — `A8`'s sibling, a side exploration) — measured rating 31 |
 
 Implementation order was `A1 → A2 → A3`, not just easiest-first: the rating system
 (`src/rating/`) needed the Borealis benchmark agent (`A3`), which itself needed `A1`–`A2`

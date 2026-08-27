@@ -26,10 +26,45 @@ raised by extra rollout budget, per its own diagnosis (`doc/changelog.md`) rathe
 than a defect. `A12` Clairvoyant ("The Clairvoyant") — `A8`'s sibling, not part of the
 `A1`-`A11` ladder's authoritative order — was also implemented as a side exploration,
 measuring 31; kept in the roster as a deliberately modest agent, not pursued further.
-**Active work**: `A9` HBT 2-Ply — see "Next Up" below.
+**Active work**: `A10` IS-MCTS — see "Next Up" below.
 
 ### Recently Completed
 
+- **2026-08-26** — `A9` HBT 2-Ply ("Grandmaster II") implemented and calibrated: `A7`
+  Hybrid HBT plus one opponent-response ply -- for each candidate champion subset, clone
+  the position, commit it, and score against a simulated best reply from a deterministic
+  public-information surrogate hand (`ai_strat_hbt2ply_reply.c`), blended with `A7`'s own
+  undefended score via a `reply_trust` dial (0 provably recovers `A7` exactly, verified in
+  `testsrc/test_moves.c`). Two real findings surfaced while building it, both documented
+  in depth further down this file's history and in `ai_strat_hbt2ply.h`/
+  `ai_strat_hbt_enum.h`: (1) `A7`'s own shipped defense formula
+  (`hbt_best_defense_move()`) has a PASS-dominance property -- its decline baseline never
+  charges the incoming attack, making declining mathematically dominate every blocking
+  option under `A7`'s weights -- so `A9` uses its own local, corrected reply oracle
+  (`hbt2ply_reply_defense_move()`) rather than `A7`'s real one, leaving `A7` itself
+  untouched; (2) `A9`'s own first scoring formula over-credited "forced the opponent to
+  spend a resource blocking" (~5x the weight of the actual damage-reduction term),
+  making the ply actively harmful even when its block prediction was accurate -- fixed to
+  credit damage reduction only, which is now a mathematical guarantee
+  (`two_ply <= one_ply` always) rather than a design intention. Calibration (staged: the
+  34 inherited `HBTParams` fields hard-pinned, only `reply_trust`/`surrogate_pessimism`
+  searched) converged to the same ~47% ceiling against `A7` whether optimized against
+  `borealis` or directly against `hbt`, both with tight confidence intervals over 40,000
+  games -- not a tuning gap. A controlled test isolating the attack-side logic (both
+  sides given the corrected defense) showed the ply reaching near-parity with `A7` there
+  (49.6% vs 50.5%), confirming the mechanism works in principle but has nothing real to
+  correct for against `A7`'s actual (non-blocking) defense. Measured: **59** vs
+  `borealis` (20,000 games, both seats, direct pairwise -- same methodology as `A8`,
+  chosen for consistency rather than necessity: unlike `A8`, `A9`'s own cost is cheap,
+  ~3200 games/sec, but a roster-wide fit was skipped anyway since `A8`/`A12` already make
+  any full round-robin impractical regardless of what else is added to it); measured
+  **47.2%** [46.7%, 47.7%] head-to-head vs `A7` specifically -- below this agent's own
+  design target, honestly reported. Shipped as a playable, calibrated roster member
+  (`A4`/`A8`/`A12` precedent); fixing `A7`'s (and `A5`'s identical) defense formula is
+  believed a genuine prerequisite for a future re-attempt at the design target, deferred
+  to its own task and conditioned on `A5`/`A7` measuring at least as strong against
+  `Borealis` afterward, not merely "more realistic" (user's stated condition). Full
+  details: `ideas/A9 .../about.md`, this session's diagnosis.
 - **2026-08-25** — `A12` Clairvoyant ("The Clairvoyant") implemented: a side exploration
   of whether a cheap (non-tree, no enumeration) fix to `A8`'s diagnosed rollout-policy
   bias could raise its rating without drifting toward `A9`/`A10`/`A11`'s own territory.
@@ -205,12 +240,14 @@ Full details: `doc/changelog.md`.
 
 ## Next Up (single authoritative order)
 
-1. **`A9` HBT 2-Ply** ("Grandmaster II", `ideas/A9 ai agent hbt 2 ply (grandmaster ii)/`).
-   The next rung on the AI ladder — `A1`-`A8` are all implemented and calibrated.
-   A live open question ahead of it: whether to give `A8` Simple Monte Carlo a cheap,
+1. **`A10` IS-MCTS** ("The Omniscient", `ideas/A10 ai agent is-mcts (the omniscient)/`).
+   The next rung on the AI ladder — `A1`-`A9` and `A12` are all implemented and
+   calibrated. The question of whether to give `A8` Simple Monte Carlo a cheap,
    non-tree heuristic rollout policy (its uniformly-random rollouts are the diagnosed
    cause of its below-anchor rating, see `doc/changelog.md`'s 2026-08-25 entry) without
-   drifting it toward `A9`/`A10`/`A11`'s own territory — not yet resolved.
+   drifting it toward `A9`/`A10`/`A11`'s own territory is now resolved: `A12` Clairvoyant
+   (2026-08-25) is exactly that experiment, and it did not pay off (measured rating 31,
+   a few points below `A8`'s own 35) -- see `doc/changelog.md`.
 
 **Back burner** (explicitly deferred): save/load game state
 (`ideas/6 save and load gamestate/`), configuration file system

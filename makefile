@@ -54,6 +54,8 @@ AGENT_SRCS := $(SRCDIR)/ai_strat/ai_strategy.c \
               $(SRCDIR)/ai_strat/ai_strat_hbt.c \
               $(SRCDIR)/ai_strat/ai_strat_hbt_enum.c \
               $(SRCDIR)/ai_strat/ai_strat_hbt_cards.c \
+              $(SRCDIR)/ai_strat/ai_strat_hbt2ply.c \
+              $(SRCDIR)/ai_strat/ai_strat_hbt2ply_reply.c \
               $(SRCDIR)/ai_strat/ai_strat_playout.c \
               $(SRCDIR)/ai_strat/ai_strat_simplemc_search.c \
               $(SRCDIR)/ai_strat/ai_strat_simplemc1.c \
@@ -105,6 +107,20 @@ TEST_CASH_SRCS := $(TESTSRCDIR)/test_cash_exchange.c \
                   $(SRCDIR)/util/rnd.c
 TEST_CASH_OBJS := $(BUILDDIR)/testsrc/test_cash_exchange.o \
                   $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_CASH_SRCS)))
+
+# ai_strat_hbt2ply_reply.c started as just the surrogate-hand builder
+# (fullDeck + Hand/Discard/CombatZone only) but has since grown A9's
+# two-ply scoring/reply-oracle functions too, which pull in the full HBT
+# stack (ai_strat_hbt_enum.c's hbt_advantage()/predicted_damage()/etc.) --
+# same "link the whole engine + roster" reasoning as TEST_RECALL_SRCS/
+# TEST_MOVES_SRCS above, not the narrow TEST_CASH_SRCS shape this target
+# started with.
+TEST_HBT2PLY_REPLY_TARGET := $(BINDIR)/test_hbt2ply_reply
+TEST_HBT2PLY_REPLY_SRCS := $(TESTSRCDIR)/test_hbt2ply_reply.c \
+                           $(ENGINE_SRCS) \
+                           $(AGENT_SRCS)
+TEST_HBT2PLY_REPLY_OBJS := $(BUILDDIR)/testsrc/test_hbt2ply_reply.o \
+                           $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_HBT2PLY_REPLY_SRCS)))
 
 # Test move enumeration/application/playout (src/actions/,
 # ai_strat_playout.c) -- the engine-level infrastructure A8 Simple Monte
@@ -223,6 +239,19 @@ CALIB_HBT_SRCS := $(AICALIBDIR)/hbt/calib_hbt.c \
 CALIB_HBT_OBJS := $(BUILDDIR)/aicalibsrc/hbt/calib_hbt.o \
                   $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_HBT_SRCS)))
 
+# Calibration harness for A9 HBT 2-Ply's tunable parameters (see
+# aicalibsrc/hbt2ply/). Same pattern and same whole-roster reasoning as
+# CALIB_VALUEBASED_*/CALIB_COMBO_*/CALIB_BOREALIS_*/CALIB_BALANCED_*/
+# CALIB_HEURISTIC_*/CALIB_TACTICAL_*/CALIB_HBT_* above.
+CALIB_HBT2PLY_TARGET := $(BINDIR)/calib_hbt2ply
+CALIB_HBT2PLY_SRCS := $(AICALIBDIR)/hbt2ply/calib_hbt2ply.c \
+                      $(ENGINE_SRCS) \
+                      $(AGENT_SRCS) \
+                      $(SRCDIR)/roles/stda/stda_auto.c \
+                      $(SRCDIR)/ui/shared/player_config.c
+CALIB_HBT2PLY_OBJS := $(BUILDDIR)/aicalibsrc/hbt2ply/calib_hbt2ply.o \
+                      $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_HBT2PLY_SRCS)))
+
 # Calibration harness for A8 Simple Monte Carlo's tunable parameters (see
 # aicalibsrc/simplemc/). Same pattern and same whole-roster reasoning as
 # CALIB_VALUEBASED_*/CALIB_COMBO_*/CALIB_BOREALIS_*/CALIB_BALANCED_*/
@@ -268,7 +297,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_simplemc
+	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_hbt2ply_reply $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -310,6 +339,17 @@ $(TEST_CASH_TARGET): $(TEST_CASH_OBJS)
 	@mkdir -p $(BINDIR)
 	$(CC) $(TEST_CASH_OBJS) -o $(TEST_CASH_TARGET) $(LIBS)
 	@echo "Test build complete: $(TEST_CASH_TARGET)"
+
+# Test A9 HBT 2-Ply's surrogate-hand builder
+.PHONY: test_hbt2ply_reply
+test_hbt2ply_reply: $(TEST_HBT2PLY_REPLY_TARGET)
+	./$(TEST_HBT2PLY_REPLY_TARGET)
+
+$(TEST_HBT2PLY_REPLY_TARGET): $(TEST_HBT2PLY_REPLY_OBJS)
+	@echo "Linking test_hbt2ply_reply..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(TEST_HBT2PLY_REPLY_OBJS) -o $(TEST_HBT2PLY_REPLY_TARGET) $(LIBS)
+	@echo "Test build complete: $(TEST_HBT2PLY_REPLY_TARGET)"
 
 # Test move enumeration (src/actions/move_gen.c)
 .PHONY: test_moves
@@ -403,6 +443,16 @@ $(CALIB_HBT_TARGET): $(CALIB_HBT_OBJS)
 	$(CC) $(CALIB_HBT_OBJS) -o $(CALIB_HBT_TARGET) $(LIBS)
 	@echo "Build complete: $(CALIB_HBT_TARGET)"
 
+# Calibration harness (see aicalibsrc/hbt2ply/README.md or the file header for CLI usage)
+.PHONY: calib_hbt2ply
+calib_hbt2ply: $(CALIB_HBT2PLY_TARGET)
+
+$(CALIB_HBT2PLY_TARGET): $(CALIB_HBT2PLY_OBJS)
+	@echo "Linking calib_hbt2ply..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(CALIB_HBT2PLY_OBJS) -o $(CALIB_HBT2PLY_TARGET) $(LIBS)
+	@echo "Build complete: $(CALIB_HBT2PLY_TARGET)"
+
 # Calibration harness (see aicalibsrc/simplemc/README.md or the file header for CLI usage)
 .PHONY: calib_simplemc
 calib_simplemc: $(CALIB_SIMPLEMC_TARGET)
@@ -436,6 +486,7 @@ help:
 	@echo "  test_cash_exchange - Build and run cash exchange tests"
 	@echo "  test_rating      - Build and run Bradley-Terry rating system tests"
 	@echo "  test_moves       - Build and run move enumeration (src/actions/) tests"
+	@echo "  test_hbt2ply_reply - Build and run A9 HBT 2-Ply surrogate-hand tests"
 	@echo "  test_stda_auto   - Diff 'oracle -sa -p' output against bin/expectedresults.txt"
 	@echo "  calib_valuebased - Build the Value Based parameter calibration harness (aicalibsrc/)"
 	@echo "  calib_combo_threshold - Build the Combo Threshold parameter calibration harness (aicalibsrc/)"
@@ -444,6 +495,7 @@ help:
 	@echo "  calib_heuristic  - Build the Heuristic parameter calibration harness (aicalibsrc/)"
 	@echo "  calib_tactical   - Build the Tactical parameter calibration harness (aicalibsrc/)"
 	@echo "  calib_hbt        - Build the Hybrid HBT parameter calibration harness (aicalibsrc/)"
+	@echo "  calib_hbt2ply    - Build the HBT 2-Ply parameter calibration harness (aicalibsrc/)"
 	@echo "  calib_simplemc   - Build the Simple Monte Carlo parameter calibration harness (aicalibsrc/)"
 	@echo "  format           - Format the c and h source files using astyle"
 	@echo "  help             - Show this help message"

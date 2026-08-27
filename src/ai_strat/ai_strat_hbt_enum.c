@@ -176,9 +176,9 @@ HBTState hbt_evaluate_state(struct gamestate* gstate, PlayerID player,
    resource-shortfall penalty subtracted.
    ======================================================================== */
 
-static float hbt_advantage(float own_energy, float opp_energy, float own_hand,
-                           float opp_hand, float own_cash, float opp_cash,
-                           const HBTParams* params, const HBTState* state)
+float hbt_advantage(float own_energy, float opp_energy, float own_hand,
+                    float opp_hand, float own_cash, float opp_cash,
+                    const HBTParams* params, const HBTState* state)
 { float energy_adv = own_energy - opp_energy;
   if(opp_energy <= 0.0f) energy_adv += HBT_LETHAL_BONUS;
   if(own_energy <= 0.0f) energy_adv -= HBT_LETHAL_BONUS;
@@ -204,8 +204,10 @@ static float hbt_advantage(float own_energy, float opp_energy, float own_hand,
 
 // Sigma(expected_attack) + combo bonus, clamped to opp_energy -- identical
 // to A5's predicted_damage() (ai_strat_heuristic.c), same "no opponent block
-// modelled" rationale (ai_strat_heuristic.h's header comment).
-static float predicted_damage(const uint8_t* cards, uint8_t count, float opp_energy)
+// modelled" rationale (ai_strat_heuristic.h's header comment). A9 HBT 2-Ply
+// reuses this verbatim for its own ply-1 damage estimate before subtracting
+// the opponent's predicted block -- see ai_strat_hbt_enum.h.
+float predicted_damage(const uint8_t* cards, uint8_t count, float opp_energy)
 { float total = 0.0f;
   for(uint8_t i = 0; i < count; i++)
     total += fullDeck[cards[i]].expected_attack;
@@ -217,7 +219,8 @@ static float predicted_damage(const uint8_t* cards, uint8_t count, float opp_ene
 } // predicted_damage
 
 // Sigma(expected_defense) + combo bonus -- identical to A5's predicted_block().
-static float predicted_block(const uint8_t* cards, uint8_t count)
+// A9 HBT 2-Ply reuses this to score the opponent's simulated reply subset.
+float predicted_block(const uint8_t* cards, uint8_t count)
 { float total = 0.0f;
   for(uint8_t i = 0; i < count; i++)
     total += fullDeck[cards[i]].expected_defense;
@@ -230,9 +233,9 @@ static float predicted_block(const uint8_t* cards, uint8_t count)
    (ai_strat_borealis_enum.c) -- attack only.
    ======================================================================== */
 
-static bool is_held_combo(const uint8_t* cards, uint8_t count, float raw_damage,
-                          PlayerID opponent, const struct gamestate* gstate,
-                          const HBTParams* params)
+bool is_held_combo(const uint8_t* cards, uint8_t count, float raw_damage,
+                   PlayerID opponent, const struct gamestate* gstate,
+                   const HBTParams* params)
 { if(!params->hold_lethal_combos || count < 2) return false;
 
   int bonus = combo_bonus_for_selection(cards, count);
@@ -355,8 +358,8 @@ HBTBestMove hbt_best_attack_move(struct gamestate* gstate, PlayerID player,
    defense_stdev_mult).
    ======================================================================== */
 
-static float variance_aware_incoming(const struct gamestate* gstate, PlayerID defender,
-                                     PlayerID attacker, const HBTParams* params)
+float variance_aware_incoming(const struct gamestate* gstate, PlayerID defender,
+                              PlayerID attacker, const HBTParams* params)
 { float expected = expected_incoming_attack(gstate, defender);
 
   float variance = 0.0f;
@@ -368,11 +371,11 @@ static float variance_aware_incoming(const struct gamestate* gstate, PlayerID de
   return (incoming < 0.0f) ? 0.0f : incoming;
 } // variance_aware_incoming
 
-static void evaluate_defense_subset(const uint8_t* cards, uint8_t count, float own_energy,
-                                    float opp_energy, float own_hand, float opp_hand,
-                                    float own_cash, float opp_cash, float incoming,
-                                    const HBTParams* params, const HBTState* state,
-                                    HBTBestMove* best)
+void evaluate_defense_subset(const uint8_t* cards, uint8_t count, float own_energy,
+                             float opp_energy, float own_hand, float opp_hand,
+                             float own_cash, float opp_cash, float incoming,
+                             const HBTParams* params, const HBTState* state,
+                             HBTBestMove* best)
 { float cost = 0.0f;
   for(uint8_t i = 0; i < count; i++) cost += (float)fullDeck[cards[i]].cost;
   if(cost > own_cash) return;

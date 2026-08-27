@@ -20,7 +20,11 @@
 #include "../src/actions/move_gen.h"
 #include "../src/actions/move_apply.h"
 #include "../src/ai_strat/ai_strat_playout.h"
+#include "../src/ai_strat/ai_strat_hbt.h"
+#include "../src/ai_strat/ai_strat_hbt_enum.h"
+#include "../src/ai_strat/ai_strat_hbt2ply_reply.h"
 #include "../src/core/game_state.h"
+#include "../src/core/game_constants.h"
 #include "../src/core/turn_logic.h"
 
 #define TEST_PASS "\033[32m\xe2\x9c\x93 PASS\033[0m"
@@ -33,6 +37,11 @@
 #define DRAW2   102
 #define DRAW3   111
 #define CASH    117
+// Cost-3 champion, expected_attack 15.5 / expected_defense 10.5 -- a real
+// threat, unlike CHAMP_A-D's cost-0 pokes (max expected_attack 3.5), used
+// by A9 HBT 2-Ply's tests below where a rational defender must actually
+// want to block for the ply to have anything to bite on.
+#define CHAMP_STRONG 33
 
 typedef struct
 { const char* name;
@@ -524,6 +533,126 @@ void test_mc_playout_stress(TestSuite* suite)
   destroy_game_context(ctx);
 } // test_mc_playout_stress
 
+/* ========================================================================
+   A9 HBT 2-Ply: hbt2ply_score_attack_subset() -- the central regression
+   guard is that reply_trust == 0 recovers A7's own decision exactly (see
+   ai_strat_hbt2ply.h). Hand-crafted states, same style as the rest of this
+   file, rather than setup_game()'s shuffled deal.
+   ======================================================================== */
+
+static struct gamestate hbt_test_state(uint8_t own_energy, uint8_t opp_energy, uint16_t own_cash)
+{ struct gamestate gs = {0};
+  Hand_init(&gs.hand[PLAYER_A]);
+  Hand_init(&gs.hand[PLAYER_B]);
+  Discard_init(&gs.discard[PLAYER_A]);
+  Discard_init(&gs.discard[PLAYER_B]);
+  CombatZone_init(&gs.combat_zone[PLAYER_A]);
+  CombatZone_init(&gs.combat_zone[PLAYER_B]);
+  gs.current_energy[PLAYER_A] = own_energy;
+  gs.current_energy[PLAYER_B] = opp_energy;
+  gs.current_cash_balance[PLAYER_A] = own_cash;
+  gs.turn_phase = ATTACK;
+  return gs;
+} // hbt_test_state
+
+// A7's own one-ply score for this exact subset, recomputed independently
+// via the same shared functions A7's (static) evaluate_attack_subset()
+// calls internally -- this is the ground truth reply_trust == 0 must match
+// bit-for-bit.
+static float a7_reference_score(const struct gamestate* gs, const uint8_t* cards,
+                                uint8_t count, const HBTParams* base, const HBTState* state)
+{ float opp_energy = (float)gs->current_energy[PLAYER_B];
+  float dmg = predicted_damage(cards, count, opp_energy);
+  uint16_t cost = 0;
+  for(uint8_t i = 0; i < count; i++) cost += fullDeck[cards[i]].cost;
+
+  return hbt_advantage((float)gs->current_energy[PLAYER_A], opp_energy - dmg,
+                       (float)gs->hand[PLAYER_A].size - (float)count,
+                       (float)gs->hand[PLAYER_B].size,
+                       (float)gs->current_cash_balance[PLAYER_A] - (float)cost,
+                       (float)gs->current_cash_balance[PLAYER_B], base, state);
+} // a7_reference_score
+
+void test_hbt2ply_reply_trust_zero_matches_a7(TestSuite* suite)
+{ printf("\n=== A9 HBT 2-Ply: reply_trust=0 recovers A7 exactly ===\n");
+
+  struct gamestate gs = hbt_test_state(60, 40, 20);
+  Hand_add(&gs.hand[PLAYER_A], CHAMP_A);
+  Hand_add(&gs.hand[PLAYER_A], CHAMP_B);
+  Hand_add(&gs.hand[PLAYER_A], CHAMP_D);
+  Hand_add(&gs.hand[PLAYER_B], CHAMP_C); // opponent's real hand -- unread at
+  // reply_trust == 0 (only .size is), stands in for hidden information
+
+  HBTParams base = hbt_get_default_params();
+  HBTState state = hbt_evaluate_state(&gs, PLAYER_A, &base);
+  HBT2PlyParams params = { .base = base, .reply_trust = 0.0f,
+                           .surrogate_pessimism = 1.0f, .ply_energy_ceiling = 99, .ply_beam_width = 0
+                         };
+
+  uint8_t subset[2] = { CHAMP_A, CHAMP_B };
+  float a9_score = 0.0f;
+  bool applicable = hbt2ply_score_attack_subset(&gs, PLAYER_A, subset, 2,
+                                                &params, &state, &a9_score);
+  check(suite, "subset is applicable (affordable, not a held combo)", 1, applicable);
+
+  float a7_score = a7_reference_score(&gs, subset, 2, &base, &state);
+  check(suite, "reply_trust=0 score matches A7's one-ply score bit-for-bit",
+        1, a9_score == a7_score);
+} // test_hbt2ply_reply_trust_zero_matches_a7
+
+void test_hbt2ply_forced_decline_matches_a7(TestSuite* suite)
+{ printf("\n=== A9 HBT 2-Ply: reply_trust=1 with a cashless opponent still "
+           "matches A7 (their only legal reply is to decline) ===\n");
+
+  struct gamestate gs = hbt_test_state(60, 40, 20);
+  Hand_add(&gs.hand[PLAYER_A], CHAMP_A);
+  Hand_add(&gs.hand[PLAYER_A], CHAMP_B);
+  Hand_add(&gs.hand[PLAYER_B], CHAMP_C);
+  gs.current_cash_balance[PLAYER_B] = 0; // no champion is affordable to block with
+
+  HBTParams base = hbt_get_default_params();
+  HBTState state = hbt_evaluate_state(&gs, PLAYER_A, &base);
+  HBT2PlyParams params = { .base = base, .reply_trust = 1.0f,
+                           .surrogate_pessimism = 1.0f, .ply_energy_ceiling = 99, .ply_beam_width = 0
+                         };
+
+  uint8_t subset[1] = { CHAMP_A };
+  float a9_score = 0.0f;
+  bool applicable = hbt2ply_score_attack_subset(&gs, PLAYER_A, subset, 1,
+                                                &params, &state, &a9_score);
+  check(suite, "subset is applicable", 1, applicable);
+
+  float a7_score = a7_reference_score(&gs, subset, 1, &base, &state);
+  check(suite, "forced decline degrades to A7's undefended score bit-for-bit",
+        1, a9_score == a7_score);
+} // test_hbt2ply_forced_decline_matches_a7
+
+void test_hbt2ply_ply_changes_score_when_reply_possible(TestSuite* suite)
+{ printf("\n=== A9 HBT 2-Ply: the ply is alive (changes the score) when the "
+           "opponent can plausibly block ===\n");
+
+  struct gamestate gs = hbt_test_state(60, 40, 20);
+  Hand_add(&gs.hand[PLAYER_A], CHAMP_STRONG); // exp_atk 15.5 -- a real threat
+  for(uint8_t i = 0; i < 5; i++) Hand_add(&gs.hand[PLAYER_B], CHAMP_C); // size only
+  gs.current_cash_balance[PLAYER_B] = 50; // plenty to field a blocker
+
+  HBTParams base = hbt_get_default_params();
+  HBTState state = hbt_evaluate_state(&gs, PLAYER_A, &base);
+  HBT2PlyParams params = { .base = base, .reply_trust = 1.0f,
+                           .surrogate_pessimism = 1.0f, .ply_energy_ceiling = 99, .ply_beam_width = 0
+                         };
+
+  uint8_t subset[1] = { CHAMP_STRONG };
+  float a9_score = 0.0f;
+  bool applicable = hbt2ply_score_attack_subset(&gs, PLAYER_A, subset, 1,
+                                                &params, &state, &a9_score);
+  check(suite, "subset is applicable", 1, applicable);
+
+  float a7_score = a7_reference_score(&gs, subset, 1, &base, &state);
+  check(suite, "two-ply score differs from A7's undefended score "
+               "(the ply is not a no-op)", 1, a9_score != a7_score);
+} // test_hbt2ply_ply_changes_score_when_reply_possible
+
 int main(void)
 { TestSuite suite = {"Move Generation Tests", 0, 0};
 
@@ -546,6 +675,9 @@ int main(void)
   test_mc_determinize_invariants(&suite);
   test_mc_playout_isolated(&suite);
   test_mc_playout_stress(&suite);
+  test_hbt2ply_reply_trust_zero_matches_a7(&suite);
+  test_hbt2ply_forced_decline_matches_a7(&suite);
+  test_hbt2ply_ply_changes_score_when_reply_possible(&suite);
 
   printf("\n=== TEST SUMMARY ===\n");
   printf("Passed: %d, Failed: %d, Total: %d\n",

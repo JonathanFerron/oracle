@@ -5,6 +5,140 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-26 — A9 HBT 2-Ply ("Grandmaster II") implemented and calibrated: the next rung on the ladder, below its own design target, with a precisely isolated root cause
+
+`A7` Hybrid HBT plus one opponent-response ply, per `ideas/A9 .../about.md`: for every
+candidate champion subset, clone the position, commit the subset, simulate the
+opponent's best reply against a deterministic public-information surrogate hand, and
+blend that net-of-reply score against `A7`'s own undefended score.
+
+- **New files**: `src/ai_strat/ai_strat_hbt2ply.{c,h}` (orchestration, params,
+  calibration hooks -- same shape as `ai_strat_hbt.c`) and
+  `src/ai_strat/ai_strat_hbt2ply_reply.{c,h}` (surrogate-hand construction and the
+  two-ply scoring/enumeration loop, split out the same way `A7`'s own
+  `ai_strat_hbt`/`ai_strat_hbt_enum` are).
+- **The surrogate hand** (`build_surrogate_hand()`): sized to the opponent's real
+  (public) hand size, composed from the public unseen pool (`fullDeck` minus the
+  attacker's own hand/discards/combat zones -- the identical pool definition as `A8`'s
+  `mc_determinize()`, duplicated locally rather than shared, since this agent
+  deliberately takes no dependency on `A8`'s playout infrastructure and stays fully
+  deterministic, no sampling) in the same champion/non-champion proportion as that
+  pool. `surrogate_pessimism` windows which champions: 1.0 selects the strongest
+  available blockers, 0.0 a hand of roughly median blocking strength. Found and fixed
+  an aliasing hazard during unit testing: the function read the target hand size
+  *after* zeroing the output hand, which is a real bug when a caller (as this agent's
+  own scoring does) builds the surrogate directly into a gamestate clone's own
+  `hand[opponent]` slot -- fixed by reading the size first.
+- **Reused, not reimplemented, from `A7`**: `hbt_advantage()`, `predicted_damage()`,
+  `predicted_block()`, and `is_held_combo()` were un-`static`'d in
+  `ai_strat_hbt_enum.c`/`.h` specifically so this agent shares `A7`'s own scoring rather
+  than drifting from it. `hbt_advantage()`'s own header comment now flags that it is
+  NOT sign-symmetric (the resource-shortfall penalty is one-sided and `HBTState` must be
+  derived for whichever player is being scored) -- the main correctness trap this
+  agent's design had to route around.
+
+### Finding 1: A7's own defense formula has a PASS-dominance property
+
+Building this agent's reply oracle around `A7`'s own `hbt_best_defense_move()`
+(the original design intent -- "the ranking layer `A7` already has, applied from the
+other seat") surfaced a pre-existing property of that shipped, calibrated, measured
+function (and `A5`'s identical `best_defense_move()`, which `A7`'s shape was copied
+from): its PASS/decline baseline scores the *undamaged* `own_energy`, never charging
+the incoming attack against declining. Worked through `hbt_advantage()`'s algebra: for
+any `gamma_eff > 0` (always true under the shipped calibration, ~1.8-2.1), blocking
+costs at least one hand card (weighted by `gamma_eff`) while the energy saved is
+weighted only `eps_eff = 0.349` -- even a *perfect* block only ties PASS on the energy
+term, then loses on hand/cash. PASS strictly dominates every blocking option,
+unconditionally, at the shipped defaults. Confirmed two ways:
+- **Proof**: the inequality above holds for any incoming attack, given the shipped
+  weights.
+- **Empirically**: `HBT`-vs-`HBT` and `Heuristic`-vs-`Heuristic` mirror matches both
+  average **6 turns** to burn 99 energy (~16.5 dmg/turn), vs `Random`-vs-`Random`'s
+  **26 turns** -- consistent with combat landing essentially undefended. A direct trace
+  confirmed `hbt_best_defense_move()` chose PASS even against a 15.5-damage hit with
+  cash and blockers available.
+
+**Decision (user, staged)**: fix this agent's own reply-oracle only, leave `A7`'s (and
+`A5`'s) actual shipped, measured code untouched -- fixing it in place would move both
+agents' own measured ratings and is deferred to its own future task, conditioned on
+`A5`/`A7` measuring *at least as strong* against `Borealis` afterward, not merely "more
+realistic" (memory: `project_a5_a7_defense_pass_dominance`). This agent's reply oracle
+is `hbt2ply_reply_defense_move()` (`ai_strat_hbt2ply_reply.c`): identical to `A7`'s
+function in every other respect -- same enumeration, same `variance_aware_incoming()`,
+same `evaluate_defense_subset()`, both reused verbatim -- except the PASS baseline
+correctly charges `own_energy - incoming`.
+
+### Finding 2: the two-ply scoring formula itself over-credited resource-trading
+
+With the corrected reply oracle in place, calibration (`optimize` against `borealis`,
+then validated head-to-head against `hbt`) produced a candidate that still *lost* to
+`A7` (46.84%). Re-running `optimize` directly against `hbt` -- the actual success
+criterion -- plateaued at the same ~47% regardless, with a genuine, non-degenerate
+`reply_trust`. A controlled test (both sides given the corrected, actually-blocking
+defense, only the attack-side logic varied) showed *why*: `A9`'s own attack lost 43.13%
+to 56.87% against `A7`'s naive "assume no block" attack, even when its block prediction
+was accurate.
+
+Root cause: the two-ply score credited *two* things when a block was predicted --
+reduced damage (`eps_eff ≈ 0.35`) and the opponent spending cards/cash to block
+(`gamma_eff`/`delta_eff ≈ 1.8-2.1`, roughly 5x higher). The "made them spend a
+resource" credit dominated the "actually reduced their energy" term, biasing the
+two-ply ranking toward attacks that provoke a block over attacks that maximize raw
+damage -- a resource-trading bias that loses to a straightforward damage race in this
+game, even under ideal (accurate block prediction) conditions.
+
+**Fix**: `hbt2ply_score_attack_subset()`'s `two_ply` no longer subtracts the reply's
+`count`/cost from `opp_hand`/`opp_cash` -- those two arguments are now identical between
+`one_ply` and `two_ply`; only the damage term differs. This makes `two_ply <= one_ply`
+a **mathematical guarantee** (a block only ever reduces net damage, never turns
+negative) rather than an accidentally-violated design intention. Re-validated in the
+same controlled test: **49.55% vs 50.45%** -- from a clear loss to near-exact parity.
+Re-optimizing against `hbt` after the fix still plateaued at 47.19% [46.70%, 47.68%]
+(40,000 games) -- statistically indistinguishable from before the fix, confirming the
+real ceiling: this agent's mechanism is sound (parity, under ideal conditions) but has
+nothing real to correct for against `A7`'s actual (non-blocking) defense.
+
+### Calibration
+
+Staged per the plan: the 34 `HBTParams` fields inherited from `A7` are **hard-pinned**
+(`PINNED_PARAM_NAMES` in `calibrate_hbt2ply.py`, no `--identity-safe` escape hatch --
+this agent's framing is "`A7` plus one ply," not a fresh fit, so there is nothing of
+`A7`'s own tuning to erode). Of the 4 new fields, only `reply_trust` and
+`surrogate_pessimism` are real behaviour dials (`optimize`'s default free set);
+`ply_energy_ceiling`/`ply_beam_width` are pure compute-budget dials, shipped at their
+"no restriction" defaults (99/0) since this agent's own cost (~3200 games/sec measured
+via the calibration harness) is close to `A7`'s own closed-form cost, nowhere near
+`A8`'s ~100x rollout overhead -- no budget pressure to restrict them.
+
+Shipped: `reply_trust = 0.10358593`, `surrogate_pessimism = 0.32276109` (both from the
+post-fix `optimize --opponent hbt` run).
+
+- **Measured: 59** vs `borealis` (20,000 games, both seats, direct pairwise -- same
+  methodology as `A8`'s precedent, chosen for consistency: unlike `A8`, this agent's own
+  cost is cheap, but a roster-wide `--stda.rating` fit was skipped anyway since `A8`/
+  `A12` already make any full round-robin featuring them impractical, regardless of
+  what else is added to it). A genuinely respectable Borealis-scale rating -- above the
+  anchor, above `A6`'s 52 -- despite failing its own specific design target.
+- **Measured: 47.2%** [46.7%, 47.7%] head-to-head vs `A7` (40,000 games) -- below the
+  `>55%` target set for this agent, honestly reported (see Findings 1-2 above for why).
+- `AI_STRATEGY_RATINGS[AI_STRATEGY_HBT_2PLY]` (`player_config.c`) set to `{ 59, true }`.
+
+**Shipped as-is, not chased further this session.** Matches the `A4`/`A8`/`A12`
+precedent of reporting a below-target result honestly. Fixing `A7`'s (and `A5`'s
+identical) defense formula is believed a genuine prerequisite for a future re-attempt
+at this agent's design target -- not optional cleanup -- deferred to its own task.
+
+- **New calibration tooling**: `aicalibsrc/hbt2ply/` (`calib_hbt2ply.c`,
+  `calibrate_hbt2ply.py`, `README.md`) following `aicalibsrc/hbt/`'s pattern, scoped
+  down to this agent's actual 4-field search space.
+- **Verification**: `make` clean (no new warnings) across the main binary and all six
+  test suites (146 tests total); `-a -p` byte-identical to `bin/expectedresults.txt`
+  throughout every stage of this work; valgrind-clean (0 errors, no leaks) over 5 real
+  games via a smoke-test harness; `reply_trust = 0` proven to recover `A7`'s decision
+  bit-for-bit (`testsrc/test_moves.c`'s `test_hbt2ply_reply_trust_zero_matches_a7`, the
+  central regression guard); strategy menu confirmed showing
+  `HBT 2-ply [Grandmaster II] (available) [59]`.
+
 ## 2026-08-25 — A12 Clairvoyant ("The Clairvoyant") implemented: A8's sibling, a cheap opponent-rollout heuristic instead of pure random
 
 Not part of the `A1`-`A11` ladder's authoritative order (`A9` HBT 2-Ply remains next) --

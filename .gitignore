@@ -15,7 +15,9 @@
 /bin/calib_heuristic
 /bin/calib_tactical
 /bin/calib_hbt
+/bin/calib_hbt2ply
 /bin/calib_simplemc
+/bin/test_hbt2ply_reply
 *.o
 *.xls
 *.xlsx
