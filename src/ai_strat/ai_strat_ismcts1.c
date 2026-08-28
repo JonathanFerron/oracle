@@ -1,153 +1,80 @@
-/*
-   Info Set Monte Carlo Tree Search (strat_ismcts1):
-        define this strategy as a call to the ISMCTS() function, from the applyAttDefStrat() function
-        make a clone of the root gamestate as provided by the call from applyAttDefStrat(): clone_gamestate()
-        apply ISMCTS to the clone gamestate, and return the best move:
-          - clone gamestate will provide the 'playerToMove' data field
-          - implement a new Clone_And_Randomize_gamestate(observer) function : Create a copy of the state, then determinize the hidden information from observer's point of view.
-          - implement a new GetResult(player) function: If the state is terminal, return 1 if the given player has won, 0 if not, 0.5 for a draw. If the state is not
-              terminal, the result is undefined. This should be trivial given the gamestate structure.
-          - make use of the 'getAvailableMoves()' function:  Get a list of the legal moves from this state, or return an empty list if the state is terminal.
-          - implement a new DoMove(move) function: Apply the given move to the state, and update playerToMove to specify whose turn is next and turn_phase to specify what the
-              new phase is (attack or defense). Controlable by the AI with one call to DoMove() for the attacker followed by another call to DoMove() for the defender (if there is combat), etc.
-        analyze probability of this strategy to win against the simple 'random' strategy.
-        analyze the best moves recommended by the ISMCTS, if it's the best of all of the strategies so far, to improve the balanced and heuristic strategies
+// ai_strat_ismcts1.c
+// A10 IS-MCTS ("The Omniscient") -- see ai_strat_ismcts1.h.
 
+#include "ai_strat_ismcts1.h"
+#include "ai_strat_ismcts_search.h"
+#include "ai_strat_playout.h"
+#include "../actions/move_apply.h"
+#include "../core/game_constants.h"
 
-   store entire tree and cloned gamestates on the heap (malloc / free)
+static ISMCTSParams g_params[2] = { ISMCTS_DEFAULTS, ISMCTS_DEFAULTS };
 
-   use an array of pointers to children nodes as the tree node approach. initialize the array size to the total number of possible moves (also a dynamically created array
-   stored in the parent node alongside the array of children nodes pointers) (or all of the moves we want to consider, based on heuristic) and fill in the move information
-   as soon as it is created
+ISMCTSParams ismcts_get_default_params(void)
+{ ISMCTSParams defaults = ISMCTS_DEFAULTS;
+  return defaults;
+} // ismcts_get_default_params
 
-   store a pointer to parent node in the child node
-   store stats required to make uct decisions in parent node as well
-   store gamestate in child node
-   create child node only upon its first visit as its related move and stats are at the parent level
+void ismcts_set_params(PlayerID player, const ISMCTSParams* params)
+{ g_params[player] = *params;
+} // ismcts_set_params
 
-   information for DoMove() function:
-  Play Game:
-  setup game
-  turn = 0
-  do
-    turn++
-    draw 1 card if not first player and first turn
+void ismcts_reset_params(void)
+{ ISMCTSParams defaults = ISMCTS_DEFAULTS;
+  g_params[PLAYER_A] = defaults;
+  g_params[PLAYER_B] = defaults;
+} // ismcts_reset_params
 
-    set turn phase = attack
-    playerToMove = currentplayer
+const ISMCTSParams* ismcts_live_params(PlayerID player)
+{ return &g_params[player];
+} // ismcts_live_params
 
-    decidemove(attacker): this is where we could call the AI in the real game
-      getlistofavailablemoves(attacker) (called by decidemove())
-    applymove(attacker) (put champion cards in combat area)
-    if combat
+// Draws exactly one value from the *live* context to seed a forked stream --
+// ai_strat_playout.h's contract: the live GameContext advances by exactly
+// this one draw per decision, and every iteration of the search runs
+// through the fork instead. The move this agent finally picks is still
+// applied to the real game with the live `ctx` itself (see
+// decide_and_apply()), never this fork.
+static GameContext fork_for_decision(GameContext* ctx)
+{ uint32_t seed = genRandLong(&ctx->rng);
+  return mc_fork_context(ctx, seed);
+} // fork_for_decision
 
-      set turn phase = defense
-      playerToMove = notcurrentplayer
+// This agent's rollout/advance policy: A5 Heuristic on both seats (Phase 6,
+// 2026-08-27) -- NOT uniformly random. A controlled diagnostic found this
+// agent's win rate vs Borealis plateaued at 46-48% (below the anchor) with a
+// random rollout policy, unmoved by a 64x increase in search budget --
+// the same "more search can't fix a biased estimator" signature A8's own
+// diagnosis found. Swapping the rollout policy to AI_STRATEGY_HEURISTIC
+// (with the A5/A7 PASS-dominance defense fix applied -- see
+// project_a5_a7_defense_pass_dominance) took the same 16k-iteration
+// measurement to 63.0%, a ~15-point jump; see about.md and
+// doc/changelog.md's 2026-08-27 entry for the full diagnostic. This
+// supersedes about.md's original "deliberately out of scope: hand-written
+// heuristics as primary evaluator" framing for the *rollout* policy
+// specifically -- the tree's own UCT selection/backprop is still this
+// agent's primary evaluator, matching the ISMCTS literature's own common
+// finding that a purely random rollout policy is domain-dependent and, for
+// Oracle specifically, not strong enough on its own (see about.md).
+static StrategySet heuristic_rollout_strategy_set(void)
+{ StrategySet strats = {0};
+  set_player_strategy_by_type(&strats, PLAYER_A, AI_STRATEGY_HEURISTIC);
+  set_player_strategy_by_type(&strats, PLAYER_B, AI_STRATEGY_HEURISTIC);
+  return strats;
+} // heuristic_rollout_strategy_set
 
-      decidemove(defender): this is where we could call the AI in the real game
-        getlistofavailablemoves(defender) : called by decidemove()
-      applymove(defender) (put champion cards in combat area)
-      resolve combat, apply damage
-      move cards from combat areas to discard
-    endif
+static void decide_and_apply(struct gamestate* gstate, PlayerID player, GameContext* ctx)
+{ const ISMCTSParams* params = &g_params[player];
+  GameContext sim_ctx = fork_for_decision(ctx);
+  StrategySet rollout_strats = heuristic_rollout_strategy_set();
 
-    if defenderenergy = 0,
-      set end of game flag and indicate winning player in gamestate
-    else
-      collect1luna
-      discardto7cards
-      chgcurrentplayer
-    end if
+  GameMove move = ismcts_search_best_move(gstate, player, &sim_ctx, params, &rollout_strats);
+  apply_move(gstate, player, &move, ctx);
+} // decide_and_apply
 
-  while not end of game
+void ismcts_attack_strategy(struct gamestate* gstate, GameContext* ctx)
+{ decide_and_apply(gstate, gstate->current_player, ctx);
+} // ismcts_attack_strategy
 
-  Virtual game played by AI:
-  DoMove(move) function behavior:
-  if turnphase == attack:
-    applymove(attacker) (put champion cards in combat area)
-    if combat
-      set turn phase = defense
-      playerToMove = notcurrentplayer
-    else
-      collect1luna
-      discardto7cards
-      chgcurrentplayer
-      turn++
-      draw1card for newCurrentPlayer
-      set turn phase = attack (redundant here)
-      playerToMove = theNewCurrentPlayer
-    endif
-  else (turnphase == defense)  // here, we know that we are in combat
-    applymove(defender): put champion cards in combat area
-    resolve combat, apply damage
-    move cards from combat areas to discard
-    if defenderenergy = 0
-      set end of game flag and indicate winning player in gamestate
-    else
-      collect1luna (for currentplayer (attacker), not the playerToMove (defender))
-      discardto7cards
-      chgcurrentplayer
-      turn++
-      draw1card for newCurrentPlayer
-      set turn phase = attack
-      playerToMove = theNewCurrentPlayer (redundant here)
-    endif
-  end if
-
-  content of 'move' struct:
-  movetype = one of 3 enum values, DONOTHING, COMBAT, DRAWCARD
-  to be used when there is an attack or defense (combat):
-    num_attacking_champions: 0 to 3
-    champion1 ID (card ID in full deck)
-    champion2 ID
-    champion3 ID
-  to be used when a draw card is played:
-    drawcardID
-
-
-
-
-
-
-   MCTS Leaf Roll out:
-   Assuming move from leaf node that's just been developped has been applied.
-   rollOut(&gamestate):
-
-   switch (turnPhase)
-   case attack
-     decideMove(attacker): random, balanced or heuristic (nont stochastic method). can use a ROLLOUTPHASE = TRUE flago to know a fall back 'strat' should be used (and not a nestest MCTS)
-       this will call 'getlistofavailablemoves'
-     applymove(attacker)
-     if combat
-       decidemove(def)
-       applymove(def)
-       resolvecombat
-       movecards from combat to discard
-     endif
-
-   case defense
-     decidemove(defender)
-       calls getlistofavailmoves(def)
-       use random or a non-stochastic approach
-     applymove(def)
-     resolve combat
-     move cards from combat to discard
-   end switch/case
-
-   if defenergy = 0
-     set end of game flag and indicate winning player
-   else
-     collect1luna
-     discardto7cards
-     chgcurrentplayer
-   end if
-
-   while not endofgame
-     turn++
-     draw1card
-     decidemove(attacker)
-     ...
-   wend
-
-   end of rollOut() function
- * */
+void ismcts_defense_strategy(struct gamestate* gstate, GameContext* ctx)
+{ decide_and_apply(gstate, 1 - gstate->current_player, ctx);
+} // ismcts_defense_strategy

@@ -18,6 +18,10 @@
 /bin/calib_hbt2ply
 /bin/calib_simplemc
 /bin/test_hbt2ply_reply
+/bin/test_ismcts
+/bin/calib_ismcts_timing
+/bin/calib_ismcts_efficiency
+/bin/calib_ismcts_rollout_policy
 *.o
 *.xls
 *.xlsx

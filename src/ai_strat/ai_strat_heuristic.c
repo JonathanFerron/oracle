@@ -318,8 +318,20 @@ static BestMove best_defense_move(struct gamestate* gstate, PlayerID defender,
   float opp_cash = (float)gstate->current_cash_balance[attacker];
   float incoming = expected_incoming_attack(gstate, defender);
 
+  // PASS charges the full incoming attack against own_energy, rather than
+  // scoring the decline option at the undamaged own_energy -- fixes the
+  // PASS-dominance defect found while building A9 (see
+  // project_a5_a7_defense_pass_dominance memory / hbt2ply_reply_defense_move()'s
+  // own identical fix, ai_strat_hbt2ply_reply.c). Shipped 2026-08-27:
+  // measured 64 (up from 60) -- clears the user's improve-or-don't-ship bar.
+  // To revert: pass `own_energy` directly to heuristic_advantage() below
+  // instead of `undamaged_energy`, and re-measure/update player_config.c's
+  // AI_STRATEGY_RATINGS[AI_STRATEGY_HEURISTIC] back to { 60, true }.
+  float undamaged_energy = own_energy - incoming;
+  if(undamaged_energy < 0.0f) undamaged_energy = 0.0f;
+
   BestMove best =
-  { .advantage = heuristic_advantage(own_energy, opp_energy, own_hand, opp_hand,
+  { .advantage = heuristic_advantage(undamaged_energy, opp_energy, own_hand, opp_hand,
                                      own_cash, opp_cash, params),
     .type = HEUR_MOVE_PASS, .count = 0
   };

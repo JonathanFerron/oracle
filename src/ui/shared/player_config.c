@@ -150,18 +150,32 @@ typedef struct
   bool measured;
 } AIStrategyRating;
 
+// A5/A7 (2026-08-27): both ratings moved after fixing the shared defense
+// PASS-dominance defect (project memory project_a5_a7_defense_pass_dominance
+// -- PASS was scored against undamaged own_energy, never charging the
+// incoming attack, so decline mathematically dominated every block). A5
+// improved (60 -> 64); A7 got worse (62 -> 58) despite sharing the
+// "identical" formula -- kept anyway per user decision, with a follow-up
+// task open to find out why A7 specifically regressed (see that memory).
+// A10 (2026-08-27): measured 69 (n=10008 vs Borealis, 95% CI 67.6-69.5) --
+// the new roster ceiling, also beating A7 head-to-head 63.2% (n=10008). See
+// doc/changelog.md's 2026-08-27 entry and ideas/A10 .../about.md for the
+// full diagnostic (a random rollout policy plateaued below the anchor;
+// swapping to a heuristic rollout policy, then finding the actual
+// iteration-budget sweet spot empirically -- 4000, not the original
+// 100000 -- is what got it here).
 static const AIStrategyRating AI_STRATEGY_RATINGS[AI_STRATEGY_COUNT] =
 { [AI_STRATEGY_RANDOM]           = {  2, true  },
   [AI_STRATEGY_VALUE_BASED]      = { 24, true  },
   [AI_STRATEGY_COMBO_THRESHOLD]  = { 30, true  },
   [AI_STRATEGY_BOREALIS]         = { BOREALIS_RATING, true },
   [AI_STRATEGY_BALANCED]         = { 36, true  },
-  [AI_STRATEGY_HEURISTIC]        = { 60, true  },
+  [AI_STRATEGY_HEURISTIC]        = { 64, true  },
   [AI_STRATEGY_TACTICAL]         = { 52, true  },
-  [AI_STRATEGY_HYBRID_HBT]       = { 62, true  },
+  [AI_STRATEGY_HYBRID_HBT]       = { 58, true  },
   [AI_STRATEGY_SIMPLE_MC]        = { 35, true  },
   [AI_STRATEGY_HBT_2PLY]         = { 59, true  },
-  [AI_STRATEGY_ISMCTS]           = { 92, false },
+  [AI_STRATEGY_ISMCTS]           = { 69, true  },
   [AI_STRATEGY_ISMCTS_NN]        = { 97, false },
   [AI_STRATEGY_CLAIRVOYANT]      = { 31, true  },
 };

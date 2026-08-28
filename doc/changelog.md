@@ -5,6 +5,168 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-27 — A10 IS-MCTS ("The Omniscient") implemented and calibrated: the roster ceiling, after two diagnosed and fixed problems
+
+Single-Observer Information Set Monte Carlo Tree Search (Cowling, Powley & Whitehouse) per
+`ideas/A10 .../about.md`: one UCT tree over information sets, a fresh determinization
+every iteration, availability counts in the exploration denominator, progressive widening
+against Oracle's ~93-typical branching factor. No partially-hidden moves in this game
+(champions/draw/recall/cash are all played face-up), so SO-ISMCTS applies cleanly and the
+tree needs no hand-written opponent model -- it searches the opponent's replies itself.
+
+- **New files**: `src/ai_strat/ai_strat_ismcts1.{c,h}` (agent shell, `ISMCTSParams`,
+  entry points -- replaces the 153-line design-comment stub), `ai_strat_ismcts_tree.{c,h}`
+  (node arena -- `uint32_t` parent/first_child/next_sibling indices rather than per-node
+  `malloc`, ~40 bytes/node -- UCT scoring, backprop), `ai_strat_ismcts_search.{c,h}` (the
+  SELECT/EXPAND/SIMULATE/BACKPROP iteration loop, root move = most-visited child),
+  `ai_strat_ismcts_flat.{c,h}` (mulligan/discard-to-7: unfiltered 0/1/2-card subset
+  enumeration, each candidate scored by averaging determinized rollouts).
+- **New shared infra** (`ai_strat_playout.c/.h`, alongside `A8`'s existing
+  `mc_fork_context()`/`mc_determinize()`/`mc_playout()`): `mc_playout_from()` (playout with
+  no leading move, for the tree's own newly-expanded leaves), `mc_advance_to_decision()`
+  (applies one move and runs the engine forward to the next real decision point --
+  the tree's `DoMove()`), `mc_playout_from_turn_boundary()` (playout from a turn boundary
+  with no phase pending at all -- mulligan/discard-to-7's own primitive), and
+  `mc_outcome_for()` (promoted from `static` so the search loop can read a terminal
+  outcome when a decision ends the game mid-descent).
+- **Two deliberate deviations from the design docs**: dice rolls stay engine-accurate
+  sampled values in rollouts (`about.md`'s "closed-form dice stats" recommendation belongs
+  to an expectimax formulation, not UCT, and closed-form `E[damage]` is itself biased by
+  the `max(attack-defense,0)` truncation); nodes store no gamestate (re-determinized and
+  replayed from the root every iteration), superseding the original stub's "store
+  gamestate in child node," which predates the decision to re-determinize per iteration.
+- **Reshuffle-aware determinization deferred, not dropped** (Phase 0, measured before
+  building anything): 0 reshuffles across 8000 real games played by any of 8 real
+  strategies (turn counts up to 42); only pure `rand` vs `rand` reshuffles meaningfully
+  (5.1%, avg 34.1 turns) -- the correctness gap this refinement would close essentially
+  never fires in real play, so it stays out of v1. See `about.md` for the full writeup,
+  including a nuance: a single real `simplemc` game logs hundreds of reshuffle events
+  *inside* its internal MC rollouts (random-ish rollout policy simply playing long enough
+  to empty a simulated deck), which is expected and NOT the same gap -- the engine's own
+  `shuffle_discard_and_form_deck()` handles that correctly inside the fork, no sampling
+  step is involved once a rollout is already running on concrete simulated state.
+
+### Finding 1: a uniformly-random rollout policy plateaus below the anchor, the same signature `A8`'s diagnosis found
+
+A budget→rating scaling curve (1k/4k/16k/64k iterations, ~2000 games/level vs `Borealis`,
+`AI_STRATEGY_RANDOM` rollout policy on both seats, per the original design intent) rose
+from 1k (41.9%) to 4k-16k (~46-48%), then flattened through 64k (46.2%) -- never clearing
+the anchor, and unmoved by a 16x further budget increase past the early rise. A controlled
+A/B test isolating just the rollout policy (16k iterations, n≈2000, everything else
+identical) confirmed the cause: swapping to `AI_STRATEGY_HEURISTIC` (`A5`, with the PASS-
+dominance fix below applied) took the same measurement from 47.6% to 63.0% -- a ~15-point
+jump, dwarfing every other effect measured on this agent. Shipped as
+`ai_strat_ismcts1.c`'s `heuristic_rollout_strategy_set()` (and the matching change in
+`ai_strat_ismcts_flat.c`, whose mulligan/discard-to-7 scoring is subject to the identical
+bias). Consistent with the ISMCTS literature's own reported experience that a purely
+random rollout policy's adequacy is domain-dependent (Powley/Cowling/Whitehouse's Spades
+player was strong without heuristic knowledge; Oracle evidently is not -- random self-play
+games run ~34 turns on average vs ~7-20 for any real strategy, and are the only matchup
+that ever reshuffles a deck, so random play here is qualitatively unlike skilled play).
+
+### Finding 2: with the fixed rollout policy, more search past a point actively hurts
+
+Re-running the scaling curve with the heuristic rollout policy surfaced a different shape:
+not a plateau, a peak followed by a real decline. 1k-16k iterations is a noisy plateau
+(63-69%, no interior maximum distinguishable from noise at n≈800-2000/level), but 64k
+(58.5%) and 100k (55.2%, quick n≈192 sample) drop well below it -- several standard errors,
+not noise. Working hypothesis: `A5`'s rollout policy is deterministic given a position
+(not randomly varied), so more search lets the tree converge more confidently on lines
+that exploit that specific simulated opponent rather than generalizing to a real one --
+not yet root-caused beyond this hypothesis. **Shipped `limit_iterations = 4000`**, the
+most rigorously sampled point in the plateau (n=1992) -- a large, deliberate departure
+from Phase 3's original ~100000-iteration/~1s-per-decision calibration, which was
+calibrated against the since-replaced random rollout policy's own timing.
+
+### A genuine bug found along the way, not a design issue
+
+Diagnosing finding 2 via valgrind on the shipped agent surfaced a real uninitialized-read:
+`stda_auto.c`'s `play_stda_auto_game()` called `apply_mulligan()` before initializing
+`gstate.turn` (only `begin_of_turn()`, called from the main turn loop, did) -- invisible to
+every prior agent's mulligan hook, since none of them simulate forward from the mulligan
+point, but a genuine bug once this agent's flat-rollout mulligan scoring did (its rollouts
+call `begin_of_turn()` internally, which increments `gstate->turn` rather than just
+overwriting it). Fixed by moving `gstate.turn = 0`/`turn_phase`/`player_to_move`
+initialization before `apply_mulligan()`, matching the pattern `stda_cli.c`/`stda_tui.c`
+already used. Caught by a fresh valgrind pass on the shipped agent, not by any test.
+
+### Calibration
+
+Deliberately lean (user decision, given Phase 5's role here was a sanity check before
+Phase 6's real measurement, not the main deliverable): a minimal harness
+(`aicalibsrc/ismcts/calib_ismcts_efficiency.c`, CLI-overridable on the four EFFICIENCY
+dials) rather than the full scipy-differential-evolution pipeline other agents have. A
+sweep over `search_exploration_constant`/`threshold_widening_k`/`_alpha`/
+`search_expand_threshold` found no distinguishable effect at n=200-800/candidate once
+checked across multiple seeds (an apparent `threshold_widening_k=4.0` win at one seed
+collapsed to a loss on two others) -- shipped the principled UCT/progressive-widening
+defaults unchanged (`search_exploration_constant=sqrt(2)`, `threshold_widening_k=2.0`,
+`threshold_widening_alpha=0.5`, `search_expand_threshold=3`). The real calibration axis
+for this agent turned out to be `limit_iterations` (finding 2, above), found via direct
+measurement, not a parameter search.
+
+**Final shipped values**: `limit_iterations=4000`, `limit_max_nodes=200000`,
+`limit_playout_steps=200`, rollout policy = `AI_STRATEGY_HEURISTIC` (`A5`) on both seats
+for attack/defense and mulligan/discard-to-7 alike, everything else at the Phase 2
+principled defaults.
+
+- **Measured rating: 69** vs `Borealis` (68.55%, n=10008, 95% CI 67.6-69.5%) -- the new
+  roster ceiling, above `A7`'s 58 (post-fix) and `A5`'s 64.
+- **63.2% head-to-head vs `A7`** (n=10008) -- a direct, decisive win over the previous
+  ceiling agent, not just a transitive one via the shared `Borealis` anchor.
+- Design-intent estimate was 92 -- another overshoot on this roster's now-established
+  pattern (A4 62->36, A6 74->52, A8 82->35, A9 85->59), but this agent's actual, honestly
+  measured 69 is still the highest number on the board.
+
+**Disposition**: shipped as `AI_STRATEGY_ISMCTS`'s live registry entry (attack, defense,
+mulligan, discard-to-7 all wired), `player_config.c`'s `AI_STRATEGY_RATINGS` updated to
+`{ 69, true }`.
+
+**Verification**: `make clean && make` (no new warnings), `./bin/oracle -a -p` byte-
+identical to `bin/expectedresults.txt` at every stage, all 7 suites green (`test_combo`
+20/20, `test_recall` 10/10, `test_cash_exchange` 6/6, `test_rating` 41/41,
+`test_hbt2ply_reply` 6/6, `test_moves` 79/79, `test_ismcts` 36/36 -- the last two new/
+extended for this agent's primitives, tree/UCT unit tests, and flat-rollout scoring),
+valgrind clean (0 errors, 0 leaks) on the shipped configuration after the `stda_auto.c`
+fix, `make format` applied, one interactive sanity-check game via `stda.cli` (a clean
+6-turn win including a 3-champion combo for +9 bonus damage), menu now shows the measured
+69 rather than the `~92` estimate.
+
+## 2026-08-27 — A5/A7 defense PASS-dominance fix shipped: A5 improved, A7 didn't, both kept
+
+Fixed the PASS-dominance defect `A9`'s build found in `A5`/`A7`'s shared defense formula
+(see the 2026-08-26 entry below) in place, in both `best_defense_move()`
+(`ai_strat_heuristic.c`) and `hbt_best_defense_move()` (`ai_strat_hbt_enum.c`): the
+decline/PASS baseline now scores `max(own_energy - incoming, 0)` instead of the raw,
+undamaged `own_energy`, matching what `A9`'s own local `hbt2ply_reply_defense_move()`
+already did. Triggered by an `A10` IS-MCTS diagnostic (see that agent's own entry below)
+rather than pursued standalone -- swapping `A10`'s rollout policy from
+`AI_STRATEGY_RANDOM` to `A5`'s (then-unfixed) heuristic jumped its win rate vs
+`Borealis` from ~46-48% to ~65-66%, which made fixing the underlying defect worth
+doing now rather than deferring further.
+
+Measured both seats, n=4000 games each, vs `Borealis`:
+
+- **`A5` Heuristic: 60 → 64** (2567/4000 = 64.2%) -- clears the user's
+  improve-or-don't-ship bar from the original deferral decision. Shipped outright.
+- **`A7` Hybrid HBT: 62 → 58** (2301/4000 = 57.5%) -- fails that bar (worse, not
+  better), despite sharing what was believed to be an "identical" formula with `A5`.
+  **Shipped anyway**, a deliberate user decision to keep focus on `A10` right now,
+  with two things preserved for the follow-up: a documented revert path (see the
+  comment at each fix site, and `player_config.c`'s `AI_STRATEGY_RATINGS` comment), and
+  an open task -- *why does the identical fix help `A5` but hurt `A7`* -- with
+  re-optimizing `A7`'s `HBTParams` with the fix already in place (rather than
+  reverting) as the leading hypothesis, since `A7`'s aggression/lethal-combo-hold
+  layers on top of `A5`'s shared shape are the most likely interaction site.
+
+`src/ui/shared/player_config.c`'s `AI_STRATEGY_RATINGS[]` updated to `{ 64, true }` /
+`{ 58, true }` for `AI_STRATEGY_HEURISTIC`/`AI_STRATEGY_HYBRID_HBT`. No test hardcoded
+the old buggy behavior, so nothing needed updating there; `./bin/oracle -a -p` stayed
+byte-identical (the default matchup is `Random`-vs-`Random`, which never calls either
+fixed function) and all seven suites (`test_combo` `test_recall` `test_cash_exchange`
+`test_rating` `test_hbt2ply_reply` `test_moves` `test_ismcts`, 198 assertions) stayed
+green.
+
 ## 2026-08-26 — A9 HBT 2-Ply ("Grandmaster II") implemented and calibrated: the next rung on the ladder, below its own design target, with a precisely isolated root cause
 
 `A7` Hybrid HBT plus one opponent-response ply, per `ideas/A9 .../about.md`: for every

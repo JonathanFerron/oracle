@@ -533,6 +533,297 @@ void test_mc_playout_stress(TestSuite* suite)
   destroy_game_context(ctx);
 } // test_mc_playout_stress
 
+void test_mc_playout_from_isolated(TestSuite* suite)
+{ printf("\n=== mc_playout_from: root untouched, parent RNG untouched, valid result ===\n");
+
+  config_t cfg = {0};
+  cfg.prng_seed = 555;
+  GameContext* ctx = create_game_context(&cfg);
+
+  struct gamestate gs = {0};
+  setup_game(INITIAL_CASH_DEFAULT, &gs, ctx);
+  begin_of_turn(&gs, ctx); // turn 1, PLAYER_A -- no draw, so no RNG use here
+
+  struct gamestate gs_before = gs;
+  MTRand ctx_rng_before = ctx->rng;
+
+  GameContext sim_ctx = mc_fork_context(ctx, 4242);
+  StrategySet rollout_strats = {0};
+  set_player_strategy_by_type(&rollout_strats, PLAYER_A, AI_STRATEGY_RANDOM);
+  set_player_strategy_by_type(&rollout_strats, PLAYER_B, AI_STRATEGY_RANDOM);
+  float result = mc_playout_from(&gs, PLAYER_A, &rollout_strats, &sim_ctx, MAX_NUMBER_OF_TURNS);
+
+  check(suite, "result is 0.0, 0.5, or 1.0",
+        1, result == 0.0f || result == 0.5f || result == 1.0f);
+  check(suite, "root gamestate byte-identical after playout",
+        1, memcmp(&gs, &gs_before, sizeof(struct gamestate)) == 0);
+  check(suite, "parent ctx->rng byte-identical after playout",
+        1, memcmp(&ctx_rng_before, &ctx->rng, sizeof(MTRand)) == 0);
+
+  destroy_game_context(ctx);
+} // test_mc_playout_from_isolated
+
+void test_mc_playout_from_stress(TestSuite* suite)
+{ printf("\n=== mc_playout_from: stress (200 playouts, no crash, mixed outcomes) ===\n");
+
+  config_t cfg = {0};
+  cfg.prng_seed = 2;
+  GameContext* ctx = create_game_context(&cfg);
+
+  StrategySet rollout_strats = {0};
+  set_player_strategy_by_type(&rollout_strats, PLAYER_A, AI_STRATEGY_RANDOM);
+  set_player_strategy_by_type(&rollout_strats, PLAYER_B, AI_STRATEGY_RANDOM);
+
+  int wins = 0, losses = 0, draws = 0;
+  for(int i = 0; i < 200; i++)
+  { struct gamestate gs = {0};
+    setup_game(INITIAL_CASH_DEFAULT, &gs, ctx);
+    begin_of_turn(&gs, ctx);
+
+    GameContext sim_ctx = mc_fork_context(ctx, (uint32_t)(2000 + i));
+    float result = mc_playout_from(&gs, PLAYER_A, &rollout_strats, &sim_ctx, MAX_NUMBER_OF_TURNS);
+
+    if(result == 1.0f) wins++;
+    else if(result == 0.0f) losses++;
+    else draws++;
+  }
+
+  check(suite, "no crash across 200 playouts", 200, wins + losses + draws);
+  check(suite, "both outcomes occur (not degenerate)", 1, wins > 0 && losses > 0);
+
+  destroy_game_context(ctx);
+} // test_mc_playout_from_stress
+
+// Fixed moves for the scripted attack/defense strategies below, read by
+// name rather than passed as a closure -- C function pointers can't capture
+// state, and this is test-only code driving a StrategySet the same way
+// every real attack_strategy/defense_strategy does (gstate->current_player
+// / 1 - gstate->current_player, see ai_strat_random.c).
+static GameMove g_scripted_attack_move;
+static GameMove g_scripted_defense_move;
+
+static void scripted_attack_strategy(struct gamestate* gstate, GameContext* ctx)
+{ apply_move(gstate, gstate->current_player, &g_scripted_attack_move, ctx);
+} // scripted_attack_strategy
+
+static void scripted_defense_strategy(struct gamestate* gstate, GameContext* ctx)
+{ apply_move(gstate, 1 - gstate->current_player, &g_scripted_defense_move, ctx);
+} // scripted_defense_strategy
+
+void test_mc_advance_to_decision_matches_play_turn(TestSuite* suite)
+{ printf("\n=== mc_advance_to_decision: matches a real play_turn()+begin_of_turn() "
+           "sequence bit-for-bit ===\n");
+
+  struct gamestate base = {0};
+  Hand_init(&base.hand[PLAYER_A]);
+  Hand_init(&base.hand[PLAYER_B]);
+  Discard_init(&base.discard[PLAYER_A]);
+  Discard_init(&base.discard[PLAYER_B]);
+  CombatZone_init(&base.combat_zone[PLAYER_A]);
+  CombatZone_init(&base.combat_zone[PLAYER_B]);
+  base.deck[PLAYER_A].top = -1;
+  base.deck[PLAYER_B].top = -1;
+  DeckStk_push(&base.deck[PLAYER_A], 10);
+  DeckStk_push(&base.deck[PLAYER_A], 11);
+  DeckStk_push(&base.deck[PLAYER_A], 12);
+  DeckStk_push(&base.deck[PLAYER_B], 13);
+  DeckStk_push(&base.deck[PLAYER_B], 14);
+  DeckStk_push(&base.deck[PLAYER_B], 15);
+  Hand_add(&base.hand[PLAYER_A], CHAMP_A);
+  base.current_cash_balance[PLAYER_A] = 10;
+  base.current_cash_balance[PLAYER_B] = 10;
+  base.current_energy[PLAYER_A] = 99;
+  base.current_energy[PLAYER_B] = 99;
+  base.current_player = PLAYER_A;
+  base.turn = 0;
+
+  g_scripted_attack_move = (GameMove)
+  { .type = MOVE_CHAMPIONS, .count = 1, .cards = {CHAMP_A}
+  };
+  g_scripted_defense_move = (GameMove)
+  { .type = MOVE_PASS
+  };
+
+  StrategySet strats = {0};
+  set_player_strategy_by_type(&strats, PLAYER_A, AI_STRATEGY_RANDOM);
+  set_player_strategy_by_type(&strats, PLAYER_B, AI_STRATEGY_RANDOM);
+  strats.attack_strategy[PLAYER_A] = scripted_attack_strategy;
+  strats.defense_strategy[PLAYER_B] = scripted_defense_strategy;
+
+  config_t cfg = {0};
+  cfg.prng_seed = 8080;
+  GameContext* ctx = create_game_context(&cfg);
+
+  // Reference: a real play_turn() for turn 1, then begin_of_turn() to reach
+  // turn 2's pending attack decision without yet making it.
+  struct gamestate sim_ref = base;
+  GameContext ref_ctx = mc_fork_context(ctx, 8080);
+  play_turn(NULL, &sim_ref, &strats, &ref_ctx);
+  begin_of_turn(&sim_ref, &ref_ctx);
+
+  // Tree path: the same two decisions applied via mc_advance_to_decision(),
+  // same seed so dice rolls/draws line up.
+  struct gamestate sim_tree = base;
+  GameContext tree_ctx = mc_fork_context(ctx, 8080);
+  begin_of_turn(&sim_tree, &tree_ctx);
+  bool cont1 = mc_advance_to_decision(&sim_tree, PLAYER_A, &g_scripted_attack_move,
+                                      &strats, &tree_ctx);
+  check(suite, "after attack: game still in progress", 1, cont1);
+  check(suite, "after attack: turn_phase is DEFENSE", DEFENSE, sim_tree.turn_phase);
+  bool cont2 = mc_advance_to_decision(&sim_tree, PLAYER_B, &g_scripted_defense_move,
+                                      &strats, &tree_ctx);
+  check(suite, "after defense: game still in progress", 1, cont2);
+  check(suite, "after defense: turn_phase is ATTACK (next turn began)",
+        ATTACK, sim_tree.turn_phase);
+
+  check(suite, "final gamestate matches play_turn()+begin_of_turn() bit-for-bit",
+        1, memcmp(&sim_ref, &sim_tree, sizeof(struct gamestate)) == 0);
+
+  destroy_game_context(ctx);
+} // test_mc_advance_to_decision_matches_play_turn
+
+void test_mc_advance_to_decision_conserves_cards(TestSuite* suite)
+{ printf("\n=== mc_advance_to_decision: card conservation across a full turn ===\n");
+
+  struct gamestate sim = {0};
+  Hand_init(&sim.hand[PLAYER_A]);
+  Hand_init(&sim.hand[PLAYER_B]);
+  Discard_init(&sim.discard[PLAYER_A]);
+  Discard_init(&sim.discard[PLAYER_B]);
+  CombatZone_init(&sim.combat_zone[PLAYER_A]);
+  CombatZone_init(&sim.combat_zone[PLAYER_B]);
+  sim.deck[PLAYER_A].top = -1;
+  sim.deck[PLAYER_B].top = -1;
+  DeckStk_push(&sim.deck[PLAYER_A], 10);
+  DeckStk_push(&sim.deck[PLAYER_B], 13);
+  Hand_add(&sim.hand[PLAYER_A], CHAMP_A);
+  sim.current_cash_balance[PLAYER_A] = 10;
+  sim.current_energy[PLAYER_A] = 99;
+  sim.current_energy[PLAYER_B] = 99;
+  sim.current_player = PLAYER_A;
+  sim.turn = 0;
+
+  int counts_before[FULL_DECK_SIZE] = {0};
+  uint16_t total_before = total_owned_cards(&sim, counts_before);
+
+  g_scripted_attack_move = (GameMove)
+  { .type = MOVE_CHAMPIONS, .count = 1, .cards = {CHAMP_A}
+  };
+  g_scripted_defense_move = (GameMove)
+  { .type = MOVE_PASS
+  };
+
+  StrategySet strats = {0};
+  set_player_strategy_by_type(&strats, PLAYER_A, AI_STRATEGY_RANDOM);
+  set_player_strategy_by_type(&strats, PLAYER_B, AI_STRATEGY_RANDOM);
+
+  config_t cfg = {0};
+  cfg.prng_seed = 999;
+  GameContext* ctx = create_game_context(&cfg);
+  GameContext sim_ctx = mc_fork_context(ctx, 4321);
+
+  begin_of_turn(&sim, &sim_ctx);
+  mc_advance_to_decision(&sim, PLAYER_A, &g_scripted_attack_move, &strats, &sim_ctx);
+  mc_advance_to_decision(&sim, PLAYER_B, &g_scripted_defense_move, &strats, &sim_ctx);
+
+  int counts_after[FULL_DECK_SIZE] = {0};
+  uint16_t total_after = total_owned_cards(&sim, counts_after);
+  check(suite, "total owned cards conserved", total_before, total_after);
+
+  int max_count = 0;
+  for(int i = 0; i < FULL_DECK_SIZE; i++)
+    if(counts_after[i] > max_count) max_count = counts_after[i];
+  check(suite, "no card duplicated across zones", 1, max_count <= 1);
+
+  destroy_game_context(ctx);
+} // test_mc_advance_to_decision_conserves_cards
+
+void test_mc_advance_to_decision_parent_rng_untouched(TestSuite* suite)
+{ printf("\n=== mc_advance_to_decision: parent ctx->rng untouched ===\n");
+
+  config_t cfg = {0};
+  cfg.prng_seed = 321;
+  GameContext* ctx = create_game_context(&cfg);
+  MTRand before = ctx->rng;
+
+  struct gamestate sim = {0};
+  Hand_init(&sim.hand[PLAYER_A]);
+  Hand_init(&sim.hand[PLAYER_B]);
+  Discard_init(&sim.discard[PLAYER_A]);
+  Discard_init(&sim.discard[PLAYER_B]);
+  CombatZone_init(&sim.combat_zone[PLAYER_A]);
+  CombatZone_init(&sim.combat_zone[PLAYER_B]);
+  sim.deck[PLAYER_A].top = -1;
+  sim.deck[PLAYER_B].top = -1;
+  DeckStk_push(&sim.deck[PLAYER_A], 10);
+  DeckStk_push(&sim.deck[PLAYER_B], 13);
+  Hand_add(&sim.hand[PLAYER_A], CHAMP_A);
+  sim.current_energy[PLAYER_A] = 99;
+  sim.current_energy[PLAYER_B] = 99;
+  sim.current_player = PLAYER_A;
+
+  g_scripted_attack_move = (GameMove)
+  { .type = MOVE_CHAMPIONS, .count = 1, .cards = {CHAMP_A}
+  };
+  g_scripted_defense_move = (GameMove)
+  { .type = MOVE_PASS
+  };
+
+  StrategySet strats = {0};
+  set_player_strategy_by_type(&strats, PLAYER_A, AI_STRATEGY_RANDOM);
+  set_player_strategy_by_type(&strats, PLAYER_B, AI_STRATEGY_RANDOM);
+
+  GameContext sim_ctx = mc_fork_context(ctx, 1111);
+  begin_of_turn(&sim, &sim_ctx);
+  mc_advance_to_decision(&sim, PLAYER_A, &g_scripted_attack_move, &strats, &sim_ctx);
+  mc_advance_to_decision(&sim, PLAYER_B, &g_scripted_defense_move, &strats, &sim_ctx);
+
+  check(suite, "parent ctx->rng byte-identical after fork use",
+        1, memcmp(&before, &ctx->rng, sizeof(MTRand)) == 0);
+
+  destroy_game_context(ctx);
+} // test_mc_advance_to_decision_parent_rng_untouched
+
+void test_mc_advance_to_decision_game_over(TestSuite* suite)
+{ printf("\n=== mc_advance_to_decision: returns false when the game ends ===\n");
+
+  struct gamestate sim = {0};
+  Hand_init(&sim.hand[PLAYER_A]);
+  Hand_init(&sim.hand[PLAYER_B]);
+  Discard_init(&sim.discard[PLAYER_A]);
+  Discard_init(&sim.discard[PLAYER_B]);
+  CombatZone_init(&sim.combat_zone[PLAYER_A]);
+  CombatZone_init(&sim.combat_zone[PLAYER_B]);
+  sim.deck[PLAYER_A].top = -1;
+  sim.deck[PLAYER_B].top = -1;
+  Hand_add(&sim.hand[PLAYER_A], CHAMP_STRONG); // exp_atk 15.5 -- plenty to finish 1 energy off
+  sim.current_energy[PLAYER_A] = 99;
+  sim.current_energy[PLAYER_B] = 1; // any positive attack roll ends the game
+  sim.current_player = PLAYER_A;
+  sim.turn_phase = ATTACK;
+
+  StrategySet strats = {0};
+  set_player_strategy_by_type(&strats, PLAYER_A, AI_STRATEGY_RANDOM);
+  set_player_strategy_by_type(&strats, PLAYER_B, AI_STRATEGY_RANDOM);
+
+  config_t cfg = {0};
+  cfg.prng_seed = 55;
+  GameContext* ctx = create_game_context(&cfg);
+  GameContext sim_ctx = mc_fork_context(ctx, 66);
+
+  GameMove attack = { .type = MOVE_CHAMPIONS, .count = 1, .cards = {CHAMP_STRONG} };
+  bool cont1 = mc_advance_to_decision(&sim, PLAYER_A, &attack, &strats, &sim_ctx);
+  check(suite, "after attack: defender must still decide", 1, cont1);
+
+  GameMove decline = { .type = MOVE_PASS };
+  bool cont2 = mc_advance_to_decision(&sim, PLAYER_B, &decline, &strats, &sim_ctx);
+  check(suite, "after undefended lethal attack: mc_advance_to_decision returns false",
+        0, cont2);
+  check(suite, "someone_has_zero_energy is set", 1, sim.someone_has_zero_energy);
+
+  destroy_game_context(ctx);
+} // test_mc_advance_to_decision_game_over
+
 /* ========================================================================
    A9 HBT 2-Ply: hbt2ply_score_attack_subset() -- the central regression
    guard is that reply_trust == 0 recovers A7's own decision exactly (see
@@ -675,6 +966,12 @@ int main(void)
   test_mc_determinize_invariants(&suite);
   test_mc_playout_isolated(&suite);
   test_mc_playout_stress(&suite);
+  test_mc_playout_from_isolated(&suite);
+  test_mc_playout_from_stress(&suite);
+  test_mc_advance_to_decision_matches_play_turn(&suite);
+  test_mc_advance_to_decision_conserves_cards(&suite);
+  test_mc_advance_to_decision_parent_rng_untouched(&suite);
+  test_mc_advance_to_decision_game_over(&suite);
   test_hbt2ply_reply_trust_zero_matches_a7(&suite);
   test_hbt2ply_forced_decline_matches_a7(&suite);
   test_hbt2ply_ply_changes_score_when_reply_possible(&suite);

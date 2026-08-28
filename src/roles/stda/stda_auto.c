@@ -74,6 +74,18 @@ void play_stda_auto_game(uint16_t initial_cash, struct gamestats* gstats,
 { struct gamestate gstate;
   setup_game(initial_cash, &gstate, ctx);
 
+  // setup_game() doesn't initialize turn/turn_phase/player_to_move (only
+  // begin_of_turn() does -- see CLAUDE.md's "known architectural gaps").
+  // Set them before apply_mulligan(), not after: a mulligan hook that
+  // simulates forward (A10's flat-rollout scoring, ai_strat_ismcts_flat.c)
+  // calls begin_of_turn() internally via its rollouts, and begin_of_turn()
+  // increments gstate->turn rather than just overwriting it, so an
+  // uninitialized turn here is a genuine uninitialized-read, not just a
+  // stale-value risk (found via valgrind, 2026-08-27).
+  gstate.turn = 0;
+  gstate.turn_phase = ATTACK;
+  gstate.player_to_move = gstate.current_player;
+
   // Apply mulligan for player B: when in interactive mode (CLI, TUI, GUI), this needs to be delegated to the user or AI to make a choice of what to mulligan (if anything)
   apply_mulligan(&gstate, strategies, ctx);
 
@@ -82,9 +94,6 @@ void play_stda_auto_game(uint16_t initial_cash, struct gamestats* gstats,
               gstate.current_cash_balance[PLAYER_B],
               gstate.current_energy[PLAYER_A],
               gstate.current_energy[PLAYER_B]);
-
-
-  gstate.turn = 0;
 
   do
   { play_turn(gstats, &gstate, strategies, ctx); // need to pass cfg pointer to provide game mode information

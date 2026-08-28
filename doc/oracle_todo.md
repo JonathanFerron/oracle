@@ -19,16 +19,28 @@ rating so far, above all three agents it combines (`A4`/`A5`/`A6`) in the same
 roster-wide fit despite a pairwise loss to `A5` specifically, see `doc/changelog.md`),
 `A8` Simple Monte Carlo ("The Soothsayer", 2026-08-25, calibrated, measured rating
 35 — below the Borealis anchor and not raised by extra rollout budget, a diagnosed and
-honestly-reported ceiling rather than a defect, see `doc/changelog.md`), and `A9` HBT
+honestly-reported ceiling rather than a defect, see `doc/changelog.md`), `A9` HBT
 2-Ply ("Grandmaster II", 2026-08-26, calibrated, measured rating 59 vs Borealis —
 above the anchor — but only 47.2% head-to-head vs `A7` specifically, below this
 agent's own design target; root cause precisely isolated to a pre-existing property of
-`A7`'s own defense formula, see `doc/changelog.md`)
+`A7`'s own defense formula, see `doc/changelog.md`), and `A10` IS-MCTS ("The Omniscient",
+2026-08-27, calibrated, **measured rating 69 — the roster ceiling**, also 63.2%
+head-to-head vs `A7`; two diagnosed-and-fixed problems along the way — a random rollout
+policy plateaued below the anchor regardless of search budget (same signature as `A8`'s
+diagnosis), fixed by switching to `A5`'s heuristic as the rollout policy; and, with that
+fix, win rate vs Borealis *peaks* around 2000-8000 iterations then *declines* at higher
+budgets, so the shipped budget is `limit_iterations=4000`, not the `~100000`
+(`~1s/decision`) Phase 3 originally calibrated for the since-replaced random policy — see
+`doc/changelog.md`)
 are implemented. `A12` Clairvoyant ("The Clairvoyant", 2026-08-25, measured rating 31)
 was also implemented, as a side exploration of `A8`'s own diagnosis rather than the
-next ladder rung. The
+next ladder rung. Also 2026-08-27: the `A5`/`A7` shared defense PASS-dominance defect
+(found while building `A9`) was fixed in both agents' shipped code — `A5` improved
+60→64, `A7` regressed 62→58 but was shipped anyway per user decision, with an open
+follow-up task to find out why (see the Bug Tracker below). The
 Bradley-Terry rating system itself (2026-08-23, `src/rating/`) is now built on top of
-them — see `doc/oracle_roadmap.md`'s "Next Up" for what's next (`A10`). The strategy-set
+them — see `doc/oracle_roadmap.md`'s "Next Up" for what's next (`A7` re-optimization,
+then `A11`). The strategy-set
 build sites
 also gained a shared `AIStrategyType -> function pointer` registry (`ai_strategy.c`) as
 part of `A1` -- see "Checklist: Adding a New AI Strategy" below, which now reflects that
@@ -359,7 +371,19 @@ See `ideas/4 match results export/` for the full specification.
 
 ## Bug Tracker
 
-No known open bugs. Add entries here as they're found.
+- [ ] **`A7` regressed (62→58) from the 2026-08-27 A5/A7 PASS-dominance defense fix,
+  while `A5` improved (60→64) from the identical fix** — shipped anyway per user
+  decision (focus is `A10` right now), with a documented revert path at each fix site
+  (`ai_strat_heuristic.c`'s `best_defense_move()`, `ai_strat_hbt_enum.c`'s
+  `hbt_best_defense_move()`) and in `player_config.c`'s `AI_STRATEGY_RATINGS` comment.
+  Follow-up: find out why the same fix helps `A5` but hurts `A7`. Leading hypothesis
+  (user, 2026-08-27): re-optimize `A7`'s `HBTParams` with the fix already in place
+  (not revert-and-reoptimize) — `A7`'s aggression/lethal-combo-hold layers on top of
+  `A5`'s shared shape are the most likely interaction site. See
+  `doc/changelog.md`'s 2026-08-27 entry and the `project_a5_a7_defense_pass_dominance`
+  memory for full details.
+
+Otherwise no known open bugs. Add entries here as they're found.
 
 ---
 

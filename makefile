@@ -59,7 +59,11 @@ AGENT_SRCS := $(SRCDIR)/ai_strat/ai_strategy.c \
               $(SRCDIR)/ai_strat/ai_strat_playout.c \
               $(SRCDIR)/ai_strat/ai_strat_simplemc_search.c \
               $(SRCDIR)/ai_strat/ai_strat_simplemc1.c \
-              $(SRCDIR)/ai_strat/ai_strat_clairvoyant1.c
+              $(SRCDIR)/ai_strat/ai_strat_clairvoyant1.c \
+              $(SRCDIR)/ai_strat/ai_strat_ismcts_tree.c \
+              $(SRCDIR)/ai_strat/ai_strat_ismcts_search.c \
+              $(SRCDIR)/ai_strat/ai_strat_ismcts_flat.c \
+              $(SRCDIR)/ai_strat/ai_strat_ismcts1.c
 
 # Test targets
 # Object paths are mapped into $(BUILDDIR) (mirroring the main build's pattern rule
@@ -134,6 +138,16 @@ TEST_MOVES_SRCS := $(TESTSRCDIR)/test_moves.c \
                    $(AGENT_SRCS)
 TEST_MOVES_OBJS := $(BUILDDIR)/testsrc/test_moves.o \
                    $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_MOVES_SRCS)))
+
+# Test A10 IS-MCTS's node arena/UCT tree (ai_strat_ismcts_tree.c) and search
+# loop (ai_strat_ismcts_search.c) -- same whole-roster reasoning as
+# TEST_MOVES_SRCS above (both now live in AGENT_SRCS).
+TEST_ISMCTS_TARGET := $(BINDIR)/test_ismcts
+TEST_ISMCTS_SRCS := $(TESTSRCDIR)/test_ismcts.c \
+                    $(ENGINE_SRCS) \
+                    $(AGENT_SRCS)
+TEST_ISMCTS_OBJS := $(BUILDDIR)/testsrc/test_ismcts.o \
+                    $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_ISMCTS_SRCS)))
 
 # src/rating/ is dependency-free (game_types.h + libc only -- see rating.h),
 # so this test needs no engine objects beyond the rating module itself.
@@ -265,6 +279,44 @@ CALIB_SIMPLEMC_SRCS := $(AICALIBDIR)/simplemc/calib_simplemc.c \
 CALIB_SIMPLEMC_OBJS := $(BUILDDIR)/aicalibsrc/simplemc/calib_simplemc.o \
                        $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_SIMPLEMC_SRCS)))
 
+# Phase 3 timing-only harness for A10 IS-MCTS (see aicalibsrc/ismcts/
+# calib_ismcts_timing.c) -- measures wall-clock per-decision latency to pin
+# limit_iterations to ~1s/decision. Not a params sweep/optimize harness (that
+# is Phase 5's separate calib_ismcts.c, added later); same whole-roster link
+# set as the other CALIB_* targets regardless.
+CALIB_ISMCTS_TIMING_TARGET := $(BINDIR)/calib_ismcts_timing
+CALIB_ISMCTS_TIMING_SRCS := $(AICALIBDIR)/ismcts/calib_ismcts_timing.c \
+                            $(ENGINE_SRCS) \
+                            $(AGENT_SRCS) \
+                            $(SRCDIR)/roles/stda/stda_auto.c \
+                            $(SRCDIR)/ui/shared/player_config.c
+CALIB_ISMCTS_TIMING_OBJS := $(BUILDDIR)/aicalibsrc/ismcts/calib_ismcts_timing.o \
+                            $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_ISMCTS_TIMING_SRCS)))
+
+# Phase 5 lean efficiency-dial sweep harness for A10 IS-MCTS (see
+# aicalibsrc/ismcts/calib_ismcts_efficiency.c) -- not the full DE-optimizer
+# pipeline other agents have, see that file's header comment for why.
+CALIB_ISMCTS_EFFICIENCY_TARGET := $(BINDIR)/calib_ismcts_efficiency
+CALIB_ISMCTS_EFFICIENCY_SRCS := $(AICALIBDIR)/ismcts/calib_ismcts_efficiency.c \
+                                $(ENGINE_SRCS) \
+                                $(AGENT_SRCS) \
+                                $(SRCDIR)/roles/stda/stda_auto.c \
+                                $(SRCDIR)/ui/shared/player_config.c
+CALIB_ISMCTS_EFFICIENCY_OBJS := $(BUILDDIR)/aicalibsrc/ismcts/calib_ismcts_efficiency.o \
+                                $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_ISMCTS_EFFICIENCY_SRCS)))
+
+# Phase 6 diagnostic harness for A10 IS-MCTS's rollout policy (see
+# aicalibsrc/ismcts/calib_ismcts_rollout_policy.c) -- tests the "same
+# rollout-policy bias as A8" hypothesis for the Step 1 budget-curve plateau.
+CALIB_ISMCTS_ROLLOUT_TARGET := $(BINDIR)/calib_ismcts_rollout_policy
+CALIB_ISMCTS_ROLLOUT_SRCS := $(AICALIBDIR)/ismcts/calib_ismcts_rollout_policy.c \
+                             $(ENGINE_SRCS) \
+                             $(AGENT_SRCS) \
+                             $(SRCDIR)/roles/stda/stda_auto.c \
+                             $(SRCDIR)/ui/shared/player_config.c
+CALIB_ISMCTS_ROLLOUT_OBJS := $(BUILDDIR)/aicalibsrc/ismcts/calib_ismcts_rollout_policy.o \
+                             $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_ISMCTS_ROLLOUT_SRCS)))
+
 # Default target
 all: $(TARGET)
 
@@ -297,7 +349,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_hbt2ply_reply $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc
+	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_ismcts $(BINDIR)/test_hbt2ply_reply $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -361,6 +413,17 @@ $(TEST_MOVES_TARGET): $(TEST_MOVES_OBJS)
 	@mkdir -p $(BINDIR)
 	$(CC) $(TEST_MOVES_OBJS) -o $(TEST_MOVES_TARGET) $(LIBS)
 	@echo "Test build complete: $(TEST_MOVES_TARGET)"
+
+# Test A10 IS-MCTS's node arena/UCT tree and search loop
+.PHONY: test_ismcts
+test_ismcts: $(TEST_ISMCTS_TARGET)
+	./$(TEST_ISMCTS_TARGET)
+
+$(TEST_ISMCTS_TARGET): $(TEST_ISMCTS_OBJS)
+	@echo "Linking test_ismcts..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(TEST_ISMCTS_OBJS) -o $(TEST_ISMCTS_TARGET) $(LIBS)
+	@echo "Test build complete: $(TEST_ISMCTS_TARGET)"
 
 # Test the Bradley-Terry rating system (src/rating/)
 .PHONY: test_rating
@@ -463,6 +526,36 @@ $(CALIB_SIMPLEMC_TARGET): $(CALIB_SIMPLEMC_OBJS)
 	$(CC) $(CALIB_SIMPLEMC_OBJS) -o $(CALIB_SIMPLEMC_TARGET) $(LIBS)
 	@echo "Build complete: $(CALIB_SIMPLEMC_TARGET)"
 
+# Phase 3 timing-only harness for A10 IS-MCTS (see aicalibsrc/ismcts/calib_ismcts_timing.c)
+.PHONY: calib_ismcts_timing
+calib_ismcts_timing: $(CALIB_ISMCTS_TIMING_TARGET)
+
+$(CALIB_ISMCTS_TIMING_TARGET): $(CALIB_ISMCTS_TIMING_OBJS)
+	@echo "Linking calib_ismcts_timing..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(CALIB_ISMCTS_TIMING_OBJS) -o $(CALIB_ISMCTS_TIMING_TARGET) $(LIBS)
+	@echo "Build complete: $(CALIB_ISMCTS_TIMING_TARGET)"
+
+# Phase 5 lean efficiency-dial sweep harness for A10 IS-MCTS
+.PHONY: calib_ismcts_efficiency
+calib_ismcts_efficiency: $(CALIB_ISMCTS_EFFICIENCY_TARGET)
+
+$(CALIB_ISMCTS_EFFICIENCY_TARGET): $(CALIB_ISMCTS_EFFICIENCY_OBJS)
+	@echo "Linking calib_ismcts_efficiency..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(CALIB_ISMCTS_EFFICIENCY_OBJS) -o $(CALIB_ISMCTS_EFFICIENCY_TARGET) $(LIBS)
+	@echo "Build complete: $(CALIB_ISMCTS_EFFICIENCY_TARGET)"
+
+# Phase 6 rollout-policy diagnostic harness for A10 IS-MCTS
+.PHONY: calib_ismcts_rollout_policy
+calib_ismcts_rollout_policy: $(CALIB_ISMCTS_ROLLOUT_TARGET)
+
+$(CALIB_ISMCTS_ROLLOUT_TARGET): $(CALIB_ISMCTS_ROLLOUT_OBJS)
+	@echo "Linking calib_ismcts_rollout_policy..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(CALIB_ISMCTS_ROLLOUT_OBJS) -o $(CALIB_ISMCTS_ROLLOUT_TARGET) $(LIBS)
+	@echo "Build complete: $(CALIB_ISMCTS_ROLLOUT_TARGET)"
+
 .PHONY: format
 format:
 	astyle --project --suffix=none --recursive --exclude=ideas "*.c,*.h"
@@ -486,6 +579,7 @@ help:
 	@echo "  test_cash_exchange - Build and run cash exchange tests"
 	@echo "  test_rating      - Build and run Bradley-Terry rating system tests"
 	@echo "  test_moves       - Build and run move enumeration (src/actions/) tests"
+	@echo "  test_ismcts      - Build and run A10 IS-MCTS node arena/UCT tree tests"
 	@echo "  test_hbt2ply_reply - Build and run A9 HBT 2-Ply surrogate-hand tests"
 	@echo "  test_stda_auto   - Diff 'oracle -sa -p' output against bin/expectedresults.txt"
 	@echo "  calib_valuebased - Build the Value Based parameter calibration harness (aicalibsrc/)"
@@ -497,6 +591,8 @@ help:
 	@echo "  calib_hbt        - Build the Hybrid HBT parameter calibration harness (aicalibsrc/)"
 	@echo "  calib_hbt2ply    - Build the HBT 2-Ply parameter calibration harness (aicalibsrc/)"
 	@echo "  calib_simplemc   - Build the Simple Monte Carlo parameter calibration harness (aicalibsrc/)"
+	@echo "  calib_ismcts_timing - Build the A10 IS-MCTS per-decision timing harness (aicalibsrc/ismcts/)"
+	@echo "  calib_ismcts_efficiency - Build the A10 IS-MCTS efficiency-dial sweep harness (aicalibsrc/ismcts/)"
 	@echo "  format           - Format the c and h source files using astyle"
 	@echo "  help             - Show this help message"
 	@echo ""

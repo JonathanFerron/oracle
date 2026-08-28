@@ -17,16 +17,20 @@ Core game engine, CLI interactive mode, and TUI mode (Milestones 1 & 2 plus a po
 pass) are done. Random, `A1` Value Based ("The Apprentice"), `A2` Combo Threshold
 ("The Showboat"), `A3` Borealis (the Bradley-Terry benchmark), `A4` Balanced Rules
 ("Bean Counter"), `A5` Heuristic ("Eps-Gam-Del"), `A6` Tactical ("Pressure
-Cooker"), `A7` Hybrid HBT ("The Grandmaster"), and `A8` Simple Monte Carlo ("The
-Soothsayer") AI strategies are all implemented and calibrated, and the Bradley-Terry
-rating system itself is now built on top of them. `A5` (rating 61 in the current
-roster fit), `A6` (rating 53), and `A7` (rating 62, the highest measured so far) all
-measure above the Borealis anchor; `A8` measures 35 — legitimately below it and not
+Cooker"), `A7` Hybrid HBT ("The Grandmaster"), `A8` Simple Monte Carlo ("The
+Soothsayer"), `A9` HBT 2-Ply ("Grandmaster II"), and `A10` IS-MCTS ("The Omniscient")
+AI strategies are all implemented and calibrated, and the Bradley-Terry
+rating system itself is now built on top of them. `A10` measures **69, the roster
+ceiling** (also 63.2% head-to-head vs `A7`); `A5` (64, after the 2026-08-27
+PASS-dominance fix), `A6` (53), `A9` (59), and `A7` (58, after the same fix -- a
+regression for `A7` specifically, shipped anyway, see `doc/changelog.md`) all measure
+above the Borealis anchor; `A8` measures 35 — legitimately below it and not
 raised by extra rollout budget, per its own diagnosis (`doc/changelog.md`) rather
 than a defect. `A12` Clairvoyant ("The Clairvoyant") — `A8`'s sibling, not part of the
 `A1`-`A11` ladder's authoritative order — was also implemented as a side exploration,
 measuring 31; kept in the roster as a deliberately modest agent, not pursued further.
-**Active work**: `A10` IS-MCTS — see "Next Up" below.
+**Active work**: re-optimizing `A7`'s `HBTParams` with the PASS-dominance fix in place
+(see `doc/oracle_todo.md`'s Bug Tracker), then `A11` IS-MCTS + NN — see "Next Up" below.
 
 ### Recently Completed
 
@@ -240,14 +244,17 @@ Full details: `doc/changelog.md`.
 
 ## Next Up (single authoritative order)
 
-1. **`A10` IS-MCTS** ("The Omniscient", `ideas/A10 ai agent is-mcts (the omniscient)/`).
-   The next rung on the AI ladder — `A1`-`A9` and `A12` are all implemented and
-   calibrated. The question of whether to give `A8` Simple Monte Carlo a cheap,
-   non-tree heuristic rollout policy (its uniformly-random rollouts are the diagnosed
-   cause of its below-anchor rating, see `doc/changelog.md`'s 2026-08-25 entry) without
-   drifting it toward `A9`/`A10`/`A11`'s own territory is now resolved: `A12` Clairvoyant
-   (2026-08-25) is exactly that experiment, and it did not pay off (measured rating 31,
-   a few points below `A8`'s own 35) -- see `doc/changelog.md`.
+1. **Re-optimize `A7`'s `HBTParams`** with the 2026-08-27 PASS-dominance defense fix
+   already in place (not revert-and-reoptimize) -- `A7` regressed 62->58 from that fix
+   while `A5` improved 60->64 from the identical change, and the leading hypothesis is
+   that `A7`'s aggression/lethal-combo-hold layers on top of `A5`'s shared shape are the
+   interaction site. See `doc/oracle_todo.md`'s Bug Tracker and the
+   `project_a5_a7_defense_pass_dominance` memory for the full context.
+2. **`A11` IS-MCTS + NN** ("AlphaOracle Prime",
+   `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/`). The next rung on the AI
+   ladder now that `A10` IS-MCTS is implemented and calibrated (2026-08-27, measured
+   rating 69 -- the roster ceiling, see `doc/changelog.md`) -- replaces `A10`'s rollout
+   policy/leaf evaluation with a trained network.
 
 **Back burner** (explicitly deferred): save/load game state
 (`ideas/6 save and load gamestate/`), configuration file system
@@ -296,15 +303,19 @@ error-handling polish (see `doc/oracle_todo.md`).
   archived accordingly — see `doc/changelog.md`.
 - `stda.sim` (simulation UI): not started.
 
-### Phase: AI Development — `A1`–`A8` done, `A9` next
+### Phase: AI Development — `A1`–`A10` done, `A7` re-optimization then `A11` next
 
 Ladder: `A1` value-based (done, 2026-08-21) → `A2` combo threshold (The Showboat, done,
 2026-08-22) → `A3` greedy power (Borealis benchmark, done, 2026-08-23) → `A4` balanced
-rules (Bean Counter, done, 2026-08-24) → `A5` heuristic (Eps-Gam-Del, done, 2026-08-25)
+rules (Bean Counter, done, 2026-08-24) → `A5` heuristic (Eps-Gam-Del, done, 2026-08-25,
+rating 60, later 64 -- see the 2026-08-27 PASS-dominance fix in `doc/changelog.md`)
 → `A6` tactical (Pressure Cooker, done, 2026-08-25) → `A7` hybrid HBT (The Grandmaster,
-done, 2026-08-25) → `A8` simple MC (The Soothsayer, done, 2026-08-25, rating 35 --
-see `doc/changelog.md`)
-→ `A9` HBT 2-ply → `A10` IS-MCTS → `A11` IS-MCTS + neural
+done, 2026-08-25, rating 62, later 58 -- same fix, a regression for this agent
+specifically, shipped anyway pending re-optimization) → `A8` simple MC (The Soothsayer,
+done, 2026-08-25, rating 35 -- see `doc/changelog.md`) → `A9` HBT 2-ply (Grandmaster II,
+done, 2026-08-26, rating 59) → `A10` IS-MCTS (The Omniscient, done, 2026-08-27,
+**rating 69 -- the roster ceiling**, also 63.2% head-to-head vs `A7`)
+→ `A11` IS-MCTS + neural
 network. One `ideas/A#` folder per agent,
 `A#` matching that agent's `AIStrategyType` enum ordinal (`src/core/game_types.h` as of
 `A1`; it previously lived in `src/ui/shared/player_config.h`). `A12` Clairvoyant (The
