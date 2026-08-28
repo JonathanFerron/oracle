@@ -19,6 +19,13 @@
 // for both seats regardless of which agent actually plays there -- harmless,
 // since a non-Combo-Threshold agent never reads them.
 //
+//   calib_combo_threshold --print-defaults
+//
+// --print-defaults dumps the compiled CT_DEFAULTS as JSON and exits, so
+// calibrate_combo_threshold.py never hardcodes its own stale copy of the
+// baseline (added 2026-08-28 -- see doc/oracle_todo.md's Calibration
+// section for the drift this was tracking).
+//
 // Output: one CSV line to stdout, no header (a driver script supplies its
 // own so it can run this many times and concatenate):
 //   numsim,seed,agent_a,agent_b,
@@ -55,8 +62,9 @@ static void print_usage(const char* prog)
           "<aggression_a> <combo2_a> <combo3_a> <weight_a> <floor_a> "
           "<defend_prob_a> <defend_dmg_a> <min_hand_a> <save_lethal_a> "
           "<aggression_b> <combo2_b> <combo3_b> <weight_b> <floor_b> "
-          "<defend_prob_b> <defend_dmg_b> <min_hand_b> <save_lethal_b>\n",
-          prog);
+          "<defend_prob_b> <defend_dmg_b> <min_hand_b> <save_lethal_b>\n"
+          "   or: %s --print-defaults\n",
+          prog, prog);
 } // print_usage
 
 // Parses the nine positional CLI args starting at argv[offset] into a
@@ -83,8 +91,32 @@ static void print_params_csv(const ComboThresholdParams* p)
          p->save_big_combos_for_lethal ? 1 : 0);
 } // print_params_csv
 
+static void print_defaults_json(void)
+{ ComboThresholdParams d = combo_threshold_get_default_params();
+  printf("{\n"
+         "  \"aggression_level\": %.6f,\n"
+         "  \"combo_bonus_threshold\": %d,\n"
+         "  \"combo3_bonus_threshold\": %d,\n"
+         "  \"combo_weight\": %.6f,\n"
+         "  \"min_play_score_floor\": %.6f,\n"
+         "  \"defend_probability_base\": %.6f,\n"
+         "  \"defend_damage_threshold\": %d,\n"
+         "  \"min_hand_size_target\": %d,\n"
+         "  \"save_big_combos_for_lethal\": %d\n"
+         "}\n",
+         d.aggression_level, d.combo_bonus_threshold, d.combo3_bonus_threshold,
+         d.combo_weight, d.min_play_score_floor, d.defend_probability_base,
+         d.defend_damage_threshold, d.min_hand_size_target,
+         d.save_big_combos_for_lethal ? 1 : 0);
+} // print_defaults_json
+
 int main(int argc, char** argv)
-{ if(argc != CT_FIXED_ARGC + 2 * CT_PARAM_ARGC + 1)
+{ if(argc == 2 && strcmp(argv[1], "--print-defaults") == 0)
+  { print_defaults_json();
+    return EXIT_SUCCESS;
+  }
+
+  if(argc != CT_FIXED_ARGC + 2 * CT_PARAM_ARGC + 1)
   { print_usage(argv[0]);
     return EXIT_FAILURE;
   }

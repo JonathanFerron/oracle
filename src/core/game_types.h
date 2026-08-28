@@ -77,12 +77,16 @@ typedef enum
   ORDER_COUNT = ORDER_NOT_APPLICABLE
 } ChampionOrder;
 
-// Deck type enum
+// Combo bonus table -- which scoring table calculate_combo_bonus() (combo_bonus.c)
+// applies. Renamed from DeckType 2026-08-28: this names the scoring table, not the
+// deck-construction method, since the ~15 planned deck-building approaches
+// (ideas/10 Draft Format and Game Depth Addition Ideas/) will each need to point at
+// whichever of these 3 tables applies to them -- several are expected to share one.
 typedef enum
-{ DECK_RANDOM,
-  DECK_MONOCHROME,
-  DECK_CUSTOM
-} DeckType;
+{ COMBO_BONUS_RANDOM,
+  COMBO_BONUS_MONOCHROME,
+  COMBO_BONUS_CUSTOM
+} ComboBonusTable;
 
 // Card structure
 struct card
@@ -128,6 +132,7 @@ struct gamestate
   GameStateEnum game_state;
   TurnPhase turn_phase;
   PlayerID player_to_move;
+  ComboBonusTable combo_bonus_table; // which combo_bonus.c table combat.c should use
 }; // gamestate
 
 /* Game mode enumeration */

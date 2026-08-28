@@ -33,6 +33,7 @@ Examples:
 """
 
 import argparse
+import json
 import math
 import subprocess
 import sys
@@ -46,8 +47,26 @@ from scipy.optimize import minimize
 BINARY = Path(__file__).resolve().parent.parent.parent / "bin" / "calib_valuebased"
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
 
-DEFAULT_COST_FLOOR = 1.0
-DEFAULT_DEFEND_THRESHOLD = 0.5
+
+def _load_defaults_from_binary():
+    if not BINARY.exists():
+        # Fall back to the compiled-in values in ai_strat_valuebased.c's
+        # VB_COST_FLOOR/VB_DEFEND_THRESHOLD, so --help and argument parsing
+        # still work before `make calib_valuebased` has run. Any real
+        # command still hits run_match()'s own existence check.
+        return {"cost_floor": 1.3, "defend_threshold": 0.8}
+    result = subprocess.run([str(BINARY), "--print-defaults"],
+                            capture_output=True, text=True, check=True)
+    return json.loads(result.stdout)
+
+
+# Read from the compiled binary (added 2026-08-28) rather than hardcoded
+# module constants, which had drifted from the shipped C values (1.0/0.5
+# here vs the actual shipped 1.3/0.8) -- see doc/oracle_todo.md's
+# Calibration section.
+_DEFAULTS = _load_defaults_from_binary()
+DEFAULT_COST_FLOOR = _DEFAULTS["cost_floor"]
+DEFAULT_DEFEND_THRESHOLD = _DEFAULTS["defend_threshold"]
 
 SWEEP_DEFAULTS = {
     "defend_threshold": [0.0, 0.25, 0.5, 1.0, 2.0],
@@ -56,8 +75,17 @@ SWEEP_DEFAULTS = {
 
 
 def run_match(numsim, seed, agent_a, agent_b,
-              cost_floor_a, defend_threshold_a, cost_floor_b, defend_threshold_b):
-    """One call to bin/calib_valuebased. Runs in a worker process."""
+              cost_floor_a, defend_threshold_a, cost_floor_b, defend_threshold_b, **tags):
+    """One call to bin/calib_valuebased. Runs in a worker process.
+
+    **tags are caller-supplied bookkeeping (e.g. _i/_j) merged straight into
+    the returned dict, so every result is self-describing -- added
+    2026-08-28 (ported from aicalibsrc/balanced/calibrate_balanced.py) to
+    fix a result-misattribution bug: selfplay used to track this bookkeeping
+    in a separate submission-order list and reattach it after run_many()'s
+    ProcessPoolExecutor returned results in *completion* order, silently
+    scrambling which result belonged to which config under concurrency (see
+    doc/oracle_todo.md's Calibration section)."""
     if not BINARY.exists():
         raise FileNotFoundError(f"{BINARY} not found -- run `make calib_valuebased` first")
 
@@ -72,6 +100,7 @@ def run_match(numsim, seed, agent_a, agent_b,
         "cost_floor_a": float(row[4]), "defend_threshold_a": float(row[5]),
         "cost_floor_b": float(row[6]), "defend_threshold_b": float(row[7]),
         "wins_a": int(row[8]), "wins_b": int(row[9]), "draws": int(row[10]),
+        **tags,
     }
 
 
@@ -275,15 +304,27 @@ def summarize_selfplay(df, combos):
     n = len(combos)
     wins = np.zeros((n, n))
     games = np.zeros((n, n))
+    # Per-candidate totals, tracked directly from wins_a/wins_b -- NOT
+    # rederived from the wins/games matrices via a transpose trick (fixed
+    # 2026-08-28, ported from aicalibsrc/combo/calibrate_combo_threshold.py).
+    # wins[i,j] only ever holds "i's wins when seated as A against j as B",
+    # so wins.T[i,:].sum() sums the *opponents'* A-seat wins in games where i
+    # was B, not i's own wins -- every match report carries both wins_a and
+    # wins_b, so just credit each side directly instead.
+    total_wins = np.zeros(n)
+    total_games = np.zeros(n)
     for _, row in df.iterrows():
         i, j = int(row["_i"]), int(row["_j"])
+        n_games = row["wins_a"] + row["wins_b"] + row["draws"]
         wins[i, j] += row["wins_a"]
-        games[i, j] += row["wins_a"] + row["wins_b"] + row["draws"]
+        games[i, j] += n_games
+        total_wins[i] += row["wins_a"]
+        total_wins[j] += row["wins_b"]
+        total_games[i] += n_games
+        total_games[j] += n_games
 
     strength = bradley_terry_fit(combos, wins, games)
 
-    total_wins = wins.sum(axis=1) + wins.T.sum(axis=1)
-    total_games = games.sum(axis=1) + games.T.sum(axis=1)
     summary = pd.DataFrame({
         "cost_floor": [c[0] for c in combos],
         "defend_threshold": [c[1] for c in combos],
@@ -305,11 +346,7 @@ def cmd_selfplay(args):
          f"({n_pairs} pairs x {args.replicates} replicates x 2 seats) "
          f"over {len(combos)} parameter combos...", file=sys.stderr)
 
-    # _i/_j are bookkeeping only, run_match() doesn't take them
-    meta = [(job.pop("_i"), job.pop("_j")) for job in jobs]
     df = run_many(jobs, max_workers=args.workers)
-    df["_i"] = [m[0] for m in meta]
-    df["_j"] = [m[1] for m in meta]
 
     summary = summarize_selfplay(df, combos)
     print("\nSelf-play round-robin (Bradley-Terry fit, higher = stronger, "

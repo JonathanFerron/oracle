@@ -17,6 +17,14 @@
 // regardless of which agent actually plays there -- harmless, since a
 // non-Borealis agent never reads them.
 //
+//   calib_borealis --print-defaults
+//
+// --print-defaults dumps the compiled BOREALIS_DEFAULTS as JSON and exits,
+// so calibrate_borealis.py never hardcodes its own stale copy of the
+// baseline (added 2026-08-28 -- see doc/oracle_todo.md's Calibration
+// section for the drift this was tracking; luna_value alone had drifted
+// 9.2x).
+//
 // Output: one CSV line to stdout, no header (a driver script supplies its
 // own so it can run this many times and concatenate). Params are echoed
 // back after parsing -- this round-trip is what caught an argv off-by-one
@@ -54,8 +62,9 @@ static void print_usage(const char* prog)
 { fprintf(stderr,
           "Usage: %s <numsim> <seed> <agent_a> <agent_b> "
           "<luna_a> <epsilon_a> <hold_a> <combo_bonus_a> <ceiling_a> <hand_a> "
-          "<luna_b> <epsilon_b> <hold_b> <combo_bonus_b> <ceiling_b> <hand_b>\n",
-          prog);
+          "<luna_b> <epsilon_b> <hold_b> <combo_bonus_b> <ceiling_b> <hand_b>\n"
+          "   or: %s --print-defaults\n",
+          prog, prog);
 } // print_usage
 
 // Parses the six positional CLI args starting at argv[offset] into a
@@ -77,8 +86,27 @@ static void print_params_csv(const BorealisParams* p)
          p->lethal_combo_bonus, p->lethal_hold_ceiling, p->min_hand_size_target);
 } // print_params_csv
 
+static void print_defaults_json(void)
+{ BorealisParams d = borealis_get_default_params();
+  printf("{\n"
+         "  \"luna_value\": %.6f,\n"
+         "  \"tiebreak_epsilon\": %.6f,\n"
+         "  \"hold_lethal_combos\": %d,\n"
+         "  \"lethal_combo_bonus\": %d,\n"
+         "  \"lethal_hold_ceiling\": %d,\n"
+         "  \"min_hand_size_target\": %d\n"
+         "}\n",
+         d.luna_value, d.tiebreak_epsilon, d.hold_lethal_combos ? 1 : 0,
+         d.lethal_combo_bonus, d.lethal_hold_ceiling, d.min_hand_size_target);
+} // print_defaults_json
+
 int main(int argc, char** argv)
-{ if(argc != BOR_FIXED_ARGC + 2 * BOR_PARAM_ARGC + 1)
+{ if(argc == 2 && strcmp(argv[1], "--print-defaults") == 0)
+  { print_defaults_json();
+    return EXIT_SUCCESS;
+  }
+
+  if(argc != BOR_FIXED_ARGC + 2 * BOR_PARAM_ARGC + 1)
   { print_usage(argv[0]);
     return EXIT_FAILURE;
   }

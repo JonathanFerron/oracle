@@ -81,6 +81,16 @@ void value_based_reset_params(void)
   g_defend_threshold[PLAYER_A] = g_defend_threshold[PLAYER_B] = VB_DEFEND_THRESHOLD;
 } // value_based_reset_params
 
+// Compiled shipped defaults, for calib_valuebased.c's --print-defaults (added
+// 2026-08-28 so calibrate_valuebased.py's own DEFAULTS can be read from this
+// binary instead of hardcoding a copy that drifts -- see doc/oracle_todo.md's
+// Calibration section). VB_COST_FLOOR/VB_DEFEND_THRESHOLD are private #defines
+// above, not otherwise exposed outside this file.
+void value_based_get_default_params(float* cost_floor, float* defend_threshold)
+{ *cost_floor = VB_COST_FLOOR;
+  *defend_threshold = VB_DEFEND_THRESHOLD;
+} // value_based_get_default_params
+
 typedef struct
 { uint8_t card_index;
   float efficiency;

@@ -51,9 +51,7 @@ int16_t calculate_total_attack(struct gamestate* gstate, PlayerID player, GameCo
                 fullDeck[card_idx].cost);
   }
 
-  // Add combo bonus (assuming DECK_RANDOM for now)
-
-  int bonus = calculate_combo_bonus(combat_cards, num_cards, DECK_RANDOM);
+  int bonus = calculate_combo_bonus(combat_cards, num_cards, gstate->combo_bonus_table);
   total += bonus;
 
   DEBUG_ONLY(if(bonus > 0) printf(" Combo bonus: +%d\n", bonus));
@@ -88,8 +86,7 @@ int16_t calculate_total_defense(struct gamestate* gstate, PlayerID player, GameC
                 fullDeck[card_idx].cost);
   }
 
-  // Add combo bonus (assuming DECK_RANDOM for now)
-  int bonus = calculate_combo_bonus(combat_cards, num_cards, DECK_RANDOM);
+  int bonus = calculate_combo_bonus(combat_cards, num_cards, gstate->combo_bonus_table);
   total += bonus;
 
   DEBUG_ONLY(if(bonus > 0) printf(" Combo bonus: +%d\n", bonus));
@@ -155,7 +152,7 @@ void resolve_combat_with_details(struct gamestate* gstate, CombatDetails* detail
     };
   }
 
-  details->attack_combo = calculate_combo_bonus(attack_cards, details->num_attackers, DECK_RANDOM);
+  details->attack_combo = calculate_combo_bonus(attack_cards, details->num_attackers, gstate->combo_bonus_table);
   details->total_attack = attack_total + details->attack_combo;
 
   details->num_defenders = gstate->combat_zone[defender].size;
@@ -179,7 +176,7 @@ void resolve_combat_with_details(struct gamestate* gstate, CombatDetails* detail
     };
   }
 
-  details->defense_combo = calculate_combo_bonus(defense_cards, details->num_defenders, DECK_RANDOM);
+  details->defense_combo = calculate_combo_bonus(defense_cards, details->num_defenders, gstate->combo_bonus_table);
   details->total_defense = defense_total + details->defense_combo;
 
   details->defender_energy_before = gstate->current_energy[defender];

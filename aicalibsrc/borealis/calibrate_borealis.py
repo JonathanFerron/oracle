@@ -88,13 +88,28 @@ PARAM_NAMES = [
     "lethal_combo_bonus", "lethal_hold_ceiling", "min_hand_size_target",
 ]
 
-# The handout's own defaults (Sec.3), ai_strat_borealis.c's
-# BOREALIS_DEFAULTS -- not yet a measured optimum; that's what this file's
-# `sweep`/`optimize` exist to find.
-DEFAULTS = {
-    "luna_value": 0.5, "tiebreak_epsilon": 0.5, "hold_lethal_combos": True,
-    "lethal_combo_bonus": 16, "lethal_hold_ceiling": 25, "min_hand_size_target": 4,
-}
+def _load_defaults_from_binary():
+    if not BINARY.exists():
+        # Fall back to the compiled-in values in ai_strat_borealis.c's
+        # BOREALIS_DEFAULTS, so --help and argument parsing still work
+        # before `make calib_borealis` has run. Any real command still hits
+        # run_match()'s own existence check.
+        return {
+            "luna_value": 4.5846, "tiebreak_epsilon": 0.3444,
+            "hold_lethal_combos": True, "lethal_combo_bonus": 24,
+            "lethal_hold_ceiling": 38, "min_hand_size_target": 6,
+        }
+    result = subprocess.run([str(BINARY), "--print-defaults"],
+                            capture_output=True, text=True, check=True)
+    return json.loads(result.stdout)
+
+
+# Read from the compiled binary (added 2026-08-28) rather than a hardcoded
+# dict, which still had the handout's original pre-calibration guesses
+# (Sec.3) instead of the actual shipped, calibrated BOREALIS_DEFAULTS --
+# luna_value alone was off by 9.2x (0.5 here vs the shipped 4.5846). See
+# doc/oracle_todo.md's Calibration section.
+DEFAULTS = _load_defaults_from_binary()
 
 # Default search space for `optimize` and default sweep grids for `sweep`.
 # luna_value's upper bound was widened from an initial 3.0 to 6.0 after a

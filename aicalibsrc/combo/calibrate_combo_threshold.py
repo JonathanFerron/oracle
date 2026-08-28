@@ -77,13 +77,29 @@ PARAM_NAMES = [
     "defend_damage_threshold", "min_hand_size_target", "save_big_combos_for_lethal",
 ]
 
-# Shipped defaults, ai_strat_combo_threshold.c's CT_DEFAULTS.
-DEFAULTS = {
-    "aggression_level": 1.0, "combo_bonus_threshold": 10, "combo3_bonus_threshold": 14,
-    "combo_weight": 1.0, "min_play_score_floor": 4.0, "defend_probability_base": 0.55,
-    "defend_damage_threshold": 8, "min_hand_size_target": 4,
-    "save_big_combos_for_lethal": True,
-}
+def _load_defaults_from_binary():
+    if not BINARY.exists():
+        # Fall back to the compiled-in values in ai_strat_combo_threshold.c's
+        # CT_DEFAULTS, so --help and argument parsing still work before
+        # `make calib_combo_threshold` has run. Any real command still hits
+        # run_match()'s own existence check.
+        return {
+            "aggression_level": 1.3, "combo_bonus_threshold": 11,
+            "combo3_bonus_threshold": 16, "combo_weight": 2.3626,
+            "min_play_score_floor": 2.1184, "defend_probability_base": 0.4085,
+            "defend_damage_threshold": 8, "min_hand_size_target": 5,
+            "save_big_combos_for_lethal": True,
+        }
+    result = subprocess.run([str(BINARY), "--print-defaults"],
+                            capture_output=True, text=True, check=True)
+    return json.loads(result.stdout)
+
+
+# Read from the compiled binary (added 2026-08-28) rather than a hardcoded
+# dict, which had drifted from the shipped CT_DEFAULTS on 7 of 9 fields (most
+# notably combo_weight: 1.0 here vs the actual shipped 2.3626) -- see
+# doc/oracle_todo.md's Calibration section.
+DEFAULTS = _load_defaults_from_binary()
 
 # Handout §6.3 ranges -- default search space for `optimize` and default
 # sweep grids for `sweep`.
@@ -166,8 +182,19 @@ def load_candidate(spec):
 # Core: one match, many matches, confidence intervals
 # ---------------------------------------------------------------------------
 
-def run_match(numsim, seed, agent_a, agent_b, params_a, params_b):
-    """One call to bin/calib_combo_threshold. Safe to run in a worker."""
+def run_match(numsim, seed, agent_a, agent_b, params_a, params_b, **tags):
+    """One call to bin/calib_combo_threshold. Safe to run in a worker.
+
+    **tags are caller-supplied bookkeeping (e.g. _i/_j, _value/_combo_in_a)
+    merged straight into the returned dict, so every result is
+    self-describing -- added 2026-08-28 (ported from aicalibsrc/balanced/
+    calibrate_balanced.py) to fix a result-misattribution bug: sweep/selfplay
+    used to track this bookkeeping in a separate submission-order list and
+    reattach it after run_many()'s ProcessPoolExecutor returned results in
+    *completion* order, silently scrambling which result belonged to which
+    config under concurrency (see doc/oracle_todo.md's Calibration section;
+    repro was a luna_value-style sweep going jagged/non-monotone with
+    multiple workers, smooth with --workers 1)."""
     if not BINARY.exists():
         raise FileNotFoundError(f"{BINARY} not found -- run `make calib_combo_threshold` first")
 
@@ -181,6 +208,7 @@ def run_match(numsim, seed, agent_a, agent_b, params_a, params_b):
         "numsim": int(row[0]), "seed": int(row[1]),
         "agent_a": row[2], "agent_b": row[3],
         "wins_a": int(row[-3]), "wins_b": int(row[-2]), "draws": int(row[-1]),
+        **tags,
     }
 
 
@@ -258,10 +286,7 @@ def cmd_sweep(args):
          f"({len(values)} values x {args.replicates} replicates x 2 seats, "
          f"vs {args.opponent})...", file=sys.stderr)
 
-    meta = [(j.pop("_value"), j.pop("_combo_in_a")) for j in jobs]
     df = run_many(jobs, max_workers=args.workers)
-    df["_value"] = [m[0] for m in meta]
-    df["_combo_in_a"] = [m[1] for m in meta]
     df["combo_wins"] = np.where(df["_combo_in_a"], df["wins_a"], df["wins_b"])
     df["n"] = df["wins_a"] + df["wins_b"] + df["draws"]
 
@@ -509,10 +534,7 @@ def cmd_selfplay(args):
          f"({n_pairs} pairs x {args.replicates} replicates x 2 seats) "
          f"over {len(names)} candidates...", file=sys.stderr)
 
-    meta = [(j.pop("_i"), j.pop("_j")) for j in jobs]
     df = run_many(jobs, max_workers=args.workers)
-    df["_i"] = [m[0] for m in meta]
-    df["_j"] = [m[1] for m in meta]
 
     summary = summarize_selfplay(df, names)
     print("\nSelf-play round-robin (Bradley-Terry fit, higher = stronger):")

@@ -37,7 +37,7 @@ static void build_combat_cards(const uint8_t* card_indices, uint8_t n, CombatCar
 int combo_bonus_for_selection(const uint8_t* card_indices, uint8_t n)
 { CombatCard combat_cards[3];
   build_combat_cards(card_indices, n, combat_cards);
-  return calculate_combo_bonus(combat_cards, n, DECK_RANDOM);
+  return calculate_combo_bonus(combat_cards, n, COMBO_BONUS_RANDOM);
 } // combo_bonus_for_selection
 
 float expected_incoming_attack(const struct gamestate* gstate, PlayerID defender)

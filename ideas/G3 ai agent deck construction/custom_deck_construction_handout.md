@@ -8,6 +8,18 @@ Implement one or more **non-simulation-seeded, simulation-refined** methods to c
 
 ## 1. Prerequisite: Fix a Real Bug Before Any Evaluation Work
 
+**RESOLVED 2026-08-28** (as part of the project's general housekeeping pass, ahead
+of `G3` itself being picked up -- see `doc/changelog.md`'s 2026-08-28 entry). The
+fix landed as described below, with one change from this handout's own sketch:
+`struct gamestate` gained the new field (not `GameContext` -- keeps every call site
+unchanged, since MC/ISMCTS simulations already copy `struct gamestate` by value),
+and the type was renamed `DeckType` -> `ComboBonusTable` (with `DECK_RANDOM`/
+`DECK_MONOCHROME`/`DECK_CUSTOM` -> `COMBO_BONUS_RANDOM`/`COMBO_BONUS_MONOCHROME`/
+`COMBO_BONUS_CUSTOM`) since it names which scoring table applies, not which
+deck-construction method was used -- several of the ~15 methods in `ideas/10
+Draft Format and Game Depth Addition Ideas/` are expected to share one. Original
+description kept below for context.
+
 `combat.c::calculate_total_attack()` and `calculate_total_defense()` currently call:
 
 ```c

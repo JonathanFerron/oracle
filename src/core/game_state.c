@@ -18,6 +18,11 @@ void setup_game(uint16_t initial_cash, struct gamestate* gstate, GameContext* ct
   gstate->current_energy[PLAYER_B] = INITIAL_ENERGY_DEFAULT;
   gstate->someone_has_zero_energy = false;
   gstate->game_state = ACTIVE;
+  // The card-distribution below is always the random-distribution deal --
+  // no deck-construction method exists yet (see doc/oracle_roadmap.md's G3/
+  // draft-format items) -- so this is the only table that can ever be
+  // correct here today.
+  gstate->combo_bonus_table = COMBO_BONUS_RANDOM;
 
   // Initialize decks
   gstate->deck[PLAYER_A].top = -1;

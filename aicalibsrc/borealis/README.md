@@ -4,6 +4,15 @@ Calibration for `src/ai_strat/ai_strat_borealis.c`'s six tunable parameters
 (`BorealisParams`). See `doc/changelog.md` for the design discussion and any
 calibration run that has produced shipped values so far.
 
+**2026-08-28 housekeeping**: `calib_borealis.c` gained a `--print-defaults` mode
+(same pattern as `aicalibsrc/balanced/`, ported into this driver too), so
+`DEFAULTS` here is now read from the compiled binary rather than a hand-copied
+dict. It had drifted badly -- `luna_value` was still the handout's original
+pre-calibration guess (0.5), off by 9.2x from the actual shipped `4.5846`. (The
+result-misattribution bug fixed the same day in `aicalibsrc/value/`/`aicalibsrc/
+combo/` originated here -- this driver's `run_match(**tags)` was already correct,
+see `doc/changelog.md`'s 2026-08-23 entry.)
+
 One subfolder per agent under `aicalibsrc/`, mirroring `aicalibsrc/value/` and
 `aicalibsrc/combo/` -- keep each agent's harness and driver self-contained
 rather than accumulating loose files at the top level.

@@ -5,6 +5,21 @@ Calibration for `src/ai_strat/ai_strat_valuebased.c`'s two tunable parameters
 entries) for the design discussion and the calibration run that produced the
 currently shipped values.
 
+**2026-08-28 housekeeping**: fixed two bugs (ported from `aicalibsrc/balanced/`'s
+already-correct patterns) that predate this note but affected every run until now.
+(1) `run_match()` now takes `**tags`, so `selfplay`'s per-candidate `_i`/`_j`
+bookkeeping travels with each result instead of being reattached from a
+submission-order list after `run_many()`'s multi-worker pool returns results in
+completion order -- previously silently scrambled BT-fit attribution under real
+concurrency. (2) `--print-defaults` (via a new `value_based_get_default_params()`
+accessor in `ai_strat_valuebased.c`/`.h`) means `DEFAULTS` here is read from the
+compiled binary rather than a hand-copied dict, which had drifted to the
+pre-calibration values (1.0/0.5 instead of the shipped 1.3/0.8). Re-validated
+`VB_COST_FLOOR` with both fixed: a 10-point grid's quadratic fit R² jumped from the
+original ~0.25-0.49 to 0.84, but the shipped `1.3` remains statistically tied with
+the fit's top candidates (`1.5`/`1.7`/`2.0`) in a focused, larger-sample comparison
+-- not re-shipped. See `doc/changelog.md`'s 2026-08-28 entry.
+
 One subfolder per agent under `aicalibsrc/` as more agents get calibration
 tooling (A2 Combo Threshold, A3 Borealis are the likely next ones) -- keep
 each agent's harness and driver self-contained in its own subfolder rather

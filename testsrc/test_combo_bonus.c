@@ -264,32 +264,32 @@ void test_main_function(TestSuite *suite)
   CombatCard cards[3];
   int bonus;
 
-  // Test with RANDOM deck type
+  // Test with the random-distribution combo bonus table
   cards[0] = (CombatCard)
   { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
   cards[1] = (CombatCard)
   { SPECIES_HUMAN, COLOR_RED, ORDER_A
   };
-  bonus = calculate_combo_bonus(cards, 2, DECK_RANDOM);
-  print_test_result("DECK_RANDOM routing", 10, bonus);
+  bonus = calculate_combo_bonus(cards, 2, COMBO_BONUS_RANDOM);
+  print_test_result("COMBO_BONUS_RANDOM routing", 10, bonus);
   suite->passed += (bonus == 10);
   suite->failed += (bonus != 10);
 
-  // Test with MONOCHROME deck type
-  bonus = calculate_combo_bonus(cards, 2, DECK_MONOCHROME);
-  print_test_result("DECK_MONOCHROME routing", 7, bonus);
+  // Test with the monochrome-teams combo bonus table
+  bonus = calculate_combo_bonus(cards, 2, COMBO_BONUS_MONOCHROME);
+  print_test_result("COMBO_BONUS_MONOCHROME routing", 7, bonus);
   suite->passed += (bonus == 7);
   suite->failed += (bonus != 7);
 
-  // Test with CUSTOM deck type
-  bonus = calculate_combo_bonus(cards, 2, DECK_CUSTOM);
-  print_test_result("DECK_CUSTOM routing", 7, bonus);
+  // Test with the custom-teams combo bonus table
+  bonus = calculate_combo_bonus(cards, 2, COMBO_BONUS_CUSTOM);
+  print_test_result("COMBO_BONUS_CUSTOM routing", 7, bonus);
   suite->passed += (bonus == 7);
   suite->failed += (bonus != 7);
 
   // Test edge case: 1 card
-  bonus = calculate_combo_bonus(cards, 1, DECK_RANDOM);
+  bonus = calculate_combo_bonus(cards, 1, COMBO_BONUS_RANDOM);
   print_test_result("Single card (no combo)", 0, bonus);
   suite->passed += (bonus == 0);
   suite->failed += (bonus != 0);

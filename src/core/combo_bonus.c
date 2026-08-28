@@ -5,10 +5,10 @@
 #include "game_constants.h"
 #include <stddef.h>
 
-int calculate_combo_bonus(CombatCard *cards, int num_cards, DeckType deck_type)
+int calculate_combo_bonus(CombatCard *cards, int num_cards, ComboBonusTable table)
 { if(num_cards < 2 || num_cards > 3) return 0;
 
-  if(deck_type == DECK_RANDOM)
+  if(table == COMBO_BONUS_RANDOM)
     return calc_random_bonus(cards, num_cards);
   else
     return calc_prebuilt_bonus(cards, num_cards);

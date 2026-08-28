@@ -25,18 +25,22 @@ uint8_t build_affordable_champions(const struct gamestate* gstate, PlayerID play
 // commits their champions before the defender acts, so this is public
 // information -- reading it is not a combo-blindness violation; that
 // constraint is about an agent's own card selection, not about what it may
-// observe), plus the combo bonus that zone would score. Matches combat.c's
-// unconditional DECK_RANDOM argument to calculate_combo_bonus() so this
-// stays consistent with how combat is actually resolved. Call this during
-// the defense phase, when gstate->combat_zone[1 - defender] holds the
-// attacker's committed champions.
+// observe), plus the combo bonus that zone would score. Hardcoded to
+// COMBO_BONUS_RANDOM here rather than reading gstate->combo_bonus_table (see
+// combat.c, fixed 2026-08-28) -- a deliberate simplification, not a bug: this
+// is an AI-side estimate, and correctly matches combat.c's own resolution as
+// long as no non-random-distribution game exists in practice (true today; no
+// deck-construction method exists yet -- see doc/oracle_roadmap.md's G3/
+// draft-format items). Revisit if/when that changes. Call this during the
+// defense phase, when gstate->combat_zone[1 - defender] holds the attacker's
+// committed champions.
 float expected_incoming_attack(const struct gamestate* gstate, PlayerID defender);
 
 // Combo bonus a selection of up to 3 fullDeck[] indices would score if
-// played together, via calculate_combo_bonus() with the same DECK_RANDOM
-// argument combat.c always passes -- so this matches how combat actually
-// resolves. n must be 0-3; returns 0 outside 2-3 (calculate_combo_bonus()'s
-// own range check), same as calling it directly.
+// played together, via calculate_combo_bonus() with the same hardcoded
+// COMBO_BONUS_RANDOM table expected_incoming_attack() above uses, for the
+// same reason (see its comment). n must be 0-3; returns 0 outside 2-3
+// (calculate_combo_bonus()'s own range check), same as calling it directly.
 int combo_bonus_for_selection(const uint8_t* card_indices, uint8_t n);
 
 // Borealis's placeholder draw heuristic (greedy_power_borealis_handout.md

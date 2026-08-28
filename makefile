@@ -115,6 +115,26 @@ TEST_CASH_SRCS := $(TESTSRCDIR)/test_cash_exchange.c \
 TEST_CASH_OBJS := $(BUILDDIR)/testsrc/test_cash_exchange.o \
                   $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_CASH_SRCS)))
 
+# Test combat.c's combo-bonus table selection (added 2026-08-28 alongside the
+# ComboBonusTable rename/fix -- no prior test exercised combat.c's combo-bonus
+# integration at all, only combo_bonus.c's own routing). Narrow TEST_CASH_SRCS
+# shape plus combat.c/combo_bonus.c/game_state.c (needed for setup_game()'s
+# default), not the whole-engine TEST_RECALL_SRCS/TEST_MOVES_SRCS shape --
+# this test never touches AI strategies.
+TEST_COMBAT_TARGET := $(BINDIR)/test_combat
+TEST_COMBAT_SRCS := $(TESTSRCDIR)/test_combat.c \
+                    $(SRCDIR)/core/combat.c \
+                    $(SRCDIR)/core/combo_bonus.c \
+                    $(SRCDIR)/core/game_constants.c \
+                    $(SRCDIR)/core/game_context.c \
+                    $(SRCDIR)/core/game_state.c \
+                    $(SRCDIR)/structures/card_collection.c \
+                    $(SRCDIR)/structures/deckstack.c \
+                    $(SRCDIR)/util/mtwister.c \
+                    $(SRCDIR)/util/rnd.c
+TEST_COMBAT_OBJS := $(BUILDDIR)/testsrc/test_combat.o \
+                    $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_COMBAT_SRCS)))
+
 # ai_strat_hbt2ply_reply.c started as just the surrogate-hand builder
 # (fullDeck + Hand/Discard/CombatZone only) but has since grown A9's
 # two-ply scoring/reply-oracle functions too, which pull in the full HBT
@@ -352,7 +372,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_ismcts $(BINDIR)/test_hbt2ply_reply $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy
+	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_ismcts $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -394,6 +414,17 @@ $(TEST_CASH_TARGET): $(TEST_CASH_OBJS)
 	@mkdir -p $(BINDIR)
 	$(CC) $(TEST_CASH_OBJS) -o $(TEST_CASH_TARGET) $(LIBS)
 	@echo "Test build complete: $(TEST_CASH_TARGET)"
+
+# Test combat.c's combo-bonus table selection
+.PHONY: test_combat
+test_combat: $(TEST_COMBAT_TARGET)
+	./$(TEST_COMBAT_TARGET)
+
+$(TEST_COMBAT_TARGET): $(TEST_COMBAT_OBJS)
+	@echo "Linking test_combat..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(TEST_COMBAT_OBJS) -o $(TEST_COMBAT_TARGET) $(LIBS)
+	@echo "Test build complete: $(TEST_COMBAT_TARGET)"
 
 # Test A9 HBT 2-Ply's surrogate-hand builder
 .PHONY: test_hbt2ply_reply
@@ -584,6 +615,7 @@ help:
 	@echo "  test_moves       - Build and run move enumeration (src/actions/) tests"
 	@echo "  test_ismcts      - Build and run A10 IS-MCTS node arena/UCT tree tests"
 	@echo "  test_hbt2ply_reply - Build and run A9 HBT 2-Ply surrogate-hand tests"
+	@echo "  test_combat      - Build and run combat.c's combo-bonus table selection tests"
 	@echo "  test_stda_auto   - Diff 'oracle -sa -p' output against bin/expectedresults.txt"
 	@echo "  calib_valuebased - Build the Value Based parameter calibration harness (aicalibsrc/)"
 	@echo "  calib_combo_threshold - Build the Combo Threshold parameter calibration harness (aicalibsrc/)"
@@ -605,26 +637,6 @@ help:
 	@echo "  Target:      $(TARGET)"
 	@echo "  Compiler:    $(CC)"
 	@echo "  Flags:       $(CFLAGS)"
-	
-# Future Test Additions:
-# To add more tests, simply follow this pattern:
-# Add after TEST_COMBO_* definitions
-# TEST_COMBAT_TARGET := $(BINDIR)/test_combat
-# TEST_COMBAT_SRCS := $(SRCDIR)/test_combat.c \
-#                     $(SRCDIR)/combat.c \
-#                     $(SRCDIR)/combo_bonus.c \
-#                     $(SRCDIR)/game_constants.c
-# TEST_COMBAT_OBJS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(TEST_COMBAT_SRCS:.$(SRCEXT)=.o))
-
-# Add build rule
-# $(TEST_COMBAT_TARGET): $(TEST_COMBAT_OBJS)
-# 	@echo "Linking test_combat..."
-# 	@mkdir -p $(BINDIR)
-# 	$(CC) $(TEST_COMBAT_OBJS) -o $(TEST_COMBAT_TARGET) $(LIBS)
-
-# Add test target
-# .PHONY: test_combat
-# test_combat: $(TEST_COMBAT_TARGET)
 
 # Pull in the header-dependency files -MMD -MP generated alongside every .o
 # (see CFLAGS above) so editing a .h correctly triggers a rebuild of every

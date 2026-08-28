@@ -4,6 +4,18 @@ Calibration for `src/ai_strat/ai_strat_combo_threshold.c`'s nine tunable paramet
 (`ComboThresholdParams`). See `doc/changelog.md` for the design discussion and any
 calibration run that has produced shipped values so far.
 
+**2026-08-28 housekeeping**: fixed two bugs (ported from `aicalibsrc/balanced/`'s
+already-correct patterns) that predate this note but affected `sweep`/`selfplay`
+until now (`optimize`, used for this agent's own shipped `CT_DEFAULTS`, was never
+affected). (1) `run_match()` now takes `**tags`, so `sweep`'s `_value`/`_combo_in_a`
+and `selfplay`'s `_i`/`_j` bookkeeping travel with each result instead of being
+reattached from a submission-order list after `run_many()`'s multi-worker pool
+returns results in completion order -- previously silently scrambled attribution
+(sweep's `_combo_in_a` misattribution could even credit the wrong seat's wins) under
+real concurrency. (2) `--print-defaults` means `DEFAULTS` here is read from the
+compiled binary rather than a hand-copied dict, which had drifted on 7 of 9 fields
+from the shipped `CT_DEFAULTS`. See `doc/changelog.md`'s 2026-08-28 entry.
+
 One subfolder per agent under `aicalibsrc/`, mirroring `aicalibsrc/value/` -- keep
 each agent's harness and driver self-contained rather than accumulating loose files
 at the top level.

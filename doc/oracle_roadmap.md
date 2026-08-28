@@ -31,14 +31,24 @@ budget, per its own diagnosis (`doc/changelog.md`) rather than a defect. `A12`
 Clairvoyant ("The Clairvoyant") — `A8`'s sibling, not part of the `A1`-`A11` ladder's
 authoritative order — was also implemented as a side exploration, measuring 31; kept in
 the roster as a deliberately modest agent, not pursued further.
-**Active work**: housekeeping (calibration-driver bugs, a combo-bonus `DeckType`
-threading bug found in `ideas/G3`'s design handout), then the mulligan/seat-advantage
-investigation, then `A13` (a new deterministic agent) and `A11` IS-MCTS + NN — see
+**Active work**: the mulligan/seat-advantage investigation (housekeeping done
+2026-08-28), then `A13` (a new deterministic agent) and `A11` IS-MCTS + NN — see
 "Next Up" below for the full, agreed sequencing (2026-08-28), which also promotes SDL3
 GUI work out of "long-horizon" status (see `CLAUDE.md`).
 
 ### Recently Completed
 
+- **2026-08-28** — Housekeeping bug fixes (Next Up item 1): `combat.c`'s combo-bonus
+  table selection was hardcoded to the random-distribution table regardless of the
+  actual deck in play (fixed via a new `struct gamestate.combo_bonus_table` field;
+  the whole enum renamed `DeckType` -> `ComboBonusTable` since it names a scoring
+  table, not a deck-construction method); two calibration-driver bugs (result
+  misattribution under parallelism, `DEFAULTS` dict drift) ported from
+  `aicalibsrc/balanced/`'s already-fixed patterns into `value`/`combo`/`borealis`.
+  A1's `VB_COST_FLOOR` re-validated (R² 0.25-0.49 -> 0.84, confirming the
+  misattribution bug was real noise) but not re-shipped -- the shipped `1.3` stays
+  statistically tied with the fit's top candidates. New `make test_combat` suite.
+  See `doc/changelog.md`'s 2026-08-28 entry.
 - **2026-08-28** — `A9` HBT 2-Ply re-attempted against the recalibrated `A7`: no
   improvement found, and the original "A7's broken defense is the reason A9 falls
   short" diagnosis does not hold -- a `reply_trust` sweep vs the new `A7` shows win rate
@@ -265,19 +275,18 @@ Agreed with Jonathan 2026-08-28, superseding the single-item list this section u
 carry. Rationale for the shape of this list (not just its contents) lives here since
 `doc/oracle_todo.md` intentionally doesn't duplicate ordering:
 
-1. **Housekeeping bug fixes** -- cheap, and each protects the integrity of work later
-   items build on:
-   - The `aicalibsrc/value/`/`aicalibsrc/combo/`/`aicalibsrc/borealis/` calibration-driver
-     bugs already tracked in `doc/oracle_todo.md`'s Calibration section (parallel-execution
-     result misattribution -- casts doubt on `A1`'s shipped rating specifically -- and
-     `DEFAULTS` dicts drifted from their shipped C constants).
-   - A combo-bonus bug found while writing `ideas/G3 ai agent deck construction/`'s design
-     handout: `combat.c`'s `calculate_total_attack()`/`calculate_total_defense()` call
-     `calculate_combo_bonus()` hardcoded to `DECK_RANDOM` regardless of the actual
-     `DeckType` in play, so custom-deck games score combo bonuses incorrectly. Blocking
-     for `G3` whenever it's eventually picked up, but fixed now regardless since it's
-     contained and it's a real correctness bug today, not just future-facing prep.
-     Tracked in `doc/oracle_todo.md`'s Bug Tracker.
+1. **Housekeeping bug fixes** -- ✅ done 2026-08-28 (see `doc/changelog.md`'s
+   2026-08-28 entry). All three fixed: the two calibration-driver bugs (result
+   misattribution and `DEFAULTS` drift, ported from `aicalibsrc/balanced/`'s
+   already-correct patterns into `value`/`combo`/`borealis`), and `combat.c`'s
+   combo-bonus table selection (was hardcoded to the random table regardless of the
+   actual deck in play -- fixed via a new `struct gamestate.combo_bonus_table`
+   field, alongside a rename of the whole enum from `DeckType` to `ComboBonusTable`
+   since it names a scoring table, not a deck-construction method). A1's
+   `VB_COST_FLOOR` was re-validated with both bugs fixed (R² jumped from ~0.25-0.49
+   to 0.84, confirming the bug had been a real noise contributor) but not
+   re-shipped -- the shipped `1.3` remains statistically tied with the fit's top
+   candidates in a focused, larger-sample comparison.
 2. **Mulligan / seat-advantage investigation**, paired with building the match-results
    CSV export (`ideas/4 match results export/`, design guide already written) as the
    tooling to support it. Deliberately sequenced *before* `A13`/`A11` below: if this

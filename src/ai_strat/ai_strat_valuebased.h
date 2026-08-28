@@ -18,5 +18,6 @@ void value_based_defense_strategy(struct gamestate* gstate, GameContext* ctx);
 // defaults, since nothing else calls these.
 void value_based_set_params(PlayerID player, float cost_floor, float defend_threshold);
 void value_based_reset_params(void);
+void value_based_get_default_params(float* cost_floor, float* defend_threshold);
 
 #endif // AI_STRAT_VALUEBASED_H

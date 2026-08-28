@@ -14,7 +14,7 @@ typedef struct
 } CombatCard;
 
 // Main calculation function
-int calculate_combo_bonus(CombatCard *cards, int num_cards, DeckType deck_type);
+int calculate_combo_bonus(CombatCard *cards, int num_cards, ComboBonusTable table);
 
 // Mode-specific calculators
 int calc_random_bonus(CombatCard *cards, int num_cards);

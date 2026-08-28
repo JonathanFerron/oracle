@@ -168,35 +168,35 @@ already sketched out to break into sub-tasks.
     nothing has needed yet. Revisit if a future agent's cash-exchange choice actually
     needs to differ from the shared lowest-`power` heuristic.
 
-- [ ] **Calibration driver bug found during `A3`'s calibration, not yet fixed in
-  `aicalibsrc/value/`/`aicalibsrc/combo/`.** `run_many()`'s `ProcessPoolExecutor` +
-  `as_completed()` returns results in completion order, not submission order; both
-  drivers' `sweep`/`selfplay` commands (plus A1's `selfplay` specifically) reattach
-  external per-job metadata by list position afterward, which silently mismatches under
-  real parallelism. `calibrate_borealis.py` was fixed (tag results at the source via
-  `run_match(**tags)` instead); `calibrate_valuebased.py`/`calibrate_combo_threshold.py`
-  were left as-is (out of scope for `A3`'s session). This casts real doubt on A1's shipped
-  `VB_COST_FLOOR`/`VB_DEFEND_THRESHOLD` specifically, since those were chosen via
-  `selfplay` (the vulnerable path) — a re-run with the fix, and likely a re-calibration,
-  is worth doing before those values are trusted further. A2's shipped `CT_DEFAULTS` were
-  chosen via `optimize` (not vulnerable — see `doc/changelog.md`, 2026-08-23) and are fine
-  as shipped. `calibrate_balanced.py` (`A4`, 2026-08-24) was written with the fix from the
-  start, so it's not affected — this item is now specifically about porting the fix into
-  the two older drivers.
+**Closed 2026-08-28**: both calibration-driver bugs below, ported from
+`aicalibsrc/balanced/`'s already-fixed patterns into `aicalibsrc/value/` and
+`aicalibsrc/combo/` (`aicalibsrc/borealis/` needed only the second fix, having
+originated the first). (1) **Result misattribution**: `run_match()` in both drivers
+now takes `**tags`, merged straight into the returned dict, so `cmd_sweep()`/
+`cmd_selfplay()` no longer reattach per-job metadata from a submission-order list
+after `run_many()`'s `ProcessPoolExecutor` returns results in completion order.
+`calibrate_valuebased.py`'s `summarize_selfplay()` also had the transpose-based
+win-rate bug `calibrate_combo_threshold.py`'s already-fixed version doesn't --
+ported that fix too. (2) **`DEFAULTS` drift**: all three C harnesses
+(`calib_valuebased.c`, `calib_combo_threshold.c`, `calib_borealis.c`) gained a
+`--print-defaults` mode (same pattern as `calib_balanced.c`); `ai_strat_valuebased.c`/
+`.h` gained a new `value_based_get_default_params()` accessor to support it (its two
+tunables were previously private `#define`s with no accessor). All three Python
+`DEFAULTS` now read from the binary at import time rather than a hand-copied dict --
+`aicalibsrc/borealis/calibrate_borealis.py`'s `luna_value` alone had drifted 9.2x.
 
-- [ ] **`aicalibsrc/*/calibrate_*.py`'s `DEFAULTS` dicts drift from their shipped C
-  constants.** Noticed while writing `aicalibsrc/borealis/`: both `calibrate_valuebased.py`
-  and `calibrate_combo_threshold.py` hardcode the *pre-calibration* parameter values in
-  their own `DEFAULTS` dict (used as the baseline every `sweep`/`optimize`/`validate` run
-  compares against and as the fallback for partial candidate JSON), not the values actually
-  shipped in `VB_COST_FLOOR`/`VB_DEFEND_THRESHOLD`/`CT_DEFAULTS` today. A re-run of either
-  driver right now would silently compare against a stale baseline. `calibrate_borealis.py`
-  still has this problem too. `calibrate_balanced.py` (`A4`, 2026-08-24) does not: its
-  `calib_balanced.c` harness gained a `--print-defaults` mode that dumps the compiled
-  `BALANCED_DEFAULTS` as JSON, and the Python driver reads `DEFAULTS` from it at import
-  time — structurally can't drift. Port the same `--print-defaults` fix into the three
-  older harnesses (or script a check that fails loudly if a hand-copied dict drifts from
-  the C source) rather than hand-syncing them going forward.
+**A1's `VB_COST_FLOOR` re-validated, not re-shipped.** With both bugs fixed, a
+10-point `cost_floor` grid (0.5-3.0, `defend_threshold` pinned at 0.8, 720,000 games)
+fit a quadratic with **R² = 0.84**, dramatically higher than the original
+calibration's unexplained R² ≈ 0.25-0.49 -- confirming the misattribution bug was a
+real, significant noise contributor, not just the "mild effect" the handout
+predicted. However, a focused, larger-sample head-to-head restricted to the shipped
+`1.3` against the top candidates from that fit (`1.5`/`1.7`/`2.0`) came back
+statistically tied (overall win rates 0.4965-0.5027, no candidate clearly dominates).
+**Conclusion: the bug explains the previously-mysterious low R², but doesn't change
+the ship decision** -- `1.3` remains a defensible value inside the same
+noise-dominated cluster the original calibration identified, so `VB_COST_FLOOR` is
+unchanged. See `doc/changelog.md`'s 2026-08-28 entry for the full record.
 
 ### `A5` Heuristic Strategy (`ai_strat_heuristic.c`) — done, 2026-08-25
 
@@ -276,7 +276,11 @@ Per-player agent selection (`-Aa`/`-ai.a`/`--ai.a` and `-Ab`/`-ai.b`/`--ai.b`,
 - [ ] **Refactor**: extract `sim_stats.c`/`sim_engine.c` — see
   `ideas/2 engine and action system design/stda_auto_split_plan.md`
   for the phased split plan. Do this alongside CSV export, not standalone.
-- [ ] Support multiple deck types (currently hardcoded random)
+- [ ] Support multiple deck-construction methods (currently only the random deal
+  exists; `struct gamestate.combo_bonus_table` correctly plumbs which combo-bonus
+  table to score with, fixed 2026-08-28 -- see the Bug Tracker -- but nothing yet
+  sets it to anything but `COMBO_BONUS_RANDOM`, since no non-random deck-building
+  method exists yet; see `G3`/`ideas/10` in `doc/oracle_roadmap.md`'s "Next Up")
 - [ ] Better statistics: confidence intervals, effect size calculations, win-rate
   standard error
 - [ ] CSV export integration (`ideas/4 match results export/`)
@@ -405,20 +409,21 @@ the fix in place (the leading hypothesis from 2026-08-27) recovered and then exc
 the pre-fix rating: 58 → 65. See `doc/changelog.md`'s 2026-08-28 entry and
 `ai_strat_hbt.c`'s `HBT_DEFAULTS` comment for the full recalibration record.
 
-- [ ] **`combat.c`'s `calculate_total_attack()`/`calculate_total_defense()` hardcode
-  `calculate_combo_bonus()`'s deck-type argument to `DECK_RANDOM`** regardless of the
-  actual `DeckType` in play (`// Add combo bonus (assuming DECK_RANDOM for now)`
-  comments at both call sites). `combo_bonus.c` already has the correct branch
-  (`calc_random_bonus()` vs `calc_prebuilt_bonus()` -- the latter is species/order-based
-  only, no color tier, unlike the random-deck version), but nothing threads the real
-  `DeckType` down to `resolve_combat()` to select it. Found while writing
-  `ideas/G3 ai agent deck construction/custom_deck_construction_handout.md` --
-  blocking for any custom/prebuilt-deck combo-bonus evaluation (`G3`'s whole reason for
-  existing), and a real correctness bug for `DECK_MONOCHROME`/`DECK_CUSTOM` games today,
-  independent of `G3`'s own timeline. Likely fix: add a `DeckType` field to
-  `struct gamestate`/`GameContext`, populated at game setup, threaded through
-  `resolve_combat()` -> `calculate_total_attack()`/`calculate_total_defense()`. Scheduled
-  as part of `doc/oracle_roadmap.md`'s "Next Up" item 1 (housekeeping).
+**Closed 2026-08-28**: `combat.c`'s `calculate_total_attack()`/`calculate_total_defense()`/
+`resolve_combat_with_details()` hardcoded `calculate_combo_bonus()`'s table argument to
+`DECK_RANDOM` regardless of the actual deck in play. Fixed by adding
+`ComboBonusTable combo_bonus_table` to `struct gamestate` (defaulted to
+`COMBO_BONUS_RANDOM` in `setup_game()`) and reading it at all four call sites instead
+of the literal. Along the way, renamed `DeckType`/`DECK_RANDOM`/`DECK_MONOCHROME`/
+`DECK_CUSTOM` to `ComboBonusTable`/`COMBO_BONUS_RANDOM`/`COMBO_BONUS_MONOCHROME`/
+`COMBO_BONUS_CUSTOM` (Jonathan, 2026-08-28): the old name conflated "how the deck was
+built" with "which scoring table applies," which matters once `ideas/10`'s ~15 planned
+deck-building approaches each need to point at one of a handful of tables. New test
+`testsrc/test_combat.c`/`make test_combat` covers the integration no prior test did.
+`ai_strat_common.c`'s `combo_bonus_for_selection()`/`expected_incoming_attack()`
+deliberately keep their own hardcoded `COMBO_BONUS_RANDOM` (an AI-side estimate, not
+authoritative resolution) -- revisit only if/when `G3` needs table-aware AI estimation.
+See `doc/changelog.md`'s 2026-08-28 entry for the full record.
 
 Otherwise no known open bugs. Add entries here as they're found.
 

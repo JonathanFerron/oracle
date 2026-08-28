@@ -16,6 +16,14 @@
 // agent actually plays there -- harmless, since a non-Value-Based agent
 // never reads them.
 //
+//   calib_valuebased --print-defaults
+//
+// --print-defaults dumps the compiled VB_COST_FLOOR/VB_DEFEND_THRESHOLD (via
+// ai_strat_valuebased.c's value_based_get_default_params(), added for this)
+// as JSON and exits, so calibrate_valuebased.py never hardcodes its own
+// stale copy of the baseline (added 2026-08-28 -- see doc/oracle_todo.md's
+// Calibration section for the drift this was tracking).
+//
 // Output: one CSV line to stdout, no header (a driver script supplies its
 // own so it can run this many times and concatenate):
 //   numsim,seed,agent_a,agent_b,cost_floor_a,defend_threshold_a,
@@ -44,12 +52,28 @@ static AIStrategyType parse_agent_or_die(const char* arg)
 static void print_usage(const char* prog)
 { fprintf(stderr,
           "Usage: %s <numsim> <seed> <agent_a> <agent_b> "
-          "<cost_floor_a> <defend_threshold_a> <cost_floor_b> <defend_threshold_b>\n",
-          prog);
+          "<cost_floor_a> <defend_threshold_a> <cost_floor_b> <defend_threshold_b>\n"
+          "   or: %s --print-defaults\n",
+          prog, prog);
 } // print_usage
 
+static void print_defaults_json(void)
+{ float cost_floor, defend_threshold;
+  value_based_get_default_params(&cost_floor, &defend_threshold);
+  printf("{\n"
+         "  \"cost_floor\": %.6f,\n"
+         "  \"defend_threshold\": %.6f\n"
+         "}\n",
+         cost_floor, defend_threshold);
+} // print_defaults_json
+
 int main(int argc, char** argv)
-{ if(argc != 9)
+{ if(argc == 2 && strcmp(argv[1], "--print-defaults") == 0)
+  { print_defaults_json();
+    return EXIT_SUCCESS;
+  }
+
+  if(argc != 9)
   { print_usage(argv[0]);
     return EXIT_FAILURE;
   }

@@ -5,6 +5,95 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-28 — Housekeeping bug fixes (Next Up item 1): combo-bonus table plumbing, calibration-driver bugs, A1 re-validated
+
+First item in the agreed 2026-08-28 project sequencing (`doc/oracle_roadmap.md`'s
+"Next Up"), ahead of the mulligan investigation and `A13`/`A11` since each protects
+the integrity of work later items build on. Three sub-fixes, plus a rename.
+
+**1. `combat.c`'s combo-bonus table selection, and a rename.**
+`calculate_total_attack()`/`calculate_total_defense()`/`resolve_combat_with_details()`
+all hardcoded `calculate_combo_bonus()`'s table argument to `DECK_RANDOM` regardless
+of the actual deck in play -- found while writing `ideas/G3 ai agent deck
+construction/custom_deck_construction_handout.md`, and a real correctness bug today
+(not just future-facing prep), blocking for `G3` whenever it's picked up.
+`combo_bonus.c` itself already branched correctly (`calc_random_bonus()` vs
+`calc_prebuilt_bonus()`); the bug was purely in what got passed in. Fixed by adding
+`combo_bonus_table` to `struct gamestate`, defaulted to the random table in
+`setup_game()`, and reading it at all four call sites instead of the literal --
+zero call-site churn (only `resolve_combat()` calls the two `calculate_total_*()`
+functions, and `struct gamestate` is copied by value everywhere MC/ISMCTS
+simulations fork state) and a byte-identical `-a -p` baseline (no `--deck` option
+exists anywhere, so every game today already is a random-distribution game).
+
+Renamed the whole enum along the way (Jonathan, 2026-08-28): `DeckType`/
+`DECK_RANDOM`/`DECK_MONOCHROME`/`DECK_CUSTOM` conflated "how the deck was built"
+with "which combo-bonus table applies." Per `ideas/10 Draft Format and Game Depth
+Addition Ideas/oracle-draft-formats-complete.md`'s ~15 planned deck-building
+approaches, several are expected to share one of a handful of scoring tables, so the
+type needed to name the table, not the construction method. Renamed to
+`ComboBonusTable`/`COMBO_BONUS_RANDOM`/`COMBO_BONUS_MONOCHROME`/`COMBO_BONUS_CUSTOM`
+while the type still had only 6 usage sites -- cheap now, much more expensive after
+`G3`/draft-format work spreads it further. `ai_strat_common.c`'s
+`combo_bonus_for_selection()`/`expected_incoming_attack()` keep their own hardcoded
+`COMBO_BONUS_RANDOM` deliberately (an AI-side estimate, not authoritative
+resolution, already documented as such) -- not touched.
+
+New test `testsrc/test_combat.c` (`make test_combat`, instantiating a scaffold the
+makefile had carried commented-out since early on): no prior test exercised
+`combat.c`'s combo-bonus integration at all (only `combo_bonus.c`'s own routing),
+which is exactly why the bug survived. Confirms `setup_game()`'s default and that
+`calculate_total_attack()` actually reads the table (two identically-seeded contexts,
+same combat-zone cards, table forced to random vs custom, delta matches the known
+10-vs-7 same-species combo difference exactly).
+
+**2. Calibration-driver `DEFAULTS` drift**, ported from `aicalibsrc/balanced/`'s
+already-fixed pattern into the three remaining harnesses. `calib_valuebased.c`,
+`calib_combo_threshold.c`, `calib_borealis.c` each gained a `--print-defaults` mode
+dumping the live compiled struct as JSON (`ai_strat_valuebased.c`/`.h` gained a new
+`value_based_get_default_params()` accessor to support it -- its two tunables were
+private `#define`s with no accessor before); all three Python drivers now read
+`DEFAULTS` from the binary at import time instead of a hand-copied dict. Measured
+drift before the fix: `calibrate_valuebased.py`'s `cost_floor`/`defend_threshold`
+were the exact pre-calibration values (1.0/0.5 vs shipped 1.3/0.8);
+`calibrate_combo_threshold.py` had drifted on 7 of 9 fields; `calibrate_borealis.py`'s
+`luna_value` was off by 9.2x (0.5 vs shipped 4.5846).
+
+**3. Calibration-driver result misattribution**, ported the same way from
+`aicalibsrc/balanced/`. `run_match()` in `calibrate_valuebased.py` and
+`calibrate_combo_threshold.py` now takes `**tags`, merged straight into the returned
+dict, so results are self-describing -- `cmd_sweep()`/`cmd_selfplay()` no longer
+reattach per-job bookkeeping (`_i`/`_j`, `_value`/`_combo_in_a`) from a
+submission-order list after `run_many()`'s `ProcessPoolExecutor` returns results in
+completion order, which previously scrambled attribution under real concurrency
+(the original repro: a `luna_value`-style sweep going jagged/non-monotone with
+multiple workers, smooth with `--workers 1`). `calibrate_valuebased.py`'s
+`summarize_selfplay()` also carried a transpose-based win-rate bug
+`calibrate_combo_threshold.py`'s own version had already fixed (`wins.T.sum(axis=1)`
+sums *opponents'* wins in games where a candidate was on defense, not the
+candidate's own wins) -- ported that fix too while in the same function.
+
+**A1's `VB_COST_FLOOR` re-validated with both bugs fixed, not re-shipped.** A
+10-point `cost_floor` selfplay grid (0.5-3.0, `defend_threshold` pinned at its
+shipped `0.8`, 720,000 games) fit a quadratic through (cost_floor, strength) at
+**R² = 0.84** -- dramatically higher than the original 2026-08-21 calibration's
+unexplained R² ≈ 0.25-0.49, confirming the misattribution bug was a real,
+significant noise contributor to that oddity, not just the "mild effect" the
+handout predicted. However, a focused, larger-sample head-to-head restricted to the
+shipped `1.3` against the fit's top candidates (`1.5`/`1.7`/`2.0`) came back
+statistically tied (overall win rates 0.4965-0.5027 across 144,000 games each, no
+candidate clearly dominates). **The bug explains the previously-mysterious low R²,
+but doesn't change the ship decision**: `1.3` remains a defensible value inside the
+same noise-dominated cluster the original calibration identified (the same
+conclusion, on cleaner evidence) -- `VB_COST_FLOOR` is unchanged.
+
+All eight test suites (`test_combo` `test_recall` `test_cash_exchange` `test_rating`
+`test_hbt2ply_reply` `test_moves` `test_ismcts` `test_combat`, 200 assertions) green;
+`./bin/oracle -a -p` byte-identical to `bin/expectedresults.txt`;
+`make calib_valuebased calib_combo_threshold calib_borealis` all build with
+`--print-defaults` output verified against the actual shipped C constants;
+`make format` unchanged.
+
 ## 2026-08-28 — A7 Hybrid HBT re-optimized with the PASS-dominance fix in place: 58 → 65, closes the follow-up task
 
 Answers the open Bug Tracker question from the 2026-08-27 A5/A7 defense fix (see that
