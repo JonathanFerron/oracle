@@ -12,6 +12,19 @@
    Basic Display Functions
    ======================================================================== */
 
+const char* cli_champion_color_code(ChampionColor color)
+{ switch(color)
+  { case COLOR_INDIGO:
+      return BLUE;
+    case COLOR_ORANGE:
+      return YELLOW;
+    case COLOR_RED:
+      return RED;
+    default:
+      return "";
+  }
+}
+
 void display_player_prompt(PlayerID player, struct gamestate* gstate,
                            int is_defense, config_t* cfg)
 { const char* player_color = (player == PLAYER_A) ? COLOR_P1 : COLOR_P2;
@@ -41,8 +54,7 @@ void display_player_hand(PlayerID player, struct gamestate* gstate, config_t* cf
     const struct card* c = &fullDeck[card_idx];
 
     if(c->card_type == CHAMPION_CARD)
-    { const char* color = (c->color == COLOR_INDIGO) ? BLUE :
-                          (c->color == COLOR_ORANGE) ? YELLOW : RED;
+    { const char* color = cli_champion_color_code(c->color);
       printf("  [%d] %s%s" RESET " (D%d+%d, " CYAN "L%d" RESET ")\n",
              i + 1, color, CHAMPION_SPECIES_NAMES[c->species],
              c->defense_dice, c->attack_base, c->cost);
@@ -75,7 +87,8 @@ void display_attack_state(struct gamestate* gstate, config_t* cfg)
   for(uint8_t i = 0; i < gstate->combat_zone[gstate->current_player].size; i++)
   { uint8_t card_idx = gstate->combat_zone[gstate->current_player].cards[i];
     const struct card* c = &fullDeck[card_idx];
-    printf("  - %s (D%d+%d)\n", CHAMPION_SPECIES_NAMES[c->species],
+    printf("  - %s%s" RESET " (D%d+%d)\n",
+           cli_champion_color_code(c->color), CHAMPION_SPECIES_NAMES[c->species],
            c->defense_dice, c->attack_base);
   }
 }

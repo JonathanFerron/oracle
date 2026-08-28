@@ -23,6 +23,9 @@
 #define ICON_PROMPT ">"
 #define ICON_SUCCESS "[OK]"
 
+// ANSI colour code for a champion's ChampionColor (empty string if not applicable)
+const char* cli_champion_color_code(ChampionColor color);
+
 // Status and state display
 void display_player_prompt(PlayerID player, struct gamestate* gstate,
                            int is_defense, config_t* cfg);

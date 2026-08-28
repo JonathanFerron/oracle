@@ -20,8 +20,7 @@ void display_card_with_power(uint8_t card_idx, int display_num,
 { const struct card* c = &fullDeck[card_idx];
 
   if(c->card_type == CHAMPION_CARD)
-  { const char* color = (c->color == COLOR_INDIGO) ? BLUE :
-                        (c->color == COLOR_ORANGE) ? YELLOW : RED;
+  { const char* color = cli_champion_color_code(c->color);
     if(show_power)
     { printf("  [%d] %s%s" RESET " (D%d+%d, " CYAN "L%d" RESET
              ", pwr:%.1f)\n",
@@ -292,11 +291,14 @@ void display_exchangeable_champions(Hand* hand, config_t* cfg)
    ======================================================================== */
 
 static void display_combat_side(int count, const ChampionSpecies* species,
+                                const ChampionColor* colors,
                                 const uint8_t* dice, const uint8_t* rolls,
                                 const uint8_t* base, const int16_t* totals,
                                 int show_base)
 { for(int i = 0; i < count; i++)
-  { printf("  - %s: D%d [%d]", CHAMPION_SPECIES_NAMES[species[i]], dice[i], rolls[i]);
+  { printf("  - %s%s" RESET ": D%d [%d]",
+           cli_champion_color_code(colors[i]), CHAMPION_SPECIES_NAMES[species[i]],
+           dice[i], rolls[i]);
     if(show_base)
       printf(" + %d = " CYAN "%d" RESET, base[i], totals[i]);
     printf("\n");
@@ -321,6 +323,7 @@ void display_combat_details_cli(struct gamestate* gstate, CombatDetails* details
   printf("%s%s" RESET " (%s):\n", attacker_color, attacker_label,
          LOCALIZED_STRING("Attacker", "Attaquant", "Atacante"));
   display_combat_side(details->num_attackers, details->attacker_species,
+                      details->attacker_color,
                       details->attacker_dice, details->attacker_rolls,
                       details->attacker_base, details->attacker_total, 1);
   if(details->attack_combo > 0)
@@ -335,6 +338,7 @@ void display_combat_details_cli(struct gamestate* gstate, CombatDetails* details
     printf("  %s\n", LOCALIZED_STRING("No defense", "Aucune defense", "Sin defensa"));
   else
   { display_combat_side(details->num_defenders, details->defender_species,
+                        details->defender_color,
                         details->defender_dice, details->defender_rolls,
                         NULL, details->defender_total, 0);
     if(details->defense_combo > 0)

@@ -143,6 +143,7 @@ void resolve_combat_with_details(struct gamestate* gstate, CombatDetails* detail
     uint8_t roll = RND_dn(c->defense_dice, ctx);
 
     details->attacker_species[i] = c->species;
+    details->attacker_color[i] = c->color;
     details->attacker_dice[i] = c->defense_dice;
     details->attacker_rolls[i] = roll;
     details->attacker_base[i] = c->attack_base;
@@ -167,6 +168,7 @@ void resolve_combat_with_details(struct gamestate* gstate, CombatDetails* detail
     uint8_t roll = RND_dn(c->defense_dice, ctx);
 
     details->defender_species[i] = c->species;
+    details->defender_color[i] = c->color;
     details->defender_dice[i] = c->defense_dice;
     details->defender_rolls[i] = roll;
     details->defender_total[i] = roll;

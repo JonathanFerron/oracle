@@ -22,6 +22,7 @@ void clear_combat_zones(struct gamestate* gstate, GameContext* ctx);
 typedef struct
 { int num_attackers;
   ChampionSpecies attacker_species[3];
+  ChampionColor attacker_color[3];
   uint8_t attacker_dice[3];
   uint8_t attacker_rolls[3];
   uint8_t attacker_base[3];
@@ -31,6 +32,7 @@ typedef struct
 
   int num_defenders;
   ChampionSpecies defender_species[3];
+  ChampionColor defender_color[3];
   uint8_t defender_dice[3];
   uint8_t defender_rolls[3];
   int16_t defender_total[3];
