@@ -23,6 +23,7 @@
 /bin/calib_ismcts_efficiency
 /bin/calib_ismcts_rollout_policy
 *.o
+*.d
 *.xls
 *.xlsx
 *.xlsm

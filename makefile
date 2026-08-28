@@ -19,7 +19,10 @@ SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
 OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
 
 # Compiler flags
-CFLAGS := -g -Og -Wall -std=c23
+# -MMD -MP generate a per-object .d file listing the headers it includes, so
+# a header edit correctly triggers a rebuild of everything that includes it
+# (directly or transitively) -- see the -include $(DEPS) below.
+CFLAGS := -g -Og -Wall -std=c23 -MMD -MP
 
 # Shared source lists for anything that links the whole engine + AI-strategy
 # roster in-process (every CALIB_*_SRCS below, plus TEST_RECALL_SRCS). Before
@@ -355,7 +358,7 @@ clean:
 
 # Debug build
 .PHONY: debug
-debug: CFLAGS := -g -Og -Wall -std=c23 -DDEBUG -DDEBUG_ENABLED=1
+debug: CFLAGS := -g -Og -Wall -std=c23 -MMD -MP -DDEBUG -DDEBUG_ENABLED=1
 debug: clean all
 	@echo "Debug build complete"
 
@@ -622,3 +625,12 @@ help:
 # Add test target
 # .PHONY: test_combat
 # test_combat: $(TEST_COMBAT_TARGET)
+
+# Pull in the header-dependency files -MMD -MP generated alongside every .o
+# (see CFLAGS above) so editing a .h correctly triggers a rebuild of every
+# .c that includes it, not just the .c files touched directly. Found via
+# $(shell find ...) rather than a static list since .d files only exist
+# after a .o has been compiled at least once (harmless on a clean checkout
+# or right after `make clean` -- there's simply nothing to -include yet).
+DEPS := $(shell find $(BUILDDIR) -type f -name '*.d' 2>/dev/null)
+-include $(DEPS)
