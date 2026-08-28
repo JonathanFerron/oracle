@@ -371,17 +371,14 @@ See `ideas/4 match results export/` for the full specification.
 
 ## Bug Tracker
 
-- [ ] **`A7` regressed (62→58) from the 2026-08-27 A5/A7 PASS-dominance defense fix,
-  while `A5` improved (60→64) from the identical fix** — shipped anyway per user
-  decision (focus is `A10` right now), with a documented revert path at each fix site
-  (`ai_strat_heuristic.c`'s `best_defense_move()`, `ai_strat_hbt_enum.c`'s
-  `hbt_best_defense_move()`) and in `player_config.c`'s `AI_STRATEGY_RATINGS` comment.
-  Follow-up: find out why the same fix helps `A5` but hurts `A7`. Leading hypothesis
-  (user, 2026-08-27): re-optimize `A7`'s `HBTParams` with the fix already in place
-  (not revert-and-reoptimize) — `A7`'s aggression/lethal-combo-hold layers on top of
-  `A5`'s shared shape are the most likely interaction site. See
-  `doc/changelog.md`'s 2026-08-27 entry and the `project_a5_a7_defense_pass_dominance`
-  memory for full details.
+**Closed 2026-08-28**: `A7` regressed (62→58) from the 2026-08-27 A5/A7 PASS-dominance
+defense fix, while `A5` improved (60→64) from the identical fix. Root cause found:
+`defense_stdev_mult` was dead weight before the fix (PASS strictly dominated every block
+regardless of its value), so its shipped `+0.711` was fit to noise; post-fix it became
+live and was now actively biasing toward over-blocking. Re-optimizing `HBTParams` with
+the fix in place (the leading hypothesis from 2026-08-27) recovered and then exceeded
+the pre-fix rating: 58 → 65. See `doc/changelog.md`'s 2026-08-28 entry and
+`ai_strat_hbt.c`'s `HBT_DEFAULTS` comment for the full recalibration record.
 
 Otherwise no known open bugs. Add entries here as they're found.
 

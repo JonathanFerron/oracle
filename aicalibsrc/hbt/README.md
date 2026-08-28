@@ -4,6 +4,21 @@ Calibration for `src/ai_strat/ai_strat_hbt.c`'s thirty-four tunable parameters
 (`HBTParams`). See `doc/changelog.md` for the design discussion and the calibration
 run that produced the shipped values.
 
+**2026-08-28 recalibration**: after the 2026-08-27 A5/A7 PASS-dominance defense fix
+made `defense_stdev_mult` a live dial for the first time (it was dead weight before --
+PASS strictly dominated every block regardless of its value), the original stage-1
+values it shipped with (fit before the fix, when this dial had zero effect on play)
+turned out to be actively harmful post-fix: rating dropped 62→58. Re-ran the same
+12-free-param `optimize()` stage-1/2 originally used, three ways (unconstrained,
+`--identity-safe` over its full field table, and `--identity-safe` restricted to the
+same 12 fields) -- the third won cleanly: 64.62% [64.15%, 65.09%] vs `borealis`
+(40,000 games), no personality flags, and `weight_cards_advantage` landed at 1.95,
+essentially unchanged from A5's own 1.96 (the unconstrained run drifted this to 12.68,
+the same known failure mode from the original pre-fix stage 2). Shipped: rating 65.
+See `doc/changelog.md`'s 2026-08-28 entry for the full record, and
+`results/optimize_borealis_10param_safe.json` / `results/optimize_borealis_12param.json`
+for both candidates compared.
+
 One subfolder per agent under `aicalibsrc/`, mirroring `aicalibsrc/tactical/` -- keep
 each agent's harness and driver self-contained rather than accumulating loose files
 at the top level.

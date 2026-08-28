@@ -5,6 +5,144 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-28 — A7 Hybrid HBT re-optimized with the PASS-dominance fix in place: 58 → 65, closes the follow-up task
+
+Answers the open Bug Tracker question from the 2026-08-27 A5/A7 defense fix (see that
+entry below and the `project_a5_a7_defense_pass_dominance` memory): why did an identical
+PASS-dominance fix improve A5 (60→64) but hurt A7 (62→58)? Leading hypothesis (user,
+2026-08-27) was to re-optimize A7's `HBTParams` with the fix in place rather than revert
+it — this is that re-optimization.
+
+**Root cause**: `defense_stdev_mult` (A7's only defense-exclusive dial, feeding
+`variance_aware_incoming()`) was dead weight before the fix -- PASS strictly dominated
+every block regardless of the incoming-attack estimate, so this parameter's shipped
++0.711 (an A6-style inflation) was fit to noise. Post-fix it became live for the first
+time, and confirmed via a univariate sweep vs `borealis`
+(`aicalibsrc/hbt/results/sweep_defense_stdev_mult.csv`): win rate fell monotonically
+from 60.96% at -2.0 to 57.53% at +2.0 -- the shipped +0.711 was now actively biasing
+toward over-blocking, which cost more than it saved. A second sweep on
+`penalty_cards_weight` (the "double-charges card spending on defense" hypothesis) showed
+no comparable monotonic effect -- a weaker, unconfirmed contributor at best.
+
+**Recalibration**: re-ran `optimize()` over the same 12 free parameters stage 1/2 used
+originally (the 8 stage-1 coupling/defense fields plus H's own 4 weights) vs `borealis`,
+three ways:
+- Unconstrained `BOUNDS`: 64.15% [63.68%, 64.62%] (40,000 games), no personality flags,
+  but `weight_cards_advantage` drifted to 12.68 -- the same known failure mode from the
+  original (pre-fix) stage 2 search (which drifted to 10.72), re-appearing and slightly
+  worse.
+- `--identity-safe` over its full bounded-field table (not restricted to the same 12):
+  63.49% -- discarded on inspection, since `BOUNDS_IDENTITY_SAFE` has no entries for
+  `target_aggr_cash_scale`/`target_aggr_cards_scale`, so omitting `--params` silently
+  re-opened T's whole aggression/phase battery instead of giving a tamer version of the
+  intended 12-param search -- a scope mismatch, not a fair comparison.
+- `--identity-safe` restricted to the 10 of those 12 fields `BOUNDS_IDENTITY_SAFE`
+  actually covers (the 2 excluded fields held at their existing values): **64.62%
+  [64.15%, 65.09%] (40,000 games), no personality flags, `weight_cards_advantage` landed
+  at 1.95** -- essentially A5's own shipped 1.96, no drift at all. Best win rate of the
+  three candidates AND the only one that stayed true to "H ranks with A5's own tuned
+  advantage function" -- also won a direct three-way self-play round-robin against both
+  the unconstrained candidate and the shipped defaults
+  (`aicalibsrc/hbt/results/selfplay_named.csv`). **Shipped.**
+
+Only 10 of the 34 `HBTParams` fields changed from the original 2026-08-25 stage-1 fit:
+`weight_energy_advantage`, `weight_cards_advantage`, `weight_taper_exponent`,
+`opp_card_discount`, `aggr_energy_gain`, `aggr_resource_fade`, `critical_epsilon_mult`,
+`penalty_cash_weight`, `penalty_cards_weight`, `defense_stdev_mult` (0.711 → 0.216 --
+still net inflating the incoming-attack estimate, just far less). Every other field --
+T's whole aggression/phase battery, B's resource targets, the combo-hold trio -- is
+untouched. See `ai_strat_hbt.c`'s `HBT_DEFAULTS` comment for the exact before/after
+values.
+
+**Measured** (both seats, `-a -p --ai.a=hbt --ai.b=borealis`): 2650/4000 = 66.25%
+(n=4000, matching the exact convention the 57.5%/58 pre-recalibration figure used);
+5257/8000 = 65.71% (n=8000, a larger same-method sample). All three measurements (harness
+40,000-game validated 64.62%, and these two direct-binary samples) agree within their
+respective confidence intervals. **Shipped rating: 65** (from the most precise,
+40,000-game figure), a gain of 7 over the pre-recalibration 58 and 3 over the original
+pre-fix 62 -- closes the Bug Tracker item with a clean answer: A7's regression wasn't an
+inherent A5-vs-A7 asymmetry, it was one dial (`defense_stdev_mult`) whose old value had
+never been tested against a live PASS baseline before.
+
+**Side effect on A9 HBT 2-Ply**: A9 reuses A7's `hbt_advantage()`/`predicted_damage()`/
+`predicted_block()` and reads `HBTParams` directly, so the new defaults move it too --
+spot-checked at 1270/2000 = 63.5% vs `borealis` (up from its own shipped 59), and the
+`test_moves.c` fixture
+`test_hbt2ply_ply_changes_score_when_reply_possible()` needed updating: its single-champion
+15.5-expected-attack scenario no longer reliably crosses the "worth blocking" threshold
+under the new weights (lower `weight_energy_advantage` and `defense_stdev_mult` both
+shrink the perceived benefit of blocking one card's worth of damage), so it now attacks
+with two non-combo champions (~30 combined expected attack) to keep the assertion's
+actual intent -- "the ply is alive when blocking is plausible" -- robust. A9's own rating
+was not formally re-measured/re-shipped in this session; that remains open if wanted.
+Also renamed `hbt_best_defense_move()`'s `undamaged_energy` local to `damaged_energy` (it
+has held the damaged value since the 2026-08-27 fix; the old name was left over from
+before that fix and was actively misleading) -- `ai_strat_heuristic.c`'s
+`best_defense_move()` has the identical misnomer, left untouched here since A5's own code
+is out of scope for this task.
+
+**Housekeeping note**: the pre-recalibration "58" figure being compared against was
+itself a single `n=4000` sample (2301/4000 = 57.5%). A much larger re-measurement of that
+same, unrecalibrated code (60.2% over 4000 games via the direct binary; 59.95% over
+32,000 games via the calibration harness) landed closer to 60% than 58 -- both figures
+are genuine, just different sample sizes of the same distribution; the gap is ordinary
+sampling variance, not a discrepancy in the code. Recorded here for anyone who re-derives
+the "before" number and gets ~60 instead of 58.
+
+`test_combo` `test_recall` `test_cash_exchange` `test_rating` `test_hbt2ply_reply`
+`test_moves` `test_ismcts` all green (202 assertions) after the fixture fix above;
+`./bin/oracle -a -p` stayed byte-identical to `bin/expectedresults.txt` (default matchup
+is Random-vs-Random, which never touches A7).
+
+## 2026-08-28 — A9 HBT 2-Ply re-attempted against the new A7: no improvement found, and the original diagnosis was wrong
+
+Follow-on to the A7 recalibration above. A9's own shortfall against A7 (measured 47.19%
+head-to-head, below its own >55% design target) had been diagnosed 2026-08-26 as caused
+by A7's broken PASS-dominant defense giving the second ply "nothing real to correct
+for" -- with fixing that defense believed to be "a genuine prerequisite for a future
+re-attempt." That belief did not hold up.
+
+Re-ran `aicalibsrc/hbt2ply/calibrate_hbt2ply.py optimize --opponent hbt` against the new,
+fixed-and-recalibrated A7 (rating 65). Result: converged to `reply_trust = 0.013`,
+validated 47.40% [46.91%, 47.89%] (40,000 games) -- statistically indistinguishable from
+the shipped defaults' own 47.11% [46.34%, 47.89%] against the same new A7. In other
+words, the search essentially rediscovered "turn the ply off";
+`check_personality_flags()` correctly flagged it ("the second ply has been calibrated
+into irrelevance"). **Not shipped** -- a candidate that is both no-better and
+identity-destroying fails on both counts.
+
+A follow-up univariate sweep of `reply_trust` alone (holding `surrogate_pessimism` at its
+shipped default) against the new `hbt` made the mechanism explicit and rules out a search
+artifact: win rate declines **monotonically** as trust increases --
+
+| reply_trust | 0.00 | 0.25 | 0.50 | 0.75 | 1.00 |
+|---|---|---|---|---|---|
+| win rate vs new `hbt` | 47.64% | 43.40% | 39.35% | 37.29% | 31.20% |
+
+(16,000 games/point). `reply_trust = 0` -- proven to recover A7's own decision
+bit-for-bit (`test_hbt2ply_reply_trust_zero_matches_a7`) -- is the actual optimum on the
+whole curve. **Conclusion: A7's old broken defense was never the reason this agent fell
+short of its design target.** The two-ply mechanism itself doesn't have room to improve
+on A7 against an opponent this well-calibrated, at least via the two dials this driver
+searches (`reply_trust`/`surrogate_pessimism`) -- the surrogate-hand-based reply
+simulation apparently becomes actively misleading, not just unhelpful, once matched
+against a genuinely strong, well-tuned opponent rather than one whose real defense never
+fires. `HBT2PLY_DEFAULTS` are unchanged as a result.
+
+This agent's own Borealis-relative rating moved anyway, with zero parameter changes: A9's
+`.base` field is populated by a live call to `hbt_get_default_params()`
+(`ai_strat_hbt2ply.c:48`), not a frozen snapshot, so it automatically inherited A7's
+2026-08-28 gain. Re-measured **61.62% [60.87%, 62.38%] vs `borealis` (32,000 games)** via
+the calibration harness, cross-checked at 61.65% (4,000 games) via the direct binary --
+**rating 59 -> 62**. `player_config.c`'s `AI_STRATEGY_RATINGS[AI_STRATEGY_HBT_2PLY]`
+updated accordingly.
+
+`ai_strat_hbt2ply.c`'s calibration-provenance comment, `aicalibsrc/hbt2ply/README.md`,
+and `ideas/G1 AI agent general info/oracle_ai_agent_names.md`'s roster table all updated
+to record this attempt and its negative result, so a future session doesn't re-derive
+the same "fix A7's defense first" assumption. All seven test suites (202 assertions)
+stayed green; `./bin/oracle -a -p` stayed byte-identical to `bin/expectedresults.txt`.
+
 ## 2026-08-27 — A10 IS-MCTS ("The Omniscient") implemented and calibrated: the roster ceiling, after two diagnosed and fixed problems
 
 Single-Observer Information Set Monte Carlo Tree Search (Cowling, Powley & Whitehouse) per

@@ -42,6 +42,16 @@
 // by A9 HBT 2-Ply's tests below where a rational defender must actually
 // want to block for the ply to have anything to bite on.
 #define CHAMP_STRONG 33
+// Second cost-3 champion (SPECIES_ELF/ORDER_A -- deliberately different
+// species/order from CHAMP_STRONG's AVEN/ORDER_E, so pairing them triggers
+// no combo bonus), expected_attack 14.5. Paired with CHAMP_STRONG for a
+// combined ~30 expected-attack threat in
+// test_hbt2ply_ply_changes_score_when_reply_possible() -- a single
+// CHAMP_STRONG stopped reliably crossing the "worth blocking" threshold
+// after A7's 2026-08-28 HBTParams recalibration (see doc/changelog.md)
+// lowered both weight_energy_advantage and defense_stdev_mult, shrinking
+// the perceived benefit of blocking a single card's worth of damage.
+#define CHAMP_STRONG2 66
 
 typedef struct
 { const char* name;
@@ -923,7 +933,8 @@ void test_hbt2ply_ply_changes_score_when_reply_possible(TestSuite* suite)
            "opponent can plausibly block ===\n");
 
   struct gamestate gs = hbt_test_state(60, 40, 20);
-  Hand_add(&gs.hand[PLAYER_A], CHAMP_STRONG); // exp_atk 15.5 -- a real threat
+  Hand_add(&gs.hand[PLAYER_A], CHAMP_STRONG);  // exp_atk 15.5
+  Hand_add(&gs.hand[PLAYER_A], CHAMP_STRONG2); // exp_atk 14.5 -- combined ~30, a real threat
   for(uint8_t i = 0; i < 5; i++) Hand_add(&gs.hand[PLAYER_B], CHAMP_C); // size only
   gs.current_cash_balance[PLAYER_B] = 50; // plenty to field a blocker
 
@@ -933,13 +944,13 @@ void test_hbt2ply_ply_changes_score_when_reply_possible(TestSuite* suite)
                            .surrogate_pessimism = 1.0f, .ply_energy_ceiling = 99, .ply_beam_width = 0
                          };
 
-  uint8_t subset[1] = { CHAMP_STRONG };
+  uint8_t subset[2] = { CHAMP_STRONG, CHAMP_STRONG2 };
   float a9_score = 0.0f;
-  bool applicable = hbt2ply_score_attack_subset(&gs, PLAYER_A, subset, 1,
+  bool applicable = hbt2ply_score_attack_subset(&gs, PLAYER_A, subset, 2,
                                                 &params, &state, &a9_score);
   check(suite, "subset is applicable", 1, applicable);
 
-  float a7_score = a7_reference_score(&gs, subset, 1, &base, &state);
+  float a7_score = a7_reference_score(&gs, subset, 2, &base, &state);
   check(suite, "two-ply score differs from A7's undefended score "
                "(the ply is not a no-op)", 1, a9_score != a7_score);
 } // test_hbt2ply_ply_changes_score_when_reply_possible

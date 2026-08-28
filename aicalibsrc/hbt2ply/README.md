@@ -6,6 +6,20 @@ Calibration for `src/ai_strat/ai_strat_hbt2ply.c`'s four new tunable parameters
 searched here). See `doc/changelog.md` for the design discussion and the calibration run
 that produced the shipped values.
 
+**2026-08-28 re-attempt (no change shipped)**: after A7's PASS-dominance defense fix was
+recalibrated (rating 58 -> 65, see `aicalibsrc/hbt/README.md`), re-ran `optimize
+--opponent hbt` against the new A7 to see if this agent could finally clear its own
+>55% head-to-head design target -- the original 2026-08-26 diagnosis had pinned the
+shortfall on A7's defense never blocking. It did not clear the target: the search
+converged to `reply_trust=0.013` (i.e. "turn the ply off"), validated statistically
+indistinguishable from the shipped defaults against the same new A7, and flagged by
+`check_personality_flags()` as calibrating the ply into irrelevance. A follow-up
+`sweep --param reply_trust --opponent hbt` confirmed this isn't a search artifact: win
+rate declines monotonically as trust increases (47.64% at 0.0 down to 31.20% at 1.0).
+The original "fix A7's defense first" diagnosis does not hold -- the two-ply mechanism
+has no room to improve on a well-calibrated A7 via these two dials. `HBT2PLY_DEFAULTS`
+unchanged; see `doc/changelog.md`'s 2026-08-28 entry for the full record.
+
 One subfolder per agent under `aicalibsrc/`, mirroring `aicalibsrc/hbt/` -- keep each
 agent's harness and driver self-contained rather than accumulating loose files at the top
 level.

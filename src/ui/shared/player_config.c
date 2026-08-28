@@ -155,8 +155,19 @@ typedef struct
 // -- PASS was scored against undamaged own_energy, never charging the
 // incoming attack, so decline mathematically dominated every block). A5
 // improved (60 -> 64); A7 got worse (62 -> 58) despite sharing the
-// "identical" formula -- kept anyway per user decision, with a follow-up
-// task open to find out why A7 specifically regressed (see that memory).
+// "identical" formula, since A7's own HBTParams (particularly
+// defense_stdev_mult) were still calibrated against the old, dead PASS
+// baseline.
+// A7 (2026-08-28): re-optimized HBTParams with the fix already in place --
+// 58 -> 65 (see ai_strat_hbt.c's HBT_DEFAULTS comment and
+// doc/changelog.md's 2026-08-28 entry for the full recalibration record;
+// closes the follow-up task opened above).
+// A9 (2026-08-28): re-attempted calibration of reply_trust/surrogate_pessimism
+// against the new `hbt`, found no improvement -- a reply_trust sweep showed
+// win rate declining MONOTONICALLY as trust increases, so HBT2PLY_DEFAULTS
+// are unchanged (see ai_strat_hbt2ply.c's comment). Rating still moved
+// (59 -> 62) purely because this agent's .base is a live call to A7's own
+// default-params function, so it inherited A7's gain automatically.
 // A10 (2026-08-27): measured 69 (n=10008 vs Borealis, 95% CI 67.6-69.5) --
 // the new roster ceiling, also beating A7 head-to-head 63.2% (n=10008). See
 // doc/changelog.md's 2026-08-27 entry and ideas/A10 .../about.md for the
@@ -172,9 +183,9 @@ static const AIStrategyRating AI_STRATEGY_RATINGS[AI_STRATEGY_COUNT] =
   [AI_STRATEGY_BALANCED]         = { 36, true  },
   [AI_STRATEGY_HEURISTIC]        = { 64, true  },
   [AI_STRATEGY_TACTICAL]         = { 52, true  },
-  [AI_STRATEGY_HYBRID_HBT]       = { 58, true  },
+  [AI_STRATEGY_HYBRID_HBT]       = { 65, true  },
   [AI_STRATEGY_SIMPLE_MC]        = { 35, true  },
-  [AI_STRATEGY_HBT_2PLY]         = { 59, true  },
+  [AI_STRATEGY_HBT_2PLY]         = { 62, true  },
   [AI_STRATEGY_ISMCTS]           = { 69, true  },
   [AI_STRATEGY_ISMCTS_NN]        = { 97, false },
   [AI_STRATEGY_CLAIRVOYANT]      = { 31, true  },

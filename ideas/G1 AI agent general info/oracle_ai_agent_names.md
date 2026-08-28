@@ -19,10 +19,13 @@ for the runs these came from. `A4`'s measured rating (36) landed well below its 
 design-intent estimate (62) and below the Borealis anchor -- a legitimate, calibrated
 result (`doc/changelog.md`), the largest design-intent miss on this table so far.
 `A5`'s and `A6`'s measured ratings both landed below their own estimates (70, 74) but
-*above* the Borealis anchor. `A7`'s measured rating (62) is the highest on this table
-so far, above all three of the agents it synthesizes (`A4`/`A5`/`A6`) in the same
-roster-wide fit -- despite measuring a clear pairwise loss to `A5` specifically
-(26.0%, see `doc/changelog.md`), a result reported rather than tuned away. `A8`'s and
+*above* the Borealis anchor. `A7`'s original measured rating (62, as of this
+2026-08-25 fit) was the highest on this table so far, above all three of the agents
+it synthesizes (`A4`/`A5`/`A6`) in the same roster-wide fit -- despite measuring a
+clear pairwise loss to `A5` specifically (26.0%, see `doc/changelog.md`), a result
+reported rather than tuned away. (`A7`'s rating later moved twice more -- see the
+2026-08-27 and 2026-08-28 entries in `doc/changelog.md`; the roster table above
+reflects the current 65, not this original 62.) `A8`'s and
 `A9`'s measured ratings (35, added 2026-08-25; 59, added 2026-08-26) are **not** from a
 roster-wide `--stda.rating` fit like the others above -- `A8` costs roughly 100x more per
 game than any closed-form agent (~5.6ms/decision, ~100ms/game), which makes a full
@@ -49,12 +52,12 @@ the same way `A6` rated 52 overall despite a wide pairwise loss to `A5` (39.30%)
 | Combo Threshold | The Showboat | Le Frimeur | El Fanfarrón | 30 | 37 |
 | Greedy Power *(benchmark)* | Borealis | Borealis | Borealis | 50 | 50 |
 | Balanced Rules | Bean Counter | Compteur de Fèves | Contador de Frijoles | 36 | 62 |
-| Heuristic | ε-γ-δ | ε-γ-δ | ε-γ-δ | 60 | 70 |
+| Heuristic | ε-γ-δ | ε-γ-δ | ε-γ-δ | 64 | 70 |
 | Tactical | Pressure Cooker | Cocotte-Minute | Olla a Presión | 52 | 74 |
-| Hybrid (HBT) | The Grandmaster | Le Grand Maître | El Gran Maestro | 62 | 78 |
+| Hybrid (HBT) | The Grandmaster | Le Grand Maître | El Gran Maestro | 65 | 78 |
 | Simple Monte Carlo | The Soothsayer | Le Devin | El Adivino | 35 | 82 |
-| HBT 2-Ply | Grandmaster II | Grand Maître II | Gran Maestro II | 59 | 85 |
-| IS-MCTS | The Omniscient | L'Omniscient | El Omnisciente | — | 92 |
+| HBT 2-Ply | Grandmaster II | Grand Maître II | Gran Maestro II | 62 | 85 |
+| IS-MCTS | The Omniscient | L'Omniscient | El Omnisciente | 69 | 92 |
 | IS-MCTS + NN | AlphaOracle Prime | AlphaOracle Prime | AlphaOracle Prime | — | 97 |
 | Clairvoyant *(A8's sibling, not on the A1-A11 ladder)* | The Clairvoyant | Le Voyant | El Clarividente | 31 | — |
 

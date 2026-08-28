@@ -21,19 +21,32 @@ Cooker"), `A7` Hybrid HBT ("The Grandmaster"), `A8` Simple Monte Carlo ("The
 Soothsayer"), `A9` HBT 2-Ply ("Grandmaster II"), and `A10` IS-MCTS ("The Omniscient")
 AI strategies are all implemented and calibrated, and the Bradley-Terry
 rating system itself is now built on top of them. `A10` measures **69, the roster
-ceiling** (also 63.2% head-to-head vs `A7`); `A5` (64, after the 2026-08-27
-PASS-dominance fix), `A6` (53), `A9` (59), and `A7` (58, after the same fix -- a
-regression for `A7` specifically, shipped anyway, see `doc/changelog.md`) all measure
-above the Borealis anchor; `A8` measures 35 — legitimately below it and not
-raised by extra rollout budget, per its own diagnosis (`doc/changelog.md`) rather
-than a defect. `A12` Clairvoyant ("The Clairvoyant") — `A8`'s sibling, not part of the
-`A1`-`A11` ladder's authoritative order — was also implemented as a side exploration,
-measuring 31; kept in the roster as a deliberately modest agent, not pursued further.
-**Active work**: re-optimizing `A7`'s `HBTParams` with the PASS-dominance fix in place
-(see `doc/oracle_todo.md`'s Bug Tracker), then `A11` IS-MCTS + NN — see "Next Up" below.
+ceiling** (also 63.2% head-to-head vs `A7`); `A7` (65, after the 2026-08-28
+recalibration closing the PASS-dominance follow-up below), `A9` (62, moved passively
+from that same A7 recalibration, though A9's own re-attempted `reply_trust`/
+`surrogate_pessimism` search found no improvement -- see `doc/changelog.md`), `A5` (64,
+after the 2026-08-27 PASS-dominance fix), and `A6` (53) all measure above the Borealis
+anchor; `A8` measures 35 — legitimately below it and not raised by extra rollout
+budget, per its own diagnosis (`doc/changelog.md`) rather than a defect. `A12`
+Clairvoyant ("The Clairvoyant") — `A8`'s sibling, not part of the `A1`-`A11` ladder's
+authoritative order — was also implemented as a side exploration, measuring 31; kept in
+the roster as a deliberately modest agent, not pursued further.
+**Active work**: `A11` IS-MCTS + NN — see "Next Up" below.
 
 ### Recently Completed
 
+- **2026-08-28** — `A9` HBT 2-Ply re-attempted against the recalibrated `A7`: no
+  improvement found, and the original "A7's broken defense is the reason A9 falls
+  short" diagnosis does not hold -- a `reply_trust` sweep vs the new `A7` shows win rate
+  declining *monotonically* as trust in the ply increases (47.64% at trust=0 down to
+  31.20% at trust=1). `HBT2PLY_DEFAULTS` unchanged; rating still moved 59 → 62 purely
+  by inheriting `A7`'s gain (this agent's `.base` is a live call to `A7`'s own
+  default-params function). See `doc/changelog.md`'s 2026-08-28 entry.
+- **2026-08-28** — `A7` Hybrid HBT re-optimized with the 2026-08-27 PASS-dominance
+  defense fix in place: rating 58 → 65 (above the original pre-fix 62), closing the
+  Bug Tracker follow-up (root cause: `defense_stdev_mult` had been calibrated against a
+  dead PASS branch and was actively biasing toward over-blocking once the fix made it
+  live). See `doc/changelog.md`'s 2026-08-28 entry.
 - **2026-08-26** — `A9` HBT 2-Ply ("Grandmaster II") implemented and calibrated: `A7`
   Hybrid HBT plus one opponent-response ply -- for each candidate champion subset, clone
   the position, commit it, and score against a simulated best reply from a deterministic
@@ -244,13 +257,7 @@ Full details: `doc/changelog.md`.
 
 ## Next Up (single authoritative order)
 
-1. **Re-optimize `A7`'s `HBTParams`** with the 2026-08-27 PASS-dominance defense fix
-   already in place (not revert-and-reoptimize) -- `A7` regressed 62->58 from that fix
-   while `A5` improved 60->64 from the identical change, and the leading hypothesis is
-   that `A7`'s aggression/lethal-combo-hold layers on top of `A5`'s shared shape are the
-   interaction site. See `doc/oracle_todo.md`'s Bug Tracker and the
-   `project_a5_a7_defense_pass_dominance` memory for the full context.
-2. **`A11` IS-MCTS + NN** ("AlphaOracle Prime",
+1. **`A11` IS-MCTS + NN** ("AlphaOracle Prime",
    `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/`). The next rung on the AI
    ladder now that `A10` IS-MCTS is implemented and calibrated (2026-08-27, measured
    rating 69 -- the roster ceiling, see `doc/changelog.md`) -- replaces `A10`'s rollout
@@ -303,17 +310,20 @@ error-handling polish (see `doc/oracle_todo.md`).
   archived accordingly — see `doc/changelog.md`.
 - `stda.sim` (simulation UI): not started.
 
-### Phase: AI Development — `A1`–`A10` done, `A7` re-optimization then `A11` next
+### Phase: AI Development — `A1`–`A10` done and `A7` re-optimized, `A11` next
 
 Ladder: `A1` value-based (done, 2026-08-21) → `A2` combo threshold (The Showboat, done,
 2026-08-22) → `A3` greedy power (Borealis benchmark, done, 2026-08-23) → `A4` balanced
 rules (Bean Counter, done, 2026-08-24) → `A5` heuristic (Eps-Gam-Del, done, 2026-08-25,
 rating 60, later 64 -- see the 2026-08-27 PASS-dominance fix in `doc/changelog.md`)
 → `A6` tactical (Pressure Cooker, done, 2026-08-25) → `A7` hybrid HBT (The Grandmaster,
-done, 2026-08-25, rating 62, later 58 -- same fix, a regression for this agent
-specifically, shipped anyway pending re-optimization) → `A8` simple MC (The Soothsayer,
+done, 2026-08-25, rating 62, then 58 after the same fix -- a regression for this agent
+specifically, then 65 after the 2026-08-28 recalibration that closed the follow-up, see
+`doc/changelog.md`) → `A8` simple MC (The Soothsayer,
 done, 2026-08-25, rating 35 -- see `doc/changelog.md`) → `A9` HBT 2-ply (Grandmaster II,
-done, 2026-08-26, rating 59) → `A10` IS-MCTS (The Omniscient, done, 2026-08-27,
+done, 2026-08-26, rating 59, then 62 after `A7`'s 2026-08-28 recalibration -- inherited
+passively, `A9`'s own re-attempted `reply_trust` search found no improvement, see
+`doc/changelog.md`) → `A10` IS-MCTS (The Omniscient, done, 2026-08-27,
 **rating 69 -- the roster ceiling**, also 63.2% head-to-head vs `A7`)
 → `A11` IS-MCTS + neural
 network. One `ideas/A#` folder per agent,

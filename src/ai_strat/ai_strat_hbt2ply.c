@@ -38,11 +38,40 @@ static bool g_params_initialized = false;
 // pre-existing PASS-dominance property of A7's own shipped formula, found
 // while building this agent -- see ai_strat_hbt_enum.h's comment on that
 // function), leaving this agent's ply nothing real to correct for against
-// the actual opponent it's measured against. Shipped as a playable roster
-// member regardless (matching the A4/A8/A12 precedent of reporting a
-// below-target result honestly); fixing A7's (and A5's) defense formula is
-// believed a genuine prerequisite for a future re-attempt at this agent's
-// design target, not optional cleanup -- see doc/changelog.md.
+// the actual opponent it's measured against. Believed at the time that
+// fixing A7's (and A5's) defense formula was a genuine prerequisite for a
+// future re-attempt at this agent's design target, not optional cleanup.
+//
+// RE-ATTEMPTED 2026-08-28, after A7's defense formula was fixed
+// (2026-08-27) AND its HBTParams recalibrated against the live fix
+// (2026-08-28, 58->65 -- see ai_strat_hbt.c's HBT_DEFAULTS comment): the
+// "genuine prerequisite" belief above did not hold. Re-ran optimize()
+// vs the new `hbt` -- converged to reply_trust=0.013, validated 47.40%
+// [46.91%, 47.89%] (40,000 games), statistically indistinguishable from
+// the CURRENT shipped defaults' own 47.11% [46.34%, 47.89%] against the
+// same new `hbt`, i.e. the search essentially rediscovered "turn the ply
+// off." check_personality_flags() correctly flagged this candidate ("the
+// second ply has been calibrated into irrelevance") -- NOT shipped, since
+// a candidate that is both no-better and identity-destroying fails on both
+// counts. A follow-up univariate sweep of reply_trust alone against the
+// new `hbt` made the mechanism explicit and confirms this isn't a search
+// artifact: win rate declines MONOTONICALLY as reply_trust rises (47.64%
+// at 0.0 -> 43.40% at 0.25 -> 39.35% at 0.50 -> 37.29% at 0.75 -> 31.20%
+// at 1.0, all 16,000 games/point) -- trusting the ply's simulated reply
+// more doesn't help against a genuinely strong, well-calibrated A7, it
+// actively hurts, and reply_trust=0 (which is proven to recover A7's own
+// decision bit-for-bit, see test_hbt2ply_reply_trust_zero_matches_a7) is
+// the actual optimum on the whole curve. Conclusion: A7's old broken
+// defense was never the reason this agent fell short of its design
+// target -- the two-ply mechanism itself doesn't have room to improve on
+// A7 against an opponent this well-calibrated, at least via the two dials
+// this driver searches. HBT2PLY_DEFAULTS below are UNCHANGED as a result.
+// This agent's OWN Borealis-relative rating still moved, though, since it
+// inherits A7's absolute strength gain automatically (hbt_get_default_
+// params() below is a live call, not a frozen snapshot): re-measured
+// 61.62% [60.87%, 62.38%] vs `borealis` (32,000 games) -- rating 59 -> 62,
+// shipped in player_config.c despite no parameter change here. See
+// doc/changelog.md's 2026-08-28 entry for the full record.
 HBT2PlyParams hbt2ply_get_default_params(void)
 { HBT2PlyParams defaults;
   defaults.base = hbt_get_default_params(); // A7's 34 fields, frozen -- see

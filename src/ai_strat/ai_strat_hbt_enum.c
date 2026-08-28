@@ -406,19 +406,21 @@ HBTBestMove hbt_best_defense_move(const struct gamestate* gstate, PlayerID defen
   // scoring the decline option at the undamaged own_energy -- fixes the
   // PASS-dominance defect found while building A9 (see
   // project_a5_a7_defense_pass_dominance memory / hbt2ply_reply_defense_move()'s
-  // own identical fix, ai_strat_hbt2ply_reply.c). Shipped 2026-08-27 despite
-  // measuring WORSE (58, down from 62) -- kept per user decision, with an
-  // open follow-up task to find out why this identical fix helps A5 but
-  // hurts A7 (see the memory note; re-optimizing A7's HBTParams with the fix
-  // in place, rather than reverting, is the leading option). To revert:
-  // pass `own_energy` directly to hbt_advantage() below instead of
-  // `undamaged_energy`, and re-measure/update player_config.c's
-  // AI_STRATEGY_RATINGS[AI_STRATEGY_HYBRID_HBT] back to { 62, true }.
-  float undamaged_energy = own_energy - incoming;
-  if(undamaged_energy < 0.0f) undamaged_energy = 0.0f;
+  // own identical fix, ai_strat_hbt2ply_reply.c). Shipped 2026-08-27; initially
+  // measured WORSE (58, down from 62) because defense_stdev_mult and the H
+  // weights were still stage 1's original fit, calibrated back when this
+  // PASS baseline was dead weight (see project_a5_a7_defense_pass_dominance
+  // memory). Re-optimizing HBTParams with the fix already in place (rather
+  // than reverting) recovered and then exceeded the pre-fix rating -- see
+  // HBT_DEFAULTS's 2026-08-28 comment in ai_strat_hbt.c for the full
+  // recalibration record and doc/changelog.md's matching dated entry. To
+  // revert just this fix (not the recalibration): pass `own_energy` directly
+  // to hbt_advantage() below instead of `damaged_energy`.
+  float damaged_energy = own_energy - incoming;
+  if(damaged_energy < 0.0f) damaged_energy = 0.0f;
 
   HBTBestMove best =
-  { .advantage = hbt_advantage(undamaged_energy, opp_energy, own_hand, opp_hand,
+  { .advantage = hbt_advantage(damaged_energy, opp_energy, own_hand, opp_hand,
                                own_cash, opp_cash, params, state),
     .type = HBT_MOVE_PASS, .count = 0
   };
