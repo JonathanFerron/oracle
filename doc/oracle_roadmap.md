@@ -31,13 +31,25 @@ budget, per its own diagnosis (`doc/changelog.md`) rather than a defect. `A12`
 Clairvoyant ("The Clairvoyant") — `A8`'s sibling, not part of the `A1`-`A11` ladder's
 authoritative order — was also implemented as a side exploration, measuring 31; kept in
 the roster as a deliberately modest agent, not pursued further.
-**Active work**: the mulligan/seat-advantage investigation (housekeeping done
-2026-08-28), then `A13` (a new deterministic agent) and `A11` IS-MCTS + NN — see
-"Next Up" below for the full, agreed sequencing (2026-08-28), which also promotes SDL3
-GUI work out of "long-horizon" status (see `CLAUDE.md`).
+**Active work**: `A13` (a new deterministic agent) -- housekeeping and the
+mulligan/seat-advantage investigation both done 2026-08-28 -- then `A11` IS-MCTS + NN
+— see "Next Up" below for the full, agreed sequencing (2026-08-28), which also
+promotes SDL3 GUI work out of "long-horizon" status (see `CLAUDE.md`).
 
 ### Recently Completed
 
+- **2026-08-28** — Mulligan / seat-advantage investigation (Next Up item 2):
+  consolidated the mulligan max-cards cap into one shared accessor
+  (`mulligan_get_max_cards()`, `ai_strat_lib_heuristics.c`) and built purpose-built
+  batch tooling (`aicalibsrc/mulligan/`) instead of `ideas/4`'s interactive-only
+  exporter (rescoped and scheduled as its own item, see "Next Up" below). Self-mirror
+  measurement found the seat effect is real for most agents but agent-dependent in
+  both size *and direction* -- `borealis`/`balanced` favor going first,
+  `tactical`/`combo`/`hbt`/`value`/`hbt2ply`/`heuristic`/`ismcts` favor going second
+  (2pp to `ismcts`'s ~12pp), `rand` is neutral. A `max_cards` sweep confirmed the cap
+  is a real lever but not a uniform fix across the roster.
+  `MULLIGAN_DEFAULT_MAX_CARDS` stays 2, unchanged. See `doc/changelog.md`'s
+  2026-08-28 entry for the full table.
 - **2026-08-28** — Housekeeping bug fixes (Next Up item 1): `combat.c`'s combo-bonus
   table selection was hardcoded to the random-distribution table regardless of the
   actual deck in play (fixed via a new `struct gamestate.combo_bonus_table` field;
@@ -287,15 +299,18 @@ carry. Rationale for the shape of this list (not just its contents) lives here s
    to 0.84, confirming the bug had been a real noise contributor) but not
    re-shipped -- the shipped `1.3` remains statistically tied with the fit's top
    candidates in a focused, larger-sample comparison.
-2. **Mulligan / seat-advantage investigation**, paired with building the match-results
-   CSV export (`ideas/4 match results export/`, design guide already written) as the
-   tooling to support it. Deliberately sequenced *before* `A13`/`A11` below: if this
-   investigation changes the mulligan rule (`apply_mulligan()`'s `max_cards = 2`,
-   `stda_auto.c`), every future agent's calibration should be measured against the
-   settled rule, not a moving target. See `doc/oracle_todo.md`'s back-burner note (being
-   promoted off the back burner by this reordering) and the
-   `project_seat_advantage_investigation` memory for the original observation (`combo`
-   84.85% as Player A vs 91.11% as Player B, `n=10000`; `A1` showed the same pattern).
+2. **Mulligan / seat-advantage investigation** -- ✅ done 2026-08-28 (see
+   `doc/changelog.md`'s 2026-08-28 entry for the full per-agent table and sweep
+   data). Built purpose-built batch tooling (`aicalibsrc/mulligan/`) instead of
+   `ideas/4`'s interactive-only exporter (which can't produce batch data and whose
+   real value is separate -- see item 4 below). Self-mirror measurement across the
+   roster found the seat effect is real for most agents but **agent-dependent in
+   both size and direction**, not a uniform bias: `borealis`/`balanced` favor going
+   first, `tactical`/`combo`/`hbt`/`value`/`hbt2ply`/`heuristic`/`ismcts` favor going
+   second (2pp to `ismcts`'s ~12pp), `rand` is neutral. A `max_cards` sweep (0-4)
+   confirmed the cap moves some agents (`tactical`) but not others (`borealis`'s
+   imbalance is tied to mulligan existing at all, not its size) -- no single value
+   helps the whole roster. **`MULLIGAN_DEFAULT_MAX_CARDS` stays 2, unchanged.**
 3. **`A13`** -- a new deterministic AI agent with no design constraint beyond
    determinism: a synthesis of whichever techniques from `A1`-`A12` have proven out,
    plus room for new ideas, aiming for the strongest deterministic play the project can
@@ -305,7 +320,20 @@ carry. Rationale for the shape of this list (not just its contents) lives here s
    `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/`). Replaces `A10`'s rollout
    policy/leaf evaluation with a trained network -- the last rung on the original
    `A1`-`A11` ladder.
-5. **SDL3 GUI**, together with save/load game state (`ideas/6 save and load gamestate/`)
+5. **Interactive human-play match exporter** (rescoped 2026-08-28 from `ideas/4
+   match results export/`'s original design). Purpose, per Jonathan: log true
+   human-played games (vs AI and vs human) to mine heuristics from human play
+   patterns and to feed this item's own neural network training data -- not seat-
+   advantage tooling, which item 2 above already answered with purpose-built batch
+   tooling instead. Sequenced alongside `A11` since that's when the training-data
+   need actually arrives. `ideas/4`'s design needs updating before use: stale
+   `GameState`/`PlayerType` types (the engine's are `struct gamestate`/
+   `AIStrategyType`), a "does going first matter?" analysis that doesn't work as
+   written (infers seat from `turns_played` parity, meaningless here since Player A
+   always goes first in batch mode -- see item 2's finding that this is intentional,
+   not a gap), and gamestate instrumentation it assumes exists
+   (`total_damage_dealt[2]`, `champions_played[2]`, etc.) that doesn't yet.
+6. **SDL3 GUI**, together with save/load game state (`ideas/6 save and load gamestate/`)
    and the configuration file system (`ideas/7 config file/`) -- promoted out of
    "long-horizon" status (2026-08-28, see `CLAUDE.md`'s "Out of scope" section) because
    it addresses a concrete, named pain point: reading board state and deciding moves is
@@ -322,12 +350,12 @@ carry. Rationale for the shape of this list (not just its contents) lives here s
    instead of 2. **Design discipline for this reason**: write the renderer to loop over
    players rather than hardcoding a 2-player ("my side / their side") layout, so that
    later extension is additive, not a rewrite.
-6. **3-4 player mode**. Jonathan has an existing physical/tabletop 3-4 player variant of
+7. **3-4 player mode**. Jonathan has an existing physical/tabletop 3-4 player variant of
    the game; digitizing it is a genuine engine-level rework (`PlayerID` is binary
    throughout -- roughly two dozen files use a `1 - current_player`/`1 - defender`
    opponent-lookup pattern across `core/`, every `ai_strat/` file, and the roles layer --
    not a small feature), the single biggest architecture project on this list.
-7. **`ideas/10 Draft Format and Game Depth Addition Ideas/`** -- a draft format as a
+8. **`ideas/10 Draft Format and Game Depth Addition Ideas/`** -- a draft format as a
    third deck type alongside random/custom. Sequenced right after 3-4 player mode per
    Jonathan's call (2026-08-28); related to but distinct from `G3`'s "AI constructs a
    custom deck" facet below.

@@ -13,6 +13,7 @@
 #include "../shared/localization.h"
 #include "../../core/game_constants.h"
 #include "../../core/card_actions.h"
+#include "../../ai_strat/ai_strat_lib_heuristics.h"
 
 /* ========================================================================
    Card Selection Input Helpers
@@ -277,8 +278,9 @@ int game_process_mulligan_command(char* input_buffer, struct gamestate* gstate,
     return 1;
   }
   else if(strncmp(input_buffer, "mull ", 5) == 0)
-  { uint8_t indices[2];
-    int count = parse_card_indices_with_validation(input_buffer + 5, indices, 2,
+  { uint8_t indices[MULLIGAN_HARD_CAP];
+    int count = parse_card_indices_with_validation(input_buffer + 5, indices,
+                                                   mulligan_get_max_cards(),
                                                    gstate->hand[player].size, cfg, io);
     if(count < 0) return 0;
     if(count == 0)

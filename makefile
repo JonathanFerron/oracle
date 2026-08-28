@@ -340,6 +340,19 @@ CALIB_ISMCTS_ROLLOUT_SRCS := $(AICALIBDIR)/ismcts/calib_ismcts_rollout_policy.c 
 CALIB_ISMCTS_ROLLOUT_OBJS := $(BUILDDIR)/aicalibsrc/ismcts/calib_ismcts_rollout_policy.o \
                              $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_ISMCTS_ROLLOUT_SRCS)))
 
+# Batch harness for the mulligan/seat-advantage investigation (see
+# aicalibsrc/mulligan/) -- not an agent calibration, but the same
+# whole-roster link set as every CALIB_* target above since it takes
+# arbitrary --ai.a/--ai.b shorthands.
+CALIB_MULLIGAN_TARGET := $(BINDIR)/calib_mulligan
+CALIB_MULLIGAN_SRCS := $(AICALIBDIR)/mulligan/calib_mulligan.c \
+                       $(ENGINE_SRCS) \
+                       $(AGENT_SRCS) \
+                       $(SRCDIR)/roles/stda/stda_auto.c \
+                       $(SRCDIR)/ui/shared/player_config.c
+CALIB_MULLIGAN_OBJS := $(BUILDDIR)/aicalibsrc/mulligan/calib_mulligan.o \
+                       $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_MULLIGAN_SRCS)))
+
 # Default target
 all: $(TARGET)
 
@@ -372,7 +385,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_ismcts $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy
+	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_ismcts $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -590,6 +603,16 @@ $(CALIB_ISMCTS_ROLLOUT_TARGET): $(CALIB_ISMCTS_ROLLOUT_OBJS)
 	$(CC) $(CALIB_ISMCTS_ROLLOUT_OBJS) -o $(CALIB_ISMCTS_ROLLOUT_TARGET) $(LIBS)
 	@echo "Build complete: $(CALIB_ISMCTS_ROLLOUT_TARGET)"
 
+# Batch harness for the mulligan/seat-advantage investigation (see aicalibsrc/mulligan/)
+.PHONY: calib_mulligan
+calib_mulligan: $(CALIB_MULLIGAN_TARGET)
+
+$(CALIB_MULLIGAN_TARGET): $(CALIB_MULLIGAN_OBJS)
+	@echo "Linking calib_mulligan..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(CALIB_MULLIGAN_OBJS) -o $(CALIB_MULLIGAN_TARGET) $(LIBS)
+	@echo "Build complete: $(CALIB_MULLIGAN_TARGET)"
+
 .PHONY: format
 format:
 	astyle --project --suffix=none --recursive --exclude=ideas "*.c,*.h"
@@ -628,6 +651,7 @@ help:
 	@echo "  calib_simplemc   - Build the Simple Monte Carlo parameter calibration harness (aicalibsrc/)"
 	@echo "  calib_ismcts_timing - Build the A10 IS-MCTS per-decision timing harness (aicalibsrc/ismcts/)"
 	@echo "  calib_ismcts_efficiency - Build the A10 IS-MCTS efficiency-dial sweep harness (aicalibsrc/ismcts/)"
+	@echo "  calib_mulligan   - Build the mulligan/seat-advantage investigation harness (aicalibsrc/mulligan/)"
 	@echo "  format           - Format the c and h source files using astyle"
 	@echo "  help             - Show this help message"
 	@echo ""

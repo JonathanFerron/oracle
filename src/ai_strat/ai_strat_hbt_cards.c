@@ -21,6 +21,7 @@
 #include "ai_strat_hbt.h"
 #include "ai_strat_hbt_enum.h"
 #include "ai_strat_common.h"
+#include "ai_strat_lib_heuristics.h"
 #include "../core/game_constants.h"
 #include "../core/card_actions.h"
 #include "../structures/card_collection.h"
@@ -129,12 +130,12 @@ void hbt_discard_to_7(struct gamestate* gstate, PlayerID player, GameContext* ct
 } // hbt_discard_to_7
 
 // The card-COUNT decision (how many below-average cards to give up, capped
-// at 2) is unchanged from strat_lib_mulligan() (ai_strat_lib_heuristics.c) /
-// A3's borealis_mulligan(); only which specific cards are chosen differs,
-// via pick_discard_victim().
+// at mulligan_get_max_cards()) is unchanged from strat_lib_mulligan()
+// (ai_strat_lib_heuristics.c) / A3's borealis_mulligan(); only which
+// specific cards are chosen differs, via pick_discard_victim().
 void hbt_mulligan(struct gamestate* gstate, PlayerID player, GameContext* ctx)
 { const HBTParams* params = hbt_live_params(player);
-  uint8_t max_nbr_cards_to_mulligan = 2;
+  uint8_t max_nbr_cards_to_mulligan = mulligan_get_max_cards();
   uint8_t nbr_cards_to_mulligan = 0;
 
   for(uint8_t i = 0; (i < gstate->hand[player].size) &&

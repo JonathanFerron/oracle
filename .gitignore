@@ -23,6 +23,7 @@
 /bin/calib_ismcts_timing
 /bin/calib_ismcts_efficiency
 /bin/calib_ismcts_rollout_policy
+/bin/calib_mulligan
 *.o
 *.d
 *.xls

@@ -5,6 +5,115 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-28 — Mulligan / seat-advantage investigation (Next Up item 2): real effect, but agent-dependent in both size and direction -- shipped rule unchanged
+
+Consolidated the mulligan card-count cap first: it was duplicated as a local
+`uint8_t max_nbr_cards_to_mulligan = 2;` in three separate agent files
+(`ai_strat_lib_heuristics.c`'s shared default, `ai_strat_borealis.c`, `ai_strat_hbt_cards.c`)
+plus the interactive human path (`game_commands.c`), all doing the identical
+below-`AVERAGE_POWER_FOR_MULLIGAN` counting loop. Now one shared accessor,
+`mulligan_get_max_cards()` (`ai_strat_lib_heuristics.c`/`.h`), with a
+calibration-only `mulligan_set_max_cards()`/`_reset_max_cards()` override pair
+(mirrors `value_based_set_params()`/`_reset_params()`'s shape) -- a shared
+game-rule parameter, not a per-agent dial, so one global value rather than
+per-player. `game_commands.c`'s fixed-size `indices[2]` stack array needed care,
+not a literal swap: grew to `indices[MULLIGAN_HARD_CAP]` (4) since a runtime
+value can't size a C array. `A10` IS-MCTS's mulligan search
+(`ai_strat_ismcts_flat.c`) stays a fixed 0/1/2-card enumeration, not driven by
+this value -- extending it needs a real `enumerate_triples()`, out of scope
+here. Default stays 2; `-a -p` regression baseline unaffected by construction.
+
+Built `aicalibsrc/mulligan/` (`calib_mulligan.c` + `calibrate_mulligan.py`) to
+measure the effect -- a different shape from every `aicalibsrc/<agent>/` driver,
+since this investigates a shared game-rule parameter's fairness rather than an
+agent's playing strength. `seat` runs a large **self-mirror** match (an agent
+against itself, both seats) and reports Player A's win rate: since both seats
+run the *identical* strategy, any deviation from 50% is purely the seat/mulligan
+effect, not confounded with relative agent strength -- the clean design this
+question needed, and cleaner than the original cross-agent observation
+(`combo` vs `rand`, 84.85%/91.11%) that started this investigation.
+
+**Result, current shipped rule (`max_cards=2`), self-mirror, n=24,000/agent for
+the closed-form roster (`aicalibsrc/mulligan/results/`):**
+
+| Agent | P(A wins) | 95% CI |
+|---|---|---|
+| `borealis` | 56.83% | [56.21%, 57.46%] |
+| `balanced` | 54.22% | [53.59%, 54.85%] |
+| `rand` | 49.65% | [49.01%, 50.28%] |
+| `heuristic` | 48.40% | [47.77%, 49.03%] |
+| `hbt2ply` | 48.18% | [47.54%, 48.81%] |
+| `value` | 46.58% | [45.95%, 47.21%] |
+| `hbt` | 45.45% | [44.82%, 46.08%] |
+| `combo` | 45.16% | [44.53%, 45.79%] |
+| `tactical` | 40.16% | [39.54%, 40.78%] |
+
+Plus the costlier search-based agents at n=900 (smaller sample given their
+per-game cost): `ismcts` 37.89% [34.78%, 41.10%] (clear second-seat effect,
+larger than `tactical`'s), `simplemc` 47.11% [43.87%, 50.38%] and `clairvoy`
+48.44% [45.19%, 51.71%] (both consistent with no effect at this sample size).
+
+**The seat effect is real for most agents (CI excludes 50% for 8 of 9
+closed-form agents plus `ismcts`), but its size AND DIRECTION are agent-dependent,
+not a single global bias**: `borealis`/`balanced` show a genuine *first*-player
+advantage; `tactical`/`combo`/`hbt`/`value`/`hbt2ply`/`heuristic`/`ismcts` show a
+*second*-player advantage, ranging from small (`heuristic`, ~1.6pp) to large
+(`ismcts` ~12pp, `tactical` ~10pp); `rand` is essentially neutral. This
+supersedes the original `A1`/`A2`-era observation and resolves `A3` Borealis's
+own earlier conflicting mirror-match evidence (`doc/changelog.md`'s 2026-08-23
+entry) -- both were measured before the 2026-08-28 combo-bonus/PASS-dominance
+fixes and are superseded by this clean re-measurement.
+
+**Sweep of `max_cards` (0-4) for three representative agents** confirmed the
+cap is a real lever, but not a uniform one:
+- `rand` (control): stays close to neutral throughout (49.65%-52.36%), with a
+  small, non-monotonic wobble -- `AVERAGE_POWER_FOR_MULLIGAN`'s count-trigger
+  design means the cap only matters up to how many below-average cards a hand
+  actually holds, so raising it past ~2-3 has diminishing and sometimes
+  reversing effect even for a strategy-blind agent.
+- `tactical` (largest second-seat effect): cap 0 -> 46.02%, cap 1 -> 40.19%,
+  cap 2 -> 40.16% (shipped), cap 3 -> 42.77%, cap 4 -> 44.63%. Raising the cap
+  *would* move this agent back toward fairness.
+- `borealis` (first-seat effect): cap 0 -> 48.29% (no effect), cap 1 -> 55.17%,
+  cap 2 -> 56.83% (shipped), cap 3 -> 55.10%, cap 4 -> 54.76%. The advantage
+  appears entirely *because* mulligan exists at all (jumps in the moment
+  `max_cards` goes from 0 to 1) and stays roughly flat regardless of the exact
+  cap thereafter -- for this agent, the imbalance isn't about how many cards
+  Player B can swap, it's that giving Player B *any* mulligan interacts badly
+  with Borealis's own combo-hold mulligan override (`borealis_mulligan()`).
+
+**Decision: `MULLIGAN_DEFAULT_MAX_CARDS` stays 2, not changed.** No single
+alternate value clearly helps across the roster -- raising the cap helps
+`tactical` but doesn't meaningfully move `borealis`'s imbalance (which is about
+mulligan's mere existence, not its size), and `rand`'s own response is small
+and non-monotonic. The seat effect turns out to be substantially about
+agent-specific play style (tempo-oriented agents favor going first; card/resource-
+oriented agents favor the extra mulligan cards) rather than a pure rule defect a
+single shared dial can correct for every agent at once. 2 also matches the
+original design intent (`doc/game_rules_doc.md`) and, per Jonathan, "feels fun
+and fair" in actual casual play -- consistent with what the data shows once the
+effect is understood as agent-dependent rather than a uniform unfairness.
+Revisit per-agent if a specific agent's own calibration ever specifically
+targets seat balance (e.g. `borealis`'s own mulligan override could be
+re-examined on its own, separately from the shared cap).
+
+Two things confirmed as intentional while investigating, not gaps: interactive
+mode already has its own random-first-player option (`player_config.c`'s
+`get_player_assignment()`, `ASSIGN_RANDOM`); batch mode's `setup_game()`
+hardcoding Player A first is deliberate, matching how every calibration/rating
+tool already measures both seat orientations explicitly rather than relying on
+coin-flip noise that would need a larger sample to average out the same
+information.
+
+`ideas/4 match results export/`'s interactive-mode CSV exporter was *not*
+built as part of this item -- its real value (mining heuristics from true human
+play, feeding `A11`'s future neural network, per Jonathan) is independent of
+the seat question and it can't produce batch data anyway. Rescoped and
+scheduled as its own future roadmap item, naturally timed alongside `A11`.
+
+All 8 test suites (200 assertions) green; `./bin/oracle -a -p` byte-identical
+to `bin/expectedresults.txt`; `make format` clean.
+
 ## 2026-08-28 — Housekeeping bug fixes (Next Up item 1): combo-bonus table plumbing, calibration-driver bugs, A1 re-validated
 
 First item in the agreed 2026-08-28 project sequencing (`doc/oracle_roadmap.md`'s

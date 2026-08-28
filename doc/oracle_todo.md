@@ -78,17 +78,24 @@ target_folder_structure_v4.md`'s ownership table for the full picture):
 - `platform/` — if/when platform-specific code (beyond the current `#ifdef _WIN32`
   blocks) grows enough to warrant its own directory
 
-**Mulligan / seat-advantage investigation** (noted 2026-08-22, promoted off the back
-burner 2026-08-28 -- now item 2 in `doc/oracle_roadmap.md`'s "Next Up", scheduled before
-further AI-agent calibration since a mulligan-rule change would move the ground under
-it): first-player-vs-second-player advantage is visible across multiple agent matchups
-(e.g. `combo` beat `rand` 84.85% seated as Player A vs 91.11% seated as Player B,
-`n=10000` each; `A1` showed the same pattern at 90.1%/94.5%), and the mulligan max-cards
-parameter (`AVERAGE_POWER_FOR_MULLIGAN`'s `max_cards = 2` in `apply_mulligan()`,
-`stda_auto.c`) is a candidate lever -- a genuine game-design tuning question (Jonathan
-owns/designed the rules), not just an engine curiosity. Pair with building the
-match-results CSV export (`ideas/4 match results export/`, design guide already
-written) as the tooling to support it.
+**Closed 2026-08-28**: mulligan / seat-advantage investigation (noted 2026-08-22,
+item 2 in `doc/oracle_roadmap.md`'s "Next Up"). Consolidated the mulligan max-cards
+cap into one shared accessor (`ai_strat_lib_heuristics.c`'s `mulligan_get_max_cards()`
+-- previously duplicated as a local `= 2` in three agent files, not the single
+`apply_mulligan()`/`stda_auto.c` site this note used to point to). Built
+`aicalibsrc/mulligan/` (purpose-built batch tooling, not `ideas/4`'s interactive-only
+design -- that one's real value is separate, see the roadmap's newly-added item for
+it) and measured self-mirror seat advantage across the roster at the current
+`max_cards=2`: **real for most agents, but agent-dependent in both size and
+direction** -- `borealis`/`balanced` show a first-seat advantage, `tactical`/`combo`/
+`hbt`/`value`/`hbt2ply`/`heuristic`/`ismcts` show a second-seat advantage (from ~2pp
+to `ismcts`'s ~12pp), `rand` is neutral. A `max_cards` sweep (0-4) confirmed the cap
+is a real lever but not a uniform fix: it would help `tactical` but doesn't move
+`borealis` (whose imbalance is about mulligan existing at all, not its size).
+**`MULLIGAN_DEFAULT_MAX_CARDS` stays 2, unchanged** -- no single value clearly helps
+across the whole roster, and 2 matches both the original design intent and,
+per Jonathan, how the rule actually plays at the table. See `doc/changelog.md`'s
+2026-08-28 entry for the full per-agent table and sweep data.
 
 **Save/load game state** (`ideas/6 save and load gamestate/`) and **configuration file
 system** (`ideas/7 config file/`) are no longer separately back-burnered -- both are now

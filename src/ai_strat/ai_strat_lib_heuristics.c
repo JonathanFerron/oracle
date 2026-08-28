@@ -9,6 +9,22 @@
 #include "../core/game_constants.h"
 #include "../core/card_actions.h"
 
+#define MULLIGAN_DEFAULT_MAX_CARDS 2
+
+static uint8_t g_mulligan_max_cards = MULLIGAN_DEFAULT_MAX_CARDS;
+
+uint8_t mulligan_get_max_cards(void)
+{ return g_mulligan_max_cards;
+} // mulligan_get_max_cards
+
+void mulligan_set_max_cards(uint8_t max_cards)
+{ g_mulligan_max_cards = oraclemin(max_cards, MULLIGAN_HARD_CAP);
+} // mulligan_set_max_cards
+
+void mulligan_reset_max_cards(void)
+{ g_mulligan_max_cards = MULLIGAN_DEFAULT_MAX_CARDS;
+} // mulligan_reset_max_cards
+
 void strat_lib_discard_to_7(struct gamestate* gstate, PlayerID player, GameContext* ctx)
 { float minpower;
   uint8_t card_with_lowest_power;
@@ -31,7 +47,7 @@ void strat_lib_discard_to_7(struct gamestate* gstate, PlayerID player, GameConte
 } // strat_lib_discard_to_7
 
 void strat_lib_mulligan(struct gamestate* gstate, PlayerID player, GameContext* ctx)
-{ uint8_t max_nbr_cards_to_mulligan = 2;
+{ uint8_t max_nbr_cards_to_mulligan = mulligan_get_max_cards();
   uint8_t nbr_cards_to_mulligan = 0;
 
   for(uint8_t i = 0; (i < gstate->hand[player].size) &&
