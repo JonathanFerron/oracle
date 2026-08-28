@@ -31,7 +31,11 @@ budget, per its own diagnosis (`doc/changelog.md`) rather than a defect. `A12`
 Clairvoyant ("The Clairvoyant") — `A8`'s sibling, not part of the `A1`-`A11` ladder's
 authoritative order — was also implemented as a side exploration, measuring 31; kept in
 the roster as a deliberately modest agent, not pursued further.
-**Active work**: `A11` IS-MCTS + NN — see "Next Up" below.
+**Active work**: housekeeping (calibration-driver bugs, a combo-bonus `DeckType`
+threading bug found in `ideas/G3`'s design handout), then the mulligan/seat-advantage
+investigation, then `A13` (a new deterministic agent) and `A11` IS-MCTS + NN — see
+"Next Up" below for the full, agreed sequencing (2026-08-28), which also promotes SDL3
+GUI work out of "long-horizon" status (see `CLAUDE.md`).
 
 ### Recently Completed
 
@@ -257,15 +261,80 @@ Full details: `doc/changelog.md`.
 
 ## Next Up (single authoritative order)
 
-1. **`A11` IS-MCTS + NN** ("AlphaOracle Prime",
-   `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/`). The next rung on the AI
-   ladder now that `A10` IS-MCTS is implemented and calibrated (2026-08-27, measured
-   rating 69 -- the roster ceiling, see `doc/changelog.md`) -- replaces `A10`'s rollout
-   policy/leaf evaluation with a trained network.
+Agreed with Jonathan 2026-08-28, superseding the single-item list this section used to
+carry. Rationale for the shape of this list (not just its contents) lives here since
+`doc/oracle_todo.md` intentionally doesn't duplicate ordering:
 
-**Back burner** (explicitly deferred): save/load game state
-(`ideas/6 save and load gamestate/`), configuration file system
-(`ideas/7 config file/`).
+1. **Housekeeping bug fixes** -- cheap, and each protects the integrity of work later
+   items build on:
+   - The `aicalibsrc/value/`/`aicalibsrc/combo/`/`aicalibsrc/borealis/` calibration-driver
+     bugs already tracked in `doc/oracle_todo.md`'s Calibration section (parallel-execution
+     result misattribution -- casts doubt on `A1`'s shipped rating specifically -- and
+     `DEFAULTS` dicts drifted from their shipped C constants).
+   - A combo-bonus bug found while writing `ideas/G3 ai agent deck construction/`'s design
+     handout: `combat.c`'s `calculate_total_attack()`/`calculate_total_defense()` call
+     `calculate_combo_bonus()` hardcoded to `DECK_RANDOM` regardless of the actual
+     `DeckType` in play, so custom-deck games score combo bonuses incorrectly. Blocking
+     for `G3` whenever it's eventually picked up, but fixed now regardless since it's
+     contained and it's a real correctness bug today, not just future-facing prep.
+     Tracked in `doc/oracle_todo.md`'s Bug Tracker.
+2. **Mulligan / seat-advantage investigation**, paired with building the match-results
+   CSV export (`ideas/4 match results export/`, design guide already written) as the
+   tooling to support it. Deliberately sequenced *before* `A13`/`A11` below: if this
+   investigation changes the mulligan rule (`apply_mulligan()`'s `max_cards = 2`,
+   `stda_auto.c`), every future agent's calibration should be measured against the
+   settled rule, not a moving target. See `doc/oracle_todo.md`'s back-burner note (being
+   promoted off the back burner by this reordering) and the
+   `project_seat_advantage_investigation` memory for the original observation (`combo`
+   84.85% as Player A vs 91.11% as Player B, `n=10000`; `A1` showed the same pattern).
+3. **`A13`** -- a new deterministic AI agent with no design constraint beyond
+   determinism: a synthesis of whichever techniques from `A1`-`A12` have proven out,
+   plus room for new ideas, aiming for the strongest deterministic play the project can
+   produce. No `ideas/A13` folder exists yet -- design work starts here. Slotted before
+   `A11` per Jonathan's call (2026-08-28).
+4. **`A11` IS-MCTS + NN** ("AlphaOracle Prime",
+   `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/`). Replaces `A10`'s rollout
+   policy/leaf evaluation with a trained network -- the last rung on the original
+   `A1`-`A11` ladder.
+5. **SDL3 GUI**, together with save/load game state (`ideas/6 save and load gamestate/`)
+   and the configuration file system (`ideas/7 config file/`) -- promoted out of
+   "long-horizon" status (2026-08-28, see `CLAUDE.md`'s "Out of scope" section) because
+   it addresses a concrete, named pain point: reading board state and deciding moves is
+   slower in CLI/TUI's text card representation than it would be with a closer visual
+   analog to the physical cards. Target platform is Kubuntu Linux only for now --
+   Windows/iOS are explicitly not goals -- kept reasonably portable toward a future
+   Android build (SDL3 has an official Android target) where that costs little, rather
+   than a dedicated mobile pass now. Deliberately sequenced *before* the 3-4 player
+   engine rework below, not after: the two are more independent than they first look --
+   3-4 player support is an engine-level change (`PlayerID`, `GameContext`, `combat.c`,
+   every AI strategy's opponent lookup, see the "3-4 player mode" item below), none of
+   which lives in the GUI layer, so a GUI built for the current 2-player engine doesn't
+   get thrown away when that rework lands -- it needs *extending* to draw N players
+   instead of 2. **Design discipline for this reason**: write the renderer to loop over
+   players rather than hardcoding a 2-player ("my side / their side") layout, so that
+   later extension is additive, not a rewrite.
+6. **3-4 player mode**. Jonathan has an existing physical/tabletop 3-4 player variant of
+   the game; digitizing it is a genuine engine-level rework (`PlayerID` is binary
+   throughout -- roughly two dozen files use a `1 - current_player`/`1 - defender`
+   opponent-lookup pattern across `core/`, every `ai_strat/` file, and the roles layer --
+   not a small feature), the single biggest architecture project on this list.
+7. **`ideas/10 Draft Format and Game Depth Addition Ideas/`** -- a draft format as a
+   third deck type alongside random/custom. Sequenced right after 3-4 player mode per
+   Jonathan's call (2026-08-28); related to but distinct from `G3`'s "AI constructs a
+   custom deck" facet below.
+
+**Bottom of the list** (still intended, least urgent, distinct from the back burner
+below): `ideas/11 skill vs chance eval/` -- an analytical framework for game balance,
+unstarted, no active plan to pick it up soon.
+
+**Back burner** (no active plan): `G3 ai agent deck construction/` (design already
+finished -- two handouts, `custom_deck_construction_handout.md` and
+`deck_construction_ai_handout.md` -- but deprioritized behind everything above, 2026-08-28);
+TUI fine-tuning (`doc/oracle_todo.md`'s TUI Mode section already lists the specific
+polish items); `stda.sim` (simulation UI) -- effectively superseded in spirit by the
+`aicalibsrc/*/calibrate_*.py` tooling, which already covers what `stda.sim` was
+originally meant to provide (sweeps, results, comparison), so this is closer to resolved
+than merely deferred; client/server / networking (`ideas/8 client server/`).
 
 ---
 

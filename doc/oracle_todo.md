@@ -14,16 +14,23 @@ Borealis anchor, see `doc/changelog.md`), `A5` Heuristic ("Eps-Gam-Del", 2026-08
 calibrated, measured rating 60 — above the Borealis anchor, the first agent to clear
 it), `A6` Tactical ("Pressure Cooker", 2026-08-25, calibrated, measured rating 52 —
 also above the Borealis anchor, see `doc/changelog.md`), `A7` Hybrid HBT
-("The Grandmaster", 2026-08-25, calibrated, measured rating 62 — the highest measured
-rating so far, above all three agents it combines (`A4`/`A5`/`A6`) in the same
-roster-wide fit despite a pairwise loss to `A5` specifically, see `doc/changelog.md`),
-`A8` Simple Monte Carlo ("The Soothsayer", 2026-08-25, calibrated, measured rating
-35 — below the Borealis anchor and not raised by extra rollout budget, a diagnosed and
-honestly-reported ceiling rather than a defect, see `doc/changelog.md`), `A9` HBT
-2-Ply ("Grandmaster II", 2026-08-26, calibrated, measured rating 59 vs Borealis —
-above the anchor — but only 47.2% head-to-head vs `A7` specifically, below this
-agent's own design target; root cause precisely isolated to a pre-existing property of
-`A7`'s own defense formula, see `doc/changelog.md`), and `A10` IS-MCTS ("The Omniscient",
+("The Grandmaster", 2026-08-25, calibrated, measured rating 62, then 58 after the
+2026-08-27 PASS-dominance defense fix — a regression this agent alone suffered — then
+**65** after the 2026-08-28 `HBTParams` recalibration that closed that follow-up (root
+cause: `defense_stdev_mult` had been calibrated against a dead PASS branch and was
+actively biasing toward over-blocking once the fix made it live), see
+`doc/changelog.md`), `A8` Simple Monte Carlo ("The Soothsayer", 2026-08-25, calibrated,
+measured rating 35 — below the Borealis anchor and not raised by extra rollout budget, a
+diagnosed and honestly-reported ceiling rather than a defect, see `doc/changelog.md`),
+`A9` HBT 2-Ply ("Grandmaster II", 2026-08-26, calibrated, measured rating 59 vs
+Borealis — above the anchor — but only 47.2% head-to-head vs `A7` specifically, below
+this agent's own design target; re-attempted 2026-08-28 against the recalibrated `A7`,
+found no improvement is possible (win rate vs the new `A7` declines *monotonically* as
+`reply_trust` increases — the two-ply mechanism has no room to improve on a
+well-calibrated `A7` via its own two dials, overturning the original diagnosis that
+`A7`'s broken defense was the cause), `HBT2PLY_DEFAULTS` unchanged, rating moved
+passively to 62 purely from inheriting `A7`'s gain, see `doc/changelog.md`), and `A10`
+IS-MCTS ("The Omniscient",
 2026-08-27, calibrated, **measured rating 69 — the roster ceiling**, also 63.2%
 head-to-head vs `A7`; two diagnosed-and-fixed problems along the way — a random rollout
 policy plateaued below the anchor regardless of search budget (same signature as `A8`'s
@@ -34,13 +41,15 @@ budgets, so the shipped budget is `limit_iterations=4000`, not the `~100000`
 `doc/changelog.md`)
 are implemented. `A12` Clairvoyant ("The Clairvoyant", 2026-08-25, measured rating 31)
 was also implemented, as a side exploration of `A8`'s own diagnosis rather than the
-next ladder rung. Also 2026-08-27: the `A5`/`A7` shared defense PASS-dominance defect
-(found while building `A9`) was fixed in both agents' shipped code — `A5` improved
-60→64, `A7` regressed 62→58 but was shipped anyway per user decision, with an open
-follow-up task to find out why (see the Bug Tracker below). The
+next ladder rung. The `A5`/`A7` shared defense PASS-dominance defect (found while
+building `A9`) was fixed 2026-08-27 in both agents' shipped code, and `A7`'s regression
+from that fix was resolved 2026-08-28 via recalibration (see above; the Bug Tracker
+entry it opened is now closed). The
 Bradley-Terry rating system itself (2026-08-23, `src/rating/`) is now built on top of
-them — see `doc/oracle_roadmap.md`'s "Next Up" for what's next (`A7` re-optimization,
-then `A11`). The strategy-set
+them — see `doc/oracle_roadmap.md`'s "Next Up" for the full, agreed sequencing
+(2026-08-28): housekeeping bug fixes, the mulligan/seat-advantage investigation, then
+`A13` (a new deterministic agent), then `A11`, then SDL3 GUI work (promoted out of
+long-horizon status). The strategy-set
 build sites
 also gained a shared `AIStrategyType -> function pointer` registry (`ai_strategy.c`) as
 part of `A1` -- see "Checklist: Adding a New AI Strategy" below, which now reflects that
@@ -69,16 +78,32 @@ target_folder_structure_v4.md`'s ownership table for the full picture):
 - `platform/` — if/when platform-specific code (beyond the current `#ifdef _WIN32`
   blocks) grows enough to warrant its own directory
 
-**Back burner (explicitly deferred)**: save/load game state
-(`ideas/6 save and load gamestate/`), configuration file system
-(`ideas/7 config file/`). Also noted as a separate future project (2026-08-22, not
-started): investigate first-player-vs-second-player advantage (visible across multiple
-agent matchups during `A2` measurement -- e.g. `combo` beat `rand` 84.85% seated as
-Player A vs 91.11% seated as Player B, `n=10000` each; `A1` showed the same pattern at
-90.1%/94.5%) and whether tuning game-rule parameters such as the mulligan card count
-(`AVERAGE_POWER_FOR_MULLIGAN`'s `max_cards = 2` in `apply_mulligan()`, `stda_auto.c`)
-changes it -- these are genuine game-design levers, not just engine bugs, since the
-game rules are original and adjustable.
+**Mulligan / seat-advantage investigation** (noted 2026-08-22, promoted off the back
+burner 2026-08-28 -- now item 2 in `doc/oracle_roadmap.md`'s "Next Up", scheduled before
+further AI-agent calibration since a mulligan-rule change would move the ground under
+it): first-player-vs-second-player advantage is visible across multiple agent matchups
+(e.g. `combo` beat `rand` 84.85% seated as Player A vs 91.11% seated as Player B,
+`n=10000` each; `A1` showed the same pattern at 90.1%/94.5%), and the mulligan max-cards
+parameter (`AVERAGE_POWER_FOR_MULLIGAN`'s `max_cards = 2` in `apply_mulligan()`,
+`stda_auto.c`) is a candidate lever -- a genuine game-design tuning question (Jonathan
+owns/designed the rules), not just an engine curiosity. Pair with building the
+match-results CSV export (`ideas/4 match results export/`, design guide already
+written) as the tooling to support it.
+
+**Save/load game state** (`ideas/6 save and load gamestate/`) and **configuration file
+system** (`ideas/7 config file/`) are no longer separately back-burnered -- both are now
+scheduled together with SDL3 GUI work, item 5 in `doc/oracle_roadmap.md`'s "Next Up"
+(2026-08-28; GUI itself was promoted out of "long-horizon" status the same day, see
+`CLAUDE.md`).
+
+**Bottom of the list** (still intended, least urgent, distinct from the back burner):
+`ideas/11 skill vs chance eval/`.
+
+**Back burner (no active plan)**: `ideas/G3 ai agent deck construction/` (design already
+finished, deprioritized behind everything in `doc/oracle_roadmap.md`'s "Next Up"); TUI
+fine-tuning polish items (see "TUI Mode" below); `stda.sim` (effectively superseded in
+spirit by the `aicalibsrc/*/calibrate_*.py` tooling); client/server / networking
+(`ideas/8 client server/`).
 
 ---
 
@@ -379,6 +404,21 @@ live and was now actively biasing toward over-blocking. Re-optimizing `HBTParams
 the fix in place (the leading hypothesis from 2026-08-27) recovered and then exceeded
 the pre-fix rating: 58 → 65. See `doc/changelog.md`'s 2026-08-28 entry and
 `ai_strat_hbt.c`'s `HBT_DEFAULTS` comment for the full recalibration record.
+
+- [ ] **`combat.c`'s `calculate_total_attack()`/`calculate_total_defense()` hardcode
+  `calculate_combo_bonus()`'s deck-type argument to `DECK_RANDOM`** regardless of the
+  actual `DeckType` in play (`// Add combo bonus (assuming DECK_RANDOM for now)`
+  comments at both call sites). `combo_bonus.c` already has the correct branch
+  (`calc_random_bonus()` vs `calc_prebuilt_bonus()` -- the latter is species/order-based
+  only, no color tier, unlike the random-deck version), but nothing threads the real
+  `DeckType` down to `resolve_combat()` to select it. Found while writing
+  `ideas/G3 ai agent deck construction/custom_deck_construction_handout.md` --
+  blocking for any custom/prebuilt-deck combo-bonus evaluation (`G3`'s whole reason for
+  existing), and a real correctness bug for `DECK_MONOCHROME`/`DECK_CUSTOM` games today,
+  independent of `G3`'s own timeline. Likely fix: add a `DeckType` field to
+  `struct gamestate`/`GameContext`, populated at game setup, threaded through
+  `resolve_combat()` -> `calculate_total_attack()`/`calculate_total_defense()`. Scheduled
+  as part of `doc/oracle_roadmap.md`'s "Next Up" item 1 (housekeeping).
 
 Otherwise no known open bugs. Add entries here as they're found.
 
