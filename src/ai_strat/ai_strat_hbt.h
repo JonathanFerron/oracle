@@ -220,4 +220,14 @@ void hbt_reset_params(void);
 void hbt_discard_to_7(struct gamestate* gstate, PlayerID player, GameContext* ctx);
 void hbt_mulligan(struct gamestate* gstate, PlayerID player, GameContext* ctx);
 
+// Same behaviour as hbt_discard_to_7()/hbt_mulligan(), but scored against an
+// explicit params pointer instead of hbt_live_params(player) -- lets A13
+// inherit this agent's exact mulligan/discard behaviour (via &a13_params->base)
+// without a third local port of A3's shape. hbt_discard_to_7()/hbt_mulligan()
+// are one-line wrappers calling these with hbt_live_params(player).
+void hbt_discard_to_7_with(struct gamestate* gstate, PlayerID player, GameContext* ctx,
+                           const HBTParams* params);
+void hbt_mulligan_with(struct gamestate* gstate, PlayerID player, GameContext* ctx,
+                       const HBTParams* params);
+
 #endif // AI_STRAT_HBT_H

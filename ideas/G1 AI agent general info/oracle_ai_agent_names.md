@@ -60,6 +60,7 @@ the same way `A6` rated 52 overall despite a wide pairwise loss to `A5` (39.30%)
 | IS-MCTS | The Omniscient | L'Omniscient | El Omnisciente | 69 | 92 |
 | IS-MCTS + NN | AlphaOracle Prime | AlphaOracle Prime | AlphaOracle Prime | — | 97 |
 | Clairvoyant *(A8's sibling, not on the A1-A11 ladder)* | The Clairvoyant | Le Voyant | El Clarividente | 31 | — |
+| Cartographer *(implemented, calibrated, and SHELVED 2026-08-31 — see below, not registered)* | The Cartographer | Le Cartographe | El Cartógrafo | shelved | 68 |
 
 ---
 
@@ -85,6 +86,7 @@ than glyphs.
 | IS-MCTS | The Omniscient | L'Omniscient | El Omnisciente |
 | IS-MCTS + NN | AlphaOracle Prime | AlphaOracle Prime | AlphaOracle Prime |
 | Clairvoyant | The Clairvoyant | Le Voyant | El Clarividente |
+| Cartographer | The Cartographer | Le Cartographe | El Cartografo |
 
 Alternative ASCII forms for the Heuristic agent, in decreasing terseness:
 `E-G-D` · `Eps-Gam-Del` · `Epsilon-Gamma-Delta`
@@ -111,6 +113,12 @@ declaration order.
 | `AI_STRATEGY_ISMCTS` | `ismcts` | The Omniscient |
 | `AI_STRATEGY_ISMCTS_NN` | `ismctsnn` | AlphaOracle Prime |
 | `AI_STRATEGY_CLAIRVOYANT` | `clairvoy` | The Clairvoyant |
+
+No `AI_STRATEGY_CARTOGRAPHER` row: implemented, calibrated, and shelved 2026-08-31 (see
+"Naming Rationale" below and `../A13 .../about.md`) — the enum constant was removed from
+`AIStrategyType` when the agent was shelved, `carto` is not wired into
+`AI_STRATEGY_SHORTHANDS[]`, and this project's actual `AIStrategyType` declaration order
+therefore still ends at `AI_STRATEGY_CLAIRVOYANT`.
 
 ### Required renames
 
@@ -220,3 +228,17 @@ flavour text on the difficulty-select screen:
 Note that **ε-γ-δ** deliberately breaks the flavour-name pattern. It is the one
 agent whose entire identity is its weights, so naming it after them is a
 reasonable in-joke — but it is a conscious exception, not an oversight.
+
+**The Cartographer** (`A13`, implemented, calibrated, and shelved 2026-08-31 — see
+`../A13 ai agent cartographer (the cartographer)/about.md`) was designed to sit outside this
+progression narrative rather than extending it as a 13th rung: it was not meant as a step
+further toward "near-superhuman," but the Grandmaster's synthesis (`A7`) plus closed-form
+deck-and-race arithmetic, aimed at the strongest *deterministic* play the roster could
+produce. The name fit the theme anyway — mapping unseen territory (the unseen-card pool)
+rather than reading minds (`The Soothsayer`, `The Omniscient`, `The Clairvoyant`), which was
+exactly the distinction the design leaned on: computing an exact distribution over what's
+hidden, never fabricating a single guess at it. **The idea didn't survive calibration**:
+every mechanism measured at parity with `A7` or worse (one, `hplus_trust`, conclusively
+harmful) across four independent properly-powered searches, so this agent was shelved rather
+than registered — no enum slot, no shorthand, not part of the roster above. "The Hoarder"
+(see "Retired names" above) remains the only freed-but-unused flavour name on this table.

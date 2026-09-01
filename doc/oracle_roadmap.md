@@ -31,13 +31,29 @@ budget, per its own diagnosis (`doc/changelog.md`) rather than a defect. `A12`
 Clairvoyant ("The Clairvoyant") — `A8`'s sibling, not part of the `A1`-`A11` ladder's
 authoritative order — was also implemented as a side exploration, measuring 31; kept in
 the roster as a deliberately modest agent, not pursued further.
-**Active work**: `A13` (a new deterministic agent) -- housekeeping and the
-mulligan/seat-advantage investigation both done 2026-08-28 -- then `A11` IS-MCTS + NN
-— see "Next Up" below for the full, agreed sequencing (2026-08-28), which also
-promotes SDL3 GUI work out of "long-horizon" status (see `CLAUDE.md`).
+**Active work**: `A11` IS-MCTS + NN -- housekeeping, the mulligan/seat-advantage
+investigation, and `A13` Cartographer (implemented, calibrated, and shelved 2026-08-31 --
+every mechanism measured at parity with `A7` or worse, see `doc/changelog.md`'s 2026-08-31
+entry and `ideas/A13 .../about.md`) are all done -- see "Next Up" below for the full,
+agreed sequencing (2026-08-28), which also promotes SDL3 GUI work out of "long-horizon"
+status (see `CLAUDE.md`).
 
 ### Recently Completed
 
+- **2026-08-31** — `A13` Cartographer (Next Up item 3): implemented, calibrated, and
+  shelved rather than registered. Four new deterministic layers on top of `A7`'s
+  synthesis (race arithmetic, deck-aware draw valuation, reshuffle-boundary awareness,
+  Jensen-corrected expected block), all closed-form over the exact unseen-card pool --
+  the superset guarantee (neutral config recovers `A7` bit-for-bit) held through every
+  stage. Calibration (four independent properly-powered searches, including a
+  630-evaluation joint search specifically testing for a coordinate-descent trap): every
+  configuration landed at parity with `A7` or worse, except `hplus_trust`, which was
+  conclusively harmful (matching `A9`'s own `reply_trust` failure signature). Two real
+  implementation bugs found and fixed along the way (a value-function scale mismatch, a
+  calibration-driver parameter-pinning bug). `AI_STRATEGY_CARTOGRAPHER` removed from the
+  registry; source kept as reference, the belief module kept as reusable infrastructure
+  for a future `A11` pass. See `doc/changelog.md`'s 2026-08-31 entry and
+  `ideas/A13 .../about.md` for the full record.
 - **2026-08-28** — Mulligan / seat-advantage investigation (Next Up item 2):
   consolidated the mulligan max-cards cap into one shared accessor
   (`mulligan_get_max_cards()`, `ai_strat_lib_heuristics.c`) and built purpose-built
@@ -311,11 +327,18 @@ carry. Rationale for the shape of this list (not just its contents) lives here s
    confirmed the cap moves some agents (`tactical`) but not others (`borealis`'s
    imbalance is tied to mulligan existing at all, not its size) -- no single value
    helps the whole roster. **`MULLIGAN_DEFAULT_MAX_CARDS` stays 2, unchanged.**
-3. **`A13`** -- a new deterministic AI agent with no design constraint beyond
-   determinism: a synthesis of whichever techniques from `A1`-`A12` have proven out,
-   plus room for new ideas, aiming for the strongest deterministic play the project can
-   produce. No `ideas/A13` folder exists yet -- design work starts here. Slotted before
-   `A11` per Jonathan's call (2026-08-28).
+3. **`A13`** -- ✅ done 2026-08-31 (see `doc/changelog.md`'s 2026-08-31 entry and
+   `ideas/A13 .../about.md`). Implemented as A7's synthesis plus four new deterministic
+   layers (race arithmetic, deck-aware draw valuation, reshuffle-boundary awareness,
+   Jensen-corrected expected block), all closed-form over the exact unseen-card pool.
+   Calibrated across four independent, properly-powered searches (including a
+   630-evaluation joint search testing for a coordinate-descent trap across layers):
+   every configuration measured at parity with `A7` or worse, except `hplus_trust`,
+   conclusively harmful (`A9`'s own `reply_trust` failure signature, even sharper).
+   **Shelved rather than registered** -- `AI_STRATEGY_CARTOGRAPHER` removed from
+   `AIStrategyType`; source kept as reference, the closed-form belief module
+   (`ai_strat_a13_belief.{c,h}`) kept as reusable infrastructure for a future `A11`
+   feature-extraction pass.
 4. **`A11` IS-MCTS + NN** ("AlphaOracle Prime",
    `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/`). Replaces `A10`'s rollout
    policy/leaf evaluation with a trained network -- the last rung on the original

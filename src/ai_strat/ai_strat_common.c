@@ -109,6 +109,26 @@ float champion_variance(uint8_t card_idx)
   return (n * n - 1.0f) / 12.0f;
 } // champion_variance
 
+static void mark_seen(bool* seen, const uint8_t* cards, uint8_t n)
+{ for(uint8_t i = 0; i < n; i++) seen[cards[i]] = true;
+} // mark_seen
+
+uint8_t strat_common_unseen_pool(const struct gamestate* gstate, PlayerID observer,
+                                 uint8_t* out)
+{ bool seen[FULL_DECK_SIZE] = {0};
+
+  mark_seen(seen, gstate->hand[observer].cards, gstate->hand[observer].size);
+  mark_seen(seen, gstate->discard[PLAYER_A].cards, gstate->discard[PLAYER_A].size);
+  mark_seen(seen, gstate->discard[PLAYER_B].cards, gstate->discard[PLAYER_B].size);
+  mark_seen(seen, gstate->combat_zone[PLAYER_A].cards, gstate->combat_zone[PLAYER_A].size);
+  mark_seen(seen, gstate->combat_zone[PLAYER_B].cards, gstate->combat_zone[PLAYER_B].size);
+
+  uint8_t n = 0;
+  for(uint8_t i = 0; i < FULL_DECK_SIZE; i++)
+    if(!seen[i]) out[n++] = i;
+  return n;
+} // strat_common_unseen_pool
+
 void effective_hand_and_cash(const struct gamestate* gstate, PlayerID player,
                              float* out_hand, float* out_cash)
 { const Hand* hand = &gstate->hand[player];

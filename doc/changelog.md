@@ -5,6 +5,96 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-08-31 — `A13` Cartographer (Next Up item 3): implemented, calibrated, shelved -- nothing beat A7
+
+Full design record: `ideas/A13 ai agent cartographer (the cartographer)/about.md`. Built as
+A7's exact three-layer synthesis (inherited verbatim as `.base`) plus four new deterministic
+layers, all closed-form over the exact unseen-card pool derived by subtraction from the
+known 120-card deck (never sampling, never fabricating a single hidden hand -- a direct,
+structural answer to `A9`'s failure): Layer R (race/turns-to-kill arithmetic turning `A7`'s
+fixed signed `defense_stdev_mult` into a state-dependent one), Layer K-draw + Layer D
+(deck-aware draw valuation, reshuffle-boundary awareness), Layer K-block (Jensen-corrected
+expected block, `E[net(S)] = Sum_k P(K=k)*min(max(raw(S)-E[block|k],0),opp_energy)`, the
+non-degenerate alternative to the naive block-subtraction model that doomed `A9`). Ten new
+`A13Params` fields (originally eleven; `belief_opp_power_trust` was dropped mid-implementation
+as a redundant, dimensionally-mismatched third tier on a quantity `race_use_belief_opp`
+already selects between). Six new files: `ai_strat_a13.{c,h}` (orchestration, params,
+mulligan/discard thunks onto `A7`'s own `hbt_*_with()`), `ai_strat_a13_belief.{c,h}` (the
+closed-form pool/hypergeometric machinery), `ai_strat_a13_state.{c,h}` (Layer R),
+`ai_strat_a13_enum.{c,h}` (move enumeration/scoring, reusing `A7`'s `hbt_advantage()`/
+`predicted_damage()`/`is_held_combo()`/`evaluate_defense_subset()` verbatim).
+
+**The superset guarantee held throughout.** One parameter vector (every new dial at its
+neutral value) provably recovers `A7` bit-for-bit -- verified not just at the unit level but
+via whole-game bit-for-bit replay (5 seeds x 40 games each, every single game's outcome and
+turn count identical) at every stage of implementation, including after two real bugs were
+found and fixed in the belief module.
+
+**Calibration, staged per the approved plan (`aicalibsrc/carto/calib_a13.c` +
+`calibrate_a13.py`, same in-process harness pattern as every other agent):**
+
+- **Stage 1 (Layer R alone).** A first `optimize` attempt at too small a per-evaluation
+  budget (2000 games/eval) found what looked like a 66%+ candidate that evaporated to 64%
+  once re-measured with more games at the same seeds -- textbook differential-evolution
+  overfitting to noise, not a real signal. Re-run properly powered (16,000 games/eval):
+  converged to sign-correct values matching the documented convention, validated 64.82% vs
+  `borealis` (40k games) and 49.93% vs `hbt` -- both statistically identical to neutral,
+  no gain either way.
+- **Stage 2 (Layer K-draw + D).** A univariate sweep of `belief_draw_weight` surfaced a real
+  bug: `pool_mean_power()` averaged over the *whole* unseen pool including non-champion
+  cards (draw/cash cards carry much lower `power` than champions), diluting `draw_value`
+  against its `AVERAGE_POWER_FOR_MULLIGAN` comparison baseline by a large, roughly-constant
+  amount unrelated to real pool depletion -- produced a spurious catastrophic collapse
+  (34.7% win rate) at strongly positive weight, a bug signature rather than a finding. Fixed
+  to champion-only averaging; the sweep flattened but stayed within noise. A second
+  refinement followed Jonathan's clarification that `power` (his own straight 50/50 average
+  of `attack_efficiency`/`defense_efficiency`) and every other derived `fullDeck[]` field are
+  early heuristic guesses, not authoritative -- and that a 50/50 attack/defense weighting had
+  no basis. Measured the real split directly (a scratch harness replicating `play_turn()`'s
+  exact sequence, instrumented between `defense_phase()` and `resolve_combat()`, ~8000 games
+  across `hbt`/`borealis`/`heuristic` pairings): **78.21% attack / 21.79% defense**,
+  consistent within a few points across every pairing. Rebuilt the value function around
+  `0.7821*attack_efficiency + 0.2179*defense_efficiency` (new deck-wide baseline
+  `A13_AVERAGE_CARD_VALUE=5.51528`, replacing `AVERAGE_POWER_FOR_MULLIGAN`). Result:
+  flatter, not better -- 64.68% vs `borealis`, 49.93% vs `hbt`, still parity, ruling out
+  "wrong value function" as the explanation.
+- **Stage 3 (Layer K-block), A9's sweep protocol first.** `hplus_trust`: clean monotonic
+  decline vs both opponents (vs `hbt`: 50.00%->42.09%->31.94%->23.84%->20.34%; vs
+  `borealis`: 64.68%->50.96%->33.91%->21.82%->17.18%, trust 0/0.25/0.5/0.75/1.0, tight
+  non-overlapping CIs) -- `A9`'s exact `reply_trust` failure signature, even sharper.
+  Pinned to 0, conclusively. `belief_opp_block_trust`: a first sweep was flat because the
+  dial only reaches `a13_evaluate_state()`'s output by first flowing through the race-scale
+  machinery, which was still pinned off from Stage 1 -- a direct, concrete example of the
+  cross-layer coupling risk flagged going in. Re-swept with `race_scale`/`race_stdev_ahead`/
+  `race_stdev_behind` held live: still flat, non-monotonic, no exploitable signal, but this
+  time for the right reason (the diffuse opponent-hand belief, not dead wiring).
+- **Broad joint search (Layer R + K-draw + `belief_opp_block_trust`, 630 evaluations, no
+  early convergence)**, run specifically to test whether the per-stage null results were a
+  coordinate-descent artifact rather than a real absence of signal: validated 65.18% vs
+  `borealis` (60k games) and 49.80% vs `hbt` -- still statistically identical to neutral. The
+  coordinate-descent hypothesis does not appear to explain the pattern.
+- **Stage 4 (+ `defense_stdev_mult` free)**, under a hard sub-1-minute search budget: a
+  driver bug initially made `defense_stdev_mult` silently stay pinned despite being
+  explicitly requested (`PINNED_PARAM_NAMES` included all 34 base fields unconditionally,
+  with no carve-out for the one documented exception; a second latent bug -- no `BOUNDS`
+  entry for it at all -- sat behind the first). Fixed both. Re-run at a guaranteed-fast
+  budget (measured actual per-batch wall time directly rather than re-guessing after one
+  overrun): `defense_stdev_mult=1.29` (far from `A7`'s shipped 0.2156) alongside the usual
+  race/belief values, validated 64.88% vs `borealis` and 49.91% vs `hbt` -- still parity.
+
+**Verdict (Jonathan's call, 2026-08-31): shelved, not registered.** `AI_STRATEGY_CARTOGRAPHER`
+was removed from `AIStrategyType`, its `STRATEGY_REGISTRY` entry and the four
+`player_config.c` table entries (menu label, rating, display name, shorthand) reverted --
+`carto` is no longer selectable anywhere (CLI, TUI, `--stda.rating`). A second copy of `A7`
+under a new name -- and, had `hplus_trust` shipped, a net-negative one -- would pollute the
+Bradley-Terry fit, the same reasoning already applied to `A9`'s own below-target 2026-08-28
+re-attempt, here applied to a fully-null rather than partially-successful result. The source
+files remain on disk as reference (not compiled into `STRATEGY_REGISTRY`, harmless dead code
+in `bin/oracle`'s build); `ai_strat_a13_belief.{c,h}` (the closed-form pool/hypergeometric
+machinery) is explicitly kept as reusable infrastructure for a future `A11` feature-extraction
+pass. `aicalibsrc/carto/` stays buildable (`make calib_a13`) so this record stays
+reproducible. Closes this "Next Up" item; next per `doc/oracle_roadmap.md` is `A11` IS-MCTS+NN.
+
 ## 2026-08-28 — Mulligan / seat-advantage investigation (Next Up item 2): real effect, but agent-dependent in both size and direction -- shipped rule unchanged
 
 Consolidated the mulligan card-count cap first: it was duplicated as a local

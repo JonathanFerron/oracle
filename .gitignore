@@ -17,6 +17,7 @@
 /bin/calib_hbt
 /bin/calib_hbt2ply
 /bin/calib_simplemc
+/bin/calib_a13
 /bin/test_hbt2ply_reply
 /bin/test_ismcts
 /bin/test_combat

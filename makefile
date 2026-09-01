@@ -66,7 +66,11 @@ AGENT_SRCS := $(SRCDIR)/ai_strat/ai_strategy.c \
               $(SRCDIR)/ai_strat/ai_strat_ismcts_tree.c \
               $(SRCDIR)/ai_strat/ai_strat_ismcts_search.c \
               $(SRCDIR)/ai_strat/ai_strat_ismcts_flat.c \
-              $(SRCDIR)/ai_strat/ai_strat_ismcts1.c
+              $(SRCDIR)/ai_strat/ai_strat_ismcts1.c \
+              $(SRCDIR)/ai_strat/ai_strat_a13.c \
+              $(SRCDIR)/ai_strat/ai_strat_a13_belief.c \
+              $(SRCDIR)/ai_strat/ai_strat_a13_state.c \
+              $(SRCDIR)/ai_strat/ai_strat_a13_enum.c
 
 # Test targets
 # Object paths are mapped into $(BUILDDIR) (mirroring the main build's pattern rule
@@ -302,6 +306,21 @@ CALIB_SIMPLEMC_SRCS := $(AICALIBDIR)/simplemc/calib_simplemc.c \
 CALIB_SIMPLEMC_OBJS := $(BUILDDIR)/aicalibsrc/simplemc/calib_simplemc.o \
                        $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_SIMPLEMC_SRCS)))
 
+# Calibration harness for A13 Cartographer's tunable parameters (see
+# aicalibsrc/carto/, not yet built -- design only as of 2026-08-31, this
+# target will fail until Step 5 adds calib_a13.c). Same pattern and same
+# whole-roster reasoning as CALIB_VALUEBASED_*/CALIB_COMBO_*/
+# CALIB_BOREALIS_*/CALIB_BALANCED_*/CALIB_HEURISTIC_*/CALIB_TACTICAL_*/
+# CALIB_HBT_*/CALIB_HBT2PLY_* above.
+CALIB_A13_TARGET := $(BINDIR)/calib_a13
+CALIB_A13_SRCS := $(AICALIBDIR)/carto/calib_a13.c \
+                  $(ENGINE_SRCS) \
+                  $(AGENT_SRCS) \
+                  $(SRCDIR)/roles/stda/stda_auto.c \
+                  $(SRCDIR)/ui/shared/player_config.c
+CALIB_A13_OBJS := $(BUILDDIR)/aicalibsrc/carto/calib_a13.o \
+                  $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_A13_SRCS)))
+
 # Phase 3 timing-only harness for A10 IS-MCTS (see aicalibsrc/ismcts/
 # calib_ismcts_timing.c) -- measures wall-clock per-decision latency to pin
 # limit_iterations to ~1s/decision. Not a params sweep/optimize harness (that
@@ -385,7 +404,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_ismcts $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan
+	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_ismcts $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -573,6 +592,17 @@ $(CALIB_SIMPLEMC_TARGET): $(CALIB_SIMPLEMC_OBJS)
 	$(CC) $(CALIB_SIMPLEMC_OBJS) -o $(CALIB_SIMPLEMC_TARGET) $(LIBS)
 	@echo "Build complete: $(CALIB_SIMPLEMC_TARGET)"
 
+# Calibration harness (see aicalibsrc/carto/README.md or the file header for
+# CLI usage, once Step 5 adds them -- not yet built as of 2026-08-31)
+.PHONY: calib_a13
+calib_a13: $(CALIB_A13_TARGET)
+
+$(CALIB_A13_TARGET): $(CALIB_A13_OBJS)
+	@echo "Linking calib_a13..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(CALIB_A13_OBJS) -o $(CALIB_A13_TARGET) $(LIBS)
+	@echo "Build complete: $(CALIB_A13_TARGET)"
+
 # Phase 3 timing-only harness for A10 IS-MCTS (see aicalibsrc/ismcts/calib_ismcts_timing.c)
 .PHONY: calib_ismcts_timing
 calib_ismcts_timing: $(CALIB_ISMCTS_TIMING_TARGET)
@@ -649,6 +679,7 @@ help:
 	@echo "  calib_hbt        - Build the Hybrid HBT parameter calibration harness (aicalibsrc/)"
 	@echo "  calib_hbt2ply    - Build the HBT 2-Ply parameter calibration harness (aicalibsrc/)"
 	@echo "  calib_simplemc   - Build the Simple Monte Carlo parameter calibration harness (aicalibsrc/)"
+	@echo "  calib_a13        - Build the A13 Cartographer parameter calibration harness (aicalibsrc/carto/, not yet built)"
 	@echo "  calib_ismcts_timing - Build the A10 IS-MCTS per-decision timing harness (aicalibsrc/ismcts/)"
 	@echo "  calib_ismcts_efficiency - Build the A10 IS-MCTS efficiency-dial sweep harness (aicalibsrc/ismcts/)"
 	@echo "  calib_mulligan   - Build the mulligan/seat-advantage investigation harness (aicalibsrc/mulligan/)"

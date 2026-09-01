@@ -115,8 +115,12 @@ static uint8_t pick_discard_victim(const Hand* hand, const uint8_t* protected_ca
 } // pick_discard_victim
 
 void hbt_discard_to_7(struct gamestate* gstate, PlayerID player, GameContext* ctx)
+{ hbt_discard_to_7_with(gstate, player, ctx, hbt_live_params(player));
+} // hbt_discard_to_7
+
+void hbt_discard_to_7_with(struct gamestate* gstate, PlayerID player, GameContext* ctx,
+                           const HBTParams* params)
 { (void)ctx;
-  const HBTParams* params = hbt_live_params(player);
   uint8_t protected_cards[3];
   uint8_t protected_count = find_protected_combo(&gstate->hand[player], params,
                                                  protected_cards);
@@ -127,15 +131,19 @@ void hbt_discard_to_7(struct gamestate* gstate, PlayerID player, GameContext* ct
     Hand_remove(&gstate->hand[player], victim);
     Discard_add(&gstate->discard[player], victim);
   }
-} // hbt_discard_to_7
+} // hbt_discard_to_7_with
 
 // The card-COUNT decision (how many below-average cards to give up, capped
 // at mulligan_get_max_cards()) is unchanged from strat_lib_mulligan()
 // (ai_strat_lib_heuristics.c) / A3's borealis_mulligan(); only which
 // specific cards are chosen differs, via pick_discard_victim().
 void hbt_mulligan(struct gamestate* gstate, PlayerID player, GameContext* ctx)
-{ const HBTParams* params = hbt_live_params(player);
-  uint8_t max_nbr_cards_to_mulligan = mulligan_get_max_cards();
+{ hbt_mulligan_with(gstate, player, ctx, hbt_live_params(player));
+} // hbt_mulligan
+
+void hbt_mulligan_with(struct gamestate* gstate, PlayerID player, GameContext* ctx,
+                       const HBTParams* params)
+{ uint8_t max_nbr_cards_to_mulligan = mulligan_get_max_cards();
   uint8_t nbr_cards_to_mulligan = 0;
 
   for(uint8_t i = 0; (i < gstate->hand[player].size) &&
@@ -158,4 +166,4 @@ void hbt_mulligan(struct gamestate* gstate, PlayerID player, GameContext* ctx)
 
   for(uint8_t i = 0; i < nbr_cards_to_mulligan; i++)
     draw_1_card(gstate, player, ctx);
-} // hbt_mulligan
+} // hbt_mulligan_with

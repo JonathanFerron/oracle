@@ -89,6 +89,9 @@ static const StrategyRegistryEntry STRATEGY_REGISTRY[AI_STRATEGY_COUNT] =
     ismcts_mulligan, ismcts_discard_to_7
   },
   // All other entries default to {NULL, NULL, NULL, NULL} -- not yet implemented.
+  // A13 Cartographer is deliberately absent: implemented, calibrated, and
+  // shelved (2026-08-31) -- see game_types.h's AIStrategyType comment and
+  // ideas/A13 .../about.md.
 };
 
 bool ai_strategy_is_implemented(AIStrategyType type)

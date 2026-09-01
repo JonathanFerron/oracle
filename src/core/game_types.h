@@ -194,6 +194,15 @@ typedef enum
   AI_STRATEGY_CLAIRVOYANT,     // ideas/A12 ai agent clairvoyant -- A8's sibling: same
   // progressive-pruning MC search, opponent-side rollouts
   // use a cheap heuristic instead of pure random
+  // AI_STRATEGY_CARTOGRAPHER (A13) intentionally NOT registered here --
+  // implemented and calibrated (2026-08-31), shelved: every mechanism
+  // measured at parity with A7 or worse (hplus_trust conclusively harmful),
+  // across four independent properly-powered searches. See
+  // ideas/A13 ai agent cartographer (the cartographer)/about.md and
+  // doc/changelog.md's 2026-08-31 entry for the full record. Source stays
+  // in src/ai_strat/ai_strat_a13*.c as reference; the belief module
+  // (ai_strat_a13_belief.c, closed-form pool/hypergeometric analysis) is
+  // kept as reusable infrastructure for a future A11 feature-extraction pass.
   AI_STRATEGY_COUNT
 } AIStrategyType;
 

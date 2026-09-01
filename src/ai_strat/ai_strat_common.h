@@ -82,4 +82,16 @@ float champion_variance(uint8_t card_idx);
 void effective_hand_and_cash(const struct gamestate* gstate, PlayerID player,
                              float* out_hand, float* out_cash);
 
+// Every fullDeck[] index not currently in `observer`'s own hand or either
+// player's discard/combat zone. The observer's OWN DECK is deliberately NOT
+// excluded: a player does not know their own deck's contents
+// (doc/game_rules_doc.md), and this is the same pool ai_strat_playout.c's
+// mc_determinize() re-deals from -- the opponent's hand, the observer's own
+// deck, and the opponent's deck are all drawn from it. `out` must hold
+// FULL_DECK_SIZE entries. Returns the pool size. Promoted here once a third
+// agent needed the identical formula (previously duplicated static in
+// ai_strat_playout.c and ai_strat_hbt2ply_reply.c).
+uint8_t strat_common_unseen_pool(const struct gamestate* gstate, PlayerID observer,
+                                 uint8_t* out);
+
 #endif // AI_STRAT_COMMON_H

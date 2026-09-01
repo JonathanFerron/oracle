@@ -22,9 +22,9 @@
 //   unseen = fullDeck[FULL_DECK_SIZE] - hand[pov] - both discards
 //                                      - both combat zones
 //
-// (identical pool definition to ai_strat_playout.c's build_unseen_pool(),
-// duplicated locally rather than shared -- A9 deliberately takes no
-// dependency on A8's playout infrastructure, see ai_strat_hbt2ply.h).
+// (via ai_strat_common.h's strat_common_unseen_pool() -- the same pool
+// definition ai_strat_playout.c's mc_determinize() uses, promoted there once
+// a third caller, A13, needed it too; see ai_strat_common.h).
 // The surrogate is sized to (1 - pov)'s real (public) hand size, and holds
 // the same champion/non-champion proportion as the unseen pool. Which
 // champions: the unseen champions sorted descending by expected_defense,

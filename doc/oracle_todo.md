@@ -49,7 +49,11 @@ Bradley-Terry rating system itself (2026-08-23, `src/rating/`) is now built on t
 them — see `doc/oracle_roadmap.md`'s "Next Up" for the full, agreed sequencing
 (2026-08-28): housekeeping bug fixes, the mulligan/seat-advantage investigation, then
 `A13` (a new deterministic agent), then `A11`, then SDL3 GUI work (promoted out of
-long-horizon status). The strategy-set
+long-horizon status). `A13` Cartographer was implemented, calibrated, and shelved
+2026-08-31 (every mechanism measured at parity with `A7` or worse; see
+`doc/changelog.md`'s 2026-08-31 entry and `ideas/A13 .../about.md`) -- not a registered
+roster agent, so it does not appear in "Checklist: Adding a New AI Strategy" examples
+below. The strategy-set
 build sites
 also gained a shared `AIStrategyType -> function pointer` registry (`ai_strategy.c`) as
 part of `A1` -- see "Checklist: Adding a New AI Strategy" below, which now reflects that
@@ -431,6 +435,20 @@ deck-building approaches each need to point at one of a handful of tables. New t
 deliberately keep their own hardcoded `COMBO_BONUS_RANDOM` (an AI-side estimate, not
 authoritative resolution) -- revisit only if/when `G3` needs table-aware AI estimation.
 See `doc/changelog.md`'s 2026-08-28 entry for the full record.
+
+**Closed 2026-08-31**: two bugs found and fixed during `A13`'s own calibration (see
+`doc/changelog.md`'s 2026-08-31 entry for the full record; `A13` itself was shelved, but
+both fixes are independent of that verdict). (1) `ai_strat_a13_belief.c`'s
+`pool_mean_power()` averaged over the whole unseen pool including non-champion cards
+(draw/cash cards carry much lower `power` than champions), diluting the comparison against
+`AVERAGE_POWER_FOR_MULLIGAN` by a large, roughly-constant amount unrelated to real pool
+depletion -- fixed to champion-only averaging, then rebuilt entirely around an empirically
+measured 78.21%/21.79% attack/defense role weighting (`attack_efficiency`/
+`defense_efficiency`) rather than a naive 50/50 `power` blend. (2)
+`aicalibsrc/carto/calibrate_a13.py`'s `PINNED_PARAM_NAMES` included `defense_stdev_mult`
+unconditionally despite the documented Stage-4 exception, silently dropping it from
+`optimize --params` even when explicitly requested; a second latent bug (no `BOUNDS` entry
+for it at all) sat behind the first. Both fixed.
 
 Otherwise no known open bugs. Add entries here as they're found.
 

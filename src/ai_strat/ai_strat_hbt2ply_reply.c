@@ -11,30 +11,6 @@
 #include "../structures/card_collection.h"
 #include "ai_strat_common.h"
 
-static void mark_seen(bool* seen, const uint8_t* cards, uint8_t n)
-{ for(uint8_t i = 0; i < n; i++) seen[cards[i]] = true;
-} // mark_seen
-
-// Every fullDeck[] index not currently in `pov`'s own hand or either
-// player's discard/combat zone -- same pool definition as
-// ai_strat_playout.c's build_unseen_pool(), duplicated locally rather than
-// shared (see ai_strat_hbt2ply.h's header comment on why this agent takes
-// no dependency on A8's playout infrastructure).
-static uint8_t build_unseen_pool(const struct gamestate* gstate, PlayerID pov, uint8_t* pool)
-{ bool seen[FULL_DECK_SIZE] = {0};
-
-  mark_seen(seen, gstate->hand[pov].cards, gstate->hand[pov].size);
-  mark_seen(seen, gstate->discard[PLAYER_A].cards, gstate->discard[PLAYER_A].size);
-  mark_seen(seen, gstate->discard[PLAYER_B].cards, gstate->discard[PLAYER_B].size);
-  mark_seen(seen, gstate->combat_zone[PLAYER_A].cards, gstate->combat_zone[PLAYER_A].size);
-  mark_seen(seen, gstate->combat_zone[PLAYER_B].cards, gstate->combat_zone[PLAYER_B].size);
-
-  uint8_t n = 0;
-  for(uint8_t i = 0; i < FULL_DECK_SIZE; i++)
-    if(!seen[i]) pool[n++] = i;
-  return n;
-} // build_unseen_pool
-
 static int cmp_defense_desc(const void* a, const void* b)
 { uint8_t ca = *(const uint8_t*)a;
   uint8_t cb = *(const uint8_t*)b;
@@ -86,7 +62,7 @@ void build_surrogate_hand(const struct gamestate* gstate, PlayerID pov,
   Hand_init(out);
 
   uint8_t pool[FULL_DECK_SIZE];
-  uint8_t pool_n = build_unseen_pool(gstate, pov, pool);
+  uint8_t pool_n = strat_common_unseen_pool(gstate, pov, pool);
   if(pool_n == 0) return;
 
   uint8_t size = requested_size;

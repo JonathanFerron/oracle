@@ -189,6 +189,8 @@ static const AIStrategyRating AI_STRATEGY_RATINGS[AI_STRATEGY_COUNT] =
   [AI_STRATEGY_ISMCTS]           = { 69, true  },
   [AI_STRATEGY_ISMCTS_NN]        = { 97, false },
   [AI_STRATEGY_CLAIRVOYANT]      = { 31, true  },
+  // A13 has no entry here: implemented, calibrated, and shelved (2026-08-31)
+  // -- see game_types.h's AIStrategyType comment and ideas/A13 .../about.md.
 };
 
 // "Random [The Gambler]", or just "Borealis" when the technical label and
