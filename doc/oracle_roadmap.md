@@ -339,7 +339,7 @@ carry. Rationale for the shape of this list (not just its contents) lives here s
    `doc/changelog.md`'s 2026-08-28 entry for the full per-agent table and sweep
    data). Built purpose-built batch tooling (`aicalibsrc/mulligan/`) instead of
    `ideas/4`'s interactive-only exporter (which can't produce batch data and whose
-   real value is separate -- see item 4 below). Self-mirror measurement across the
+   real value is separate -- see item 6 below). Self-mirror measurement across the
    roster found the seat effect is real for most agents but **agent-dependent in
    both size and direction**, not a uniform bias: `borealis`/`balanced` favor going
    first, `tactical`/`combo`/`hbt`/`value`/`hbt2ply`/`heuristic`/`ismcts` favor going
@@ -375,26 +375,49 @@ carry. Rationale for the shape of this list (not just its contents) lives here s
    fixed a related latent bug (`g_params[]` needed an explicit promotion to this
    agent's own default on a successful load, or real play would have silently
    stayed at plain `A10` even with the load wired in). Naming decided: flavor
-   name stays "AlphaOracle Prime" for this UCT+value-net lineage; a future
-   Stage 4 (PUCT+policy head, now technically unlocked but undesigned, not
-   scheduled) would be "AlphaOracle Prime II", reusing this project's own
+   name stays "AlphaOracle Prime" for this UCT+value-net lineage; **AlphaOracle
+   Prime II** (PUCT + policy head, item 8 below) reuses this project's own
    `A7`->`A9` "Grandmaster"->"Grandmaster II" precedent rather than a
    corpus-size/technical suffix on the player-facing name. **Closes the
    original `A1`-`A11` ladder.**
-5. **Interactive human-play match exporter** (rescoped 2026-08-28 from `ideas/4
+5. **AlphaOracle Prime -- bigger training corpus** (agreed 2026-09-03, the first
+   of three AlphaOracle-family strengthening options discussed that session --
+   see this item and item 8 below for the comparison; not written up separately
+   in `doc/changelog.md`, which only covers completed work). Retrain the shipped
+   value net on the original 12-hour
+   full-run corpus (`aicalibsrc/ismctsnn/run_selfplay.sh`), not the 1-hour/657K
+   pilot that actually shipped -- realistically ~6-8x more records once the
+   measured ~44% real-vs-naive-extrapolation throughput gap (see the pilot's
+   own corpus-generation numbers, `ideas/A11 .../about.md`) is accounted for.
+   Picked to go *first*, ahead of item 6 below, because it's the best
+   risk-adjusted bet of
+   the three options: the shipped net needed fairly aggressive regularization
+   (`dropout=0.4`, `weight_decay=1e-3`) just to survive past epoch 1 without
+   catastrophic overfitting, and its val MSE (0.1705 vs a 0.2451 baseline) is not
+   yet plateaued -- both point at a data-starved net, not a saturated one. The
+   full pipeline (`gen_corpus.c`, `run_selfplay.sh`, `train_value_net.py`,
+   `export_weights.py`, `calib_ismctsnn.c`) is already built and proven end to
+   end, so this is a rerun against the existing Stage 3 ship gates (58.44% vs
+   `ismcts`, ~74 Borealis rating), not new engineering -- lowest cost, most
+   directly evidenced payoff of the three options. Ship only if the retrained
+   net clears the *existing* candidate's own measured numbers by a real margin,
+   not just noise (see `aicalibsrc/ismctsnn/README.md`'s shared-struct
+   measurement gotcha before writing a comparison harness).
+6. **Interactive human-play match exporter** (rescoped 2026-08-28 from `ideas/4
    match results export/`'s original design). Purpose, per Jonathan: log true
    human-played games (vs AI and vs human) to mine heuristics from human play
    patterns and to feed this item's own neural network training data -- not seat-
    advantage tooling, which item 2 above already answered with purpose-built batch
-   tooling instead. Sequenced alongside `A11` since that's when the training-data
-   need actually arrives. `ideas/4`'s design needs updating before use: stale
+   tooling instead. Sequenced alongside `A11`'s own family (right after item 5's
+   bigger-corpus retrain) since that's when the training-data need actually
+   arrives. `ideas/4`'s design needs updating before use: stale
    `GameState`/`PlayerType` types (the engine's are `struct gamestate`/
    `AIStrategyType`), a "does going first matter?" analysis that doesn't work as
    written (infers seat from `turns_played` parity, meaningless here since Player A
    always goes first in batch mode -- see item 2's finding that this is intentional,
    not a gap), and gamestate instrumentation it assumes exists
    (`total_damage_dealt[2]`, `champions_played[2]`, etc.) that doesn't yet.
-6. **SDL3 GUI**, together with save/load game state (`ideas/6 save and load gamestate/`)
+7. **SDL3 GUI**, together with save/load game state (`ideas/6 save and load gamestate/`)
    and the configuration file system (`ideas/7 config file/`) -- promoted out of
    "long-horizon" status (2026-08-28, see `CLAUDE.md`'s "Out of scope" section) because
    it addresses a concrete, named pain point: reading board state and deciding moves is
@@ -417,15 +440,45 @@ carry. Rationale for the shape of this list (not just its contents) lives here s
    (`assets/<category>/...`), not a flat dump, specifically so this GUI work has a
    ready-made home (e.g. `assets/champions/`) rather than needing to invent the
    convention from scratch.
-7. **3-4 player mode**. Jonathan has an existing physical/tabletop 3-4 player variant of
+8. **AlphaOracle Prime II -- PUCT + policy head** (Stage 4, gated on Stage 3's
+   ship-gate pass -- now technically unlocked, agreed 2026-09-03 to schedule it
+   here, after SDL3 GUI and before the 3-4 player rework). Of the three
+   AlphaOracle-family options discussed that session (see item 5 above for the
+   other two), this is the highest-ceiling but highest-cost/highest-uncertainty
+   one: it changes *what* `A11`'s search
+   explores (a learned prior directing simulations toward promising moves)
+   rather than just how much, which is the mechanism AlphaZero-class engines
+   actually derive most of their strength from -- and it directly addresses
+   the pathology behind `A10`'s own measured iteration-budget curve (win rate
+   vs `Borealis` peaking around 2000-8000 iterations, then *declining* at
+   higher budgets, diagnosed as unfocused UCT over-committing to noise in
+   under-explored branches once the leaf evaluator is deterministic-ish).
+   Needs, in order: the action-encoding problem solved (fixed-size logits over
+   hand-card-slot "include in subset" plus pass/draw/recall/cash-target, masked
+   to `get_available_moves()`'s legal set); a policy-head architecture and a
+   training-data change to visit-count targets, not just terminal outcomes;
+   PUCT selection replacing plain UCT in `ai_strat_ismcts_search.c`. This
+   project's own track record with "add a smart-sounding mechanism on top of an
+   already-good agent" is genuinely mixed (`A9`'s `reply_trust`, `A13`'s
+   `hplus_trust`, and Layer R's race-aware `defense_stdev_mult` all measured at
+   parity or worse despite sound reasoning going in) -- real chance of a null
+   result here too, budget accordingly. **Pushing the per-decision time budget
+   (`limit_iterations`, currently 4000, ~439ms at `-O2`) is folded in as this
+   item's own natural follow-on step, not a separate roadmap line**: sweeping
+   it *before* a policy prior exists is retesting a mechanism `A10`'s own data
+   already argues against on this exact search code, but *after* PUCT lands,
+   more focused search may finally pay off where raw budget alone would not --
+   re-sweep `limit_iterations`/decision-time once the policy head is in, not
+   before.
+9. **3-4 player mode**. Jonathan has an existing physical/tabletop 3-4 player variant of
    the game; digitizing it is a genuine engine-level rework (`PlayerID` is binary
    throughout -- roughly two dozen files use a `1 - current_player`/`1 - defender`
    opponent-lookup pattern across `core/`, every `ai_strat/` file, and the roles layer --
    not a small feature), the single biggest architecture project on this list.
-8. **`ideas/10 Draft Format and Game Depth Addition Ideas/`** -- a draft format as a
-   third deck type alongside random/custom. Sequenced right after 3-4 player mode per
-   Jonathan's call (2026-08-28); related to but distinct from `G3`'s "AI constructs a
-   custom deck" facet below.
+10. **`ideas/10 Draft Format and Game Depth Addition Ideas/`** -- a draft format as a
+    third deck type alongside random/custom. Sequenced right after 3-4 player mode per
+    Jonathan's call (2026-08-28); related to but distinct from `G3`'s "AI constructs a
+    custom deck" facet below.
 
 **Bottom of the list** (still intended, least urgent, distinct from the back burner
 below): `ideas/11 skill vs chance eval/` -- an analytical framework for game balance,
@@ -499,8 +552,8 @@ passively, `A9`'s own re-attempted `reply_trust` search found no improvement, se
 `doc/changelog.md`) → `A10` IS-MCTS (The Omniscient, done, 2026-08-27,
 **rating 69 -- the roster ceiling**, also 63.2% head-to-head vs `A7`)
 → `A11` IS-MCTS + neural network (AlphaOracle Prime, Stages 1-3 done 2026-09-02,
-**both ship gates PASS** -- 58.44% head-to-head vs `A10`, ~74 estimated Borealis
-rating -- not yet registered for real play, see "Next Up" item 4). One `ideas/A#`
+registered 2026-09-03 -- **both ship gates PASS**, 58.44% head-to-head vs `A10`,
+**rating 74, the new roster ceiling**, see "Next Up" item 4). One `ideas/A#`
 folder per agent,
 `A#` matching that agent's `AIStrategyType` enum ordinal (`src/core/game_types.h` as of
 `A1`; it previously lived in `src/ui/shared/player_config.h`). `A12` Clairvoyant (The
