@@ -44,6 +44,15 @@ target (beating `A7` head-to-head, measured 47.2%, see `doc/changelog.md`): the 
 questions ("how does this agent do against the whole roster/Borealis" vs "does this
 agent's own specific mechanism achieve what it set out to do") can and did come apart,
 the same way `A6` rated 52 overall despite a wide pairwise loss to `A5` (39.30%).
+`AlphaOracle Prime`'s 74 (measured 2026-09-02) is the new roster ceiling, above
+`A10`'s 69 -- unlike every other agent on this list, its decisions aren't purely
+hand-written: `A10`'s own search tree stays exactly as it is, but a small neural
+network (trained offline on real self-play games between `A10` and other roster
+agents, then compiled into the game as a plain hand-written C forward pass -- no
+external ML runtime) replaces the closed-form heuristic that used to score
+positions the search hasn't fully explored yet. See
+`ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/about.md` for the full
+training/measurement record.
 
 | Tech/Math Name | English | Français | Español | Measured | Est. Borealis Rating |
 |---|---|---|---|---|---|
@@ -58,7 +67,7 @@ the same way `A6` rated 52 overall despite a wide pairwise loss to `A5` (39.30%)
 | Simple Monte Carlo | The Soothsayer | Le Devin | El Adivino | 35 | 82 |
 | HBT 2-Ply | Grandmaster II | Grand Maître II | Gran Maestro II | 62 | 85 |
 | IS-MCTS | The Omniscient | L'Omniscient | El Omnisciente | 69 | 92 |
-| IS-MCTS + NN | AlphaOracle Prime | AlphaOracle Prime | AlphaOracle Prime | — | 97 |
+| IS-MCTS + NN *(registered 2026-09-03 -- see below)* | AlphaOracle Prime | AlphaOracle Prime | AlphaOracle Prime | 74 | 97 |
 | Clairvoyant *(A8's sibling, not on the A1-A11 ladder)* | The Clairvoyant | Le Voyant | El Clarividente | 31 | — |
 | Cartographer *(implemented, calibrated, and SHELVED 2026-08-31 — see below, not registered)* | The Cartographer | Le Cartographe | El Cartógrafo | shelved | 68 |
 

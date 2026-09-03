@@ -70,7 +70,10 @@ AGENT_SRCS := $(SRCDIR)/ai_strat/ai_strategy.c \
               $(SRCDIR)/ai_strat/ai_strat_a13.c \
               $(SRCDIR)/ai_strat/ai_strat_a13_belief.c \
               $(SRCDIR)/ai_strat/ai_strat_a13_state.c \
-              $(SRCDIR)/ai_strat/ai_strat_a13_enum.c
+              $(SRCDIR)/ai_strat/ai_strat_a13_enum.c \
+              $(SRCDIR)/ai_strat/ai_strat_ismctsnn_state.c \
+              $(SRCDIR)/ai_strat/ai_strat_ismctsnn_net.c \
+              $(SRCDIR)/ai_strat/ai_strat_ismctsnn.c
 
 # Test targets
 # Object paths are mapped into $(BUILDDIR) (mirroring the main build's pattern rule
@@ -359,6 +362,44 @@ CALIB_ISMCTS_ROLLOUT_SRCS := $(AICALIBDIR)/ismcts/calib_ismcts_rollout_policy.c 
 CALIB_ISMCTS_ROLLOUT_OBJS := $(BUILDDIR)/aicalibsrc/ismcts/calib_ismcts_rollout_policy.o \
                              $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_ISMCTS_ROLLOUT_SRCS)))
 
+# A11 Stage 1 self-play corpus generator (see aicalibsrc/ismctsnn/gen_corpus.c)
+# -- plays real A10 self-play/vs-A7/vs-A3 games and logs (info-set state,
+# outcome) pairs for the value net; not a params sweep/optimize harness, so
+# it doesn't follow the calibrate_*.py driver pattern the other CALIB_*
+# targets do.
+GEN_CORPUS_TARGET := $(BINDIR)/gen_corpus
+GEN_CORPUS_SRCS := $(AICALIBDIR)/ismctsnn/gen_corpus.c \
+                   $(ENGINE_SRCS) \
+                   $(AGENT_SRCS) \
+                   $(SRCDIR)/roles/stda/stda_auto.c \
+                   $(SRCDIR)/ui/shared/player_config.c
+GEN_CORPUS_OBJS := $(BUILDDIR)/aicalibsrc/ismctsnn/gen_corpus.o \
+                   $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(GEN_CORPUS_SRCS)))
+
+# A11 Stage 3 calibration harness (see aicalibsrc/ismctsnn/calib_ismctsnn.c)
+# -- head-to-head vs A10 (ismcts) + trust-dial sweep, same in-process
+# run_simulation() pattern as every other CALIB_* target.
+CALIB_ISMCTSNN_TARGET := $(BINDIR)/calib_ismctsnn
+CALIB_ISMCTSNN_SRCS := $(AICALIBDIR)/ismctsnn/calib_ismctsnn.c \
+                       $(ENGINE_SRCS) \
+                       $(AGENT_SRCS) \
+                       $(SRCDIR)/roles/stda/stda_auto.c \
+                       $(SRCDIR)/ui/shared/player_config.c
+CALIB_ISMCTSNN_OBJS := $(BUILDDIR)/aicalibsrc/ismctsnn/calib_ismctsnn.o \
+                       $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_ISMCTSNN_SRCS)))
+
+# A11 per-decision timing harness (see aicalibsrc/ismctsnn/calib_ismctsnn_timing.c)
+# -- answers whether NN-eval-per-leaf costs more than A10's heuristic rollout
+# before committing to a large-n Stage 3 sweep/validate run.
+CALIB_ISMCTSNN_TIMING_TARGET := $(BINDIR)/calib_ismctsnn_timing
+CALIB_ISMCTSNN_TIMING_SRCS := $(AICALIBDIR)/ismctsnn/calib_ismctsnn_timing.c \
+                              $(ENGINE_SRCS) \
+                              $(AGENT_SRCS) \
+                              $(SRCDIR)/roles/stda/stda_auto.c \
+                              $(SRCDIR)/ui/shared/player_config.c
+CALIB_ISMCTSNN_TIMING_OBJS := $(BUILDDIR)/aicalibsrc/ismctsnn/calib_ismctsnn_timing.o \
+                              $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_ISMCTSNN_TIMING_SRCS)))
+
 # Batch harness for the mulligan/seat-advantage investigation (see
 # aicalibsrc/mulligan/) -- not an agent calibration, but the same
 # whole-roster link set as every CALIB_* target above since it takes
@@ -404,7 +445,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_ismcts $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan
+	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_ismcts $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan $(BINDIR)/gen_corpus $(BINDIR)/calib_ismctsnn $(BINDIR)/calib_ismctsnn_timing
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -413,6 +454,16 @@ clean:
 debug: CFLAGS := -g -Og -Wall -std=c23 -MMD -MP -DDEBUG -DDEBUG_ENABLED=1
 debug: clean all
 	@echo "Debug build complete"
+
+# Optimized build -- the default (-Og) build stays the norm for development;
+# use this for long simulation runs and the tree-search agents (A8/A10/A11),
+# whose hot loops (A11's hand-written NN forward pass especially) are
+# meaningfully faster optimized. Plain -O2, not -O3/-ffast-math, so float
+# results stay portable/reproducible across platforms.
+.PHONY: release
+release: CFLAGS := -O2 -Wall -std=c23 -MMD -MP
+release: clean all
+	@echo "Release build complete"
 
 # Test combo bonus calculator
 .PHONY: test_combo
@@ -633,6 +684,36 @@ $(CALIB_ISMCTS_ROLLOUT_TARGET): $(CALIB_ISMCTS_ROLLOUT_OBJS)
 	$(CC) $(CALIB_ISMCTS_ROLLOUT_OBJS) -o $(CALIB_ISMCTS_ROLLOUT_TARGET) $(LIBS)
 	@echo "Build complete: $(CALIB_ISMCTS_ROLLOUT_TARGET)"
 
+# A11 Stage 1 self-play corpus generator (see aicalibsrc/ismctsnn/gen_corpus.c)
+.PHONY: gen_corpus
+gen_corpus: $(GEN_CORPUS_TARGET)
+
+$(GEN_CORPUS_TARGET): $(GEN_CORPUS_OBJS)
+	@echo "Linking gen_corpus..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(GEN_CORPUS_OBJS) -o $(GEN_CORPUS_TARGET) $(LIBS)
+	@echo "Build complete: $(GEN_CORPUS_TARGET)"
+
+# A11 Stage 3 calibration harness (see aicalibsrc/ismctsnn/calib_ismctsnn.c)
+.PHONY: calib_ismctsnn
+calib_ismctsnn: $(CALIB_ISMCTSNN_TARGET)
+
+$(CALIB_ISMCTSNN_TARGET): $(CALIB_ISMCTSNN_OBJS)
+	@echo "Linking calib_ismctsnn..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(CALIB_ISMCTSNN_OBJS) -o $(CALIB_ISMCTSNN_TARGET) $(LIBS)
+	@echo "Build complete: $(CALIB_ISMCTSNN_TARGET)"
+
+# A11 per-decision timing harness (see aicalibsrc/ismctsnn/calib_ismctsnn_timing.c)
+.PHONY: calib_ismctsnn_timing
+calib_ismctsnn_timing: $(CALIB_ISMCTSNN_TIMING_TARGET)
+
+$(CALIB_ISMCTSNN_TIMING_TARGET): $(CALIB_ISMCTSNN_TIMING_OBJS)
+	@echo "Linking calib_ismctsnn_timing..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(CALIB_ISMCTSNN_TIMING_OBJS) -o $(CALIB_ISMCTSNN_TIMING_TARGET) $(LIBS)
+	@echo "Build complete: $(CALIB_ISMCTSNN_TIMING_TARGET)"
+
 # Batch harness for the mulligan/seat-advantage investigation (see aicalibsrc/mulligan/)
 .PHONY: calib_mulligan
 calib_mulligan: $(CALIB_MULLIGAN_TARGET)
@@ -661,6 +742,7 @@ help:
 	@echo "  all          - Build the project (default)"
 	@echo "  clean            - Remove build artifacts"
 	@echo "  debug            - Build with debug symbols and -Og"
+	@echo "  release          - Build optimized (-O2), no debug symbols"
 	@echo "  test_combo       - Build and run combo bonus tests"
 	@echo "  test_recall      - Build and run recall mechanic tests"
 	@echo "  test_cash_exchange - Build and run cash exchange tests"
@@ -683,6 +765,9 @@ help:
 	@echo "  calib_ismcts_timing - Build the A10 IS-MCTS per-decision timing harness (aicalibsrc/ismcts/)"
 	@echo "  calib_ismcts_efficiency - Build the A10 IS-MCTS efficiency-dial sweep harness (aicalibsrc/ismcts/)"
 	@echo "  calib_mulligan   - Build the mulligan/seat-advantage investigation harness (aicalibsrc/mulligan/)"
+	@echo "  gen_corpus       - Build the A11 Stage 1 self-play corpus generator (aicalibsrc/ismctsnn/)"
+	@echo "  calib_ismctsnn   - Build the A11 Stage 3 calibration harness (aicalibsrc/ismctsnn/)"
+	@echo "  calib_ismctsnn_timing - Build the A11 per-decision timing harness (aicalibsrc/ismctsnn/)"
 	@echo "  format           - Format the c and h source files using astyle"
 	@echo "  help             - Show this help message"
 	@echo ""

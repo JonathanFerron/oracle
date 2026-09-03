@@ -6,6 +6,7 @@
 
 #include "ai_strat_ismcts_search.h"
 #include "ai_strat_ismcts_tree.h"
+#include "ai_strat_ismctsnn_net.h"
 #include "ai_strat_playout.h"
 #include "../actions/move_gen.h"
 #include "../core/game_constants.h"
@@ -81,6 +82,25 @@ static SelectOutcome select_or_expand(ISMCTSArena* arena, uint32_t node,
 } // select_or_expand
 
 // Descends/grows the tree for exactly one determinization, then scores the
+// A11 IS-MCTS+NN's leaf-evaluation blend (Stage 2, about.md's "Confirmed
+// plan" step 2). params->nn_value_trust == 0.0f (A10's own
+// ISMCTS_DEFAULTS) takes the exact same call this function always made --
+// the superset guarantee, bit-for-bit identical to A10, no wasted NN
+// evaluation. 1.0f skips the rollout entirely (cheaper: no simulation to
+// terminal). Anything in between computes and blends both.
+static float leaf_value(struct gamestate* sim, PlayerID player, StrategySet* local_strats,
+                        GameContext* sim_ctx, const ISMCTSParams* params)
+{ if(params->nn_value_trust <= 0.0f)
+    return mc_playout_from(sim, player, local_strats, sim_ctx, params->rollout_max_turns);
+  if(params->nn_value_trust >= 1.0f)
+    return ismctsnn_net_value(sim, player);
+
+  float rollout = mc_playout_from(sim, player, local_strats, sim_ctx, params->rollout_max_turns);
+  float nn_value = ismctsnn_net_value(sim, player);
+  return (1.0f - params->nn_value_trust) * rollout + params->nn_value_trust * nn_value;
+} // leaf_value
+
+// Descends/grows the tree for exactly one determinization, then scores the
 // resulting leaf via a rollout (or the terminal outcome, if the descent
 // itself ended the game) and backpropagates. Returns the sampled result
 // purely for DEBUG_PRINT's benefit -- callers don't need it.
@@ -120,7 +140,7 @@ static float run_one_iteration(ISMCTSArena* arena, const struct gamestate* root_
   }
 
   float result = alive
-                 ? mc_playout_from(&sim, player, &local_strats, sim_ctx, params->rollout_max_turns)
+                 ? leaf_value(&sim, player, &local_strats, sim_ctx, params)
                  : mc_outcome_for(&sim, player);
   ismcts_backprop(arena, node, result);
   return result;

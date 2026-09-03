@@ -18,28 +18,48 @@ pass) are done. Random, `A1` Value Based ("The Apprentice"), `A2` Combo Threshol
 ("The Showboat"), `A3` Borealis (the Bradley-Terry benchmark), `A4` Balanced Rules
 ("Bean Counter"), `A5` Heuristic ("Eps-Gam-Del"), `A6` Tactical ("Pressure
 Cooker"), `A7` Hybrid HBT ("The Grandmaster"), `A8` Simple Monte Carlo ("The
-Soothsayer"), `A9` HBT 2-Ply ("Grandmaster II"), and `A10` IS-MCTS ("The Omniscient")
-AI strategies are all implemented and calibrated, and the Bradley-Terry
-rating system itself is now built on top of them. `A10` measures **69, the roster
-ceiling** (also 63.2% head-to-head vs `A7`); `A7` (65, after the 2026-08-28
-recalibration closing the PASS-dominance follow-up below), `A9` (62, moved passively
-from that same A7 recalibration, though A9's own re-attempted `reply_trust`/
-`surrogate_pessimism` search found no improvement -- see `doc/changelog.md`), `A5` (64,
-after the 2026-08-27 PASS-dominance fix), and `A6` (53) all measure above the Borealis
-anchor; `A8` measures 35 — legitimately below it and not raised by extra rollout
-budget, per its own diagnosis (`doc/changelog.md`) rather than a defect. `A12`
-Clairvoyant ("The Clairvoyant") — `A8`'s sibling, not part of the `A1`-`A11` ladder's
-authoritative order — was also implemented as a side exploration, measuring 31; kept in
-the roster as a deliberately modest agent, not pursued further.
-**Active work**: `A11` IS-MCTS + NN -- housekeeping, the mulligan/seat-advantage
-investigation, and `A13` Cartographer (implemented, calibrated, and shelved 2026-08-31 --
-every mechanism measured at parity with `A7` or worse, see `doc/changelog.md`'s 2026-08-31
-entry and `ideas/A13 .../about.md`) are all done -- see "Next Up" below for the full,
-agreed sequencing (2026-08-28), which also promotes SDL3 GUI work out of "long-horizon"
-status (see `CLAUDE.md`).
+Soothsayer"), `A9` HBT 2-Ply ("Grandmaster II"), `A10` IS-MCTS ("The Omniscient"), and
+`A11` IS-MCTS + NN ("AlphaOracle Prime") AI strategies are all implemented and
+calibrated, and the Bradley-Terry rating system itself is now built on top of them.
+`A11` measures **74, the new roster ceiling** (registered 2026-09-03, 58.44%
+head-to-head vs `A10`); `A10` (69, also 63.2% head-to-head vs `A7`), `A7` (65, after
+the 2026-08-28 recalibration closing the PASS-dominance follow-up below), `A9` (62,
+moved passively from that same A7 recalibration, though A9's own re-attempted
+`reply_trust`/`surrogate_pessimism` search found no improvement -- see
+`doc/changelog.md`), `A5` (64, after the 2026-08-27 PASS-dominance fix), and `A6` (53)
+all measure above the Borealis anchor; `A8` measures 35 — legitimately below it and
+not raised by extra rollout budget, per its own diagnosis (`doc/changelog.md`) rather
+than a defect. `A12` Clairvoyant ("The Clairvoyant") — `A8`'s sibling, not part of the
+`A1`-`A11` ladder's authoritative order — was also implemented as a side exploration,
+measuring 31; kept in the roster as a deliberately modest agent, not pursued further.
+**`A11` closes out the original `A1`-`A11` ladder** (implemented, calibrated, and
+registered for real play 2026-09-03 -- see `doc/changelog.md`'s 2026-09-03 entry).
+Housekeeping, the mulligan/seat-advantage investigation, and `A13` Cartographer
+(implemented, calibrated, and shelved 2026-08-31 -- every mechanism measured at parity
+with `A7` or worse, see `doc/changelog.md`'s 2026-08-31 entry and `ideas/A13 .../about.md`)
+are all done too -- see "Next Up" below for what comes next now that the ladder is
+complete, per the full, agreed sequencing (2026-08-28), which also promotes SDL3 GUI
+work out of "long-horizon" status (see `CLAUDE.md`).
 
 ### Recently Completed
 
+- **2026-09-03** — `A11` IS-MCTS + NN ("AlphaOracle Prime"): registered and shipping,
+  **new roster ceiling, rating 74**. Stages 1-3 (self-play corpus across a curated
+  `A10`/`A7`/`A3` opponent pool, a small value-net MLP trained offline in PyTorch,
+  hand-written C inference, `nn_value_trust` blend into `A10`'s shared tree search)
+  had already cleared both ship gates 2026-09-02 -- 58.44% head-to-head vs `A10`
+  [56.93%, 59.94%] (the real bar), ~74 estimated Borealis rating [72.68%, 75.36%]
+  (context, vs `A10`'s own 69). This session closed the three remaining registration
+  steps: the rating table, packaging the trained weights as a committed
+  `assets/ismctsnn/` asset (a new top-level, category-scoped directory), and wiring a
+  default weight-load call into real startup (`main.c`, with a `--ai.weights`
+  override) -- fixing a related latent bug where `g_params[]` would have stayed at
+  plain `A10` behavior even after that wiring, absent an explicit promotion to this
+  agent's own measured-best default on a successful load. Also added `make release`
+  (`-O2`) and `--rating.agents=LIST` (needed once `A11`'s ~16x-slower-per-decision
+  cost made a full-roster `--stda.rating` run impractical by default). Closes the
+  original `A1`-`A11` ladder. See `doc/changelog.md`'s 2026-09-03 entry and
+  `ideas/A11 .../about.md` for the full record.
 - **2026-08-31** — `A13` Cartographer (Next Up item 3): implemented, calibrated, and
   shelved rather than registered. Four new deterministic layers on top of `A7`'s
   synthesis (race arithmetic, deck-aware draw valuation, reshuffle-boundary awareness,
@@ -340,9 +360,27 @@ carry. Rationale for the shape of this list (not just its contents) lives here s
    (`ai_strat_a13_belief.{c,h}`) kept as reusable infrastructure for a future `A11`
    feature-extraction pass.
 4. **`A11` IS-MCTS + NN** ("AlphaOracle Prime",
-   `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/`). Replaces `A10`'s rollout
-   policy/leaf evaluation with a trained network -- the last rung on the original
-   `A1`-`A11` ladder.
+   `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/`) -- ✅ done and
+   **registered 2026-09-03** (see `doc/changelog.md`'s 2026-09-03 entry and
+   `ideas/A11 .../about.md`). Stages 1-3 (state encoder, self-play corpus +
+   training, hand-written C inference, tree integration, measurement) cleared
+   both ship gates 2026-09-02: 58.44% head-to-head vs `A10` [56.93%, 59.94%]
+   (Gate 2, the real bar) and an estimated ~74 Borealis rating [72.68%, 75.36%]
+   (Gate 1, context) vs `A10`'s own 69 -- a real, well-powered win, not the null
+   result `A13` hit. The three registration steps landed 2026-09-03: (1)
+   `player_config.c`'s rating-table entry updated to the real `{74, true}`; (2)
+   trained weights packaged as a committed asset at `assets/ismctsnn/` (a new
+   top-level, category-scoped directory); (3) a default `ismctsnn_load_weights()`
+   call wired into real `main.c` startup (`--ai.weights` override), which also
+   fixed a related latent bug (`g_params[]` needed an explicit promotion to this
+   agent's own default on a successful load, or real play would have silently
+   stayed at plain `A10` even with the load wired in). Naming decided: flavor
+   name stays "AlphaOracle Prime" for this UCT+value-net lineage; a future
+   Stage 4 (PUCT+policy head, now technically unlocked but undesigned, not
+   scheduled) would be "AlphaOracle Prime II", reusing this project's own
+   `A7`->`A9` "Grandmaster"->"Grandmaster II" precedent rather than a
+   corpus-size/technical suffix on the player-facing name. **Closes the
+   original `A1`-`A11` ladder.**
 5. **Interactive human-play match exporter** (rescoped 2026-08-28 from `ideas/4
    match results export/`'s original design). Purpose, per Jonathan: log true
    human-played games (vs AI and vs human) to mine heuristics from human play
@@ -372,7 +410,13 @@ carry. Rationale for the shape of this list (not just its contents) lives here s
    get thrown away when that rework lands -- it needs *extending* to draw N players
    instead of 2. **Design discipline for this reason**: write the renderer to loop over
    players rather than hardcoding a 2-player ("my side / their side") layout, so that
-   later extension is additive, not a rewrite.
+   later extension is additive, not a rewrite. **Asset location**: champion artwork
+   (PNGs) belongs under the top-level `assets/` directory (sibling to `src/`/`bin/`/
+   `doc/`), first established 2026-09-02 for `A11`'s shipped NN weights
+   (`assets/ismctsnn/`) -- that folder is deliberately category-scoped per subfolder
+   (`assets/<category>/...`), not a flat dump, specifically so this GUI work has a
+   ready-made home (e.g. `assets/champions/`) rather than needing to invent the
+   convention from scratch.
 7. **3-4 player mode**. Jonathan has an existing physical/tabletop 3-4 player variant of
    the game; digitizing it is a genuine engine-level rework (`PlayerID` is binary
    throughout -- roughly two dozen files use a `1 - current_player`/`1 - defender`
@@ -439,7 +483,7 @@ error-handling polish (see `doc/oracle_todo.md`).
   archived accordingly — see `doc/changelog.md`.
 - `stda.sim` (simulation UI): not started.
 
-### Phase: AI Development — `A1`–`A10` done and `A7` re-optimized, `A11` next
+### Phase: AI Development — `A1`–`A11` done, ladder complete, `A11` the new roster ceiling (74)
 
 Ladder: `A1` value-based (done, 2026-08-21) → `A2` combo threshold (The Showboat, done,
 2026-08-22) → `A3` greedy power (Borealis benchmark, done, 2026-08-23) → `A4` balanced
@@ -454,8 +498,10 @@ done, 2026-08-26, rating 59, then 62 after `A7`'s 2026-08-28 recalibration -- in
 passively, `A9`'s own re-attempted `reply_trust` search found no improvement, see
 `doc/changelog.md`) → `A10` IS-MCTS (The Omniscient, done, 2026-08-27,
 **rating 69 -- the roster ceiling**, also 63.2% head-to-head vs `A7`)
-→ `A11` IS-MCTS + neural
-network. One `ideas/A#` folder per agent,
+→ `A11` IS-MCTS + neural network (AlphaOracle Prime, Stages 1-3 done 2026-09-02,
+**both ship gates PASS** -- 58.44% head-to-head vs `A10`, ~74 estimated Borealis
+rating -- not yet registered for real play, see "Next Up" item 4). One `ideas/A#`
+folder per agent,
 `A#` matching that agent's `AIStrategyType` enum ordinal (`src/core/game_types.h` as of
 `A1`; it previously lived in `src/ui/shared/player_config.h`). `A12` Clairvoyant (The
 Clairvoyant, done, 2026-08-25, rating 31) is appended after `A11` in enum ordinal but
@@ -541,4 +587,4 @@ strategy framework for pluggable AIs?
 
 ---
 
-*Last Updated: August 2026*
+*Last Updated: September 2026*

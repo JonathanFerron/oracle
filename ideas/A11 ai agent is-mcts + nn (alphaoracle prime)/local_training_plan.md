@@ -8,6 +8,40 @@ what large-scale training looks like, but the numbers below are what this
 machine can actually do. See `about.md`'s "Design sources" for how this file
 fits alongside the others.
 
+## Revised constraints (2026-09-01, before implementation starts)
+
+Two constraints loosened during the scoping discussion, superseding the framing
+below where they conflict:
+
+- **MSYS2/Windows portability is secondary for `A11` specifically** — don't let it
+  block a better design if it genuinely gets in the way. (The hand-written-plain-C
+  inference decision in `about.md`'s "Confirmed plan" still stands on its own
+  merits — no new external dependency, matches the project's manual-code
+  convention, modest code for a ~1M-param net — this loosening just removes
+  portability as one of several reasons for it, not the decision itself.)
+- **Training compute budget: up to ~12 hours at 75% CPU utilization, separately for
+  each of self-play generation and training** (each run overnight) — Jonathan's
+  first-gut-feeling ceiling, not a target to fill. Far more than the "minutes, not
+  hours" estimate below assumed for a ≤1M-param net on a modest corpus — that
+  estimate stands for what training *itself* costs; the extra headroom is better
+  spent on a larger/more thorough self-play corpus (still the actual bottleneck
+  per the section below) and/or a light hyperparameter sweep, not on growing the
+  network past what the game's complexity needs.
+- **Two-pass commitment, not straight to the full budget**: pilot each phase
+  (generation, training) at a 1-hour/75%-CPU ceiling first; only commit to the full
+  12-hour run for a phase once its pilot looks promising. Matches how `A8`/`A10`/
+  `A13` all validated cheap before scaling up (quick sample → full measurement).
+  A real throughput check on this machine (`calib_ismcts_timing 4000 20 42`,
+  2026-09-01): mean **31ms/decision** at `A10`'s shipped `limit_iterations=4000`,
+  single-threaded, entirely CPU-bound (`user` time == `real` time — no idle waiting).
+  At 75% CPU (12 of 16 threads; self-play is embarrassingly parallel across
+  independent games) that extrapolates to roughly **60-65K `A10`-mirror games/hour**
+  — a 1-hour generation pilot alone would already produce on the order of a million
+  decision records from the mirror matchup alone, well past the original
+  "tens-to-hundreds of thousands" minimal target from the section below. `A10` vs
+  `A7`/`A3` games should run faster per game (only one seat pays the tree-search
+  cost), so the pilot budget covers all three curated-pool pairings comfortably.
+
 ## Hardware (verified via `lscpu`/`free`, not assumed)
 
 ASRock DeskMini, i7-11700: 8 cores / 16 threads, boosts to 4.9GHz, **AVX-512

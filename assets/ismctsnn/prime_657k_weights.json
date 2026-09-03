@@ -1,0 +1,83 @@
+{
+  "agent": "A11 IS-MCTS + NN (AlphaOracle Prime)",
+  "strategy_type": "AI_STRATEGY_ISMCTS_NN",
+  "description": "Value network for AlphaOracle Prime's leaf evaluation (nn_value_trust blend in ai_strat_ismcts_search.c's leaf_value()). Loaded by ismctsnn_load_weights() -- see src/ai_strat/ai_strat_ismctsnn_net.h for the weight file format.",
+
+  "architecture": {
+    "state_dim": 537,
+    "hidden": [256, 128, 64],
+    "output": "sigmoid, matching mc_outcome_for()'s 0.0/0.5/1.0 scale",
+    "note": "BatchNorm1d fused into Linear1 at export time (exact transform in eval mode, verified 2.4e-7 max diff against the live PyTorch model)."
+  },
+
+  "training": {
+    "source_checkpoint": "reg_strong_value_net.pt",
+    "note": "Verified byte-for-byte against export_weights.py's output on this checkpoint, disambiguating it from the unregularized pilot_value_net.pt (1159 epochs, no dropout/weight_decay) which does NOT match this file.",
+    "dropout": 0.4,
+    "weight_decay": 0.001,
+    "lr": 0.0003,
+    "batch_size": 4096,
+    "epochs_run": 14,
+    "best_val_mse": 0.17051199078559875,
+    "baseline_val_mse": 0.2450772076845169,
+    "mse_reduction_vs_baseline_pct": 30.4,
+    "train_records": 488316,
+    "val_records": 168904,
+    "seed": 42,
+    "run_name": "reg_strong",
+    "note_training_fix": "An earlier unregularized run (pilot_value_net.pt) overfit catastrophically past epoch 1 (best val MSE at epoch 1, monotonically worse for 1000+ epochs after). Fixed with dropout=0.4 + weight_decay=1e-3 + lower lr=3e-4 -- best epoch moved to epoch 4 (this run went 14), ~30% MSE reduction, graceful degradation after."
+  },
+
+  "corpus": {
+    "label": "pilot",
+    "generated": "2026-09-02",
+    "duration": "1 hour, 12 parallel workers",
+    "total_records": 657220,
+    "total_size_bytes": 1320000000,
+    "record_format": "headerless flat float32, 538 floats/record (537-float state + 1-float outcome)",
+    "seed_ledger": "aicalibsrc/ismctsnn/corpus/seed_ledger.tsv",
+    "split": {
+      "mirror": {"description": "A10 (ismcts) vs itself", "shards": 4, "seeds": [1, 4, 7, 10]},
+      "vs_a7": {"description": "A10 vs A7 (Hybrid HBT, \"Grandmaster\") -- strongest deterministic synthesis, structurally unlike tree search", "shards": 4, "seeds": [2, 5, 8, 11]},
+      "vs_a3": {"description": "A10 vs A3 (Borealis) -- fixed rating anchor", "shards": 4, "seeds": [3, 6, 9, 12]}
+    },
+    "note_pool_choice": "Deliberately excludes A5 (Heuristic) as an explicit opponent since it's already A10's own internal rollout policy (redundant diversity). Games logged from A10's own decision points only (never the opponent's) in every pairing, to avoid the narrow-calibration failure A10's own Phase 6 finding diagnosed (rollout always modeling the opponent as Random)."
+  },
+
+  "measured_results": {
+    "measurement_date": "2026-09-02",
+    "measurement_method": "aicalibsrc/ismctsnn/calib_ismctsnn.c validate --trust 1.0 --numsim 137 --replicates 15 (30 jobs / 15 workers, 2 full rounds)",
+    "nn_value_trust": 1.0,
+    "gate_2_vs_ismcts": {
+      "description": "Head-to-head vs A10 (ismcts), both seats -- the real ship bar",
+      "n_games": 4110,
+      "win_rate": 0.5844,
+      "ci_95": [0.5693, 0.5994],
+      "baseline_trust_0_win_rate": 0.5000,
+      "result": "PASS -- Wilson CI lower bound clears 50%"
+    },
+    "gate_1_vs_borealis": {
+      "description": "Head-to-head vs A3 (Borealis) -- context, estimated Borealis rating",
+      "n_games": 4110,
+      "win_rate": 0.7404,
+      "ci_95": [0.7268, 0.7536],
+      "baseline_trust_0_win_rate": 0.6788,
+      "estimated_borealis_rating": 74,
+      "cross_check": "trust=0.0 baseline (67.88%) matches A10's own documented measured rating (67.6-69.5) almost exactly -- confirms the harness measures correctly."
+    },
+    "trust_sweep_signature": "Win rate rises monotonically with trust (0.50 at trust=0 to 0.60 at trust=1.0, n=1040/point exploratory sweep) -- the mirror image of A9's reply_trust / A13's hplus_trust decline signature. trust=1.0 is both the strongest performer measured and the cheapest to run (no rollout paid at all)."
+  },
+
+  "timing": {
+    "og_cflags": "-g -Og -Wall -std=c23 (project default)",
+    "og_ms_per_decision_trust_1_0": 496.3,
+    "release_cflags": "-O2 -Wall -std=c23 (make release)",
+    "release_ms_per_decision_trust_1_0": 439.3,
+    "release_vs_og_improvement_pct": 11.5,
+    "ms_per_decision_a10_baseline": 31,
+    "slowdown_factor_vs_a10_at_og": 16,
+    "note": "NN forward pass dominates the cost: trust=1.0 (rollout skipped) costs about the same as trust=0.5 (both paid). -O2's gain is modest (~11.5%) since linear_relu() (ai_strat_ismctsnn_net.c) is a naive unvectorized triple loop under strict FP semantics -- no -ffast-math/-march=native. See aicalibsrc/ismctsnn/calib_ismctsnn_timing.c."
+  },
+
+  "see_also": "ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/about.md for the full narrative; doc/changelog.md for the dated record."
+}

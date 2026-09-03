@@ -25,6 +25,9 @@
 /bin/calib_ismcts_efficiency
 /bin/calib_ismcts_rollout_policy
 /bin/calib_mulligan
+/bin/gen_corpus
+/bin/calib_ismctsnn
+/bin/calib_ismctsnn_timing
 *.o
 *.d
 *.xls
@@ -36,3 +39,6 @@ ORACLEGeanyProj.tags
 __pycache__/
 *.pyc
 aicalibsrc/*/results/
+aicalibsrc/ismctsnn/corpus/
+aicalibsrc/ismctsnn/.venv/
+aicalibsrc/ismctsnn/checkpoints/

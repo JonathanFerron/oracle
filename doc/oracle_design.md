@@ -369,8 +369,8 @@ side-exploration `A12`), each commented with its `ideas/A#` folder:
 | `AI_STRATEGY_HYBRID_HBT` | **implemented and calibrated** (2026-08-25) | `A7` (The Grandmaster — synthesis of `A4`/`A5`/`A6`) — measured rating 62, above the Borealis anchor |
 | `AI_STRATEGY_SIMPLE_MC` | **implemented and calibrated** (2026-08-25) | `A8` (The Soothsayer) — measured rating 35, below the Borealis anchor (diagnosed, not a defect — see `doc/changelog.md`) |
 | `AI_STRATEGY_HBT_2PLY` | **implemented and calibrated** (2026-08-26) | `A9` (Grandmaster II — one opponent-response ply added to `A7`) — measures below A7 head-to-head; see `doc/changelog.md` for the full diagnosis |
-| `AI_STRATEGY_ISMCTS` | stub | `A10` (The Omniscient) |
-| `AI_STRATEGY_ISMCTS_NN` | stub | `A11` (AlphaOracle Prime) |
+| `AI_STRATEGY_ISMCTS` | **implemented and calibrated** (2026-08-27) | `A10` (The Omniscient — SO-ISMCTS tree search, `A5`-heuristic rollout policy) — measured rating 69, also 63.2% head-to-head vs `A7` |
+| `AI_STRATEGY_ISMCTS_NN` | **implemented, calibrated, and registered** (2026-09-03) | `A11` (AlphaOracle Prime — `A10`'s tree search with a trained value network replacing its heuristic rollout at newly-expanded leaves; UCT selection itself untouched, no policy head/PUCT yet) — **measured rating 74, the roster ceiling**, also **58.44% head-to-head vs `A10`** [56.93%, 59.94%] (the real ship bar that mattered, vs an estimated ~74 Borealis rating [72.68%, 75.36%] as context). Weights trained offline (Python/PyTorch) on a 657K-record self-play corpus (`A10` vs itself/`A7`/`A3`), inference is a hand-written plain-C forward pass (~179K params) — no ONNX/embedded-ML-library dependency. Shipped weights live at `assets/ismctsnn/prime_657k_weights.bin`, loaded by default at startup (`--ai.weights` overrides) |
 | `AI_STRATEGY_CLAIRVOYANT` | **implemented and calibrated** (2026-08-25) | `A12` (The Clairvoyant — `A8`'s sibling, a side exploration) — measured rating 31 |
 
 Implementation order was `A1 → A2 → A3`, not just easiest-first: the rating system
@@ -379,10 +379,24 @@ to exist for comparison. All three were implemented and calibrated (2026-08-21,
 2026-08-22, 2026-08-23), and the rating system itself followed the same day
 (2026-08-23) — see `doc/changelog.md`. `A4` followed the ladder order (2026-08-24,
 measured rating 36 — below the Borealis anchor, a legitimate result, not a defect).
-`A5` followed (2026-08-25, measured rating 60 — above the Borealis anchor, the first
-agent in the roster to clear it), then `A6` (2026-08-25, measured rating 52 — also
-above the anchor). `A7` onward is next up (see
-`doc/oracle_roadmap.md`). General info and calibration tooling live in
+`A5` followed (2026-08-25, measured rating 60, later 64 after a shared defense-formula
+fix — above the Borealis anchor, the first agent in the roster to clear it), then `A6`
+(2026-08-25, measured rating 52 — also above the anchor). `A7` (2026-08-25, a synthesis
+of `A4`/`A5`/`A6`, measured rating 65 after a 2026-08-28 recalibration), `A8`
+(2026-08-25, measured rating 35 — a diagnosed rollout-policy-bias ceiling, not a defect,
+see `doc/changelog.md`), `A9` (2026-08-26, "Grandmaster II" — one added opponent-response
+ply on top of `A7`, measured rating 62 but below its own design target head-to-head vs
+`A7`), and `A10` (2026-08-27, SO-ISMCTS tree search, measured rating 69 — the roster
+ceiling) followed the same ladder order. `A13` Cartographer (a closed-form synthesis
+of `A7` plus four new deterministic layers, `ideas/A13 .../`) was implemented and
+calibrated 2026-08-31 but **shelved rather than registered** — every mechanism measured
+at parity with `A7` or worse, one (`hplus_trust`) conclusively harmful; not part of the
+`A1`-`A11` enum ladder, kept as reference and reusable feature-extraction
+infrastructure. `A11` (IS-MCTS + a trained value network replacing `A10`'s heuristic
+rollout, measured both ship gates PASS 2026-09-02, registered 2026-09-03) closes the
+original `A1`-`A11` ladder — see this table's own `A11` row above and
+`ideas/A11 .../about.md` for the full record — a real, well-powered improvement over
+`A10`, not the null result `A13` hit. General info and calibration tooling live in
 `ideas/G1 AI agent general info/` and `ideas/G2 ai agent parameters storing and
 optimization/` — support material, not agents, so they carry no enum entry and no longer
 occupy a slot on the A-line.
@@ -627,4 +641,4 @@ the active target.
 
 ---
 
-*Last Updated: August 2026*
+*Last Updated: September 2026*

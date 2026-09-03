@@ -5,6 +5,174 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-03 — `A11` IS-MCTS + NN ("AlphaOracle Prime"): registered and shipping -- new roster ceiling, rating 74
+
+Full design record: `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/about.md`.
+Built 2026-09-01/02, this session (2026-09-03) closes out the three registration steps
+its own "Next session's work" left open, so the agent goes from "both ship gates PASS,
+not yet registered" to a real, shipped roster agent.
+
+**The staged design (`about.md`'s "Confirmed plan", 2026-09-01):** value net first,
+policy head gated on results. Stage 1 (self-play data + training) and Stage 2 (C
+inference + tree integration) had to clear both Stage 3 ship gates before Stage 4
+(PUCT + policy head) would even be attempted -- two simultaneous changes would make a
+null result hard to attribute, and `A10`'s own Phase 6 finding was that rollout
+*policy* (not tree scoring) was the dominant lever, so the cheaper/lower-risk
+mechanism was staged first, the same ordering `A13` Cartographer used.
+
+**Stage 1 -- self-play corpus.** `A10`'s own `limit_iterations=4000` games, logged
+from `A10`'s own decision points only (never the opponent's), across a **curated
+opponent pool, not pure mirror self-play**: `A10` vs itself, vs `A7` (Grandmaster --
+strongest deterministic synthesis, structurally nothing like tree search), vs `A3`
+(Borealis -- the fixed rating anchor). Deliberately excludes `A5` as an explicit
+opponent despite being a strong closed-form agent in its own right -- it's already
+`A10`'s own internal rollout policy (redundant diversity). A 1-hour, 12-worker pilot
+(`aicalibsrc/ismctsnn/gen_corpus.c` + `run_selfplay.sh`, headerless flat-float32
+records, a seed ledger preventing RNG-seed collisions across pilot/full-run
+generations) produced 657,220 records / 1.32GB, split evenly across the three
+matchups (4 shards each). Real throughput came in at ~44% of the naive single-thread
+extrapolation -- see `feedback_concurrent_worker_timing_estimates` (memory) and
+`local_training_plan.md`.
+
+**Training** (`train_value_net.py`, PyTorch CPU): a small MLP
+(537-float state -> 256 -> 128 -> 64 -> 1). The 537-float state encoder
+(`ai_strat_ismctsnn_state.h/.c`) is 5 catalog count-vectors (102 champions + Draw-2 +
+Draw-3 + Cash, one vector each for own hand, own/opp discard, own/opp combat zone)
+plus 12 scalars (energy, cash, turn, phase, deck-remaining, opp hand size, combo-bonus
+one-hots) -- relativized to the observing player, encoding no deck *contents*
+(anti-clairvoyance, matching `mc_determinize()`), verified against a real
+`setup_game()` state. **First run overfit catastrophically past epoch 1** (best val
+MSE at epoch 1, then monotonically worse for 1000+ epochs after -- likely cause: many
+correlated decision-records from a modest number of distinct games, no
+regularization). Fixed with `dropout=0.4`, `weight_decay=1e-3`, lower `lr=3e-4`: best
+checkpoint moved to epoch 4-14 depending on the run, ~28-30% MSE reduction over
+baseline, graceful degradation after. **Lesson: always check the epoch of the best
+checkpoint, not just its value** -- "best at epoch 1, all downhill after" is a red
+flag even when that epoch's number looks fine. The weights that shipped
+(`assets/ismctsnn/prime_657k_weights.bin`) come from the `reg_strong_value_net.pt`
+checkpoint (dropout=0.4/weight_decay=1e-3/lr=3e-4, 14 epochs, val MSE 0.17051 vs
+baseline 0.24508) -- confirmed by re-exporting and comparing byte-for-byte against the
+shipped file, since two regularized checkpoints existed and the filename alone didn't
+disambiguate which one was actually measured.
+
+**Stage 2 -- C inference + integration.** Training stays Python/PyTorch, offline;
+inference is a hand-written plain-C forward pass (`ai_strat_ismctsnn_net.h/.c`), no
+external ML runtime -- weights exported as a raw float array
+(`export_weights.py`, fusing the trained BatchNorm1d into `Linear1` at export time, an
+exact transform in eval mode), the same `rating_csv.c`-style persistence precedent
+every other file-I/O feature in this codebase follows. Verified to `2.4e-7` max diff
+against the live PyTorch model. A `nn_value_trust` dial added to the *shared*
+`ISMCTSParams` struct (`ai_strat_ismcts1.h`) is consumed by a new `leaf_value()`
+helper in `ai_strat_ismcts_search.c` (0.0 = pure `A10` rollout-to-terminal, bit-for-bit
+recoverable; 1.0 = pure NN value, skips the rollout entirely). New agent file
+`ai_strat_ismctsnn.h/.c` reuses `ismcts_search_best_move()` completely unchanged --
+UCT selection, determinization, and rollout policy (`A5` Heuristic on both seats) are
+all identical to `A10`; this agent only changes what evaluates a leaf. The superset
+guarantee was verified empirically, not just by inspection: `--ai.a=ismcts` vs
+`--ai.a=ismctsnn` at trust=0 produced byte-identical `stda.auto` output.
+
+**A real methodological gotcha, worth remembering for any future harness in this
+shape:** the first `calib_ismctsnn.c` copied `A13`'s "set params on both registries,
+harmless if unread" pattern from `calib_a13.c`. That's unsafe here specifically --
+`A10`/`A11` share one `ISMCTSParams` struct and one `ismcts_search_best_move()`
+function (unlike `A13Params`/`HBTParams`, genuinely disjoint), so an "ismcts" seat was
+silently inheriting whatever `nn_value_trust` sat in its parsed params block. Every
+measurement before the fix was invalid. Fixed by forcing `nn_value_trust=0.0f`
+specifically on the copy passed to `ismcts_set_params()`. **Lesson: "harmless to set
+params another agent won't read" only holds when the structs are actually disjoint --
+verify, don't assume, whenever two agents share one struct/function.** See
+`aicalibsrc/ismctsnn/README.md`.
+
+**Stage 3 -- measurement, both gates PASS.** Exploratory sweep (`nn_value_trust` vs
+`ismcts`, n=1040/point) showed win rate rising **monotonically** with trust (0.50 at
+trust=0 up to 0.60 at trust=1.0) -- the mirror image of `A9`'s `reply_trust`/`A13`'s
+`hplus_trust` decline signature, not a repeat of it. Full-rigor
+`validate --trust 1.0` (n=4,110 games each, ~1.5pp Wilson CI half-width, 30 jobs / 15
+workers, two full rounds, no idle tail):
+
+- **Gate 2 (the real bar) -- vs `ismcts` (`A10`), both seats**: baseline (`trust=0.0`)
+  read exactly 0.5000 (superset guarantee reconfirmed at this n); candidate
+  (`trust=1.0`) **58.44%**, 95% CI **[56.93%, 59.94%]**. **PASS.**
+- **Gate 1 (context) -- vs `borealis` (`A3`)**: baseline (`trust=0.0`, i.e. plain
+  `A10`) read **67.88%** [66.44%, 69.29%] -- matches `A10`'s own documented measured
+  rating (67.6-69.5) almost exactly, a free cross-check that the harness measures
+  correctly, not just consistently. Candidate (`trust=1.0`) **74.04%**, 95% CI
+  **[72.68%, 75.36%]** -- an estimated **Borealis rating of ~74**, about +5 over
+  `A10`'s 69.
+
+This is a genuine positive result, not the null result the shelve-on-null policy
+(matching `A13`'s precedent exactly) was written for -- `nn_value_trust` did not
+calibrate to 0, and `ismctsnn_get_default_params()`'s existing default
+(`nn_value_trust=1.0`) is already the best-measured point, so no further trust-value
+tuning is indicated.
+
+**Timing** (`aicalibsrc/ismctsnn/calib_ismctsnn_timing.c`): the hand-written C forward
+pass (~179K params, called up to `limit_iterations=4000` times/decision) costs
+**0.496s mean/decision at `-Og`** (project default) -- about **16x** `A10`'s own
+plain-rollout cost (~0.031s/decision). The NN forward pass dominates: trust=1.0
+(rollout skipped entirely) costs about the same as trust=0.5 (both rollout and NN
+paid). A new `make release` (`-O2`, this session) target measures **0.439s
+mean/decision -- only ~11.5% faster**, since `linear_relu()`
+(`ai_strat_ismctsnn_net.c`) is a naive unvectorized triple loop under strict FP
+semantics and plain `-O2` (no `-ffast-math`/`-march=native`, kept portable) doesn't
+autovectorize it much. Both `-a -p` regression baselines (`-Og` and `-O2`) matched
+`bin/expectedresults.txt` exactly -- `-O2` doesn't change game outcomes here.
+
+**Registration (this session, 2026-09-03) -- the three steps `about.md`'s "Next
+session's work" left open:**
+
+1. **Rating table**: `player_config.c`'s `AI_STRATEGY_RATINGS[AI_STRATEGY_ISMCTS_NN]`
+   updated from the pre-measurement `{97, false}` to the real `{74, true}` -- the new
+   roster ceiling, above `A10`'s 69.
+2. **Weights packaged as a shipped asset**: new top-level `assets/` directory
+   (sibling to `src/`/`bin/`/`doc/`, category-scoped per subfolder --
+   `assets/ismctsnn/` today, with the future SDL3 GUI's champion artwork expected to
+   be the next subfolder). The pilot-corpus-trained weights ship as-is (not blocked on
+   a bigger corpus, Jonathan's explicit call) at
+   `assets/ismctsnn/prime_657k_weights.bin`, with a `.json` sidecar recording
+   architecture, training hyperparameters, corpus composition, and the measured Gate
+   1/2 numbers.
+3. **Default weight load wired into real play**: `main.c` now calls
+   `ismctsnn_load_weights()` once before mode dispatch, covering CLI/TUI/`stda.auto`/
+   `stda.rating` alike, with a new `--ai.weights=PATH` override
+   (`ISMCTSNN_DEFAULT_WEIGHTS_PATH` otherwise). A missing/corrupt file prints one
+   `stderr` warning and leaves `decide_and_apply()`'s own trust=0 fallback in place --
+   never worse than plain `A10`, just not real AlphaOracle Prime play. A related
+   latent bug was fixed alongside this: `g_params[]` previously started at
+   `nn_value_trust=0.0f` even with weights loaded (only calibration harnesses called
+   `ismctsnn_set_params()`), so real play would have stayed silently at plain `A10`
+   even after this wiring landed -- `ismctsnn_load_weights()` now promotes
+   `g_params[]` to `ismctsnn_get_default_params()` (trust=1.0) on success, and
+   `ismctsnn_reset_params()` was changed to reset to this agent's own default rather
+   than `A10`'s, for the same reason.
+
+Also added this session, found useful/needed while shipping the above:
+
+- **`--rating.agents=LIST`** (`cmdline.c`/`stda_rating.c`): restricts
+  `--stda.rating`'s round-robin to a comma-separated shorthand list -- without it,
+  `register_implemented_agents()` auto-enrols every implemented agent including the
+  now-registered, ~16x-slower-per-decision `A11` (and `A10`), making a full-roster fit
+  impractical. An unknown or unimplemented shorthand in the list is an error, not a
+  silent skip (same reasoning as `parse_agent_option()`).
+- **`make release`** (`-O2`, no debug symbols): the only build configuration besides
+  the `-Og` default/`debug`. Used to produce the timing numbers above; kept as a
+  general-purpose target for long simulation runs and the tree-search agents
+  (`A8`/`A10`/`A11`).
+
+**Verification**: `-a -p` regression baseline identical to `bin/expectedresults.txt`
+at both `-Og` and `-O2`; `--ai.a=ismctsnn --ai.b=ismcts` with and without a valid
+weights file produces genuinely different, direction-correct outcomes (confirming the
+agent is no longer silently inert); `test_combo`/`test_recall`/`test_cash_exchange`/
+`test_rating` all pass unchanged; `valgrind --leak-check=full` clean on the new
+weight-loading path.
+
+Closes `doc/oracle_roadmap.md`'s "Next Up" item 4. `A11` was the last rung on the
+original `A1`-`A11` ladder; `A12` Clairvoyant and the shelved `A13` Cartographer sit
+outside that ladder's enum ordinal sequence. Stage 4 (PUCT + policy head, "AlphaOracle
+Prime II" if it ever ships) is technically unlocked but undesigned and not scheduled.
+
+---
+
 ## 2026-08-31 — `A13` Cartographer (Next Up item 3): implemented, calibrated, shelved -- nothing beat A7
 
 Full design record: `ideas/A13 ai agent cartographer (the cartographer)/about.md`. Built as

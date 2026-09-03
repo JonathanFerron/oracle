@@ -11,6 +11,7 @@
 #include "../util/prng_seed.h"
 #include "../ui/shared/player_config.h"
 #include "../ai_strat/ai_strategy.h"
+#include "../ai_strat/ai_strat_ismctsnn.h"
 #include "../roles/stda/stda_rating.h"
 
 /* Hidden option for shell completion scripts; deliberately absent from print_usage() */
@@ -29,6 +30,15 @@
 #define OPT_RATING_FILE 1004
 #define OPT_RATING_METHOD 1005
 #define OPT_RATING_TRACK 1006
+
+/* --rating.agents: restrict MODE_STDA_RATING's round-robin to a
+   comma-separated agent shorthand list (see stda_rating.c) -- mainly to
+   exclude expensive tree-search agents (A10 ismcts/A11 ismctsnn) from a
+   quick fit. --ai.weights: path override for A11's value-net weights
+   (default ISMCTSNN_DEFAULT_WEIGHTS_PATH, loaded once at startup in
+   main.c). */
+#define OPT_RATING_AGENTS 1007
+#define OPT_AI_WEIGHTS 1008
 
 /* Parse language code from string */
 static ui_language_t parse_language(const char* lang_str)
@@ -105,7 +115,12 @@ void print_usage(const char* prog)
   printf("  -rf, --rating.file=PATH       Write the fitted ratings to PATH as CSV\n");
   printf("  -rm, --rating.method=mm|gradient  Batch solver [default: mm]\n");
   printf("       --rating.track           Track a human's rating across --stda.cli/\n");
-  printf("                                --stda.tui games [default: off]\n\n");
+  printf("                                --stda.tui games [default: off]\n");
+  printf("  -ra, --rating.agents=LIST     Comma-separated agent shorthands to restrict\n");
+  printf("                                the round-robin to [default: every implemented\n");
+  printf("                                agent]\n\n");
+  printf("  -Aw, --ai.weights=PATH        Weights file for A11 AlphaOracle Prime\n");
+  printf("                                [default: %s]\n\n", ISMCTSNN_DEFAULT_WEIGHTS_PATH);
   printf("Examples:\n");
   printf("  %s -a -p                      Automated AI vs AI, fixed default seed\n", prog);
   printf("  %s -a -p --ai.a=value --ai.b=rand   Value Based vs Random\n", prog);
@@ -168,6 +183,8 @@ static struct option long_options[] =
   {"rg",         required_argument, 0, OPT_RATING_GAMES},
   {"rf",         required_argument, 0, OPT_RATING_FILE},
   {"rm",         required_argument, 0, OPT_RATING_METHOD},
+  {"ra",         required_argument, 0, OPT_RATING_AGENTS},
+  {"Aw",         required_argument, 0, OPT_AI_WEIGHTS},
   /* Long form options */
   {"help",       no_argument,       0, 'h'},
   {"verbose",    no_argument,       0, 'v'},
@@ -194,6 +211,8 @@ static struct option long_options[] =
   {"rating.file", required_argument, 0, OPT_RATING_FILE},
   {"rating.method", required_argument, 0, OPT_RATING_METHOD},
   {"rating.track", no_argument,     0, OPT_RATING_TRACK},
+  {"rating.agents", required_argument, 0, OPT_RATING_AGENTS},
+  {"ai.weights", required_argument, 0, OPT_AI_WEIGHTS},
   {"oracle-complete", optional_argument, 0, OPT_ORACLE_COMPLETE},
   {0, 0, 0, 0}
 };
@@ -376,6 +395,12 @@ int parse_options(int argc, char** argv, config_t* cfg)
         break;
       case OPT_RATING_TRACK:
         cfg->rating_track = true;
+        break;
+      case OPT_RATING_AGENTS:
+        cfg->rating_agents = strdup(optarg);
+        break;
+      case OPT_AI_WEIGHTS:
+        cfg->nn_weights = strdup(optarg);
         break;
       default:
         print_usage(argv[0]);

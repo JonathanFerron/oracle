@@ -74,6 +74,14 @@ typedef struct
   // -- Flat-rollout decisions (mulligan / discard-to-7) -- unused until Phase 4 --
   uint32_t limit_flat_iterations;
   uint8_t  limit_flat_candidates;
+
+  // -- A11 IS-MCTS+NN leaf-evaluation blend (Stage 2) --
+  // 0.0 = pure A10 rollout-to-terminal result, bit-for-bit identical to
+  // this agent (the superset guarantee -- see ideas/A11 .../about.md's
+  // "Confirmed plan" step 2); 1.0 = pure NN value (skips the rollout
+  // entirely, cheaper); in between blends both. A10 itself never sets this
+  // above 0.0f (see ISMCTS_DEFAULTS) -- only ai_strat_ismctsnn.c does.
+  float    nn_value_trust;
 } ISMCTSParams;
 
 #define ISMCTS_DEFAULTS { \
@@ -96,6 +104,7 @@ typedef struct
     .weight_hand_advantage = 0.0f, \
     .limit_flat_iterations = 2000, \
     .limit_flat_candidates = 36, \
+    .nn_value_trust = 0.0f, \
   }
 
 void ismcts_attack_strategy(struct gamestate* gstate, GameContext* ctx);

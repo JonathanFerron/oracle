@@ -23,8 +23,7 @@ Oracle is an open-source implementation of a fixed-pool strategic dueling card g
 This project serves as a testbed for AI development, progressing from simple to sophisticated (12 planned agents, `A1`–`A11` plus the side-exploration `A12`; see `doc/oracle_roadmap.md`):
 
 - ✅ **Random strategy** (baseline, functional)
-- ✅ **Value Based** ("The Apprentice", `A1`), **Combo Threshold** ("The Showboat", `A2`), **Borealis** (the Bradley-Terry benchmark, `A3`), **Balanced Rules** ("Bean Counter", `A4`), **Heuristic** ("ε-γ-δ", `A5`), **Tactical** ("Pressure Cooker", `A6`), **Hybrid HBT** ("The Grandmaster", `A7`), **Simple Monte Carlo** ("The Soothsayer", `A8`), **HBT 2-Ply** ("Grandmaster II", `A9`), and **Clairvoyant** (`A8`'s sibling, `A12`) — implemented and calibrated
-- 📋 IS-MCTS, IS-MCTS + neural network — designed, not yet implemented
+- ✅ **Value Based** ("The Apprentice", `A1`), **Combo Threshold** ("The Showboat", `A2`), **Borealis** (the Bradley-Terry benchmark, `A3`), **Balanced Rules** ("Bean Counter", `A4`), **Heuristic** ("ε-γ-δ", `A5`), **Tactical** ("Pressure Cooker", `A6`), **Hybrid HBT** ("The Grandmaster", `A7`), **Simple Monte Carlo** ("The Soothsayer", `A8`), **HBT 2-Ply** ("Grandmaster II", `A9`), **IS-MCTS** ("The Omniscient", `A10`, rating 69), **IS-MCTS + Neural Network** ("AlphaOracle Prime", `A11`, a trained value network layered onto `A10`'s search — rating 74, the roster ceiling), and **Clairvoyant** (`A8`'s sibling, `A12`) — implemented and calibrated, closing out the original `A1`–`A11` ladder
 
 A Bradley-Terry rating system for objective AI strength measurement is implemented (`src/rating/`): every agent gets a rating on a 1–99 scale that is its measured win probability against Borealis, the fixed rating-50 anchor.
 

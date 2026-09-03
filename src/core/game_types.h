@@ -233,6 +233,18 @@ typedef struct
                                    player_config's void*, above). */
   bool rating_track;        /* --rating.track: enable human rating tracking
                                 in stda.cli/stda.tui. Off by default. */
+  char* rating_agents;      /* --rating.agents: comma-separated AI strategy
+                                shorthands to restrict MODE_STDA_RATING's
+                                round-robin to (see stda_rating.c's
+                                register_implemented_agents()). NULL = every
+                                implemented agent (today's default
+                                behaviour) -- mainly useful to exclude
+                                expensive tree-search agents (A10/A11) from
+                                a quick fit. */
+  char* nn_weights;         /* --ai.weights: path to A11 AlphaOracle Prime's
+                                value-net weights, loaded once at startup
+                                (main.c). NULL = ISMCTSNN_DEFAULT_WEIGHTS_PATH
+                                (the packaged assets/ismctsnn/ asset). */
 } config_t;
 
 #include "game_constants.h"

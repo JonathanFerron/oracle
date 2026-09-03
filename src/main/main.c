@@ -10,6 +10,7 @@
 #include "../core/game_state.h"
 #include "../ai_strat/ai_strategy.h"
 #include "../ai_strat/ai_strat_random.h"
+#include "../ai_strat/ai_strat_ismctsnn.h"
 #include "../util/mtwister.h"
 #include "../util/prng_seed.h"
 #include "../roles/stda/stda_auto.h"
@@ -51,6 +52,18 @@ int main(int argc, char** argv)
       cleanup_config(&cfg);
       return EXIT_FAILURE;
     }
+  }
+
+  /* A11 AlphaOracle Prime: load the packaged value-net weights once, for
+     every mode -- a missing or corrupt file leaves the agent at
+     nn_value_trust=0 (plain A10) via decide_and_apply()'s own guard, never
+     worse, just not real AlphaOracle Prime play. See
+     ai_strat_ismctsnn.h's header comment. */
+  { const char* nn_weights = cfg.nn_weights ? cfg.nn_weights
+                             : ISMCTSNN_DEFAULT_WEIGHTS_PATH;
+    if(!ismctsnn_load_weights(nn_weights))
+      fprintf(stderr, "Warning: could not load %s; ismctsnn falls back to plain IS-MCTS.\n",
+              nn_weights);
   }
 
   /* Launch appropriate game mode */
@@ -141,4 +154,6 @@ void cleanup_config(config_t* cfg)
   if(cfg->output_file) free(cfg->output_file);
   if(cfg->ai_agent) free(cfg->ai_agent);
   if(cfg->rating_file) free(cfg->rating_file);
+  if(cfg->rating_agents) free(cfg->rating_agents);
+  if(cfg->nn_weights) free(cfg->nn_weights);
 }

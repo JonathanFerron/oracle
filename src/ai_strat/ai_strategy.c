@@ -18,6 +18,7 @@
 #include "ai_strat_clairvoyant1.h"
 #include "ai_strat_ismcts1.h"
 #include "ai_strat_ismcts_flat.h"
+#include "ai_strat_ismctsnn.h"
 #include "ai_strat_lib_heuristics.h"
 
 StrategySet* create_strategy_set(void)
@@ -86,6 +87,12 @@ static const StrategyRegistryEntry STRATEGY_REGISTRY[AI_STRATEGY_COUNT] =
     clairvoyant_defense_strategy
   },
   [AI_STRATEGY_ISMCTS]           = { ismcts_attack_strategy, ismcts_defense_strategy,
+    ismcts_mulligan, ismcts_discard_to_7
+  },
+  // A11 reuses A10's own mulligan/discard-to-7 hooks unchanged -- the NN
+  // blend only touches leaf evaluation inside the shared tree search (see
+  // ai_strat_ismctsnn.h).
+  [AI_STRATEGY_ISMCTS_NN]        = { ismctsnn_attack_strategy, ismctsnn_defense_strategy,
     ismcts_mulligan, ismcts_discard_to_7
   },
   // All other entries default to {NULL, NULL, NULL, NULL} -- not yet implemented.

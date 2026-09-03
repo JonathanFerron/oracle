@@ -53,7 +53,13 @@ long-horizon status). `A13` Cartographer was implemented, calibrated, and shelve
 2026-08-31 (every mechanism measured at parity with `A7` or worse; see
 `doc/changelog.md`'s 2026-08-31 entry and `ideas/A13 .../about.md`) -- not a registered
 roster agent, so it does not appear in "Checklist: Adding a New AI Strategy" examples
-below. The strategy-set
+below. `A11` IS-MCTS + NN ("AlphaOracle Prime") had Stages 1-3 built and measured
+2026-09-02 -- **both ship gates PASS** (58.44% head-to-head vs `A10`, ~74 estimated
+Borealis rating), a real win, not the shelve-on-null outcome `A13` hit -- and was
+**registered and shipped 2026-09-03** (rating table, weight packaging, default load
+path all done; see the `A11` subsection below and `doc/changelog.md`'s 2026-09-03
+entry), making it the new roster ceiling and closing out the original `A1`-`A11`
+ladder. The strategy-set
 build sites
 also gained a shared `AIStrategyType -> function pointer` registry (`ai_strategy.c`) as
 part of `A1` -- see "Checklist: Adding a New AI Strategy" below, which now reflects that
@@ -240,6 +246,66 @@ unchanged. See `doc/changelog.md`'s 2026-08-28 entry for the full record.
 - [ ] In `stda.cli` mode, when AI-vs-AI play is selected, use "AI strategy name + (A or
   B)" as the player name instead of asking for player 1's name and not player 2's (moved
   here from the old `A4` section — unrelated to any specific agent, just never done)
+
+### `A11` IS-MCTS + NN (`ai_strat_ismctsnn.c`, "AlphaOracle Prime") — done and registered, 2026-09-03, rating 74 (new roster ceiling)
+
+See `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/about.md`'s "Next session's
+work" section for the full detail behind every item below — this checklist is the
+short/actionable form of that.
+
+- [x] State encoder (`ai_strat_ismctsnn_state.h/.c`) — 537-float info-set vector,
+  verified against a real `setup_game()` state.
+- [x] Self-play corpus generator (`aicalibsrc/ismctsnn/gen_corpus.c` +
+  `run_selfplay.sh`) and training pipeline (`train_value_net.py`, PyTorch/CPU) — a
+  1-hour/12-worker pilot corpus (657K records) trained a small MLP
+  (537→256→128→64→1) to `~30%` MSE reduction over baseline after fixing an initial
+  catastrophic-overfit-past-epoch-1 run with dropout + weight decay.
+- [x] Hand-written C inference (`ai_strat_ismctsnn_net.h/.c`, `export_weights.py`)
+  — BatchNorm fused into `Linear1` at export; verified to `2.4e-7` max diff against
+  the live PyTorch model.
+- [x] Integration into `A10`'s shared tree search — `nn_value_trust` dial added to
+  `ISMCTSParams` (`ai_strat_ismcts1.h`), consumed in `ai_strat_ismcts_search.c`'s
+  new `leaf_value()`; superset guarantee (`trust=0` byte-identical to `A10`)
+  verified empirically. New agent `ai_strat_ismctsnn.h/.c` registered in
+  `ai_strategy.c`'s `STRATEGY_REGISTRY[AI_STRATEGY_ISMCTS_NN]`.
+- [x] Stage 3 measurement (`aicalibsrc/ismctsnn/calib_ismctsnn.c` +
+  `calibrate_ismctsnn.py`) — **both ship gates PASS** at `nn_value_trust=1.0`
+  (already the shipped default): 58.44% head-to-head vs `A10` [56.93%, 59.94%]
+  (Gate 2, the real bar), ~74 estimated Borealis rating [72.68%, 75.36%] (Gate 1,
+  context) vs `A10`'s own 69. Not the null result the shelve-on-null policy was
+  written for — a real, well-powered win.
+- [x] **Item 1**: `player_config.c`'s `AI_STRATEGY_RATINGS[AI_STRATEGY_ISMCTS_NN]`
+  updated from the pre-measurement `{ 97, false }` to the real `{ 74, true }` —
+  the new roster ceiling, above `A10`'s 69.
+- [x] **Item 2**: trained weights packaged as a committed, non-gitignored asset —
+  `assets/ismctsnn/prime_657k_weights.bin` (new top-level, category-scoped
+  `assets/` directory) + a `.json` provenance sidecar (architecture, training
+  hyperparameters, corpus composition, measured Gate 1/2 numbers). Shipped as-is
+  from the pilot corpus, not blocked on a bigger corpus (Jonathan's explicit
+  call). `aicalibsrc/ismctsnn/checkpoints/` stays gitignored.
+- [x] **Item 3**: `main.c` now calls `ismctsnn_load_weights()` once before mode
+  dispatch (covers `stda.auto`/CLI/TUI/`stda.rating` alike), with a new
+  `--ai.weights=PATH` override; a missing/corrupt file prints one `stderr`
+  warning and falls back to the existing safe `trust=0` behavior. A related
+  latent bug fixed alongside this: `g_params[]` previously stayed at
+  `nn_value_trust=0.0f` even after a successful load (only calibration
+  harnesses called `ismctsnn_set_params()`), so real play would have remained
+  silently plain `A10` even with this wiring — `ismctsnn_load_weights()` now
+  promotes `g_params[]` to `ismctsnn_get_default_params()` (trust=1.0) on
+  success.
+- [ ] **Item 4 (gated, not urgent)**: Stage 4 policy head + PUCT — action-encoding
+  problem, policy-head architecture/training data, PUCT selection. Unlocked by
+  Stage 3's pass but undesigned; not scheduled.
+- [x] **Naming decided**: flavor name stays "AlphaOracle Prime" for this whole
+  UCT+value-net lineage; a hypothetical future Stage 4 (PUCT+policy) agent would be
+  "AlphaOracle Prime II" (reusing the `A7`→`A9` "Grandmaster"→"Grandmaster II"
+  precedent), not a corpus-size or algorithm-technical suffix on the display name.
+- [x] **Housekeeping found during registration** (2026-09-03): `.gitignore` was
+  missing `/bin/calib_ismctsnn_timing`; `make help` was missing that target's
+  line; wrote `aicalibsrc/ismctsnn/README.md` (every other calibrated agent's
+  folder has one; `calib_ismctsnn.c`'s own header pointed at it already). Also
+  added `make release` (`-O2`) and `--rating.agents=LIST` — see
+  `doc/changelog.md`'s 2026-09-03 entry.
 
 ### `A6` Tactical Strategy (`ai_strat_tactical.c`) — done, 2026-08-25
 
@@ -555,4 +621,4 @@ As of `A1` (2026-08-21), strategy dispatch is a single table-driven registry
 
 ---
 
-*Last Updated: August 2026*
+*Last Updated: September 2026*

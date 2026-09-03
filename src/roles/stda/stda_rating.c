@@ -28,6 +28,41 @@ static void register_implemented_agents(RatingSystem* rs)
   }
 } // register_implemented_agents
 
+// --rating.agents: registers exactly the comma-separated shorthand list in
+// `filter`, instead of every implemented agent -- mainly to exclude
+// expensive tree-search agents (A10 ismcts/A11 ismctsnn, ~16x slower per
+// decision than the closed-form agents) from a quick fit. Unlike
+// register_implemented_agents()'s silent skip of unimplemented types, an
+// explicit filter treats an unknown or unimplemented shorthand as an
+// error and returns false -- a long rating run that silently dropped an
+// agent would be worse than refusing to start (same reasoning as
+// cmdline.c's parse_agent_option()).
+static bool register_filtered_agents(RatingSystem* rs, const char* filter)
+{ char* buf = strdup(filter);
+  if(!buf) return false;
+
+  bool ok = true;
+  for(char* tok = strtok(buf, ","); tok; tok = strtok(NULL, ","))
+  { AIStrategyType type = parse_ai_strategy_shorthand(tok);
+    if(type == AI_STRATEGY_COUNT)
+    { fprintf(stderr, "Error: unknown AI agent '%s' in --rating.agents\n", tok);
+      ok = false;
+      break;
+    }
+    if(!ai_strategy_is_implemented(type))
+    { fprintf(stderr, "Error: AI agent '%s' (in --rating.agents) is not yet implemented\n", tok);
+      ok = false;
+      break;
+    }
+
+    const char* shorthand = get_ai_strategy_shorthand(type);
+    rating_register_ai(rs, shorthand ? shorthand : tok, type);
+  }
+
+  free(buf);
+  return ok;
+} // register_filtered_agents
+
 // Plays one seat orientation (id_a as PLAYER_A, id_b as PLAYER_B) and
 // folds the resulting (wins_a, wins_b, draws) triple into `batch`. Reuses
 // run_simulation() (stda_auto.c) exactly as aicalibsrc/*/calib_*.c does.
@@ -93,7 +128,16 @@ int run_mode_stda_rating(config_t* cfg)
   rating_init(&rs, NULL);
   rs.config.batch_method = cfg->rating_method_gradient ? RATING_BATCH_GRADIENT
                            : RATING_BATCH_MM;
-  register_implemented_agents(&rs);
+
+  if(cfg->rating_agents)
+  { if(!register_filtered_agents(&rs, cfg->rating_agents))
+    { rating_batch_destroy(batch);
+      destroy_game_context(ctx);
+      return EXIT_FAILURE;
+    }
+  }
+  else
+    register_implemented_agents(&rs);
 
   printf("%s\n", LOCALIZED_STRING_L(cfg->language,
                                     "Running Bradley-Terry rating benchmark...",
