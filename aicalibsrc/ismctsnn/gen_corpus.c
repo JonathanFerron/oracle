@@ -5,7 +5,11 @@
 //
 // Plays real games (never determinized/simulated-away games -- this is
 // actual A10 self-play, not search-internal sampling) across the curated
-// opponent pool (mirror A10, A10 vs A7 Grandmaster, A10 vs A3 Borealis) and,
+// opponent pool (mirror A10, A10 vs A7 Grandmaster, A10 vs A3 Borealis, and,
+// added for the bigger-training-corpus recipe-diversity check, A10 vs A4
+// Balanced Rules and A10 vs A6 Tactical -- two more distinct playing styles,
+// still deliberately excluding A5 since it's already A10's own rollout
+// policy) and,
 // at every decision A10 itself makes (never the opponent's, per the
 // confirmed plan), encodes the information-set state via
 // ismctsnn_encode_state() (ai_strat_ismctsnn_state.h) *before* the move is
@@ -29,7 +33,7 @@
 // local_training_plan.md's "embarrassingly parallel" framing) and pointing
 // the training script at the whole set of shard files.
 //
-// Usage: gen_corpus <mirror|vs_a7|vs_a3> <numgames> <seed> <output_path> [limit_iterations]
+// Usage: gen_corpus <mirror|vs_a7|vs_a3|vs_a4|vs_a6> <numgames> <seed> <output_path> [limit_iterations]
 //
 // <limit_iterations> defaults to A10's shipped ISMCTS_DEFAULTS (4000) if
 // omitted -- pass a smaller value only for a quick wiring smoke test, never
@@ -120,6 +124,8 @@ static StrategySet* build_strategy_set(const char* matchup, PlayerID ismcts_seat
   }
 
   AIStrategyType opponent = (strcmp(matchup, "vs_a7") == 0) ? AI_STRATEGY_HYBRID_HBT
+                            : (strcmp(matchup, "vs_a4") == 0) ? AI_STRATEGY_BALANCED
+                            : (strcmp(matchup, "vs_a6") == 0) ? AI_STRATEGY_TACTICAL
                             : AI_STRATEGY_BOREALIS;
   PlayerID opp_seat = 1 - ismcts_seat;
   set_player_strategy_by_type(strategies, ismcts_seat, AI_STRATEGY_ISMCTS);
@@ -159,14 +165,16 @@ static void play_and_log_one_game(StrategySet* strategies, GameContext* ctx)
 int main(int argc, char** argv)
 { if(argc != 5 && argc != 6)
   { fprintf(stderr,
-            "Usage: %s <mirror|vs_a7|vs_a3> <numgames> <seed> <output_path> [limit_iterations]\n",
+            "Usage: %s <mirror|vs_a7|vs_a3|vs_a4|vs_a6> <numgames> <seed> <output_path> "
+            "[limit_iterations]\n",
             argv[0]);
     return EXIT_FAILURE;
   }
   const char* matchup = argv[1];
   if(strcmp(matchup, "mirror") != 0 && strcmp(matchup, "vs_a7") != 0
-     && strcmp(matchup, "vs_a3") != 0)
-  { fprintf(stderr, "matchup must be one of: mirror, vs_a7, vs_a3\n");
+     && strcmp(matchup, "vs_a3") != 0 && strcmp(matchup, "vs_a4") != 0
+     && strcmp(matchup, "vs_a6") != 0)
+  { fprintf(stderr, "matchup must be one of: mirror, vs_a7, vs_a3, vs_a4, vs_a6\n");
     return EXIT_FAILURE;
   }
   uint32_t numgames = (uint32_t)strtoul(argv[2], NULL, 10);

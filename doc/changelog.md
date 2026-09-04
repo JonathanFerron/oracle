@@ -5,6 +5,71 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-04 — AlphaOracle Prime "bigger training corpus" (Next Up item 2): falsified on two independent axes -- no retrain, tooling kept
+
+Full design record: `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/about.md`.
+The roadmap's premise for this item was that the shipped value net (`reg_strong_value_net.pt`,
+1-hour/657K-record pilot corpus) was data-starved: it needed aggressive regularization
+(`dropout=0.4`, `weight_decay=1e-3`) just to survive past epoch 1, and its best val MSE
+(0.17051) had not visibly plateaued when training stopped. Before committing to the
+originally-planned 12-hour generation run, measured a data-size learning curve directly
+on the existing pilot corpus instead of assuming it.
+
+**Axis 1 -- raw volume.** Trained at 60K/120K/240K/360K/488K (full pilot) training
+records, fixed val set (see below), fixed regularization matching the shipped config:
+val MSE 0.175554 -> 0.173111 -> 0.171251 -> 0.170419 -> 0.170512. The curve flattens by
+~240-360K and the full 488K pilot training set is statistically indistinguishable from
+360K (even fractionally worse) -- **not** "still descending." Ruled out one confound
+before trusting this: relaxing regularization at the same full 488K record count made
+val MSE *worse*, not better (0.4/1e-3 -> 0.170512; 0.1/1e-4 -> 0.175361; 0/0 -> 0.177736),
+so the plateau is not an over-regularization artifact -- the shipped hyperparameters are
+already close to the right point for this data volume.
+
+**Axis 2 -- opponent diversity.** Extended `gen_corpus.c`'s curated pool with two new
+opponents, both meeting Jonathan's Borealis-rating>=35 floor for "a useful proxy for real
+play": `vs_a4` (`AI_STRATEGY_BALANCED`, rating 36) and `vs_a6` (`AI_STRATEGY_TACTICAL`,
+rating 52) -- still deliberately excluding `A5` (already `A10`'s own rollout policy).
+Generated 214,660 records in a 20-minute/12-worker run at the real `limit_iterations=4000`
+budget (`run_selfplay.sh widen 1200 12 0 vs_a4,vs_a6`, ~644K records/hour, matching the
+pilot's own throughput) and trained on pilot+widen combined (702,976 training records, a
+44% increase) against the *same* pinned validation set: val MSE 0.170579 -- statistically
+indistinguishable from the 488K-only result, not an improvement. Per-matchup breakdown is
+informative about *why*: `vs_a3` (weaker opponent) is far more predictable (val MSE
+0.150, 78.1% directional accuracy) than `mirror` (`A10` self-play, val MSE 0.186, 71.7%)
+-- the aggregate ceiling looks driven by genuine outcome variance in close self-play
+games, not a data gap.
+
+**Validation methodology, load-bearing for both measurements**: pinned validation to the
+pilot's original three highest-seeded holdout shards (`pilot_mirror_seed10`,
+`pilot_vs_a7_seed11`, `pilot_vs_a3_seed12`, 168,904 records) via a new `--val-seeds`
+flag on `train_value_net.py`, rather than letting `split_train_val()`'s default
+"highest seed per matchup" silently drift onto new, higher-seeded shards as the corpus
+grew -- without this, the two runs' val MSE would not have been comparable to each
+other or to the shipped net's own reported 0.17051.
+
+**Verdict (Jonathan's call, 2026-09-04): stop, do not retrain, no new agent.** Two
+independent widening axes -- volume and opponent diversity -- both landed on the same
+~0.1705-0.1706 val MSE floor with the same architecture/features/regularization. This is
+a genuine negative result on the "bigger corpus" hypothesis specifically (matching `A9`'s
+`reply_trust` and `A13`'s `hplus_trust` pattern: a mechanism that measured cleanly null
+rather than positive or ambiguous), not a case for spending the originally-planned
+3.5-12 hours generating more of the same distribution. The shipped `A11` weights
+(`assets/ismctsnn/prime_657k_weights.bin`, rating 74) are unchanged; no second NN agent
+was registered, so the "AlphaOracle Prime Plus I" name stays reserved for a future
+Stage 4 (PUCT + policy head) agent exactly as `about.md`'s naming decision already
+specified --
+this experiment changed the mechanism's *inputs*, never its outputs, so no naming
+conflict arose. **Tooling kept as reusable infrastructure**: `gen_corpus.c`'s `vs_a4`/
+`vs_a6` matchups, `run_selfplay.sh`'s `matchups_csv` parameter, and
+`train_value_net.py`'s `--label` (now comma-separated), `--val-seeds`, and
+`--max-train-records` flags all remain available for a future revisit -- e.g. if Stage 4
+(PUCT + policy head) changes what's worth training on, this data-size-curve methodology
+is the right first check to run again before any large generation commitment, not just
+for this agent. The 214,660-record `widen` corpus and the `curve_*`/`reg_check_*`
+checkpoints stay on disk (both gitignored) as the record backing this write-up. Closes
+this "Next Up" item; next per `doc/oracle_roadmap.md` is Stage 4 (PUCT + policy head,
+"AlphaOracle Prime Plus I").
+
 ## 2026-09-03 — `A11` IS-MCTS + NN ("AlphaOracle Prime"): registered and shipping -- new roster ceiling, rating 74
 
 Full design record: `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/about.md`.
@@ -169,7 +234,9 @@ weight-loading path.
 Closes `doc/oracle_roadmap.md`'s "Next Up" item 4. `A11` was the last rung on the
 original `A1`-`A11` ladder; `A12` Clairvoyant and the shelved `A13` Cartographer sit
 outside that ladder's enum ordinal sequence. Stage 4 (PUCT + policy head, "AlphaOracle
-Prime II" if it ever ships) is technically unlocked but undesigned and not scheduled.
+Prime Plus I" -- renamed from an earlier "Prime II" placeholder 2026-09-04, see that
+date's entry -- if it ever ships) is technically unlocked but undesigned and not
+scheduled.
 
 ---
 

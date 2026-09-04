@@ -215,10 +215,12 @@ picks from a menu. Concretely:
 - **Flavor name stays "AlphaOracle Prime"** for the whole UCT + value-net lineage
   (Stages 1-3), unchanged, indefinitely — this is what ships now.
 - **If/when Stage 4 (PUCT + policy head) ever ships as a genuinely different search
-  algorithm**, name it **"AlphaOracle Prime II"** — reusing this exact codebase's
-  own precedent (`A7` "Grandmaster" → `A9` "Grandmaster II" for one added ply of
-  lookahead) rather than inventing a new scheme. A player doesn't need "UCT" vs
-  "PUCT" spelled out; "II" already signals "meaningfully upgraded successor," which
+  algorithm**, name it **"AlphaOracle Prime Plus I"** (revised 2026-09-04, Jonathan's
+  call — a distinct "Plus" lineage rather than "Prime II", since this changes the
+  search mechanism itself, not just one added lookahead ply the way `A7`→`A9`
+  "Grandmaster"→"Grandmaster II" did; "Plus I" leaves room for a later "Plus II" if
+  a further PUCT-generation iteration ever ships). A player doesn't need "UCT" vs
+  "PUCT" spelled out; "Plus" already signals "meaningfully upgraded successor," which
   is the actual high-level nature that matters at the menu.
 - **Corpus size / training provenance is documentation metadata, not UI text** — it
   lives here (`about.md`), in `doc/changelog.md`, and in the weights filename itself
@@ -290,6 +292,34 @@ forever. Fixed by having `ismctsnn_load_weights()` promote `g_params[]` to
 changing `ismctsnn_reset_params()` to reset to this agent's own default rather than
 `A10`'s — each agent's "reset" now means "back to my own shipped default,"
 consistent with `ismcts_reset_params()`'s existing meaning for `A10`.
+
+**"Bigger training corpus" follow-up — attempted and falsified, 2026-09-04.** The
+roadmap's stated premise (heavy regularization needed + val MSE "not yet plateaued" =
+data-starved net) was tested directly rather than assumed, on two independent axes, both
+against the shipped net's own pinned validation shards:
+
+- **Volume**: a learning curve on the existing pilot corpus (60K/120K/240K/360K/488K
+  training records) flattens by ~240-360K — the full 488K pilot set is statistically
+  indistinguishable from 360K. Confirmed this isn't a regularization artifact: relaxing
+  `dropout`/`weight_decay` at the same 488K record count made val MSE *worse*
+  (0.170512 → 0.175361 → 0.177736 as regularization was removed), so the shipped
+  hyperparameters were already close to the right point.
+- **Opponent diversity**: extended `gen_corpus.c` with two new curated opponents,
+  `vs_a4` (Balanced Rules, rating 36) and `vs_a6` (Tactical, rating 52) — both clearing
+  Jonathan's Borealis-rating≥35 floor for "a useful proxy for real play" — generated
+  214,660 more records at the real `limit_iterations=4000` budget, and retrained on
+  pilot+widen combined (702,976 training records, +44%). Val MSE: 0.170579 — no
+  improvement over pilot-alone.
+
+**Verdict: stop, no retrain, no new agent** — see `doc/changelog.md`'s 2026-09-04 entry
+for the full record. The ceiling looks like genuine outcome variance in close self-play
+(`mirror` games measure far less predictable than `vs_a3`), not a data gap. The tooling
+additions (`gen_corpus.c`'s `vs_a4`/`vs_a6`, `run_selfplay.sh`'s matchup-list parameter,
+`train_value_net.py`'s multi-label/`--val-seeds`/`--max-train-records` flags) stay as
+reusable infrastructure — this data-size-curve check is worth re-running before any
+future large generation commitment, not just for this agent. The shipped weights
+(`assets/ismctsnn/prime_657k_weights.bin`, rating 74) are unchanged, and "AlphaOracle
+Prime Plus I" stays reserved for Stage 4 below, exactly per the naming decision above.
 
 **Item 4 — Stage 4 (PUCT + policy head) — gated, not urgent.** Now technically
 unlocked (Stage 3 cleared both ship gates), but entirely undesigned: needs the

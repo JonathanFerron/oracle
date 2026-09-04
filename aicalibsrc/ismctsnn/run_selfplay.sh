@@ -26,17 +26,22 @@
 # across the three matchups producing a reasonable balance of each).
 #
 # Usage:
-#   ./run_selfplay.sh <label> <duration_seconds> [workers] [limit_iterations]
+#   ./run_selfplay.sh <label> <duration_seconds> [workers] [limit_iterations] [matchups_csv]
 #
 # Examples:
-#   ./run_selfplay.sh pilot 3600             # 1-hour pilot, auto worker count (~75% CPU)
-#   ./run_selfplay.sh full 43200             # 12-hour full run, once the pilot looks good
-#   ./run_selfplay.sh smoketest 60 4 200     # fast wiring check: 60s, 4 workers, tiny budget
+#   ./run_selfplay.sh pilot 3600                       # 1-hour pilot, auto worker count (~75% CPU)
+#   ./run_selfplay.sh full 43200                       # 12-hour full run, once the pilot looks good
+#   ./run_selfplay.sh smoketest 60 4 200               # fast wiring check: 60s, 4 workers, tiny budget
+#   ./run_selfplay.sh widen 1800 12 0 vs_a4,vs_a6      # recipe-diversity check: two new opponents only
 #
-# `workers` defaults to 75% of nproc, split round-robin across the curated
-# opponent pool (mirror / vs_a7 / vs_a3). `limit_iterations` defaults to 0,
-# which tells gen_corpus to use A10's own shipped default (4000) -- only
-# override it for a quick wiring smoke test, never for a real corpus.
+# `workers` defaults to 75% of nproc, split round-robin across the opponent
+# pool given by `matchups_csv` (default: mirror,vs_a7,vs_a3, the original
+# curated pool). `limit_iterations` defaults to 0, which tells gen_corpus to
+# use A10's own shipped default (4000) -- only override it for a quick wiring
+# smoke test, never for a real corpus. Every matchup gen_corpus.c supports
+# (mirror/vs_a7/vs_a3/vs_a4/vs_a6) is a Borealis-rating->=35 opponent -- see
+# gen_corpus.c's header for why that floor matters (a weaker agent isn't a
+# useful proxy for real play).
 
 set -euo pipefail
 
@@ -50,13 +55,14 @@ RECORD_BYTES=2152 # (ISMCTSNN_STATE_DIM + 1) * sizeof(float) = 538 * 4 -- see
                    # ai_strat_ismctsnn_state.h / gen_corpus.c's record format note
 MONITOR_INTERVAL_S=600 # 10 minutes
 
-LABEL="${1:?Usage: $0 <label> <duration_seconds> [workers] [limit_iterations]}"
-DURATION="${2:?Usage: $0 <label> <duration_seconds> [workers] [limit_iterations]}"
+LABEL="${1:?Usage: $0 <label> <duration_seconds> [workers] [limit_iterations] [matchups_csv]}"
+DURATION="${2:?Usage: $0 <label> <duration_seconds> [workers] [limit_iterations] [matchups_csv]}"
 WORKERS="${3:-$(( $(nproc) * 3 / 4 ))}"
 LIMIT_ITERATIONS="${4:-0}"
 NUMGAMES_CAP=10000000 # effectively unbounded; `timeout` is the real limit
 
-MATCHUPS=(mirror vs_a7 vs_a3)
+IFS=',' read -r -a MATCHUPS <<< "${5:-mirror,vs_a7,vs_a3}"
+NUM_MATCHUPS=${#MATCHUPS[@]}
 
 if [ ! -x "$GEN_CORPUS" ]; then
   echo "bin/gen_corpus not built -- run 'make gen_corpus' from the repo root first" >&2
@@ -126,7 +132,7 @@ echo "Started: $(date -Iseconds)"
 
 pids=()
 for ((i = 0; i < WORKERS; i++)); do
-  matchup="${MATCHUPS[$((i % 3))]}"
+  matchup="${MATCHUPS[$((i % NUM_MATCHUPS))]}"
   seed=$(next_seed)
   outfile="$CORPUS_DIR/${LABEL}_${matchup}_seed${seed}.bin"
   logfile="$LOG_DIR/${LABEL}_${matchup}_seed${seed}.log"

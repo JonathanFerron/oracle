@@ -7,6 +7,17 @@ record and `doc/changelog.md` for the dated write-up of the measurement that shi
 this agent: **both ship gates PASS** at `nn_value_trust=1.0` -- 58.44% head-to-head vs
 `A10` (Gate 2, the real bar), ~74 estimated Borealis rating (Gate 1, context).
 
+**2026-09-04 -- "bigger training corpus" follow-up: tried, falsified.** Two independent
+widening axes (raw record volume via `--max-train-records`; opponent diversity via two
+new curated opponents, `vs_a4`/`vs_a6`) both landed on the same ~0.1705-0.1706 val MSE
+floor as the shipped 657K-record net -- see `doc/changelog.md`'s 2026-09-04 entry and
+`ideas/A11 .../about.md` for the full record. No retrain shipped. The tooling added for
+this check (`train_value_net.py`'s comma-separated `--label`, `--val-seeds`,
+`--max-train-records`; `gen_corpus.c`'s `vs_a4`/`vs_a6` matchups; `run_selfplay.sh`'s
+matchup-list parameter) stays below as reusable infrastructure for any future revisit --
+this data-size-curve methodology is worth re-running before committing to a large
+generation run, not just for this agent.
+
 One subfolder per agent under `aicalibsrc/`, mirroring `aicalibsrc/hbt/` etc. -- keep
 each agent's harness and driver self-contained rather than accumulating loose files
 at the top level. This folder's shape is different from every prior agent's, though:
@@ -39,23 +50,27 @@ assume, whenever two agents share one struct/function.
 
 ## Files
 
-- `gen_corpus.c` -- Stage 1 self-play corpus generator. Plays real `A10` games
-  (mirror self-play, vs `A7`, vs `A3` -- see about.md for why this curated pool, not
-  pure mirror self-play) and logs `(info-set state, outcome)` pairs from `A10`'s own
-  decision points only. Not a params sweep/optimize harness, so it doesn't follow the
-  `calibrate_*.py` driver pattern the other `CALIB_*` targets do -- run it directly.
-  Build with `make gen_corpus` -> `bin/gen_corpus`.
+- `gen_corpus.c` -- Stage 1 self-play corpus generator. Plays real `A10` games across a
+  curated opponent pool -- mirror self-play, vs `A7`, vs `A3` (the original three, see
+  about.md for why this pool, not pure mirror self-play), plus `vs_a4`/`vs_a6` (added
+  2026-09-04 for a recipe-diversity check, both meeting a Borealis-rating>=35 floor for
+  "a useful proxy for real play") -- and logs `(info-set state, outcome)` pairs from
+  `A10`'s own decision points only. Not a params sweep/optimize harness, so it doesn't
+  follow the `calibrate_*.py` driver pattern the other `CALIB_*` targets do -- run it
+  directly. Build with `make gen_corpus` -> `bin/gen_corpus`.
   ```
-  gen_corpus <mirror|vs_a7|vs_a3> <numgames> <seed> <output_path> [limit_iterations]
+  gen_corpus <mirror|vs_a7|vs_a3|vs_a4|vs_a6> <numgames> <seed> <output_path> [limit_iterations]
   ```
   Output: a headerless flat-float32 shard, 538 floats/record (537-float state +
   1-float outcome, see `ai_strat_ismctsnn_state.h`).
 - `run_selfplay.sh` -- fans `gen_corpus` out across several background workers
   (process-level parallelism), bounded by wall-clock rather than a fixed game count,
   so the same script serves both a quick pilot and a much longer full run. Maintains
-  `corpus/seed_ledger.tsv` so concurrent/future runs never reuse an RNG seed.
+  `corpus/seed_ledger.tsv` so concurrent/future runs never reuse an RNG seed. The
+  optional 5th argument (added 2026-09-04) selects the opponent pool as a
+  comma-separated list, defaulting to the original `mirror,vs_a7,vs_a3`.
   ```
-  ./run_selfplay.sh <label> <duration_seconds> [workers] [limit_iterations]
+  ./run_selfplay.sh <label> <duration_seconds> [workers] [limit_iterations] [matchups_csv]
   ```
 - `train_value_net.py` -- PyTorch (CPU) training script. Small MLP
   (537->256->128->64->1, BatchNorm+dropout) on the corpus shards. **Use
@@ -66,7 +81,13 @@ assume, whenever two agents share one struct/function.
   the epoch of the best checkpoint, not just its value** -- "best at epoch 1, all
   downhill after" is a red flag even when that epoch's number looks fine. Writes a
   `.pt` checkpoint + a `.json` sidecar (architecture, hyperparameters, val MSE,
-  corpus label) to `checkpoints/` (gitignored).
+  corpus label) to `checkpoints/` (gitignored). `--label` accepts a comma-separated
+  list (pool multiple corpus generations together); `--val-seeds` pins validation to
+  specific per-matchup seeds regardless of what else is in the corpus dir (needed to
+  keep a val MSE comparable across corpus sizes -- the default "highest seed per
+  matchup" silently drifts as new, higher-seeded shards are added); `--max-train-records`
+  randomly subsamples the training set only, for building a data-size learning curve on
+  a single corpus (all three added 2026-09-04, see the note above).
 - `export_weights.py` -- exports a trained `.pt` checkpoint to the flat headerless
   float32 format `ai_strat_ismctsnn_net.h` expects, fusing the trained BatchNorm1d
   into `Linear1`'s weights (an exact transform in eval mode) and verifying the fused
@@ -143,8 +164,8 @@ cd aicalibsrc/ismctsnn
 # Stage 1 -- generate a corpus (see run_selfplay.sh's header for the full-run sizing)
 ./run_selfplay.sh pilot 3600 12
 
-# Stage 1 -- train
-.venv/bin/python train_value_net.py corpus/*.bin --run-name my_run
+# Stage 1 -- train (corpus_dir is a directory, not a glob -- --label selects shards)
+.venv/bin/python train_value_net.py corpus --label pilot --run-name my_run
 
 # Stage 2 -- export to the C inference format
 .venv/bin/python export_weights.py checkpoints/my_run_value_net.pt \

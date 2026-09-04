@@ -30,7 +30,21 @@ local_training_plan.md's own finding that training a net this size is
 
 Usage:
     .venv/bin/python train_value_net.py corpus --label pilot
-    .venv/bin/python train_value_net.py corpus --label full --max-seconds 43200
+    .venv/bin/python train_value_net.py corpus --label pilot,full --max-seconds 43200
+
+--label accepts a comma-separated list (added for the "bigger training corpus"
+retrain, see doc/oracle_roadmap.md) so a combined run can train on the original
+pilot shards plus new full-run shards without renaming anything on disk.
+
+--val-seeds pins validation to specific seeds per matchup regardless of what
+labels/shards exist, e.g. --val-seeds mirror=10,vs_a7=11,vs_a3=12 -- this is how
+a bigger corpus stays comparable to the pilot's own reported val MSE (0.17051):
+without it, split_train_val()'s default "highest seed per matchup" would silently
+move validation onto the new, highest-seeded shards instead of the pilot's
+original held-out ones.
+
+--max-train-records subsamples the TRAINING set only (fixed --seed), after the
+val split -- used to build a data-size learning curve on a single corpus.
 """
 
 import argparse
@@ -46,18 +60,23 @@ import torch.nn as nn
 
 STATE_DIM = 537
 RECORD_DIM = STATE_DIM + 1  # + outcome
-MATCHUPS = ("mirror", "vs_a7", "vs_a3")
+# vs_a4/vs_a6 added for the "bigger training corpus" recipe-diversity check
+# (gen_corpus.c/run_selfplay.sh); every matchup here is an opponent with a
+# measured Borealis rating >= 35 (A4=36, A6=52), the floor Jonathan set for
+# a matchup to be a useful proxy for real play.
+MATCHUPS = ("mirror", "vs_a7", "vs_a3", "vs_a4", "vs_a6")
 HIDDEN = (256, 128, 64)
-SHARD_RE = re.compile(r"^(?P<label>.+)_(?P<matchup>mirror|vs_a7|vs_a3)_seed(?P<seed>\d+)\.bin$")
+SHARD_RE = re.compile(
+    r"^(?P<label>.+)_(?P<matchup>mirror|vs_a7|vs_a3|vs_a4|vs_a6)_seed(?P<seed>\d+)\.bin$")
 
 
-def discover_shards(corpus_dir, label):
+def discover_shards(corpus_dir, labels):
     """Groups every '<label>_<matchup>_seed<N>.bin' file in corpus_dir by
-    matchup, sorted by seed ascending."""
+    matchup, sorted by seed ascending, for any label in `labels` (a set)."""
     groups = {m: [] for m in MATCHUPS}
-    for p in sorted(Path(corpus_dir).glob(f"{label}_*_seed*.bin")):
+    for p in sorted(Path(corpus_dir).glob("*_*_seed*.bin")):
         m = SHARD_RE.match(p.name)
-        if not m or m.group("label") != label:
+        if not m or m.group("label") not in labels:
             continue
         groups[m.group("matchup")].append((int(m.group("seed")), p))
     for matchup in groups:
@@ -76,6 +95,46 @@ def split_train_val(groups, holdout_per_matchup):
         train_shards = shards[:len(shards) - n_holdout]
         train[matchup] = [p for _, p in train_shards]
         val[matchup] = [p for _, p in val_shards]
+    return train, val
+
+
+def parse_val_seeds(spec):
+    """Parses --val-seeds "mirror=10,vs_a7=11,vs_a3=12" into {matchup: seed}."""
+    if not spec:
+        return None
+    out = {}
+    for part in spec.split(","):
+        matchup, seed = part.split("=")
+        matchup = matchup.strip()
+        if matchup not in MATCHUPS:
+            raise SystemExit(f"--val-seeds: unknown matchup '{matchup}' (want one of {MATCHUPS})")
+        out[matchup] = int(seed)
+    return out
+
+
+def split_train_val_explicit(groups, val_seeds):
+    """Per matchup, the shard whose seed == val_seeds[matchup] becomes
+    validation, every other shard for that matchup trains. A matchup with NO
+    entry in val_seeds sends all of its shards to training with no held-out
+    val (e.g. a widen-recipe matchup you deliberately don't want validated
+    against) -- but a matchup that DOES have a val_seeds entry must actually
+    contain that seed, since a silent miss there would make results
+    incomparable to a prior run's reported val MSE."""
+    train, val = {}, {}
+    for matchup, shards in groups.items():
+        if not shards:
+            train[matchup], val[matchup] = [], []
+            continue
+        if matchup not in val_seeds:
+            train[matchup] = [p for _, p in shards]
+            val[matchup] = []
+            continue
+        want = val_seeds[matchup]
+        val_shards = [p for seed, p in shards if seed == want]
+        if not val_shards:
+            raise SystemExit(f"--val-seeds: no {matchup} shard with seed={want} in this corpus")
+        train[matchup] = [p for seed, p in shards if seed != want]
+        val[matchup] = val_shards
     return train, val
 
 
@@ -151,7 +210,16 @@ def parse_args():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("corpus_dir", help="directory holding <label>_<matchup>_seed<N>.bin shards")
-    ap.add_argument("--label", default="pilot")
+    ap.add_argument("--label", default="pilot",
+                    help="comma-separated list of labels to pool together, e.g. pilot,full")
+    ap.add_argument("--val-seeds", default=None,
+                    help="pin validation to specific seeds per matchup, e.g. "
+                         "mirror=10,vs_a7=11,vs_a3=12 -- overrides "
+                         "--holdout-shards-per-matchup's default highest-seed behaviour")
+    ap.add_argument("--max-train-records", type=int, default=None,
+                    help="randomly subsample the training set (not validation) to this "
+                         "many records, fixed by --seed -- for building a data-size "
+                         "learning curve on a single corpus")
     ap.add_argument("--max-seconds", type=float, default=3600)
     ap.add_argument("--max-epochs", type=int, default=500)
     ap.add_argument("--batch-size", type=int, default=4096)
@@ -178,13 +246,18 @@ def main():
     torch.set_num_threads(args.threads)
     torch.manual_seed(args.seed)
 
-    groups = discover_shards(args.corpus_dir, args.label)
-    print(f"Shards found for label='{args.label}':")
+    labels = {s.strip() for s in args.label.split(",") if s.strip()}
+    groups = discover_shards(args.corpus_dir, labels)
+    print(f"Shards found for label(s)={sorted(labels)}:")
     for m in MATCHUPS:
         print(f"  {m:8s}: {len(groups[m])} shard(s) -- "
               f"{[p.name for _, p in groups[m]]}")
 
-    train_files, val_files = split_train_val(groups, args.holdout_shards_per_matchup)
+    val_seeds = parse_val_seeds(args.val_seeds)
+    if val_seeds is not None:
+        train_files, val_files = split_train_val_explicit(groups, val_seeds)
+    else:
+        train_files, val_files = split_train_val(groups, args.holdout_shards_per_matchup)
     print("Validation holdout:")
     for m in MATCHUPS:
         print(f"  {m:8s}: {[p.name for p in val_files[m]]}")
@@ -203,6 +276,12 @@ def main():
     print(f"train records: {len(ytr)}   val records: {len(yval)}")
     if len(ytr) == 0:
         raise SystemExit("No training records found -- check --corpus-dir/--label")
+
+    if args.max_train_records is not None and args.max_train_records < len(ytr):
+        rng = np.random.default_rng(args.seed)
+        idx = rng.choice(len(ytr), size=args.max_train_records, replace=False)
+        Xtr, ytr = Xtr[idx], ytr[idx]
+        print(f"Subsampled training set to {len(ytr)} records (--max-train-records, seed={args.seed})")
 
     Xtr_t, ytr_t = torch.from_numpy(Xtr), torch.from_numpy(ytr)
     Xval_t, yval_t = torch.from_numpy(Xval), torch.from_numpy(yval)
@@ -302,6 +381,8 @@ def main():
         "patience": args.patience,
         "seed": args.seed,
         "corpus_label": args.label,
+        "val_seeds": val_seeds,
+        "max_train_records": args.max_train_records,
         "run_name": run_name,
     }
     meta_path.write_text(json.dumps(meta, indent=2))

@@ -83,8 +83,13 @@ See `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/about.md`'s "Next sessi
   Stage 3's pass but undesigned; not scheduled.
 - [x] **Naming decided**: flavor name stays "AlphaOracle Prime" for this whole
   UCT+value-net lineage; a hypothetical future Stage 4 (PUCT+policy) agent would be
-  "AlphaOracle Prime II" (reusing the `A7`→`A9` "Grandmaster"→"Grandmaster II"
-  precedent), not a corpus-size or algorithm-technical suffix on the display name.
+  "AlphaOracle Prime Plus I" (revised 2026-09-04 from an earlier "Prime II"
+  placeholder — see `doc/changelog.md`'s 2026-09-04 entry — its own "Plus" lineage
+  since Stage 4 changes the search mechanism itself, not one added lookahead ply the
+  way `A7`→`A9` "Grandmaster"→"Grandmaster II" did), not a corpus-size or
+  algorithm-technical suffix on the display name.
+- [x] **"Bigger training corpus" follow-up attempted and falsified, 2026-09-04** — see
+  `doc/changelog.md`'s entry that date. No retrain shipped; shipped `A11` unchanged.
   
   
 
