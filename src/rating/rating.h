@@ -1,12 +1,13 @@
 // rating.h
-// Bradley-Terry rating system -- see doc/oracle_todo.md's "Rating System"
-// item and ideas/5 rating system/v2 Bradley-Terry (BT) Rating System/ for
-// the design this ports. Ports the math and design only, not the
-// prototype file -- see doc/changelog.md's dated entry for the list of
-// defects fixed on port (uint8_t win-count overflow, leaderboard
-// underflow, batch convergence-vs-normalisation ordering, draw handling,
-// incremental update ordering/path-dependence, hardcoded learning rate,
-// the file-scope-global and unprefixed-batch_* convention conflicts).
+// Bradley-Terry rating system -- see doc/bt_rating_system/rating_system.md
+// for the underlying theory/design rationale (consolidated 2026-09-04 from
+// the original ideas/5 rating system/v0/v1/v2 pre-implementation drafts,
+// since deleted). Ports the math and design only, not the prototype file --
+// see doc/changelog.md's dated entry for the list of defects fixed on port
+// (uint8_t win-count overflow, leaderboard underflow, batch
+// convergence-vs-normalisation ordering, draw handling, incremental update
+// ordering/path-dependence, hardcoded learning rate, the file-scope-global
+// and unprefixed-batch_* convention conflicts).
 //
 // Every entrant (AI agent or human) gets a rating on a 1-99 scale that
 // *is* their percent win probability against Borealis (AI_STRATEGY_BOREALIS,

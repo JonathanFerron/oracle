@@ -6,7 +6,7 @@ ways worth knowing before reading further: (1) the struct list in
 `HBTHybridParams`, `SimpleMCParams`, `ProgressiveMCParams`, `ISMCTSParams`) has
 no entry for Value Based, Combo Threshold, or Borealis, and includes a
 `ProgressiveMCParams` that isn't in the current roster at all -- see
-`ideas/G1 AI agent general info/oracle_ai_agent_names.md` for the canonical
+`doc/ai_agents.md` for the canonical
 list. (2) A1 Value Based's actual calibration (`doc/changelog.md`, 2026-08-21)
 did **not** use this design's unified `AIParams` union, `.ini` config loader,
 or C-side genetic-algorithm calibration framework. It used something much

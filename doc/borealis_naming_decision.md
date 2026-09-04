@@ -90,6 +90,13 @@ it predates the 2026-07-27 rename and was never meant to be edited in place, onl
 mined for design intent (see `CLAUDE.md`'s `ideas/` guidance). `rating_strength_analysis.html`
 was checked and has zero "Keeper" occurrences, so it never needed listing here.
 
+**Update 2026-09-04**: that folder was consolidated and moved (theory content
+merged into `doc/bt_rating_system/rating_system.md`, updated to the shipped
+1-99/Borealis terminology; the pre-implementation C prototypes deleted as
+superseded by `src/rating/`; `rating_strength_analysis.html` retained, moved to
+`doc/bt_rating_system/`). The paths listed below are historical -- they no
+longer exist.
+
 ### Rating system implementation (archived, not edited — see above)
 (Path corrected 2026-08-23 -- `ideas/14 rating system/` was renamed/renumbered to
 `ideas/5 rating system/` before this checklist was ever acted on.)

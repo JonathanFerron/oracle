@@ -17,7 +17,7 @@
 #define HBT_LETHAL_BONUS 100000.0f
 
 // Hand-power ratio triggers for the aggression formula (A6's own numbers,
-// tactical_design_notes.md) -- fixed secondary thresholds, not tunable, same
+// doc/ai_agents.md's A6 section) -- fixed secondary thresholds, not tunable, same
 // status as A6's TAC_HAND_POWER_STRONG_RATIO/TAC_HAND_POWER_WEAK_RATIO.
 #define HBT_HAND_POWER_STRONG_RATIO 1.5f
 #define HBT_HAND_POWER_WEAK_RATIO 0.7f

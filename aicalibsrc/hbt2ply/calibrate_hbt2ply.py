@@ -192,7 +192,7 @@ SWEEP_DEFAULTS = {
     "surrogate_pessimism": [0.0, 0.25, 0.5, 0.75, 1.0],
     # A7's own phase thresholds (18/41/67) are natural sweep points for
     # "how much of the game gets the ply": 99 = about.md's "every candidate
-    # move" reading, 18 reproduces hbt_design_notes.md's PHASE_CRITICAL gate.
+    # move" reading, 18 reproduces doc/ai_agents.md's A7 section's PHASE_CRITICAL gate.
     "ply_energy_ceiling": [0, 18, 41, 67, 99],
     "ply_beam_width": [0, 5, 10, 20, 50, 100],
 }

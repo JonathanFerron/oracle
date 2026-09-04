@@ -119,7 +119,7 @@ implemented struct (`src/ai_strat/ai_strat_balanced_rules.h`) also drops
 `threshold_mulligan_power`/`enabled`/`description` (no agent in this codebase
 carries those fields -- see this folder's own top-of-file status note) and
 adds `combo_weight` (shipped blind, `0.0`). Shipped, calibrated values:
-`ideas/A4 ai agent balanced rules (bean counter)/about.md`.
+`doc/ai_agents.md's A4 section`.
 
 ### Heuristic Strategy
 ```c

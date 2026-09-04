@@ -1,8 +1,8 @@
 // ai_strat_hbt2ply.h
 // A9 HBT 2-Ply strategy ("The Grandmaster II") -- see
-// ideas/A9 ai agent hbt 2 ply (grandmaster ii)/about.md and A7 Hybrid HBT
+// doc/ai_agents.md's A9 section and A7 Hybrid HBT
 // (ai_strat_hbt.h), the agent this one extends by exactly one opponent-
-// response ply. Per about.md, this agent adds no new evaluation mechanism:
+// response ply. Per doc/ai_agents.md's A9 section, this agent adds no new evaluation mechanism:
 // "the only new thing this agent adds over A7 is the second ply."
 //
 // ==== The gap this closes ====
@@ -57,7 +57,7 @@
 // (ai_strat_hbt2ply_reply.h/.c) -- no sampling, no RNG, so this agent stays
 // fully deterministic like A7 (unlike A8/A12's determinize-and-rollout
 // approach, which this agent deliberately does not take a dependency on:
-// about.md rules out sampling/rollouts as out of scope, and the closed-form
+// doc/ai_agents.md's A9 section rules out sampling/rollouts as out of scope, and the closed-form
 // surrogate keeps this agent's cost close to A7's rather than A8's ~100x).
 //
 // ==== Scoring: a blend, not a replacement ====
@@ -85,8 +85,8 @@
 //
 // ==== The two gate/beam dials are pure compute-budget knobs ====
 // ply_energy_ceiling gates the ply to positions where the opponent's energy
-// is at or below the ceiling (99 = always, resolving the about.md/
-// hbt_design_notes.md conflict on gating as a calibratable default rather
+// is at or below the ceiling (99 = always, resolving the doc/ai_agents.md's A9 section's
+// doc/ai_agents.md's A7 section conflict on gating as a calibratable default rather
 // than an a-priori choice -- see doc/changelog.md for which value shipped).
 // ply_beam_width, if nonzero, restricts the ply to the top-K candidates by
 // one_ply score, skipping it for the rest (which then score as
@@ -108,7 +108,7 @@
 
 typedef struct
 { HBTParams base; // A7's 34 fields, frozen at hbt_get_default_params() --
-  // this agent re-derives none of them, see about.md.
+  // this agent re-derives none of them, see doc/ai_agents.md's A9 section.
 
   // -- New to this agent (4 fields) --
   float   reply_trust;         // [0,1]; 0 recovers A7 exactly

@@ -1,6 +1,6 @@
 // ai_strat_ismcts_search.h
 // A10 IS-MCTS's SO-ISMCTS iteration loop -- see ai_strat_ismcts_tree.h for
-// the node arena and ideas/A10 ai agent is-mcts (the omniscient)/about.md
+// the node arena and doc/ai_agents.md's A10 section
 // for the architecture note.
 //
 // Why SO-ISMCTS (Cowling, Powley & Whitehouse) rather than MO-ISMCTS: Oracle

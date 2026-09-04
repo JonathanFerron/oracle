@@ -30,7 +30,7 @@ GameContext mc_fork_context(const GameContext* ctx, uint32_t seed);
 // unseen pool always splits exactly into opponent's hand + observer's own
 // remaining deck + opponent's remaining deck, with the 40 cards
 // setup_game() never dealt to begin with left untouched. Deliberately not
-// reshuffle-aware (see ideas/A10 ai agent is-mcts (the omniscient)/about.md's
+// reshuffle-aware (see doc/ai_agents.md's A10 section's
 // narrowing note) -- that refinement belongs to A10, not this agent.
 void mc_determinize(struct gamestate* sim, PlayerID observer, GameContext* sim_ctx);
 

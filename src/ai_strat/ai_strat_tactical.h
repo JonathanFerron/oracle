@@ -1,7 +1,7 @@
 // ai_strat_tactical.h
 // A6 Tactical strategy ("Pressure Cooker") -- see
-// ideas/A6 ai agent tactical (pressure cooker)/about.md and
-// tactical_design_notes.md (this agent's only written spec, a full but
+// doc/ai_agents.md's A6 section and
+// doc/ai_agents.md's A6 section (this agent's only written spec, a full but
 // partially-unfinished code sketch -- some formulas below are direct ports
 // of its own numbers, others fill gaps it left open; both are called out
 // below).

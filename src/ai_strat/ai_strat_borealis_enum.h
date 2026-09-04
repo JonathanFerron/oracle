@@ -2,7 +2,7 @@
 // A3 Borealis's candidate enumeration and scoring, split out of
 // ai_strat_borealis.c/.h per the handout's Sec.10 file-length guidance --
 // see ai_strat_borealis_enum.c's header comment and
-// ideas/A3 ai agent greedy power (borealis)/greedy_power_borealis_handout.md
+// doc/ai_agents.md's A3 section
 // Sec.4-6. Internal to the Borealis agent: nothing outside
 // ai_strat_borealis.c should include this.
 

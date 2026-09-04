@@ -2,7 +2,7 @@
 
 Corpus generation, training, and calibration for `src/ai_strat/ai_strat_ismctsnn.c`
 (value-net leaf evaluation blended into `A10`'s IS-MCTS tree). See
-`ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/about.md` for the full design
+`doc/ai_agents.md's A11 section` for the full design
 record and `doc/changelog.md` for the dated write-up of the measurement that shipped
 this agent: **both ship gates PASS** at `nn_value_trust=1.0` -- 58.44% head-to-head vs
 `A10` (Gate 2, the real bar), ~74 estimated Borealis rating (Gate 1, context).

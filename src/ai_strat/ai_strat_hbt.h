@@ -1,11 +1,10 @@
 // ai_strat_hbt.h
-// A7 Hybrid HBT strategy ("The Grandmaster") -- see
-// ideas/A7 ai agent hybrid hbt (the grandmaster)/about.md and
-// hbt_design_notes.md/strat_hbt_sketch.h (this agent's design sketches). A
+// A7 Hybrid HBT strategy ("The Grandmaster") -- see doc/ai_agents.md's A7
+// section for the full design record and rationale. A
 // fixed three-layer synthesis of three already-implemented agents, in this
 // order and no other: A4 Balanced Rules **weights** the advantage function
 // via a soft resource-shortfall penalty (see below for why this is a
-// penalty, not about.md's/hbt_design_notes.md's literal "filter"), A6
+// penalty, not doc/ai_agents.md's A7 section's literal "filter"), A6
 // Tactical **weights** the same advantage function dynamically by game
 // phase/aggression, and A5 Heuristic **ranks** every enumerated move by the
 // resulting weighted advantage. Named "The Grandmaster" as synthesis of the
@@ -19,11 +18,10 @@
 // and perturb every downstream game, the same constraint A5's own header
 // documents. Fully deterministic: no A3-style epsilon tie-break.
 //
-// ==== Deliberate deviation from about.md/hbt_design_notes.md: A4 enters as
+// ==== Deliberate deviation from the original design sketch: A4 enters as
 // a SOFT PENALTY, not a hard filter ====
-// about.md's own words are "A4 Balanced Rules filters viable moves by
-// resource constraints", and hbt_design_notes.md sketches exactly that: drop
-// any move whose cost exceeds a resource-derived budget before ranking. That
+// The original design intent was "A4 Balanced Rules filters viable moves by
+// resource constraints" -- drop any move whose cost exceeds a resource-derived budget before ranking. That
 // is A4's own mechanism, and A4's own calibration comment
 // (ai_strat_balanced_rules.c's BALANCED_DEFAULTS) documents why it is
 // risky: a traced game under A4's original spec-derived slope showed 4 of 5
@@ -46,7 +44,7 @@
 // -- i.e. HIGHER aggression means a LARGER cash reserve target, spending
 // LESS while aggressive. That contradicts A4's own late_game_aggro, which
 // DIVIDES targets down (spends MORE) as a kill becomes reachable, and
-// contradicts hbt_design_notes.md's own prose two paragraphs later ("delta
+// contradicts doc/ai_agents.md's A7 section's own prose two paragraphs later ("delta
 // decreases as opponent energy drops -- spend cash to finish them"). This
 // agent ships the opposite sign: higher aggression scales targets DOWN
 // (target_aggr_cash_scale/target_aggr_cards_scale enter as `(1 - scale *
@@ -67,7 +65,7 @@
 //   delta_eff = delta * (1 - aggr_resource_fade * 2*(a - 0.5))
 //   if opp_phase == PHASE_CRITICAL: eps_eff *= critical_epsilon_mult
 //
-// matching hbt_design_notes.md's own "epsilon increases in critical phases;
+// matching doc/ai_agents.md's A7 section's own "epsilon increases in critical phases;
 // gamma/delta decrease as opponent energy drops" -- except driven by the
 // aggression scalar (a richer, multi-factor signal) rather than opp_energy
 // alone, and by a dedicated critical-phase multiplier for the phase

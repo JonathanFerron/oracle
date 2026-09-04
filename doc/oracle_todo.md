@@ -69,14 +69,14 @@ if(genRand(&MTwister_rand_struct) > DEFENSE_PROBABILITY) return;
 ## AI Strategies (`src/ai_strat/`)
 
 See `doc/oracle_roadmap.md`'s "Phase: AI Development" for the full agent ladder and
-`ideas/A1`–`ideas/A11` for per-agent design notes ; see `ideas/G1 AI agent general info/oracle_ai_agent_names.md`for the canonical roster). 
+`doc/ai_agents.md` for per-agent design notes and the canonical roster/ratings table.
 
 - [ ] In `stda.cli` mode, when AI-vs-AI play is selected, use "AI strategy name + (A or
   B)" as the player name instead of asking for player 1's name and not player 2's 
 
 ### `A11` IS-MCTS + NN (`ai_strat_ismctsnn.c`, "AlphaOracle Prime") — done and registered, 2026-09-03, rating 74 (new roster ceiling)
 
-See `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/about.md`'s "Next session's work" section for the full detail behind every item below — this checklist is the short/actionable form of that.
+See `doc/ai_agents.md`'s A11 section for the full detail behind every item below — this checklist is the short/actionable form of that.
 
 - [ ] **Item 4 (gated, not urgent)**: Stage 4 policy head + PUCT — action-encoding
   problem, policy-head architecture/training data, PUCT selection. Unlocked by
@@ -239,7 +239,7 @@ stda_auto.c, `cli_game.c` (shared by CLI and TUI), and the interactive menu
    interactive menu's "not yet implemented" label to "available" and drops the
    Random fallback automatically, and `set_player_strategy_by_type()` (used by
    `stda_auto.c` and `cli_game.c`) picks it up with no further edits.
-5. [ ] Add exactly one shorthand to `player_config.c`'s `AI_STRATEGY_SHORTHANDS[]` if not already present (confirm, don't assume -- see `oracle_ai_agent_names.md`)
+5. [ ] Add exactly one shorthand to `player_config.c`'s `AI_STRATEGY_SHORTHANDS[]` if not already present (confirm, don't assume -- see `doc/ai_agents.md`'s roster table)
 6. [ ] Test against Random AI (10,000 games via `--stda.auto -Aa <name> -Ab rand`, and the reverse seat order -- see `A1`'s changelog entry for why both seats matter)
 7. [ ] Measure win rate; compare against other implemented strategies. Don't assume a design doc's speculative win-rate estimate is correct; investigate discrepancies before trusting either the doc or the code
 8. [ ] Once a `--stda.rating` fit exists for the new agent, update its entry in

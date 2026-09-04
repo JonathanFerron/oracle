@@ -1,7 +1,7 @@
 // ai_strat_ismctsnn_net.h
 // A11 IS-MCTS+NN ("AlphaOracle Prime") Stage 2 -- hand-written plain-C
 // forward pass for the trained value net. See "Confirmed plan" step 2 in
-// ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/about.md: training
+// doc/ai_agents.md's A11 section: training
 // stays Python/PyTorch offline; this is the C side that loads the exported
 // weights and evaluates a position during real (or calibration) play.
 //

@@ -1,6 +1,6 @@
 // ai_strat_ismcts_tree.h
 // A10 IS-MCTS ("The Omniscient") -- node arena and UCT primitives. See
-// ideas/A10 ai agent is-mcts (the omniscient)/about.md for why nodes store
+// doc/ai_agents.md's A10 section for why nodes store
 // no gamestate (re-determinized and replayed from the root every iteration,
 // superseding the original design-stub's "store gamestate in child node").
 // A pre-allocated flat array with uint32_t parent/first_child/next_sibling

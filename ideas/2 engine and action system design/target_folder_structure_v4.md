@@ -2,7 +2,7 @@
 
 **Provenance**: this was `revised_folder_structure.md` in `ideas/1 improve source code
 folder structure/`. That folder's pragmatic cleanup pass is done and archived
-(`ideas/done/1 improve source code folder structure/`), so the still-useful part — the
+(`doc/done/1 improve source code folder structure/`), so the still-useful part — the
 *target directory layout* this refactor is aiming at — was moved here, where the engine /
 role / UI restructure it depends on actually lives.
 

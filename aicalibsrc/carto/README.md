@@ -6,7 +6,7 @@ Calibration for `src/ai_strat/ai_strat_a13.c`'s ten new tunable parameters (`A13
 `belief_opp_block_trust`/`hplus_trust`/`hplus_block_combo` [Layer K-block] -- the 34
 `HBTParams` fields it also carries are inherited from `A7` and hard-pinned, never searched
 here, except `defense_stdev_mult` which is re-fittable only at Stage 4). See
-`ideas/A13 ai agent cartographer (the cartographer)/about.md` for the full design record
+`doc/ai_agents.md's A13 section` for the full design record
 and risk ranking, and `doc/changelog.md` for the calibration run(s) that produced whatever
 values end up shipped.
 

@@ -1,6 +1,6 @@
 // ai_strat_ismctsnn_state.h
 // A11 IS-MCTS+NN ("AlphaOracle Prime") -- fixed-size info-set state encoding
-// for the value net. See ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/
+// for the value net. See doc/ai_agents.md's A11 section)/
 // about.md's "Confirmed plan" for the staged scope this feeds (Stage 1:
 // value net replaces A10's heuristic rollout, no policy head/action encoding
 // yet -- this file is that Stage 1 state encoder, nothing more).
@@ -20,7 +20,7 @@
 // pre-reshuffle.
 //
 // Reshuffle-narrowing simplification (deliberate, not an oversight): the
-// original design note (local_training_plan.md's "reshuffle narrows the
+// original design note (doc/ai_agents.md's A11 section's "reshuffle narrows the
 // determinization" section) called for a separate known-composition-since-
 // reshuffle feature. This encoder does NOT track that as its own
 // snapshot/counter. Instead it relies on own_discard/opp_discard +

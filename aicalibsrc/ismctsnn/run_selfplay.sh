@@ -6,7 +6,7 @@
 # its own header comment) at ~75% CPU, bounded by WALL-CLOCK via `timeout`
 # rather than a fixed game count. That means the same script serves both the
 # 1-hour pilot and, if it looks promising, the 12-hour full run (see
-# local_training_plan.md's "Two-pass commitment") -- just a different
+# doc/ai_agents.md's A11 section's "Two-pass commitment") -- just a different
 # duration argument, nothing else changes.
 #
 # Corpus reuse across the two passes is a non-issue by construction: each

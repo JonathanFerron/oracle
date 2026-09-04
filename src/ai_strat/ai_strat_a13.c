@@ -6,11 +6,16 @@
 // move enumeration/scoring in ai_strat_a13_enum.c (same file-length split
 // as A7 Hybrid HBT's own ai_strat_hbt/ai_strat_hbt_enum split).
 //
-// Design-only status as of 2026-08-31 -- no calibration has run yet
-// (aicalibsrc/carto/ doesn't exist), so every new dial below defaults to
-// its neutral value. Until Step 5's staged calibration (ai_strat_a13.h's
-// "Ship gates" section) tunes something, this agent is A7 bit-for-bit by
-// construction -- see a13_belief_needed() and A13_DEFAULTS' own comment.
+// Calibrated and registered 2026-09-04 (see doc/changelog.md's entry that
+// date): shelved 2026-08-31 after four independent searches all measured at
+// parity with A7 (never a strength improvement -- see doc/ai_agents.md's A13
+// section), but Jonathan's later call was to register it anyway for its
+// distinct playing character (race-aware risk appetite, deck-aware draw
+// timing) rather than for any strength gain. Ships with the Stage 4 joint
+// search's best_params (aicalibsrc/carto/results/optimize_borealis.json,
+// 32,000 games, 64.88% [64.36%, 65.41%] vs Borealis -- statistically tied
+// with A7, not a bit-for-bit twin of it) rather than the neutral,
+// A7-recovering configuration the superset guarantee still allows.
 
 #include "ai_strat_a13.h"
 #include "ai_strat_a13_belief.h"
@@ -28,20 +33,32 @@ A13Params a13_get_default_params(void)
   // improvement automatically (same pattern as A9's HBT2PlyParams.base,
   // ai_strat_hbt2ply.c).
 
-  // Every new dial defaults to its neutral value -- no calibration has run
-  // yet. A fresh checkout of this agent is therefore provably identical to
-  // A7 until Step 5's staged calibration actually tunes something (see
-  // ai_strat_a13.h's "The superset guarantee").
-  defaults.race_scale = 0.0f;
-  defaults.race_stdev_ahead = 0.0f;
-  defaults.race_stdev_behind = 0.0f;
-  defaults.race_eps_gain = 0.0f;
+  // Stage 4 joint search's best_params (aicalibsrc/carto/results/
+  // optimize_borealis.json's "free_params": race_scale/race_stdev_ahead/
+  // race_stdev_behind/race_eps_gain/belief_draw_weight/belief_reshuffle_
+  // trust/belief_opp_block_trust/defense_stdev_mult). hplus_trust and
+  // hplus_block_combo stay at neutral -- hplus_trust measured conclusively
+  // harmful (A9's reply_trust failure signature, even sharper), and
+  // hplus_block_combo only matters when hplus_trust != 0. race_use_belief_opp
+  // also stays at its neutral false: not one of this search's free_params.
+  defaults.race_scale = 8.147327569406695f;
+  defaults.race_stdev_ahead = 0.8680537312904875f;
+  defaults.race_stdev_behind = -0.7585919917313602f;
+  defaults.race_eps_gain = -0.084333708654592f;
   defaults.race_use_belief_opp = false;
-  defaults.belief_draw_weight = 0.0f;
-  defaults.belief_reshuffle_trust = 0.0f;
-  defaults.belief_opp_block_trust = 0.0f;
+  defaults.belief_draw_weight = -1.1018963577844894f;
+  defaults.belief_reshuffle_trust = 0.43092670940172806f;
+  defaults.belief_opp_block_trust = 0.22547155324383988f;
   defaults.hplus_trust = 0.0f;
   defaults.hplus_block_combo = 0.0f;
+
+  // The one A7-inherited field this agent ever re-fits (ai_strat_a13.h's
+  // "Deliberately out of scope" -- no --identity-safe escape hatch for the
+  // other 33, since Layer R turns this specific one from a fixed value into
+  // a state-dependent baseline). Overridden after the live
+  // hbt_get_default_params() call above, not before, so a future A7
+  // improvement to every OTHER field is still inherited automatically.
+  defaults.base.defense_stdev_mult = 1.2903053218135012f;
 
   return defaults;
 } // a13_get_default_params

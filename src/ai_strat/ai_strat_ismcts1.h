@@ -1,6 +1,6 @@
 // ai_strat_ismcts1.h
 // A10 IS-MCTS ("The Omniscient") -- see
-// ideas/A10 ai agent is-mcts (the omniscient)/about.md.
+// doc/ai_agents.md's A10 section.
 //
 // SO-ISMCTS (Single-Observer, Cowling et al.): one UCT tree over information
 // sets, a fresh determinization every iteration, availability counts in the

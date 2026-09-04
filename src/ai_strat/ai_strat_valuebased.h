@@ -1,6 +1,6 @@
 // ai_strat_valuebased.h
 // A1 Value Based strategy ("The Apprentice") -- see
-// ideas/A1 ai agent value based (the apprentice)/value_based_handout.md
+// doc/ai_agents.md's A1 section
 
 #ifndef AI_STRAT_VALUEBASED_H
 #define AI_STRAT_VALUEBASED_H

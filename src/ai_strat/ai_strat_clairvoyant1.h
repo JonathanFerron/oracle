@@ -1,6 +1,6 @@
 // ai_strat_clairvoyant1.h
 // A12 Clairvoyant ("The Clairvoyant") -- see
-// ideas/A12 ai agent clairvoyant/about.md.
+// doc/ai_agents.md's A12 section.
 //
 // A8 Simple Monte Carlo's sibling: the identical progressive-pruning search
 // (ai_strat_simplemc_search.h, SimpleMcParams reused as-is -- the

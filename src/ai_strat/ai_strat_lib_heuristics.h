@@ -3,8 +3,8 @@
 // agent that doesn't register its own override in ai_strategy.c's
 // STRATEGY_REGISTRY[]. Extracted from card_actions.c/stda_auto.c so an agent
 // that needs to protect specific cards (e.g. A3 Borealis's held combo
-// pieces, see ideas/A3 ai agent greedy power (borealis)/
-// greedy_power_borealis_handout.md Sec.7's 2026-08-22 note) can override
+// pieces, see doc/ai_agents.md's A3 section)/
+// doc/ai_agents.md's A3 section Sec.7's 2026-08-22 note) can override
 // just this decision without duplicating discard_to_7_cards()/
 // apply_mulligan()'s surrounding plumbing. Matches the
 // MulliganStrategyFunc/DiscardStrategyFunc signatures declared in

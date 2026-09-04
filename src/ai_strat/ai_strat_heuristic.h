@@ -1,6 +1,6 @@
 // ai_strat_heuristic.h
 // A5 Heuristic strategy ("Eps-Gam-Del") -- see
-// ideas/A5 ai agent heuristic (eps-gam-del)/about.md and this agent's only
+// doc/ai_agents.md's A5 section and this agent's only
 // written spec, preserved below and in ai_strat_heuristic1.c's original
 // design-comment stub (deleted; its prose lives on here).
 //

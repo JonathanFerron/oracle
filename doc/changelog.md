@@ -5,9 +5,59 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-04 — `A13` Cartographer registered for real play -- shipped for its character, not its strength
+
+Shelved 2026-08-31 (see that date's entry below) after four independent calibration
+searches all measured at parity with `A7` or worse, never a strength improvement.
+Jonathan's call today: register it anyway, since the interesting part was never
+its strength but its distinct playing character -- race-aware risk appetite
+(Layer R turns `A7`'s fixed `defense_stdev_mult` into a state-dependent one,
+deflating variance when ahead in the turns-to-kill race, inflating it when
+behind) and deck-aware draw timing (Layer K-draw/D value a DRAW candidate
+against the live unseen-pool mean and the reshuffle boundary, not a flat
+average).
+
+Reversed the 2026-08-31 shelving precisely: `AI_STRATEGY_CARTOGRAPHER`
+re-added to `AIStrategyType` (`game_types.h`) -- appended after
+`AI_STRATEGY_CLAIRVOYANT`, not restored to a "13th slot" mid-list, since enum
+ordinal is a menu/table index everywhere; `STRATEGY_REGISTRY` entry restored
+in `ai_strategy.c` (`a13_attack_strategy`/`a13_defense_strategy`/
+`a13_mulligan`/`a13_discard_to_7`); `player_config.c` regained its shorthand
+(`carto`), menu label, display name (all three languages), and a
+`AI_STRATEGY_RATINGS[]` entry.
+
+**Ships with the Stage 4 joint search's calibrated config, not the neutral/
+`A7`-recovering one** (`aicalibsrc/carto/results/optimize_borealis.json`):
+`race_scale=8.147`, `race_stdev_ahead=0.868`, `race_stdev_behind=-0.759`,
+`race_eps_gain=-0.0843`, `belief_draw_weight=-1.102`,
+`belief_reshuffle_trust=0.431`, `belief_opp_block_trust=0.225`,
+`defense_stdev_mult=1.290` (overriding `A7`'s own 0.2156, the one inherited
+field this agent ever re-fits) -- `hplus_trust`/`hplus_block_combo` stay
+pinned at neutral (conclusively harmful, per the 2026-08-31 entry).
+Deliberately not the bit-for-bit-`A7` configuration the superset guarantee
+still allows: shipping neutral would make this a literal `A7` clone under a
+new name, exactly what the original shelving decision reasoned against.
+Validated 64.88% [64.36%, 65.41%] vs `borealis` (32,000 games) -- **rating
+65, statistically tied with `A7`'s own 65**, confirmed by a fresh spot-check
+this session (2,000 games: 66.15% vs `borealis`, ≈45.65% vs `hbt`, both
+consistent with the 32k-game measurement within sampling noise).
+
+**Verification**: clean `make` build, no new warnings; `./bin/oracle -a -p`
+byte-identical to `bin/expectedresults.txt` (the enum append is additive,
+doesn't renumber any existing agent); `valgrind --leak-check=full` clean on
+a 20-game `carto` vs `hbt` run.
+
+Not a reversal of the calibration verdict -- see the entry below for that
+record unchanged. This is a distinct decision: strength parity was already
+established; today's call was that a statistically-tied-but-mechanically-
+different agent still adds roster value as a second, differently-flavoured
+deterministic opponent.
+
+---
+
 ## 2026-09-04 — AlphaOracle Prime "bigger training corpus" (Next Up item 2): falsified on two independent axes -- no retrain, tooling kept
 
-Full design record: `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/about.md`.
+Full design record: `doc/ai_agents.md`'s A11 section.
 The roadmap's premise for this item was that the shipped value net (`reg_strong_value_net.pt`,
 1-hour/657K-record pilot corpus) was data-starved: it needed aggressive regularization
 (`dropout=0.4`, `weight_decay=1e-3`) just to survive past epoch 1, and its best val MSE
@@ -72,7 +122,7 @@ this "Next Up" item; next per `doc/oracle_roadmap.md` is Stage 4 (PUCT + policy 
 
 ## 2026-09-03 — `A11` IS-MCTS + NN ("AlphaOracle Prime"): registered and shipping -- new roster ceiling, rating 74
 
-Full design record: `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/about.md`.
+Full design record: `doc/ai_agents.md`'s A11 section.
 Built 2026-09-01/02, this session (2026-09-03) closes out the three registration steps
 its own "Next session's work" left open, so the agent goes from "both ship gates PASS,
 not yet registered" to a real, shipped roster agent.
@@ -242,7 +292,7 @@ scheduled.
 
 ## 2026-08-31 — `A13` Cartographer (Next Up item 3): implemented, calibrated, shelved -- nothing beat A7
 
-Full design record: `ideas/A13 ai agent cartographer (the cartographer)/about.md`. Built as
+Full design record: `doc/ai_agents.md`'s A13 section. Built as
 A7's exact three-layer synthesis (inherited verbatim as `.base`) plus four new deterministic
 layers, all closed-form over the exact unseen-card pool derived by subtraction from the
 known 120-card deck (never sampling, never fabricating a single hidden hand -- a direct,
@@ -2305,13 +2355,13 @@ compare candidates:
   `ideas/3 tui/` → `ideas/3 misc ui ideas/`; all repo cross-references to the old path
   updated (`CLAUDE.md`, `doc/oracle_roadmap.md`, `ideas/2 …/target_folder_structure_v4.md`,
   `src/ui/tui/tui display input and callbacks.txt`) except one intentionally-preserved
-  historical mention in the already-archived `ideas/done/1 …/pragmatic_cleanup_
+  historical mention in the already-archived `doc/done/1 …/pragmatic_cleanup_
   implementation_plan.md`.
 - No game-logic or build changes; this is a documentation/`ideas/`-only pass.
 
 ## 2026-08-20 — Idea 1 (source folder structure) closed out; doc cleanup pass
 
-- **Idea 1 second pass**: `ideas/done/1 improve source code folder structure/`'s pragmatic
+- **Idea 1 second pass**: `doc/done/1 improve source code folder structure/`'s pragmatic
   cleanup (done 2026-07-14) left a small remainder, now closed. The ten `src/`
   placeholder `.txt` files had cross-references to a pre-renumbering `ideas/` layout
   (`ideas/9`, `11`, `12.1`, `15`, `16`, `18`, `1 tui`) — repointed at the current folder
@@ -2326,7 +2376,7 @@ compare candidates:
   `make test_stda_auto` invoked `./bin/oracle.exe` (the MSYS2 name) unconditionally, so
   it could never pass on the primary Linux target; fixed to use `$(TARGET)` and marked
   `.PHONY`, with `help` listing all four test targets. The folder itself moved to
-  `ideas/done/1 improve source code folder structure/`; its still-relevant target
+  `doc/done/1 improve source code folder structure/`; its still-relevant target
   architecture doc (`revised_folder_structure.md`) moved instead to
   `ideas/2 engine and action system design/
   target_folder_structure_v4.md`, trimmed of content duplicated elsewhere in that
@@ -2748,7 +2798,7 @@ Oracle's own code).
 ## 2026-07-14 — Source folder structure cleanup (pragmatic pass)
 
 Pragmatic pass only (not the full v4 engine rewrite) — see
-`ideas/done/1 improve source code folder structure/pragmatic_cleanup_implementation_plan.md`
+`doc/done/1 improve source code folder structure/pragmatic_cleanup_implementation_plan.md`
 for full detail.
 
 - Split `cli_display.c` (576 lines) into `cli_display.c` (233 lines, core status/turn
@@ -2792,24 +2842,24 @@ Complete Turn Logic Module: full game loop working end-to-end in interactive mod
 all the rules.
 
 - **Display Discard Pile in CLI Mode** — `gmst` (summary) and `shod` (detailed,
-  power-sorted) commands; see `ideas/done/4 ...`.
+  power-sorted) commands; see `doc/done/4 ...`.
 - **Recall Card functionality in stda.cli mode** — recall is **exact and mandatory** (a
   "recall 1 / draw 2" card recalls exactly 1 champion, "recall 2 / draw 3" recalls
   exactly 2; recall is only offered when discard holds enough champions). The Random AI
   engine still only ever draws (never recalls), which is fine given it's not meant to be
-  strong. See `ideas/done/2 ...`, `doc/game_rules_doc.md` (recall section corrected to
+  strong. See `doc/done/2 ...`, `doc/game_rules_doc.md` (recall section corrected to
   match), and `testsrc/test_recall.c`. Implementation: `validate_and_recall_champions()`
   + `handle_recall_choice()` in `cli_input.c`, UI via `display_recallable_champions()`.
 - **Combat results display in stda.cli mode** — per-champion rolls/base/combo/damage
   breakdown, shown whenever a human is involved; `stda.auto` unaffected. See
-  `ideas/done/3 ...`. Implementation: `display_combat_details_cli()` in
+  `doc/done/3 ...`. Implementation: `display_combat_details_cli()` in
   `ui/cli/cli_display.c` (now `cli_action_display.c` after the 2026-07-14 split).
 - **Cash card champion selection in interactive mode** — ask user to select the champion
   card to exchange instead of the AI power-heuristic auto-pick; interactive path
   (`play_cash_card_interactive`) lets the human pick freely. Along the way, fixed a real
   bug in the AI heuristic (`select_champion_for_cash_exchange` conflated "not found"
   with card index 0, a valid champion, using it as a sentinel — now uses `UINT8_MAX`).
-  See `ideas/done/5 ...` and `testsrc/test_cash_exchange.c`.
+  See `doc/done/5 ...` and `testsrc/test_cash_exchange.c`.
 
 **Note**: fixing the index-0 sentinel bug changed `stda_auto`'s RNG-dependent play
 sequence (different AI hand state whenever that bug used to fire), so

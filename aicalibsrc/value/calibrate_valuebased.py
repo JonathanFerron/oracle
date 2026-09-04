@@ -10,7 +10,7 @@ orchestrates subprocess calls and aggregates/fits the results.
 
 Two subcommands:
 
-  sweep     Univariate diagnostic vs Random (value_based_handout.md Sec 11's
+  sweep     Univariate diagnostic vs Random (doc/ai_agents.md's A1 section Sec 11's
             parameter sweeps): hold one parameter at its default and vary
             the other, both seats, with binomial confidence intervals. Use
             this first to sanity-check that a parameter actually moves the

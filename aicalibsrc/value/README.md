@@ -60,7 +60,7 @@ sudo apt install python3-pandas python3-scipy python3-matplotlib python3-scikit-
 ```bash
 cd aicalibsrc/value
 
-# Univariate sweep vs Random (matches value_based_handout.md Sec 11)
+# Univariate sweep vs Random (matches doc/ai_agents.md's A1 section Sec 11)
 ./calibrate_valuebased.py sweep --param defend_threshold --numsim 2500 --replicates 4
 
 # Self-play round-robin over a parameter grid, Bradley-Terry fit,

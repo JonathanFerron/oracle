@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Calibration driver for A11 IS-MCTS+NN ("AlphaOracle Prime")'s
 nn_value_trust dial -- see src/ai_strat/ai_strat_ismcts1.h and
-ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/about.md's "Confirmed
+doc/ai_agents.md's A11 section's "Confirmed
 plan" step 3 (two-gate measurement).
 
 Drives bin/calib_ismctsnn, which links the game engine directly and prints

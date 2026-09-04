@@ -1,6 +1,6 @@
 // ai_strat_balanced_rules.h
 // A4 Balanced Rules strategy ("Bean Counter") -- see
-// ideas/A4 ai agent balanced rules (bean counter)/about.md and this agent's
+// doc/ai_agents.md's A4 section and this agent's
 // only written spec, preserved below and in that file: effective hand size,
 // effective cash, and priority-ordered attack/defense rules.
 //

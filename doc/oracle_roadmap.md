@@ -22,10 +22,10 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
 
 
 
-1. **`A11` IS-MCTS + NN** ("AlphaOracle Prime",
-   `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/`) -- ✅ done and
+1. **`A11` IS-MCTS + NN** ("AlphaOracle Prime", `doc/ai_agents.md`'s A11
+   section) -- ✅ done and
    **registered 2026-09-03** (see `doc/changelog.md`'s 2026-09-03 entry and
-   `ideas/A11 .../about.md`). Stages 1-3 (state encoder, self-play corpus +
+   `doc/ai_agents.md`'s A11 section). Stages 1-3 (state encoder, self-play corpus +
    training, hand-written C inference, tree integration, measurement) cleared
    both ship gates 2026-09-02: 58.44% head-to-head vs `A10` [56.93%, 59.94%]
    (Gate 2, the real bar) and an estimated ~74 Borealis rating [72.68%, 75.36%]
@@ -187,7 +187,7 @@ error-handling polish (see `doc/oracle_todo.md`).
 → `A11` IS-MCTS + neural network (AlphaOracle Prime, Stages 1-3 done 2026-09-02,
 registered 2026-09-03 -- **both ship gates PASS**, 58.44% head-to-head vs `A10`,
 **rating 74, the new roster ceiling**, see "Next Up" item 1). See
-`ideas/G1 AI agent general info/oracle_ai_agent_names.md` for the canonical roster, flavour names, and ratings.
+`doc/ai_agents.md` for the canonical roster, flavour names, and ratings.
 
 ### Phase: Simulation & Analysis Tools — spec complete, implementation pending
 

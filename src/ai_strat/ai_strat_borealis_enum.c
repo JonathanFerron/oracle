@@ -3,7 +3,7 @@
 // ai_strat_borealis.c per its handout's Sec.10 file-length guidance ("if
 // the file exceeds ~400 lines after decomposition, split enumeration and
 // scoring into a separate translation unit"). See
-// ideas/A3 ai agent greedy power (borealis)/greedy_power_borealis_handout.md
+// doc/ai_agents.md's A3 section
 // Sec.4-6 for the scoring model and epsilon tie-break implemented here.
 //
 // collect_candidates()'s three nested loops are the ONLY enumeration site

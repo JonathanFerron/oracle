@@ -1,6 +1,6 @@
 // ai_strat_ismctsnn.h
 // A11 IS-MCTS+NN ("AlphaOracle Prime") -- see
-// ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/about.md.
+// doc/ai_agents.md's A11 section.
 //
 // Stage 1 (value net) + Stage 2 (C inference + integration): reuses A10's
 // exact SO-ISMCTS tree/search/determinization code

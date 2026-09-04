@@ -1,6 +1,6 @@
 // ai_strat_borealis.h
 // A3 Borealis strategy ("the benchmark") -- see
-// ideas/A3 ai agent greedy power (borealis)/greedy_power_borealis_handout.md
+// doc/ai_agents.md's A3 section
 //
 // This is the Bradley-Terry anchor for the entire rating system: its
 // strength is fixed at rating 50 by definition, and every other agent and

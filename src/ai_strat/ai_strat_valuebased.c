@@ -1,6 +1,6 @@
 // ai_strat_valuebased.c
 // A1 Value Based strategy ("The Apprentice") -- see
-// ideas/A1 ai agent value based (the apprentice)/value_based_handout.md
+// doc/ai_agents.md's A1 section
 //
 // A one-ply, no-simulation, combo-blind agent. It ranks individual champion
 // cards by an efficiency ratio (contribution per luna) and greedily takes the

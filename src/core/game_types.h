@@ -165,10 +165,10 @@ typedef enum
   AI_PLAYER = 1
 } PlayerType;
 
-// Available AI strategies. Order matches the ideas/A1-A11 agent roster and
-// the canonical ideas/G1.../oracle_ai_agent_names.md roster/rating table
-// (ideas/G1 general info and G2 parameter storing/optimization are support
-// material, not themselves agents, so they have no entry here).
+// Available AI strategies. Order matches the canonical roster/rating table
+// in doc/ai_agents.md (ideas/G1 general info and G2 parameter storing/
+// optimization are support material, not themselves agents, so they have no
+// entry here).
 //
 // AI_STRATEGY_GREEDY_POWER and AI_STRATEGY_COMBO_AWARE were renamed to
 // AI_STRATEGY_BOREALIS and AI_STRATEGY_COMBO_THRESHOLD (2026-08-21) per the
@@ -180,29 +180,29 @@ typedef enum
 // so src/ai_strat/ can reference it without depending on src/ui/.
 typedef enum
 { AI_STRATEGY_RANDOM = 0,
-  AI_STRATEGY_VALUE_BASED,     // ideas/A1 ai agent value based (the apprentice)
-  AI_STRATEGY_COMBO_THRESHOLD, // ideas/A2 ai agent combo threshold (the showboat)
-  AI_STRATEGY_BOREALIS,        // ideas/A3 ai agent greedy power (borealis) -- benchmark agent
-  AI_STRATEGY_BALANCED,        // ideas/A4 ai agent balanced rules (bean counter)
-  AI_STRATEGY_HEURISTIC,       // ideas/A5 ai agent heuristic (eps-gam-del)
-  AI_STRATEGY_TACTICAL,        // ideas/A6 ai agent tactical (pressure cooker)
-  AI_STRATEGY_HYBRID_HBT,      // ideas/A7 ai agent hybrid hbt (the grandmaster)
-  AI_STRATEGY_SIMPLE_MC,       // ideas/A8 ai agent simple monte carlo (the soothsayer)
-  AI_STRATEGY_HBT_2PLY,        // ideas/A9 ai agent hbt 2 ply (grandmaster ii)
-  AI_STRATEGY_ISMCTS,          // ideas/A10 ai agent is-mcts (the omniscient)
-  AI_STRATEGY_ISMCTS_NN,       // ideas/A11 ai agent is-mcts + nn (alphaoracle prime)
-  AI_STRATEGY_CLAIRVOYANT,     // ideas/A12 ai agent clairvoyant -- A8's sibling: same
+  AI_STRATEGY_VALUE_BASED,     // doc/ai_agents.md's A1 section
+  AI_STRATEGY_COMBO_THRESHOLD, // doc/ai_agents.md's A2 section
+  AI_STRATEGY_BOREALIS,        // doc/ai_agents.md's A3 section
+  AI_STRATEGY_BALANCED,        // doc/ai_agents.md's A4 section
+  AI_STRATEGY_HEURISTIC,       // doc/ai_agents.md's A5 section
+  AI_STRATEGY_TACTICAL,        // doc/ai_agents.md's A6 section
+  AI_STRATEGY_HYBRID_HBT,      // doc/ai_agents.md's A7 section
+  AI_STRATEGY_SIMPLE_MC,       // doc/ai_agents.md's A8 section
+  AI_STRATEGY_HBT_2PLY,        // doc/ai_agents.md's A9 section
+  AI_STRATEGY_ISMCTS,          // doc/ai_agents.md's A10 section
+  AI_STRATEGY_ISMCTS_NN,       // doc/ai_agents.md's A11 section
+  AI_STRATEGY_CLAIRVOYANT,     // doc/ai_agents.md's A12 section
   // progressive-pruning MC search, opponent-side rollouts
   // use a cheap heuristic instead of pure random
-  // AI_STRATEGY_CARTOGRAPHER (A13) intentionally NOT registered here --
-  // implemented and calibrated (2026-08-31), shelved: every mechanism
-  // measured at parity with A7 or worse (hplus_trust conclusively harmful),
-  // across four independent properly-powered searches. See
-  // ideas/A13 ai agent cartographer (the cartographer)/about.md and
-  // doc/changelog.md's 2026-08-31 entry for the full record. Source stays
-  // in src/ai_strat/ai_strat_a13*.c as reference; the belief module
-  // (ai_strat_a13_belief.c, closed-form pool/hypergeometric analysis) is
-  // kept as reusable infrastructure for a future A11 feature-extraction pass.
+  AI_STRATEGY_CARTOGRAPHER,    // A13 Cartographer -- calibrated and registered
+  // 2026-09-04, appended here (not restored to a "13th slot" mid-list) since
+  // enum ordinal is a menu/table index everywhere -- see doc/ai_agents.md's
+  // A13 section and doc/changelog.md's 2026-09-04 entry. Every mechanism
+  // measured at parity with A7 (never a strength improvement, hplus_trust
+  // conclusively harmful and pinned off) -- registered anyway for its
+  // distinct playing character (race-aware risk appetite, deck-aware draw
+  // timing), not for strength. Ships with the Stage 4 calibrated config, not
+  // the neutral/A7-recovering one the superset guarantee still allows.
   AI_STRATEGY_COUNT
 } AIStrategyType;
 

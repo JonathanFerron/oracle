@@ -3,14 +3,14 @@
 **Status**: DONE (2026-07-14). Steps 1-3 and 5 executed and verified; Step 4 (explicit
 non-scope) still applies going forward. This folder was `ideas/1 improve source code
 folder structure/`, still informally called "folder 8" below as its original id; it is
-now archived here as `ideas/done/1 improve source code folder structure/`.
+now archived here as `doc/done/1 improve source code folder structure/`.
 
 **Second pass (2026-08-20)**: the small remainder left after this pass — stale
 pre-renumbering `ideas/` cross-references in the `src/` placeholder `.txt` files, the
 superseded `src/ui/cli/cli display input and callbacks.txt` (deleted), in-tree stray
 `.o` files from the test targets (Makefile now routes them through `obj/`), and
 `make test_stda_auto` invoking the MSYS2 `.exe` name (fixed to use `$(TARGET)`) — was
-closed out at that time, and this folder moved from `ideas/1 …` to `ideas/done/1 …`.
+closed out at that time, and this folder moved from `ideas/1 …` to `doc/done/1 …`.
 `revised_folder_structure.md` (the target v4 architecture) moved separately to
 `ideas/2 engine and action system design/target_folder_structure_v4.md`,
 since the work it describes lives there, not in this archive.

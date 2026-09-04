@@ -5,7 +5,7 @@ Trains a small CPU MLP to predict game outcome (0.0/0.5/1.0, gen_corpus.c's
 own mc_outcome_for() convention) from the 537-float information-set state
 vector (src/ai_strat/ai_strat_ismctsnn_state.h) logged by gen_corpus.c /
 run_selfplay.sh. See "Confirmed plan" step 1-2 in
-ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/about.md.
+doc/ai_agents.md's A11 section.
 
 No normalization is applied here beyond what ismctsnn_encode_state() itself
 already does -- the encoder header is explicit that values are "intentionally
@@ -23,9 +23,9 @@ by shard rather than row avoids leaking correlated decisions from the same
 game across train/val.
 
 Wall-clock budget matches the two-pass generation protocol
-(local_training_plan.md): --max-seconds defaults to a 1-hour pilot ceiling,
+(doc/ai_agents.md's A11 section): --max-seconds defaults to a 1-hour pilot ceiling,
 --max-epochs is a generous fallback that should never actually bind given
-local_training_plan.md's own finding that training a net this size is
+doc/ai_agents.md's A11 section's own finding that training a net this size is
 "minutes, not hours" regardless of corpus size.
 
 Usage:

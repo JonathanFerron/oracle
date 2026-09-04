@@ -1,6 +1,6 @@
 // ai_strat_combo_threshold.c
 // A2 Combo Threshold strategy ("The Showboat") -- see
-// ideas/A2 ai agent combo threshold (the showboat)/combo_threshold_handout.md
+// doc/ai_agents.md's A2 section
 //
 // On attack, candidate plays are pruned to single champions plus
 // pairs/triples whose combo bonus clears a tunable threshold -- it will

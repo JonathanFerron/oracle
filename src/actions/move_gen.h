@@ -14,7 +14,7 @@
 #include "game_move.h"
 
 // Caps on the two branching-factor culprits flagged in
-// ideas/A10 ai agent is-mcts (the omniscient)/mcts_depth_strategy.md --
+// doc/ai_agents.md's A10 section --
 // recall's C(discard, choose_num) and cash's choice of exchange target.
 // max_recall_variants == 0 disables recall entirely (Draw-N is always the
 // alternative for the same card, so this is a safe degenerate case).
@@ -29,7 +29,7 @@ typedef struct
 } MoveGenLimits;
 
 // Upper bound a caller can use to size `out`. Not a tight bound -- see
-// move_gen.c's header comment for the derivation (ideas/A8 ai agent simple
+// move_gen.c's header comment for the derivation (doc/ai_agents.md's A8 section
 // monte carlo (the soothsayer)/about.md's "max ~93 moves" is typical, not
 // worst-case).
 #define MOVE_GEN_MAX_MOVES 128

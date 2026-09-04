@@ -8,7 +8,7 @@ here was a misreading of the stub's inverse form. The `19/91` cash slope is
 additionally a fossil of an obsolete 19-luna starting-cash rule (today's
 `INITIAL_CASH_DEFAULT` is 30). Both are superseded by the shipped, calibrated
 values in `src/ai_strat/ai_strat_balanced_rules.h`/`.c` and
-`ideas/A4 ai agent balanced rules (bean counter)/about.md` — treat every
+`doc/ai_agents.md's A4 section` — treat every
 formula/code sketch below as historical exploration, not current spec, per
 `CLAUDE.md`'s rule on `ideas/`.
 

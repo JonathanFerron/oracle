@@ -9,7 +9,7 @@
 // champion-subset space alone is C(12,1)+C(12,2)+C(12,3) = 298 in the
 // worst case (compare ai_strat_borealis_enum.c's identical count for its
 // own 1-3 subset enumeration). In practice a legal hand mixes card types
-// and affordability prunes hard, so ideas/A8 ai agent simple monte carlo
+// and affordability prunes hard, so doc/ai_agents.md's A8 section
 // (the soothsayer)/about.md's "max ~93 moves" figure is typical, not
 // worst-case. Recall's C(discard, choose_num) is the real worst-case
 // blowup (discard can hold up to 40 cards) -- MoveGenLimits.max_recall_variants

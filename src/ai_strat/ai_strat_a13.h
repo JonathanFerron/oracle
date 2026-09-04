@@ -1,6 +1,6 @@
 // ai_strat_a13.h
 // A13 Cartographer strategy ("The Cartographer") -- see
-// ideas/A13 ai agent cartographer (the cartographer)/about.md for the full
+// doc/ai_agents.md's A13 section for the full
 // design record and rationale index. Design-only status as of 2026-08-31;
 // this header is the approved design, written before ai_strat_a13.c.
 //

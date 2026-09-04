@@ -1,6 +1,6 @@
 // ai_strat_simplemc1.h
 // A8 Simple Monte Carlo ("The Soothsayer") -- see
-// ideas/A8 ai agent simple monte carlo (the soothsayer)/about.md.
+// doc/ai_agents.md's A8 section.
 //
 // Original design-stub comment, kept as provenance (the file used to be a
 // comment-only stub; see about.md for the decisions since made against it,
@@ -49,7 +49,7 @@
 // Hidden information: each simulation determinizes a fresh clone from this
 // agent's own point of view (ai_strat_playout.h's mc_determinize()) before
 // rolling out -- deliberately not reshuffle-aware; that refinement belongs
-// to A10 (ideas/A10 ai agent is-mcts (the omniscient)/about.md), not this
+// to A10 (doc/ai_agents.md's A10 section), not this
 // agent.
 //
 // Rollout: plays to a terminal win/loss/draw (or MAX_NUMBER_OF_TURNS,
@@ -80,7 +80,7 @@
 // Deliberately out of scope (about.md): a tree of any kind (A10's job),
 // reshuffle-aware determinization (also A10's), and any exact/closed-form
 // replacement for the dice-roll sampling itself -- see ideas/A10 .../
-// mcts_depth_strategy.md for where closed-form dice statistics *do* apply
+// doc/ai_agents.md's A10 section for where closed-form dice statistics *do* apply
 // (tree agents, not this one). Also deliberately deferred: the stub's
 // "Interactive Mode AI assistant" display mode (printing the top-4
 // candidate moves with their win rates) -- a UI feature, not part of making

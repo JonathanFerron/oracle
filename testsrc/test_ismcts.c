@@ -1,7 +1,7 @@
 // test_ismcts.c
 // Test suite for A10 IS-MCTS's node arena/UCT tree (ai_strat_ismcts_tree.c)
 // and search loop (ai_strat_ismcts_search.c) -- see
-// ideas/A10 ai agent is-mcts (the omniscient)/about.md. Two layers: white-box
+// doc/ai_agents.md's A10 section)/about.md. Two layers: white-box
 // arena/UCT unit tests against hand-built trees, then integration tests
 // against ismcts_search_best_move()/ismcts_attack_strategy() on real
 // gamestates, mirroring test_moves.c's mc_playout()/mc_determinize()

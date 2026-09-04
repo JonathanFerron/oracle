@@ -1,6 +1,6 @@
 // calib_ismctsnn.c
 // A11 IS-MCTS+NN ("AlphaOracle Prime") Stage 3 calibration harness -- see
-// ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/about.md's "Confirmed
+// doc/ai_agents.md's A11 section's "Confirmed
 // plan" step 3 (two-gate measurement). Structure ported directly from
 // aicalibsrc/carto/calib_a13.c (same in-process run_simulation() pattern,
 // CSV-per-invocation output, --print-defaults JSON dump) -- see this

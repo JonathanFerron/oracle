@@ -1,6 +1,6 @@
 // ai_strat_borealis.c
 // A3 Borealis strategy ("the benchmark") -- see ai_strat_borealis.h and
-// ideas/A3 ai agent greedy power (borealis)/greedy_power_borealis_handout.md.
+// doc/ai_agents.md's A3 section.
 // Attack/defense orchestration and parameter management; candidate
 // enumeration and scoring live in ai_strat_borealis_enum.c (Sec.10's
 // file-length guidance). The draw-card fallback (Sec.9, try_play_draw_card())

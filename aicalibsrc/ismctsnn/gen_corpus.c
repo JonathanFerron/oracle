@@ -1,7 +1,7 @@
 // gen_corpus.c
 // A11 IS-MCTS+NN ("AlphaOracle Prime") Stage 1 self-play corpus generator --
 // see "Confirmed plan" step 1 in
-// ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/about.md.
+// doc/ai_agents.md's A11 section.
 //
 // Plays real games (never determinized/simulated-away games -- this is
 // actual A10 self-play, not search-internal sampling) across the curated
@@ -30,7 +30,7 @@
 // games sequentially against a single GameContext RNG stream (same pattern
 // as calib_ismcts_timing.c), so generating a large corpus means running
 // several instances with disjoint seeds against separate output paths (see
-// local_training_plan.md's "embarrassingly parallel" framing) and pointing
+// doc/ai_agents.md's A11 section's "embarrassingly parallel" framing) and pointing
 // the training script at the whole set of shard files.
 //
 // Usage: gen_corpus <mirror|vs_a7|vs_a3|vs_a4|vs_a6> <numgames> <seed> <output_path> [limit_iterations]

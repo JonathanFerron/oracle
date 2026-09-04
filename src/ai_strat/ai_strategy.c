@@ -19,6 +19,7 @@
 #include "ai_strat_ismcts1.h"
 #include "ai_strat_ismcts_flat.h"
 #include "ai_strat_ismctsnn.h"
+#include "ai_strat_a13.h"
 #include "ai_strat_lib_heuristics.h"
 
 StrategySet* create_strategy_set(void)
@@ -94,6 +95,9 @@ static const StrategyRegistryEntry STRATEGY_REGISTRY[AI_STRATEGY_COUNT] =
   // ai_strat_ismctsnn.h).
   [AI_STRATEGY_ISMCTS_NN]        = { ismctsnn_attack_strategy, ismctsnn_defense_strategy,
     ismcts_mulligan, ismcts_discard_to_7
+  },
+  [AI_STRATEGY_CARTOGRAPHER]     = { a13_attack_strategy, a13_defense_strategy,
+    a13_mulligan, a13_discard_to_7
   },
   // All other entries default to {NULL, NULL, NULL, NULL} -- not yet implemented.
   // A13 Cartographer is deliberately absent: implemented, calibrated, and

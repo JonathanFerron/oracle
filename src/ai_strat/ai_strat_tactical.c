@@ -19,13 +19,13 @@
 #define TAC_COST_FLOOR 1.3f
 
 // Hand-power ratio triggers for the aggression formula's bonus/penalty
-// terms (tactical_design_notes.md's own numbers) -- fixed secondary
+// terms (doc/ai_agents.md's A6 section's own numbers) -- fixed secondary
 // thresholds, not tunable dials; the resulting bonus/penalty *magnitudes*
 // (TacticalParams fields) are the actual strategic surface.
 #define TAC_HAND_POWER_STRONG_RATIO 1.5f
 #define TAC_HAND_POWER_WEAK_RATIO 0.7f
 
-// Opponent-power-estimate cash-tier adjustment (tactical_design_notes.md's
+// Opponent-power-estimate cash-tier adjustment (doc/ai_agents.md's A6 section's
 // own numbers) -- secondary noise-reduction constants, fixed for the same
 // reason as the ratios above.
 #define TAC_OPP_CASH_HIGH_THRESHOLD 35

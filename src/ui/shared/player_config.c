@@ -90,7 +90,7 @@ void get_player_names(config_t* cfg, PlayerConfig* pconfig)
   }
 }
 
-// Menu label per AIStrategyType, in ideas/A1-A11 roster order. Availability
+// Menu label per AIStrategyType, in doc/ai_agents.md's roster order. Availability
 // (shown alongside each label) is no longer hardcoded here -- it comes from
 // ai_strategy_is_implemented(), the same registry set_player_strategy_by_type()
 // consults, so this menu can never drift from what actually plays. The
@@ -101,37 +101,39 @@ static const char* strategy_menu_label(AIStrategyType type, ui_language_t lang)
 { switch(type)
   { case AI_STRATEGY_RANDOM:
       return LOCALIZED_STRING_L(lang, "Random", "Aleatoire", "Aleatorio");
-    case AI_STRATEGY_VALUE_BASED: // ideas/A1 ai agent value based (the apprentice)
+    case AI_STRATEGY_VALUE_BASED: // doc/ai_agents.md's A1 section
       return LOCALIZED_STRING_L(lang, "Value Based", "Base sur la valeur",
                                 "Basado en valor");
-    case AI_STRATEGY_COMBO_THRESHOLD: // ideas/A2 ai agent combo threshold (the showboat)
+    case AI_STRATEGY_COMBO_THRESHOLD: // doc/ai_agents.md's A2 section
       return LOCALIZED_STRING_L(lang, "Combo Threshold", "Seuil de combo",
                                 "Umbral de combo");
-    case AI_STRATEGY_BOREALIS: // ideas/A3 ai agent greedy power (borealis) -- the benchmark agent
+    case AI_STRATEGY_BOREALIS: // doc/ai_agents.md's A3 section
       return LOCALIZED_STRING_L(lang, "Borealis", "Borealis", "Borealis");
-    case AI_STRATEGY_BALANCED: // ideas/A4 ai agent balanced rules (bean counter)
+    case AI_STRATEGY_BALANCED: // doc/ai_agents.md's A4 section
       return LOCALIZED_STRING_L(lang, "Balanced Rules", "Regles equilibrees",
                                 "Reglas equilibradas");
-    case AI_STRATEGY_HEURISTIC: // ideas/A5 ai agent heuristic (eps-gam-del)
+    case AI_STRATEGY_HEURISTIC: // doc/ai_agents.md's A5 section
       return LOCALIZED_STRING_L(lang, "Heuristic", "Heuristique", "Heuristica");
-    case AI_STRATEGY_TACTICAL: // ideas/A6 ai agent tactical (pressure cooker)
+    case AI_STRATEGY_TACTICAL: // doc/ai_agents.md's A6 section
       return LOCALIZED_STRING_L(lang, "Tactical", "Tactique", "Tactico");
-    case AI_STRATEGY_HYBRID_HBT: // ideas/A7 ai agent hybrid hbt (the grandmaster)
+    case AI_STRATEGY_HYBRID_HBT: // doc/ai_agents.md's A7 section
       return LOCALIZED_STRING_L(lang, "Hybrid (HBT)", "Hybride (HBT)",
                                 "Hibrido (HBT)");
-    case AI_STRATEGY_SIMPLE_MC: // ideas/A8 ai agent simple monte carlo (the soothsayer)
+    case AI_STRATEGY_SIMPLE_MC: // doc/ai_agents.md's A8 section
       return LOCALIZED_STRING_L(lang, "Simple Monte Carlo",
                                 "Monte Carlo simple", "Monte Carlo simple");
-    case AI_STRATEGY_HBT_2PLY: // ideas/A9 ai agent hbt 2 ply (grandmaster ii)
+    case AI_STRATEGY_HBT_2PLY: // doc/ai_agents.md's A9 section
       return LOCALIZED_STRING_L(lang, "HBT 2-ply", "HBT 2-coups", "HBT 2-jugadas");
-    case AI_STRATEGY_ISMCTS: // ideas/A10 ai agent is-mcts (the omniscient)
+    case AI_STRATEGY_ISMCTS: // doc/ai_agents.md's A10 section
       return LOCALIZED_STRING_L(lang, "IS-MCTS", "IS-MCTS", "IS-MCTS");
-    case AI_STRATEGY_ISMCTS_NN: // ideas/A11 ai agent is-mcts + nn (alphaoracle prime)
+    case AI_STRATEGY_ISMCTS_NN: // doc/ai_agents.md's A11 section
       return LOCALIZED_STRING_L(lang, "IS-MCTS + Neural Network",
                                 "IS-MCTS + reseau de neurones",
                                 "IS-MCTS + red neuronal");
-    case AI_STRATEGY_CLAIRVOYANT: // ideas/A12 ai agent clairvoyant
+    case AI_STRATEGY_CLAIRVOYANT: // doc/ai_agents.md's A12 section
       return LOCALIZED_STRING_L(lang, "Clairvoyant", "Clairvoyant", "Clarividente");
+    case AI_STRATEGY_CARTOGRAPHER: // A13 Cartographer
+      return LOCALIZED_STRING_L(lang, "Cartographer", "Cartographe", "Cartografo");
     default:
       return "Unknown";
   }
@@ -141,7 +143,7 @@ static const char* strategy_menu_label(AIStrategyType type, ui_language_t lang)
 // percentage vs Borealis, the rating-50 anchor -- see src/rating/rating.h).
 // `measured` distinguishes a real --stda.rating fit (doc/changelog.md's
 // 2026-08-23 entry) from the design-intent estimate in
-// ideas/G1 AI agent general info/oracle_ai_agent_names.md, which the menu
+// doc/ai_agents.md's roster table, which the menu
 // prints with a "~" prefix. When a new agent is benchmarked, replace its
 // estimate here and flip `measured` -- an implemented-but-unbenchmarked
 // agent legitimately keeps measured = false.
@@ -189,8 +191,7 @@ static const AIStrategyRating AI_STRATEGY_RATINGS[AI_STRATEGY_COUNT] =
   [AI_STRATEGY_ISMCTS]           = { 69, true  },
   [AI_STRATEGY_ISMCTS_NN]        = { 74, true  },
   [AI_STRATEGY_CLAIRVOYANT]      = { 31, true  },
-  // A13 has no entry here: implemented, calibrated, and shelved (2026-08-31)
-  // -- see game_types.h's AIStrategyType comment and ideas/A13 .../about.md.
+  [AI_STRATEGY_CARTOGRAPHER]     = { 65, true  },
 };
 
 // "Random [The Gambler]", or just "Borealis" when the technical label and
@@ -426,7 +427,7 @@ void apply_player_assignment(PlayerConfig* pconfig, config_t* cfg,
   }
 }
 
-// Flavour names from ideas/G1 AI agent general info/oracle_ai_agent_names.md
+// Flavour names from doc/ai_agents.md's roster table
 // (canonical roster). ASCII-safe variants are used throughout, matching that
 // file's "ASCII-Safe Variants" table, since print_ai_agent_shorthand_list()
 // pads with %-16s, which counts bytes rather than glyphs.
@@ -471,6 +472,9 @@ const char* get_strategy_display_name(AIStrategyType strategy,
     case AI_STRATEGY_CLAIRVOYANT:
       return LOCALIZED_STRING_L(lang, "The Clairvoyant", "Le Voyant",
                                 "El Clarividente");
+    case AI_STRATEGY_CARTOGRAPHER:
+      return LOCALIZED_STRING_L(lang, "The Cartographer", "Le Cartographe",
+                                "El Cartografo");
     default:
       return "Unknown";
   }
@@ -515,6 +519,7 @@ static const AIStrategyShorthand AI_STRATEGY_SHORTHANDS[] =
   { AI_STRATEGY_ISMCTS,           "ismcts" },
   { AI_STRATEGY_ISMCTS_NN,        "ismctsnn" },
   { AI_STRATEGY_CLAIRVOYANT,      "clairvoy" },
+  { AI_STRATEGY_CARTOGRAPHER,     "carto" },
 };
 #define AI_STRATEGY_SHORTHAND_COUNT \
   (sizeof(AI_STRATEGY_SHORTHANDS) / sizeof(AI_STRATEGY_SHORTHANDS[0]))

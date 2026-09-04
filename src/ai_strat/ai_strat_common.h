@@ -43,7 +43,7 @@ float expected_incoming_attack(const struct gamestate* gstate, PlayerID defender
 // (calculate_combo_bonus()'s own range check), same as calling it directly.
 int combo_bonus_for_selection(const uint8_t* card_indices, uint8_t n);
 
-// Borealis's placeholder draw heuristic (greedy_power_borealis_handout.md
+// Borealis's placeholder draw heuristic (doc/ai_agents.md's A3 section
 // Sec.9): if hand size < min_hand_size and opponent energy > opp_energy_floor
 // and an affordable DRAW_CARD is held, play the cheapest one and return true.
 // Otherwise returns false without touching game state.
@@ -54,7 +54,7 @@ bool try_play_draw_card(struct gamestate* gstate, PlayerID player,
 // No champion is affordable, but the hand still holds one (just not
 // affordable) alongside an affordable cash card -- trade it for lunas
 // instead of passing outright. Originally A3 Borealis's Sec.9 placeholder
-// (greedy_power_borealis_handout.md); promoted here once A4 Balanced Rules
+// (doc/ai_agents.md's A3 section); promoted here once A4 Balanced Rules
 // needed the identical fallback, mirroring ai_strat_random.c's guard against
 // playing a cash card with no champions in hand at all.
 // `affordable_champion_count` is the caller's own build_affordable_champions()

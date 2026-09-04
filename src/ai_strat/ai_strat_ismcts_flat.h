@@ -1,6 +1,6 @@
 // ai_strat_ismcts_flat.h
 // A10 IS-MCTS's flat-rollout scoring for mulligan / discard-to-7 -- see
-// ideas/A10 ai agent is-mcts (the omniscient)/about.md. Both are one-shot
+// doc/ai_agents.md's A10 section. Both are one-shot
 // choices with no opponent reply to search (mulligan happens before either
 // player has moved; discard-to-7 has already resolved combat for the turn),
 // so a UCT tree buys nothing here -- each candidate subset is instead scored
