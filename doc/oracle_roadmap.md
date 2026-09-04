@@ -6,360 +6,23 @@
 architecture
 
 **Scope of this document**: long-horizon phases, ordering, and status-at-a-glance. For
-actionable near-term checkboxes see `doc/oracle_todo.md`. For a dated history of finished
-work see `doc/changelog.md`. For architecture/design rationale see `doc/oracle_design.md`.
+actionable near-term checkboxes see `doc/oracle_todo.md`.
 
 ---
-
-## Current Status
-
-Core game engine, CLI interactive mode, and TUI mode (Milestones 1 & 2 plus a polish
-pass) are done. Random, `A1` Value Based ("The Apprentice"), `A2` Combo Threshold
-("The Showboat"), `A3` Borealis (the Bradley-Terry benchmark), `A4` Balanced Rules
-("Bean Counter"), `A5` Heuristic ("Eps-Gam-Del"), `A6` Tactical ("Pressure
-Cooker"), `A7` Hybrid HBT ("The Grandmaster"), `A8` Simple Monte Carlo ("The
-Soothsayer"), `A9` HBT 2-Ply ("Grandmaster II"), `A10` IS-MCTS ("The Omniscient"), and
-`A11` IS-MCTS + NN ("AlphaOracle Prime") AI strategies are all implemented and
-calibrated, and the Bradley-Terry rating system itself is now built on top of them.
-`A11` measures **74, the new roster ceiling** (registered 2026-09-03, 58.44%
-head-to-head vs `A10`); `A10` (69, also 63.2% head-to-head vs `A7`), `A7` (65, after
-the 2026-08-28 recalibration closing the PASS-dominance follow-up below), `A9` (62,
-moved passively from that same A7 recalibration, though A9's own re-attempted
-`reply_trust`/`surrogate_pessimism` search found no improvement -- see
-`doc/changelog.md`), `A5` (64, after the 2026-08-27 PASS-dominance fix), and `A6` (53)
-all measure above the Borealis anchor; `A8` measures 35 — legitimately below it and
-not raised by extra rollout budget, per its own diagnosis (`doc/changelog.md`) rather
-than a defect. `A12` Clairvoyant ("The Clairvoyant") — `A8`'s sibling, not part of the
-`A1`-`A11` ladder's authoritative order — was also implemented as a side exploration,
-measuring 31; kept in the roster as a deliberately modest agent, not pursued further.
-**`A11` closes out the original `A1`-`A11` ladder** (implemented, calibrated, and
-registered for real play 2026-09-03 -- see `doc/changelog.md`'s 2026-09-03 entry).
-Housekeeping, the mulligan/seat-advantage investigation, and `A13` Cartographer
-(implemented, calibrated, and shelved 2026-08-31 -- every mechanism measured at parity
-with `A7` or worse, see `doc/changelog.md`'s 2026-08-31 entry and `ideas/A13 .../about.md`)
-are all done too -- see "Next Up" below for what comes next now that the ladder is
-complete, per the full, agreed sequencing (2026-08-28), which also promotes SDL3 GUI
-work out of "long-horizon" status (see `CLAUDE.md`).
-
-### Recently Completed
-
-- **2026-09-03** — `A11` IS-MCTS + NN ("AlphaOracle Prime"): registered and shipping,
-  **new roster ceiling, rating 74**. Stages 1-3 (self-play corpus across a curated
-  `A10`/`A7`/`A3` opponent pool, a small value-net MLP trained offline in PyTorch,
-  hand-written C inference, `nn_value_trust` blend into `A10`'s shared tree search)
-  had already cleared both ship gates 2026-09-02 -- 58.44% head-to-head vs `A10`
-  [56.93%, 59.94%] (the real bar), ~74 estimated Borealis rating [72.68%, 75.36%]
-  (context, vs `A10`'s own 69). This session closed the three remaining registration
-  steps: the rating table, packaging the trained weights as a committed
-  `assets/ismctsnn/` asset (a new top-level, category-scoped directory), and wiring a
-  default weight-load call into real startup (`main.c`, with a `--ai.weights`
-  override) -- fixing a related latent bug where `g_params[]` would have stayed at
-  plain `A10` behavior even after that wiring, absent an explicit promotion to this
-  agent's own measured-best default on a successful load. Also added `make release`
-  (`-O2`) and `--rating.agents=LIST` (needed once `A11`'s ~16x-slower-per-decision
-  cost made a full-roster `--stda.rating` run impractical by default). Closes the
-  original `A1`-`A11` ladder. See `doc/changelog.md`'s 2026-09-03 entry and
-  `ideas/A11 .../about.md` for the full record.
-- **2026-08-31** — `A13` Cartographer (Next Up item 3): implemented, calibrated, and
-  shelved rather than registered. Four new deterministic layers on top of `A7`'s
-  synthesis (race arithmetic, deck-aware draw valuation, reshuffle-boundary awareness,
-  Jensen-corrected expected block), all closed-form over the exact unseen-card pool --
-  the superset guarantee (neutral config recovers `A7` bit-for-bit) held through every
-  stage. Calibration (four independent properly-powered searches, including a
-  630-evaluation joint search specifically testing for a coordinate-descent trap): every
-  configuration landed at parity with `A7` or worse, except `hplus_trust`, which was
-  conclusively harmful (matching `A9`'s own `reply_trust` failure signature). Two real
-  implementation bugs found and fixed along the way (a value-function scale mismatch, a
-  calibration-driver parameter-pinning bug). `AI_STRATEGY_CARTOGRAPHER` removed from the
-  registry; source kept as reference, the belief module kept as reusable infrastructure
-  for a future `A11` pass. See `doc/changelog.md`'s 2026-08-31 entry and
-  `ideas/A13 .../about.md` for the full record.
-- **2026-08-28** — Mulligan / seat-advantage investigation (Next Up item 2):
-  consolidated the mulligan max-cards cap into one shared accessor
-  (`mulligan_get_max_cards()`, `ai_strat_lib_heuristics.c`) and built purpose-built
-  batch tooling (`aicalibsrc/mulligan/`) instead of `ideas/4`'s interactive-only
-  exporter (rescoped and scheduled as its own item, see "Next Up" below). Self-mirror
-  measurement found the seat effect is real for most agents but agent-dependent in
-  both size *and direction* -- `borealis`/`balanced` favor going first,
-  `tactical`/`combo`/`hbt`/`value`/`hbt2ply`/`heuristic`/`ismcts` favor going second
-  (2pp to `ismcts`'s ~12pp), `rand` is neutral. A `max_cards` sweep confirmed the cap
-  is a real lever but not a uniform fix across the roster.
-  `MULLIGAN_DEFAULT_MAX_CARDS` stays 2, unchanged. See `doc/changelog.md`'s
-  2026-08-28 entry for the full table.
-- **2026-08-28** — Housekeeping bug fixes (Next Up item 1): `combat.c`'s combo-bonus
-  table selection was hardcoded to the random-distribution table regardless of the
-  actual deck in play (fixed via a new `struct gamestate.combo_bonus_table` field;
-  the whole enum renamed `DeckType` -> `ComboBonusTable` since it names a scoring
-  table, not a deck-construction method); two calibration-driver bugs (result
-  misattribution under parallelism, `DEFAULTS` dict drift) ported from
-  `aicalibsrc/balanced/`'s already-fixed patterns into `value`/`combo`/`borealis`.
-  A1's `VB_COST_FLOOR` re-validated (R² 0.25-0.49 -> 0.84, confirming the
-  misattribution bug was real noise) but not re-shipped -- the shipped `1.3` stays
-  statistically tied with the fit's top candidates. New `make test_combat` suite.
-  See `doc/changelog.md`'s 2026-08-28 entry.
-- **2026-08-28** — `A9` HBT 2-Ply re-attempted against the recalibrated `A7`: no
-  improvement found, and the original "A7's broken defense is the reason A9 falls
-  short" diagnosis does not hold -- a `reply_trust` sweep vs the new `A7` shows win rate
-  declining *monotonically* as trust in the ply increases (47.64% at trust=0 down to
-  31.20% at trust=1). `HBT2PLY_DEFAULTS` unchanged; rating still moved 59 → 62 purely
-  by inheriting `A7`'s gain (this agent's `.base` is a live call to `A7`'s own
-  default-params function). See `doc/changelog.md`'s 2026-08-28 entry.
-- **2026-08-28** — `A7` Hybrid HBT re-optimized with the 2026-08-27 PASS-dominance
-  defense fix in place: rating 58 → 65 (above the original pre-fix 62), closing the
-  Bug Tracker follow-up (root cause: `defense_stdev_mult` had been calibrated against a
-  dead PASS branch and was actively biasing toward over-blocking once the fix made it
-  live). See `doc/changelog.md`'s 2026-08-28 entry.
-- **2026-08-26** — `A9` HBT 2-Ply ("Grandmaster II") implemented and calibrated: `A7`
-  Hybrid HBT plus one opponent-response ply -- for each candidate champion subset, clone
-  the position, commit it, and score against a simulated best reply from a deterministic
-  public-information surrogate hand (`ai_strat_hbt2ply_reply.c`), blended with `A7`'s own
-  undefended score via a `reply_trust` dial (0 provably recovers `A7` exactly, verified in
-  `testsrc/test_moves.c`). Two real findings surfaced while building it, both documented
-  in depth further down this file's history and in `ai_strat_hbt2ply.h`/
-  `ai_strat_hbt_enum.h`: (1) `A7`'s own shipped defense formula
-  (`hbt_best_defense_move()`) has a PASS-dominance property -- its decline baseline never
-  charges the incoming attack, making declining mathematically dominate every blocking
-  option under `A7`'s weights -- so `A9` uses its own local, corrected reply oracle
-  (`hbt2ply_reply_defense_move()`) rather than `A7`'s real one, leaving `A7` itself
-  untouched; (2) `A9`'s own first scoring formula over-credited "forced the opponent to
-  spend a resource blocking" (~5x the weight of the actual damage-reduction term),
-  making the ply actively harmful even when its block prediction was accurate -- fixed to
-  credit damage reduction only, which is now a mathematical guarantee
-  (`two_ply <= one_ply` always) rather than a design intention. Calibration (staged: the
-  34 inherited `HBTParams` fields hard-pinned, only `reply_trust`/`surrogate_pessimism`
-  searched) converged to the same ~47% ceiling against `A7` whether optimized against
-  `borealis` or directly against `hbt`, both with tight confidence intervals over 40,000
-  games -- not a tuning gap. A controlled test isolating the attack-side logic (both
-  sides given the corrected defense) showed the ply reaching near-parity with `A7` there
-  (49.6% vs 50.5%), confirming the mechanism works in principle but has nothing real to
-  correct for against `A7`'s actual (non-blocking) defense. Measured: **59** vs
-  `borealis` (20,000 games, both seats, direct pairwise -- same methodology as `A8`,
-  chosen for consistency rather than necessity: unlike `A8`, `A9`'s own cost is cheap,
-  ~3200 games/sec, but a roster-wide fit was skipped anyway since `A8`/`A12` already make
-  any full round-robin impractical regardless of what else is added to it); measured
-  **47.2%** [46.7%, 47.7%] head-to-head vs `A7` specifically -- below this agent's own
-  design target, honestly reported. Shipped as a playable, calibrated roster member
-  (`A4`/`A8`/`A12` precedent); fixing `A7`'s (and `A5`'s identical) defense formula is
-  believed a genuine prerequisite for a future re-attempt at the design target, deferred
-  to its own task and conditioned on `A5`/`A7` measuring at least as strong against
-  `Borealis` afterward, not merely "more realistic" (user's stated condition). Full
-  details: `ideas/A9 .../about.md`, this session's diagnosis.
-- **2026-08-25** — `A12` Clairvoyant ("The Clairvoyant") implemented: a side exploration
-  of whether a cheap (non-tree, no enumeration) fix to `A8`'s diagnosed rollout-policy
-  bias could raise its rating without drifting toward `A9`/`A10`/`A11`'s own territory.
-  Reuses `A8`'s identical progressive-pruning search verbatim (required generalizing
-  `mc_playout()`/`mc_search_best_move()` to take the rollout `StrategySet` as a
-  parameter -- `A8`'s own behavior confirmed unchanged throughout); the only
-  difference is that rollouts give the *opponent's* simulated moves a cheap
-  closed-form heuristic instead of `A8`'s uniformly-random policy. Playtracing found
-  and fixed two real defects in that heuristic (an attack score that never weighed
-  cost, committing 100% of the time; a defense formula with the same gap, once fixed
-  over-correcting until cost was weighed the same way on both sides) before a
-  `cost_weight` sweep (14 values, vs `borealis`) replaced a borrowed Borealis-lambda
-  starting estimate with an empirically better one. Measured rating: **31** — close to
-  but consistently a few points below `A8`'s own 35, not a clear improvement; shipped
-  anyway as a deliberately modest, "fun and easy to beat" roster member rather than
-  chased further, since `A9`-`A11` are expected to be materially stronger agents by
-  design. Full details: `doc/changelog.md`.
-- **2026-08-25** — `A8` Simple Monte Carlo ("The Soothsayer") implemented and
-  calibrated: the first agent on the ladder that actually simulates (progressive-pruning
-  rollout search) rather than scoring closed-form, which required new shared engine
-  infrastructure first (`src/actions/` move enumeration/application,
-  `ai_strat_playout.c`'s forked-RNG-stream `mc_determinize()`/`mc_playout()`, reusable by
-  `A9`-`A11`). Playtracing three losses vs `borealis` plus a budget-vs-rating sweep
-  (1.0x/1.75x/2.3x the rollout budget, statistically indistinguishable ratings)
-  diagnosed the ceiling precisely: `mc_playout()`'s rollouts model *both* seats as
-  `AI_STRATEGY_RANDOM` regardless of the real opponent, so its win-probability estimates
-  are well-calibrated against `rand` and systematically biased against a real strategic
-  opponent — a bias more sampling can't correct, confirmed by the flat budget sweep.
-  Shipped as-is: this agent was never intended to be competitive (the original design
-  intent is a tool for probing per-action values from curated positions to help mine new
-  heuristics, not a strong opponent). Measured rating: **35** — below the Borealis
-  anchor, honestly reported per this project's convention (`A4`'s 36 is the precedent).
-  Full details: `doc/changelog.md`.
-- **2026-08-25** — `A7` Hybrid HBT ("The Grandmaster") implemented and calibrated: a
-  fixed three-layer synthesis of `A4` (resource targets, entering as a soft penalty
-  rather than a hard filter -- see `doc/changelog.md` for why), `A6` (phase/aggression
-  modulating the advantage weights), and `A5` (the closed-form enumerate-and-rank
-  mechanism itself), plus `A3`'s lethal-combo hold and combo-protecting mulligan/
-  discard, added deliberately so the hybrid wouldn't be combo-blind next to Borealis
-  in human play. Calibration was staged (34 parameters, double `A6`'s previous max):
-  stage 1 froze every inherited field at its source agent's own shipped value and
-  freed only the eight parameters new to this agent, reaching 60.96% vs `borealis`
-  (40,000 games) with no personality flags; stage 2's joint re-fit of `A5`'s own
-  weights found no significant improvement, so stage 1 shipped. Measured rating
-  (roster-wide `--stda.rating` fit): **62** -- above all three of its ingredients in
-  the same fit (`A5` 61, `A6` 53, `A4` 34) despite a clear pairwise loss to `A5`
-  specifically (26.0%), reported honestly rather than tuned away. See
-  `doc/changelog.md` for the full entry.
-
-- **2026-08-25** — `A6` Tactical ("Pressure Cooker") implemented and calibrated:
-  classifies the game into a phase (early/mid/late/critical, by energy thresholds)
-  and derives a single 0.0-1.0 aggression factor from energy difference, hand power,
-  and cash surplus, scaling how many champions to commit by that factor. Playtracing
-  found a real bug in the first `decide_num_attackers()` fill-in (proportional
-  rounding put the single-affordable-champion case's decision boundary exactly on
-  aggression's neutral baseline, causing the agent to measure **losing to Random** --
-  the only implemented agent ever to do so); fixed with four fixed aggression bands
-  instead. Calibration (`aicalibsrc/tactical/`) targeted `borealis`, sixteen free
-  parameters -- the largest search space so far -- and the first unconstrained
-  `optimize` run came back with no personality flags (unlike `A4`'s and `A5`'s free
-  searches), so it shipped directly with no `--identity-safe` run needed. Measured
-  rating (roster-wide `--stda.rating` fit): **52** -- above the Borealis anchor (50),
-  the second agent after `A5` to clear it, against a `~74` design-intent estimate.
-  Full details: `doc/changelog.md`.
-- **2026-08-25** — `A5` Heuristic ("Eps-Gam-Del") implemented and calibrated: reduces
-  the whole position to one weighted advantage function,
-  `Advantage = epsilon*EnergyAdv + taper*gamma*CardsAdv + taper*delta*CashAdv`, and
-  picks the 1-move-lookahead legal move that maximises it, closed-form (no
-  clone-and-apply, to keep the shared RNG stream undisturbed). The first agent whose
-  decision rule is a tunable weighted sum over whole-position features rather than
-  per-card scoring/threshold gates/subset enumeration/resource-target formulas.
-  Calibration (`aicalibsrc/heuristic/`) targeted `borealis` (not `A4` as the original
-  todo item said — superseded once `A4` itself measured below the anchor). A manual
-  sweep found `weight_cards_advantage`'s useful range far exceeds the spec's
-  illustrative 0.15 (peak ~48.7% vs `borealis` around gamma=6-8); an unconstrained
-  `optimize` run found gamma=9.815 at 59.67% validated, flagged by
-  `check_personality_flags()`, but playtracing ruled out the "hoard forever" failure
-  mode the flag exists to catch (still finishes <20 turns, 99.8% vs `rand`) — a large
-  weight changing which moves the one mechanism prefers, not erosion of the mechanism.
-  `optimize --identity-safe` converged to a statistically indistinguishable 58.99% at
-  gamma=1.962, and shipped instead (same measured strength, weights closer to the
-  spec). Measured rating (roster-wide `--stda.rating` fit): **60** — above the
-  Borealis anchor (50), though below the `~70` design-intent estimate — unlike `A4`
-  (which undershot both its own estimate and the anchor), `A5` undershot its estimate
-  but still cleared the anchor, the first agent in the roster to do so. Full details:
-  `doc/changelog.md`.
-- **2026-08-24** — `A4` Balanced Rules ("Bean Counter") implemented and calibrated:
-  closed-form resource accounting (target cash/hand-size scale linearly with opponent
-  energy), variance-aware defense (`E[Def] <= E[Attack] - beta*sigma`, can decline a
-  block outright). The re-anchored spec-derived cash-target slope
-  (`INITIAL_CASH_DEFAULT/91`) turned out to be a genuine bug, not just untuned — it
-  produces ~0 cash surplus at full opponent energy, trapping the agent unable to spend
-  for many early turns (confirmed by playtrace and a parameter sweep). Free
-  `differential_evolution` search eroded the agent's resource-conservation identity
-  (slopes toward 0, defense_beta toward "never defend") while measuring stronger,
-  mirroring `A2`'s rejected `aggression_level=2.21` — so calibration added
-  `optimize --identity-safe` (`aicalibsrc/balanced/`), which searches a narrower,
-  character-preserving bound instead. Measured rating (roster-wide `--stda.rating` fit):
-  **36** — below the Borealis anchor (50) and below the `~62` design-intent estimate, a
-  legitimate result, not a defect (see `doc/changelog.md`). Its calibration harness also
-  fixed the `DEFAULTS`-drift item below for itself, via a new `--print-defaults` mode.
-  Full details: `doc/changelog.md`.
-- **2026-08-23** — Bradley-Terry rating system implemented (`src/rating/`): ports the
-  math/design of `ideas/5 rating system/v2 Bradley-Terry (BT) Rating System/`, fixing a
-  dozen-plus defects on the way (win-count overflow, leaderboard underflow, batch
-  convergence-vs-normalisation ordering, draw handling, incremental-update
-  path-dependence, a diverging unnormalised gradient step). Ships two batch solvers —
-  MM (Minorization-Maximization, the standard method, default) and gradient ascent
-  (kept for cross-checking) — plus the incremental `A^delta` path for live play, CSV
-  persistence, and the new `--stda.rating` round-robin benchmark mode (every
-  implemented agent, both seats, Borealis anchored at rating 50) and `--rating.track`
-  opt-in human rating tracking in `stda.cli`/`stda.tui` with a matchmaking suggestion.
-  Measured leaderboard: `borealis` 50 (anchor), `combo` 30, `value` 24, `rand` 2 —
-  cross-validated against `A3`'s own independently-measured win rates below. Full
-  details: `doc/changelog.md`.
-- **2026-08-23** — `A3` Borealis (the Bradley-Terry benchmark) implemented and
-  calibrated: exhaustive 0-3 champion subset enumeration (no pruning), one monotone
-  strength dial (`luna_value`/lambda), epsilon tie-break randomisation, lethal-combo
-  holding. Landed alongside it: per-agent `mulligan_strategy[]`/`discard_strategy[]`
-  hooks in `StrategySet` (`src/ai_strat/ai_strategy.h`), so Borealis can protect held
-  combo pieces from the shared power-based discard/mulligan heuristic without changing
-  Random/`A1`/`A2`'s behaviour. `aicalibsrc/borealis/` calibration tooling added, full
-  `sweep`/`optimize`/`selfplay`/`validate` parity with `aicalibsrc/combo/`; also fixed a
-  parallel-execution result-misattribution bug in the driver pattern it was copied from
-  (present, unpatched, in `aicalibsrc/value/`'s and `aicalibsrc/combo/`'s `sweep`/
-  `selfplay` commands — see `doc/oracle_todo.md`). The handout's default lambda (0.5)
-  turned out far from optimal: measured win rate vs `combo` climbed from 43.6% to 69.1%
-  after calibration (lambda≈4.58, confirmed unimodal). Full details: `doc/changelog.md`.
-- **2026-08-22** — `A2` Combo Threshold ("The Showboat") implemented and calibrated:
-  threshold-gated combo chaser (pairs/triples must clear a tunable bonus threshold to
-  be pursued), probabilistic defense decline -- both deliberate character, not defects
-  (handout §3, §8). `aicalibsrc/combo/` calibration tooling added (`sweep`/`optimize`/
-  `selfplay`/`validate`), mirroring `aicalibsrc/value/` but with a `differential_evolution`
-  black-box search in place of a full grid (infeasible over 9 parameters vs `A1`'s 2).
-  Measured win rate vs `value`: 49.94% -> 58.77% after calibration; vs `rand`: 88.11% ->
-  92.78%. Full details: `doc/changelog.md`.
-- **2026-08-21** — `A1` Value Based ("The Apprentice") implemented: efficiency-ratio
-  card ranking, no combo awareness, no attack-phase pass option (by design). A single
-  `AIStrategyType -> function pointer` registry (`src/ai_strat/ai_strategy.c`) now
-  drives every strategy-set build site (`stda_auto.c`, `cli_game.c` shared by CLI/TUI)
-  and the interactive strategy menu's availability labels, replacing three separate
-  hardcoded Random assignments. Per-player agent selection for `--stda.auto`
-  (`-Aa`/`-Ab`), `AIStrategyType` moved to `game_types.h`, one CLI shorthand per agent
-  (dropped `showboat`/`greedy` aliases). Full details: `doc/changelog.md`.
-- **2026-07-23/24** — TUI Milestone 2 (human-vs-AI play: `TAB`-toggled PLAY/COMMAND
-  modes, recall, cash exchange, mulligan, discard-to-7, live combat-result display) and
-  a follow-up UI/playability polish pass.
-- **2026-07-14** — Recall mechanic, interactive cash-card champion selection, detailed
-  combat results display, discard pile display, source folder structure cleanup
-  (pragmatic pass), TUI Milestone 1 (ncurses display skeleton, AI-vs-AI).
-
-Full details: `doc/changelog.md`.
 
 ### What Needs Work
 
-- Random, `A1` Value Based, `A2` Combo Threshold, `A3` Borealis, `A4` Balanced Rules,
-  `A5` Heuristic, `A6` Tactical, `A7` Hybrid HBT, and `A8` Simple Monte Carlo
-  implemented, and the Bradley-Terry rating system now built on top of them —
-  everything from `A9` onward on the AI ladder below is open, and is what the rating
-  system will next measure.
 - Automated simulation mode (`stda_auto.c`) needs a refactor (see `doc/oracle_todo.md`).
 - No save/load, no config file system, no general match-result CSV export (the rating
   system's own CSV persistence is separate and done), no network, no GUI, no `stda.sim`.
-- Two calibration-driver items flagged during `A3`'s calibration, not yet actioned for
-  `aicalibsrc/value/`/`aicalibsrc/combo/` (both fixed for `A4`'s own driver from the
-  start): a parallel-execution result-misattribution bug unpatched in `aicalibsrc/
-  value/`'s and `aicalibsrc/combo/`'s `sweep`/`selfplay` (casts doubt on A1's shipped
-  values specifically, chosen via the vulnerable `selfplay` path), and both drivers'
-  `DEFAULTS` dicts having drifted from their shipped C constants (`aicalibsrc/
-  borealis/`'s still does too). See `doc/oracle_todo.md`.
 
 ---
 
-## Next Up (single authoritative order)
+## Next Up
 
-Agreed with Jonathan 2026-08-28, superseding the single-item list this section used to
-carry. Rationale for the shape of this list (not just its contents) lives here since
-`doc/oracle_todo.md` intentionally doesn't duplicate ordering:
 
-1. **Housekeeping bug fixes** -- ✅ done 2026-08-28 (see `doc/changelog.md`'s
-   2026-08-28 entry). All three fixed: the two calibration-driver bugs (result
-   misattribution and `DEFAULTS` drift, ported from `aicalibsrc/balanced/`'s
-   already-correct patterns into `value`/`combo`/`borealis`), and `combat.c`'s
-   combo-bonus table selection (was hardcoded to the random table regardless of the
-   actual deck in play -- fixed via a new `struct gamestate.combo_bonus_table`
-   field, alongside a rename of the whole enum from `DeckType` to `ComboBonusTable`
-   since it names a scoring table, not a deck-construction method). A1's
-   `VB_COST_FLOOR` was re-validated with both bugs fixed (R² jumped from ~0.25-0.49
-   to 0.84, confirming the bug had been a real noise contributor) but not
-   re-shipped -- the shipped `1.3` remains statistically tied with the fit's top
-   candidates in a focused, larger-sample comparison.
-2. **Mulligan / seat-advantage investigation** -- ✅ done 2026-08-28 (see
-   `doc/changelog.md`'s 2026-08-28 entry for the full per-agent table and sweep
-   data). Built purpose-built batch tooling (`aicalibsrc/mulligan/`) instead of
-   `ideas/4`'s interactive-only exporter (which can't produce batch data and whose
-   real value is separate -- see item 6 below). Self-mirror measurement across the
-   roster found the seat effect is real for most agents but **agent-dependent in
-   both size and direction**, not a uniform bias: `borealis`/`balanced` favor going
-   first, `tactical`/`combo`/`hbt`/`value`/`hbt2ply`/`heuristic`/`ismcts` favor going
-   second (2pp to `ismcts`'s ~12pp), `rand` is neutral. A `max_cards` sweep (0-4)
-   confirmed the cap moves some agents (`tactical`) but not others (`borealis`'s
-   imbalance is tied to mulligan existing at all, not its size) -- no single value
-   helps the whole roster. **`MULLIGAN_DEFAULT_MAX_CARDS` stays 2, unchanged.**
-3. **`A13`** -- ✅ done 2026-08-31 (see `doc/changelog.md`'s 2026-08-31 entry and
-   `ideas/A13 .../about.md`). Implemented as A7's synthesis plus four new deterministic
-   layers (race arithmetic, deck-aware draw valuation, reshuffle-boundary awareness,
-   Jensen-corrected expected block), all closed-form over the exact unseen-card pool.
-   Calibrated across four independent, properly-powered searches (including a
-   630-evaluation joint search testing for a coordinate-descent trap across layers):
-   every configuration measured at parity with `A7` or worse, except `hplus_trust`,
-   conclusively harmful (`A9`'s own `reply_trust` failure signature, even sharper).
-   **Shelved rather than registered** -- `AI_STRATEGY_CARTOGRAPHER` removed from
-   `AIStrategyType`; source kept as reference, the closed-form belief module
-   (`ai_strat_a13_belief.{c,h}`) kept as reusable infrastructure for a future `A11`
-   feature-extraction pass.
-4. **`A11` IS-MCTS + NN** ("AlphaOracle Prime",
+
+1. **`A11` IS-MCTS + NN** ("AlphaOracle Prime",
    `ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/`) -- ✅ done and
    **registered 2026-09-03** (see `doc/changelog.md`'s 2026-09-03 entry and
    `ideas/A11 .../about.md`). Stages 1-3 (state encoder, self-play corpus +
@@ -380,7 +43,7 @@ carry. Rationale for the shape of this list (not just its contents) lives here s
    `A7`->`A9` "Grandmaster"->"Grandmaster II" precedent rather than a
    corpus-size/technical suffix on the player-facing name. **Closes the
    original `A1`-`A11` ladder.**
-5. **AlphaOracle Prime -- bigger training corpus** (agreed 2026-09-03, the first
+2. **AlphaOracle Prime -- bigger training corpus** (agreed 2026-09-03, the first
    of three AlphaOracle-family strengthening options discussed that session --
    see this item and item 8 below for the comparison; not written up separately
    in `doc/changelog.md`, which only covers completed work). Retrain the shipped
@@ -390,10 +53,7 @@ carry. Rationale for the shape of this list (not just its contents) lives here s
    measured ~44% real-vs-naive-extrapolation throughput gap (see the pilot's
    own corpus-generation numbers, `ideas/A11 .../about.md`) is accounted for.
    Picked to go *first*, ahead of item 6 below, because it's the best
-   risk-adjusted bet of
-   the three options: the shipped net needed fairly aggressive regularization
-   (`dropout=0.4`, `weight_decay=1e-3`) just to survive past epoch 1 without
-   catastrophic overfitting, and its val MSE (0.1705 vs a 0.2451 baseline) is not
+   risk-adjusted bet of the three options: the shipped net needed fairly aggressive regularization (`dropout=0.4`, `weight_decay=1e-3`) just to survive past epoch 1 without catastrophic overfitting, and its val MSE (0.1705 vs a 0.2451 baseline) is not
    yet plateaued -- both point at a data-starved net, not a saturated one. The
    full pipeline (`gen_corpus.c`, `run_selfplay.sh`, `train_value_net.py`,
    `export_weights.py`, `calib_ismctsnn.c`) is already built and proven end to
@@ -403,7 +63,7 @@ carry. Rationale for the shape of this list (not just its contents) lives here s
    net clears the *existing* candidate's own measured numbers by a real margin,
    not just noise (see `aicalibsrc/ismctsnn/README.md`'s shared-struct
    measurement gotcha before writing a comparison harness).
-6. **Interactive human-play match exporter** (rescoped 2026-08-28 from `ideas/4
+3. **Interactive human-play match exporter** (rescoped 2026-08-28 from `ideas/4
    match results export/`'s original design). Purpose, per Jonathan: log true
    human-played games (vs AI and vs human) to mine heuristics from human play
    patterns and to feed this item's own neural network training data -- not seat-
@@ -417,7 +77,7 @@ carry. Rationale for the shape of this list (not just its contents) lives here s
    always goes first in batch mode -- see item 2's finding that this is intentional,
    not a gap), and gamestate instrumentation it assumes exists
    (`total_damage_dealt[2]`, `champions_played[2]`, etc.) that doesn't yet.
-7. **SDL3 GUI**, together with save/load game state (`ideas/6 save and load gamestate/`)
+4. **SDL3 GUI**, together with save/load game state (`ideas/6 save and load gamestate/`)
    and the configuration file system (`ideas/7 config file/`) -- promoted out of
    "long-horizon" status (2026-08-28, see `CLAUDE.md`'s "Out of scope" section) because
    it addresses a concrete, named pain point: reading board state and deciding moves is
@@ -440,7 +100,7 @@ carry. Rationale for the shape of this list (not just its contents) lives here s
    (`assets/<category>/...`), not a flat dump, specifically so this GUI work has a
    ready-made home (e.g. `assets/champions/`) rather than needing to invent the
    convention from scratch.
-8. **AlphaOracle Prime II -- PUCT + policy head** (Stage 4, gated on Stage 3's
+5. **AlphaOracle Prime II -- PUCT + policy head** (Stage 4, gated on Stage 3's
    ship-gate pass -- now technically unlocked, agreed 2026-09-03 to schedule it
    here, after SDL3 GUI and before the 3-4 player rework). Of the three
    AlphaOracle-family options discussed that session (see item 5 above for the
@@ -470,15 +130,15 @@ carry. Rationale for the shape of this list (not just its contents) lives here s
    more focused search may finally pay off where raw budget alone would not --
    re-sweep `limit_iterations`/decision-time once the policy head is in, not
    before.
-9. **3-4 player mode**. Jonathan has an existing physical/tabletop 3-4 player variant of
+6. **3-4 player mode**. Jonathan has an existing physical/tabletop 3-4 player variant of
    the game; digitizing it is a genuine engine-level rework (`PlayerID` is binary
    throughout -- roughly two dozen files use a `1 - current_player`/`1 - defender`
    opponent-lookup pattern across `core/`, every `ai_strat/` file, and the roles layer --
    not a small feature), the single biggest architecture project on this list.
-10. **`ideas/10 Draft Format and Game Depth Addition Ideas/`** -- a draft format as a
-    third deck type alongside random/custom. Sequenced right after 3-4 player mode per
-    Jonathan's call (2026-08-28); related to but distinct from `G3`'s "AI constructs a
-    custom deck" facet below.
+7. **`ideas/10 Draft Format and Game Depth Addition Ideas/`** -- a draft format as a
+   third deck type alongside random/custom. Sequenced right after 3-4 player mode per
+   Jonathan's call (2026-08-28); related to but distinct from `G3`'s "AI constructs a
+   custom deck" facet below.
 
 **Bottom of the list** (still intended, least urgent, distinct from the back burner
 below): `ideas/11 skill vs chance eval/` -- an analytical framework for game balance,
@@ -517,8 +177,7 @@ cross-platform development.
 
 ## Development Phases
 
-Each phase below names its `ideas/` home; see `doc/oracle_todo.md` for the actionable
-task breakdown within whichever phase is currently active.
+Each phase below names its `ideas/` home; see `doc/oracle_todo.md` for the actionable task breakdown within whichever phase is currently active.
 
 ### Phase: Complete Game Loop — mostly done
 
@@ -538,31 +197,10 @@ error-handling polish (see `doc/oracle_todo.md`).
 
 ### Phase: AI Development — `A1`–`A11` done, ladder complete, `A11` the new roster ceiling (74)
 
-Ladder: `A1` value-based (done, 2026-08-21) → `A2` combo threshold (The Showboat, done,
-2026-08-22) → `A3` greedy power (Borealis benchmark, done, 2026-08-23) → `A4` balanced
-rules (Bean Counter, done, 2026-08-24) → `A5` heuristic (Eps-Gam-Del, done, 2026-08-25,
-rating 60, later 64 -- see the 2026-08-27 PASS-dominance fix in `doc/changelog.md`)
-→ `A6` tactical (Pressure Cooker, done, 2026-08-25) → `A7` hybrid HBT (The Grandmaster,
-done, 2026-08-25, rating 62, then 58 after the same fix -- a regression for this agent
-specifically, then 65 after the 2026-08-28 recalibration that closed the follow-up, see
-`doc/changelog.md`) → `A8` simple MC (The Soothsayer,
-done, 2026-08-25, rating 35 -- see `doc/changelog.md`) → `A9` HBT 2-ply (Grandmaster II,
-done, 2026-08-26, rating 59, then 62 after `A7`'s 2026-08-28 recalibration -- inherited
-passively, `A9`'s own re-attempted `reply_trust` search found no improvement, see
-`doc/changelog.md`) → `A10` IS-MCTS (The Omniscient, done, 2026-08-27,
-**rating 69 -- the roster ceiling**, also 63.2% head-to-head vs `A7`)
 → `A11` IS-MCTS + neural network (AlphaOracle Prime, Stages 1-3 done 2026-09-02,
 registered 2026-09-03 -- **both ship gates PASS**, 58.44% head-to-head vs `A10`,
-**rating 74, the new roster ceiling**, see "Next Up" item 4). One `ideas/A#`
-folder per agent,
-`A#` matching that agent's `AIStrategyType` enum ordinal (`src/core/game_types.h` as of
-`A1`; it previously lived in `src/ui/shared/player_config.h`). `A12` Clairvoyant (The
-Clairvoyant, done, 2026-08-25, rating 31) is appended after `A11` in enum ordinal but
-is **not** part of this authoritative ladder order -- it's `A8`'s sibling (same search,
-a cheap opponent-rollout heuristic instead of pure random), built as a side exploration
-rather than the next rung; see `doc/changelog.md`. See
-`ideas/G1 AI agent general info/oracle_ai_agent_names.md` for the canonical roster,
-flavour names, and ratings.
+**rating 74, the new roster ceiling**, see "Next Up" item 4). See
+`ideas/G1 AI agent general info/oracle_ai_agent_names.md` for the canonical roster, flavour names, and ratings.
 
 ### Phase: Simulation & Analysis Tools — spec complete, implementation pending
 
@@ -570,13 +208,7 @@ CSV export (`ideas/4 match results export/`); interactive simulation UI, `stda.s
 (no dedicated `ideas/` folder yet, see `ideas/2 …/target_folder_structure_v4.md` for
 scoping notes); configuration file system (`ideas/7 config file/`, back-burnered).
 
-### Phase: Rating System — done (2026-08-23)
 
-Bradley-Terry core calculations (MM + gradient-ascent batch solvers), adaptive
-learning rate, the Borealis (`A3`) benchmark anchor (rating 50 by definition),
-incremental + batch updates, CSV persistence, matchmaking, and the `--stda.rating`
-round-robin benchmark mode. `src/rating/`; ports `ideas/5 rating system/` (v2 spec)'s
-design, not the file — see `doc/changelog.md` for the defects fixed on port.
 
 ### Phase: Client/Server Architecture — design complete, major refactor required
 
@@ -596,12 +228,9 @@ species/order icons); mobile ports (iOS/Android) as a long-term stretch goal.
 
 ## Research Questions to Explore
 
-**AI Development**: minimum MCTS rollouts for good play? How much does combo bonus
-affect optimal strategy? Can rule-based AI approach MCTS performance? What's the skill
-ceiling with perfect information?
+**AI Development**: What's the skill ceiling with perfect information?
 
-**Game Balance**: are random/mono/custom decks balanced? Do certain species/orders
-dominate? Is the mulligan rule fair? What's the optimal starting cash amount?
+**Game Balance**: What's the optimal starting cash amount?
 
 **System Design**: best way to serialize game state for network play? How to handle
 reconnection in multiplayer? Efficient card representation for GUI rendering? Optimal
@@ -609,21 +238,12 @@ strategy framework for pluggable AIs?
 
 ---
 
-## Success Criteria
 
-- [ ] At least 3 different AI strategies working
-- [x] Rating system accurately ranks AI strength (2026-08-23, `src/rating/`) — the
-      `--stda.rating` round-robin table currently orders `rand` < `value` < `combo` <
-      `borealis` (50, anchor by definition), matching the intended ladder
-- [ ] CSV export generates usable data for R/Python analysis
-- [ ] TUI mode provides a good user experience *(largely met already — Milestones 1–2 +
-      polish pass done; see "Left for a future pass" in `doc/oracle_todo.md`)*
 
 ### Longer-Term
 
-- [ ] IS-MCTS AI demonstrably stronger than rule-based
 - [ ] Network multiplayer works reliably
-- [ ] Cross-platform GUI runs on Windows/Linux/macOS
+- [ ] - [ ] Cross-platform GUI runs on Linux/Android
 - [ ] Project serves as a good portfolio/learning showcase
 
 ---
