@@ -8,6 +8,7 @@
 // conventions (isolation, RNG-draw-count, card conservation).
 
 #include <stdio.h>
+#include <stddef.h>
 #include <string.h>
 #include <math.h>
 
@@ -199,10 +200,10 @@ void test_ismcts_determinism(TestSuite* suite)
   set_player_strategy_by_type(&rollout, PLAYER_B, AI_STRATEGY_RANDOM);
 
   GameContext sim_ctx1 = mc_fork_context(ctx, 7777);
-  GameMove move1 = ismcts_search_best_move(&gs, PLAYER_A, &sim_ctx1, &params, &rollout);
+  GameMove move1 = ismcts_search_best_move(&gs, PLAYER_A, &sim_ctx1, &params, &rollout, NULL);
 
   GameContext sim_ctx2 = mc_fork_context(ctx, 7777);
-  GameMove move2 = ismcts_search_best_move(&gs, PLAYER_A, &sim_ctx2, &params, &rollout);
+  GameMove move2 = ismcts_search_best_move(&gs, PLAYER_A, &sim_ctx2, &params, &rollout, NULL);
 
   check(suite, "identical seed reproduces the identical chosen move",
         1, memcmp(&move1, &move2, sizeof(GameMove)) == 0);
@@ -228,7 +229,7 @@ void test_ismcts_root_untouched(TestSuite* suite)
   set_player_strategy_by_type(&rollout, PLAYER_B, AI_STRATEGY_RANDOM);
   GameContext sim_ctx = mc_fork_context(ctx, 9191);
 
-  ismcts_search_best_move(&gs, PLAYER_A, &sim_ctx, &params, &rollout);
+  ismcts_search_best_move(&gs, PLAYER_A, &sim_ctx, &params, &rollout, NULL);
 
   check(suite, "root gamestate byte-identical after search",
         1, memcmp(&gs, &gs_before, sizeof(struct gamestate)) == 0);
@@ -280,7 +281,7 @@ void test_ismcts_single_iteration(TestSuite* suite)
   set_player_strategy_by_type(&rollout, PLAYER_B, AI_STRATEGY_RANDOM);
   GameContext sim_ctx = mc_fork_context(ctx, 111);
 
-  GameMove move = ismcts_search_best_move(&gs, PLAYER_A, &sim_ctx, &params, &rollout);
+  GameMove move = ismcts_search_best_move(&gs, PLAYER_A, &sim_ctx, &params, &rollout, NULL);
   check(suite, "a move type in the valid enum range was returned",
         1, move.type >= MOVE_PASS && move.type <= MOVE_CASH);
 
@@ -305,7 +306,7 @@ void test_ismcts_arena_exhaustion(TestSuite* suite)
   set_player_strategy_by_type(&rollout, PLAYER_B, AI_STRATEGY_RANDOM);
   GameContext sim_ctx = mc_fork_context(ctx, 222);
 
-  GameMove move = ismcts_search_best_move(&gs, PLAYER_A, &sim_ctx, &params, &rollout);
+  GameMove move = ismcts_search_best_move(&gs, PLAYER_A, &sim_ctx, &params, &rollout, NULL);
   check(suite, "a legal move type was still returned with a 5-node arena",
         1, move.type >= MOVE_PASS && move.type <= MOVE_CASH);
 
@@ -331,7 +332,7 @@ void test_ismcts_ablation_switch(TestSuite* suite)
   set_player_strategy_by_type(&rollout, PLAYER_B, AI_STRATEGY_RANDOM);
   GameContext sim_ctx = mc_fork_context(ctx, 333);
 
-  GameMove move = ismcts_search_best_move(&gs, PLAYER_A, &sim_ctx, &params, &rollout);
+  GameMove move = ismcts_search_best_move(&gs, PLAYER_A, &sim_ctx, &params, &rollout, NULL);
   check(suite, "a legal move type was returned with the ablation switch off",
         1, move.type >= MOVE_PASS && move.type <= MOVE_CASH);
 

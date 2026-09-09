@@ -19,3 +19,6 @@ provenance, corpus composition, measured results).
 - `ismctsnn/` -- `A11` AlphaOracle Prime's trained value-net weights
   (`prime_657k_weights.bin`, loaded by `ismctsnn_load_weights()`) and its
   `.json` provenance sidecar.
+- `puct/` -- `A14` AlphaOracle Prime Plus I's trained two-head (value +
+  policy) net weights (`plus1_weights.bin`, loaded by `puct_load_weights()`)
+  and its `.json` provenance sidecar, following `ismctsnn/`'s own shape.

@@ -5,6 +5,106 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-09 — `A14` PUCT + Neural Network ("AlphaOracle Prime Plus I") registered -- for its mechanism, not its strength
+
+Full design record: `doc/ai_agents.md`'s A14 section; step-by-step build log:
+`~/.claude/plans/let-s-now-make-a-buzzing-lemur.md`.
+
+Closes the roadmap's Stage 4 item: PUCT (Predictor + UCT) selection replacing
+`A10`/`A11`'s plain UCT, directed by a learned policy prior from a newly
+retrained two-head (value + policy) net. The first agent in this project
+whose *tree structure* differs from plain UCT, not just its leaf evaluator.
+
+**Two corrections to the original roadmap text, found while designing this
+agent (before any code)**: (1) a slot-indexed policy head cannot work --
+`ismctsnn_encode_state()` carries no hand-slot ordering for such a head to
+predict over -- fixed by indexing the 218-logit policy head by the same
+105-type catalog the state encoder already uses; (2) `A11`'s own
+`leaf_value()` evaluates its value net off-distribution at roughly half its
+leaves (always the root player's seat, not the mover's) -- measured as a
+null result for `A11` itself (51.02% [49.49%, 52.55%], not shipped as an
+`A11` patch) but validated the side-to-move convention this agent's corpus
+and training already depended on.
+
+**Corpus**: 796,914 records / 5.39GB, `A11` (`ismctsnn`) at
+`limit_iterations=4000` as teacher (round-1 generation, not a bootstrapped
+self-play loop), `mirror`/`vs_a7`/`vs_a3` pool, full legal-move-list +
+visit-fraction per decision (not a pre-projected target, so the composition
+rule stays re-tunable without regenerating). **Training**: 250 epochs
+(3601.7s, wall-clock-limited), `A11`'s own regularization recipe --
+**value MSE plateaued 0.148-0.165 by matchup, genuinely better than `A11`'s
+own shipped 0.1705 floor.** Exported and verified 4.2e-7 (value) / 6.0e-7
+(policy) max diff against live PyTorch -- both tighter than `A11`'s own
+2.4e-7 precedent.
+
+**Real per-decision cost: mean 1.7s, up to 4.6s** at the shipped 4000
+iterations -- far more than the plan's own "~8% over `A11`" estimate.
+Root-caused: PUCT's argmax-based selection has no `A10`/`A11`-style
+"untried move always wins" guarantee, so it descends deeper per iteration
+through already-explored branches -- inherent to the mechanism at Oracle's
+~93-move branching factor, not a bug. `use_widening=true` does not fix this
+and has its own flaw (truncates by enumeration order, not prior). Jonathan
+confirmed 1.7s/decision is acceptable for this first shipped version;
+pthread-based root parallelization noted as a real future lever, not
+implemented.
+
+**Measured -- a genuine null result on strength, same shape as `A9`'s
+`reply_trust`/`A13`'s `hplus_trust`.** Gate 2 (vs `A11` directly): 49.34%
+[47.82%, 50.87%], n=4110 -- parity, not a win. Gate 1 (vs `borealis`):
+61.80% [60.30%, 63.27%], n=4110 -> estimated rating ~62, twelve points below
+`A11`'s own 74. **A real non-transitive result, stated directly**: tying
+`A11` head-to-head but scoring 12pp below `A11`'s own borealis win rate is
+not what transitive rating logic predicts -- both CIs are tight enough that
+this gap is real, not noise, a genuine finding about how different search
+mechanisms interact non-transitively, not glossed over as "similarly flat."
+
+An `limit_iterations` sweet-spot sweep (1500-4000, n=180/point) found no
+clear dependence in range -- 4000 stayed shipped. **Dial calibration --
+the most statistically decisive null result of this kind in the project's
+history**: four independent sweeps (`c_puct`/`fpu_reduction`/`prior_trust`/
+`policy_temperature`) all flat within noise (notably `prior_trust`,
+the direct on/off switch for the learned prior, non-monotonic -- neither
+`A11`'s rising signature nor `A9`/`A13`'s declining one); a joint
+`differential_evolution` optimize pass with sweep-narrowed bounds found a
+nominal best candidate that scored 0.6667 in-search (n=42, noise) but
+revalidated at **n=16,000 games to 48.98% [48.20%, 49.75%]** -- the
+tightest CI of the entire effort, at or fractionally under parity, no
+personality flags. Shipped defaults kept over DE's nominal winner, since it
+isn't actually better.
+
+**Assessment of why PUCT didn't beat plain UCT** (`doc/ai_agents.md`'s A14
+section has the full reasoning): most likely, the learned prior's ceiling
+is `A11` itself -- trained on one round of `A11` self-play, not a
+bootstrapped loop, so it cannot exceed what it imitates; the designed
+follow-up (self-play round 2) was gated on a rising `prior_trust` signature
+that never materialized, so it never ran. A secondary factor: PUCT's ~4x
+per-decision cost over `A11` at the same nominal iteration count may spend
+more of that budget re-descending explored branches than exploring new
+breadth. That the *entire* dial-calibration effort found nothing --  not a
+tuning failure signature -- supports these structural causes over a
+mis-tuned-but-sound mechanism.
+
+**Registered unconditionally on this result (Jonathan's call, 2026-09-08,
+made while the corpus was still generating)**: the mechanism itself --
+PUCT selection directed by a learned prior, the first tree-structure change
+in this project -- is the milestone, matching `A13`'s own "registered for
+character, not strength" precedent, adapted to this agent's actual reason.
+Enum `AI_STRATEGY_ISMCTS_PUCT` (appended after `AI_STRATEGY_CARTOGRAPHER`),
+shorthand `puct`, display name "AlphaOracle Prime Plus I" (all three
+languages, matching `A11`'s own convention), `AI_STRATEGY_RATINGS[]` entry
+`{62, true}`, weights at `assets/puct/plus1_weights.bin` +
+`plus1_weights.json` provenance sidecar, `--ai.puct-weights` CLI override,
+default-load wired into `main.c` startup.
+
+**Verification**: clean `make` build, no new warnings; `./bin/oracle -a -p`
+byte-identical to `bin/expectedresults.txt`; `make test_puct_policy
+test_puct` (54 new tests total) plus `test_ismcts`/`test_moves`/
+`test_combo`/`test_rating` all green; `make format` stable; valgrind clean
+on the real `puct`-vs-`puct` and `puct`-vs-`ismctsnn` paths at full 4000
+iterations. Nothing committed to git prior to this session's work landing.
+
+---
+
 ## 2026-09-04 — `A13` Cartographer registered for real play -- shipped for its character, not its strength
 
 Shelved 2026-08-31 (see that date's entry below) after four independent calibration

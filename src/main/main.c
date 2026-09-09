@@ -11,6 +11,7 @@
 #include "../ai_strat/ai_strategy.h"
 #include "../ai_strat/ai_strat_random.h"
 #include "../ai_strat/ai_strat_ismctsnn.h"
+#include "../ai_strat/ai_strat_puct.h"
 #include "../util/mtwister.h"
 #include "../util/prng_seed.h"
 #include "../roles/stda/stda_auto.h"
@@ -64,6 +65,18 @@ int main(int argc, char** argv)
     if(!ismctsnn_load_weights(nn_weights))
       fprintf(stderr, "Warning: could not load %s; ismctsnn falls back to plain IS-MCTS.\n",
               nn_weights);
+  }
+
+  /* A14 AlphaOracle Prime Plus I: same pattern as A11 above, a separate
+     weights file/flag -- a missing or corrupt file leaves the agent
+     fully degraded to plain A10 (decide_and_apply()'s own guard,
+     ai_strat_puct.c), never worse, just not real PUCT play. See
+     ai_strat_puct.h's puct_load_weights() comment. */
+  { const char* puct_weights = cfg.puct_weights ? cfg.puct_weights
+                               : PUCT_DEFAULT_WEIGHTS_PATH;
+    if(!puct_load_weights(puct_weights))
+      fprintf(stderr, "Warning: could not load %s; puct falls back to plain IS-MCTS.\n",
+              puct_weights);
   }
 
   /* Launch appropriate game mode */
@@ -156,4 +169,5 @@ void cleanup_config(config_t* cfg)
   if(cfg->rating_file) free(cfg->rating_file);
   if(cfg->rating_agents) free(cfg->rating_agents);
   if(cfg->nn_weights) free(cfg->nn_weights);
+  if(cfg->puct_weights) free(cfg->puct_weights);
 }

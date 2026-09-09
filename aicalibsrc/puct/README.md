@@ -1,0 +1,208 @@
+# A14 AlphaOracle Prime Plus I ("PUCT + Neural Network") calibration tooling
+
+Corpus generation, training, and calibration for `src/ai_strat/ai_strat_puct.c`
+(PUCT selection over a learned policy prior, plus a two-head value/policy net
+replacing A11's own single-head value net at the leaves). See
+`doc/ai_agents.md`'s A14 section for the full design record and
+`doc/changelog.md` for the dated write-up of whatever Stage 5 measured.
+
+**No ship gate here.** Unlike every prior agent in this family, registration
+does not wait on what this tooling measures (Jonathan's call, 2026-09-08) --
+the search mechanism itself (a learned prior directing PUCT selection, the
+first agent in this project whose tree structure differs from plain UCT, not
+just its leaf evaluator) is the milestone. The numbers below are still
+measured and reported honestly in `doc/ai_agents.md`, exactly like every
+other agent's real result -- they just don't decide whether `A14` shipped.
+
+One subfolder per agent under `aicalibsrc/`, mirroring `aicalibsrc/hbt/` etc.
+-- keep each agent's harness and driver self-contained rather than
+accumulating loose files at the top level. This folder's shape is closest to
+`aicalibsrc/ismctsnn/`'s (an offline training step between C harness and
+Python driver, not a single C-binary + `optimize()`-search pipeline) but
+adds a Stage 5 driver shaped like `aicalibsrc/carto/`'s (four free
+continuous dials, needs `optimize`, not just `sweep`).
+
+## The shared-struct gotcha -- now with THREE agents, read this first
+
+**`A10`, `A11`, and `A14` all share one `ISMCTSParams` struct**
+(`ai_strat_ismcts1.h`) and `A10`/`A11` share one search function
+(`ismcts_search_best_move()`) -- `A14` uses the same shared struct for its
+compute-budget/rollout fields but its OWN disjoint `PUCTParams`
+(`ai_strat_puct.h`) for everything selection/prior-related, precisely to
+avoid deepening this gotcha (see `ai_strat_puct.h`'s own header comment).
+
+The first `calib_ismctsnn.c` (A11's own harness) copied A13's "set params on
+both registries, harmless if the active agent doesn't read them" pattern --
+unsafe specifically because `nn_value_trust` lives inside a struct A10 and
+A11 both read, so a seat nominally playing plain `ismcts` silently inherited
+whatever trust value sat in the block parsed for it. `calib_puct.c` does NOT
+repeat this pattern: `apply_seat_params()` applies each seat's parsed
+`ISMCTSParams`/`PUCTParams` ONLY to the registry matching that seat's REAL
+agent type (`ismcts` gets `ISMCTSParams` with `nn_value_trust` forced to
+`0.0f`; `ismctsnn` gets it via `ismctsnn_set_params()`; `puct` gets both its
+own `ISMCTSParams` via `puct_set_ismcts_params()` and its `PUCTParams` via
+`puct_set_params()`; anything else reads neither). This sidesteps the gotcha
+structurally rather than needing a one-off patch per registry -- worth
+copying forward if a fourth agent ever joins this struct.
+
+**Lesson for any future harness in this shape**: prefer per-identity
+application over blanket-set-every-registry the moment more than one agent
+shares a struct -- verify disjointness, don't assume it.
+
+## Files
+
+- `gen_policy_corpus.c` -- Stage 2 self-play corpus generator. Plays real
+  `A11` (`ismctsnn`) games across the curated opponent pool
+  (`mirror`/`vs_a7`/`vs_a3`/`vs_a4`/`vs_a6`, same as `aicalibsrc/ismctsnn/gen_corpus.c`'s
+  own pool) and logs, from `A11`'s own decision points only, the full
+  legal-move-list + visit-fraction record this agent's policy head trains
+  on -- NOT A11's own state+outcome-only format; the two corpora are not
+  interchangeable despite sharing a teacher. `A11` is the teacher here, not
+  `A14` itself: `A14` has no trained weights yet (that's what this corpus is
+  for), so self-play under an untrained net would just be noise. Requires
+  `ismctsnn_load_weights()` to succeed (refuses to run otherwise -- an
+  unloaded A11 silently degrades to plain A10, which would corrupt the whole
+  corpus). Build with `make gen_policy_corpus` -> `bin/gen_policy_corpus`.
+  ```
+  gen_policy_corpus <mirror|vs_a7|vs_a3|vs_a4|vs_a6> <numgames> <seed> <output_path> [limit_iterations]
+  ```
+  Output: a headerless flat float32 shard, 1691 floats/record -- 537 (state)
+  + 1 (outcome) + 1 (num_moves) + 128*9 (per-move type/count/play[3]/
+  target[3]/visit_fraction). See the file's own header comment for the full
+  layout and `ai_strat_puct_policy.h` for the catalog-index convention
+  play[]/target[] use.
+- `run_selfplay.sh` -- fans `gen_policy_corpus` out across several
+  background workers (process-level parallelism), bounded by wall-clock
+  rather than a fixed game count, ported from
+  `aicalibsrc/ismctsnn/run_selfplay.sh` (same `corpus/seed_ledger.tsv`
+  no-seed-reuse guarantee, same CPU/corpus-size monitor). **Always `cd`s to
+  the repo root before launching workers** -- `gen_policy_corpus.c` loads
+  A11's weights from a repo-root-relative path with no CLI override, so
+  every worker needs that cwd regardless of where this script itself was
+  invoked from (a real bug hit once during this agent's own Stage 2 run,
+  fixed here).
+  ```
+  ./run_selfplay.sh <label> <duration_seconds> [workers] [limit_iterations] [matchups_csv]
+  ```
+- `train_puct_net.py` -- PyTorch (CPU) training script. Two-head net
+  (537->256->128->64 shared trunk, BatchNorm+dropout, then a value head and
+  a policy head as separate `nn.Linear` attributes -- not buried in one
+  `nn.Sequential` the way A11's single head is, so this exporter doesn't
+  need A11's own dropout-shifts-Sequential-indices care for the heads).
+  Policy loss is soft-target cross-entropy against `visit_fraction`
+  (AlphaZero's own `-pi^T log(p)`), computed via `compose_policy_scores()`
+  -- a torch-vectorized mirror of `puct_move_score()`
+  (`ai_strat_puct_policy.c`) that must stay in sync with it and with
+  `ai_strat_puct_net.c`'s C forward pass; three independent implementations
+  of the same formula. Carries A11's hard-won regularization defaults
+  (`dropout=0.4`, `weight_decay=1e-3`, `lr=3e-4`), the same shard-level
+  train/val split, `--val-seeds`, `--max-train-records`. **Watch both loss
+  components separately, not just the sum** -- they converge at very
+  different scales and rates (this agent's own first real run: value MSE
+  plateaued by epoch ~5-6, policy loss similarly, while train MSE kept
+  falling for 70+ more epochs -- protected by `best_state` tracking on the
+  combined validation loss, same overfit-protection A11's own trainer uses).
+- `export_puct_weights.py` -- exports a trained `.pt` checkpoint to the flat
+  headerless float32 format `ai_strat_puct_net.h` expects (`W1,b1,W2,b2,W3,b3`
+  fused trunk, then `Wv,bv` value head, then `Wp,bp` policy head), fusing the
+  trained `BatchNorm1d` into the trunk's first `Linear` layer (same algebra
+  as A11's own `export_weights.py`) and verifying the fused forward pass
+  against the live PyTorch model on both heads' raw outputs before writing.
+  ```
+  ./export_puct_weights.py <checkpoint.pt> <sample_corpus_shard.bin> -o <out.bin> [--tol TOL]
+  ```
+- `calib_puct.c` -- Stage 5 calibration harness. Same in-process
+  `run_simulation()` pattern as every other `CALIB_*` target. Build with
+  `make calib_puct` -> `bin/calib_puct`. Takes the weights path, then 21
+  `ISMCTSParams` + 8 `PUCTParams` fields per seat (`ai_strat_ismcts1.h`/
+  `ai_strat_puct.h`'s own declared order) -- see the file's header for the
+  full CLI, or run `bin/calib_puct --print-defaults` to dump the shipped
+  defaults as JSON. **Read the shared-struct section above before touching
+  this file.**
+- `calib_puct_timing.c` -- per-decision timing harness, mirroring
+  `aicalibsrc/ismctsnn/calib_ismctsnn_timing.c`'s structure but with no
+  trust dial to sweep (this agent's leaf evaluation always pays the same
+  one-shared-forward-pass cost whenever it's active). Answers "does this
+  agent's cost stay near A11's own measured 439ms" *before* committing to a
+  large-n Stage 5 run. Build with `make calib_puct_timing` -> `bin/calib_puct_timing`.
+  ```
+  calib_puct_timing <weights_path> <limit_iterations> <numgames> <seed>
+  ```
+- `calibrate_puct.py` -- Python driver. `DEFAULTS` read once, at import
+  time, from `bin/calib_puct --print-defaults`, so it cannot drift from the
+  shipped C constants. Four subcommands (see the module docstring for full
+  detail):
+  - `sweep` -- univariate diagnostic: one of `c_puct`/`fpu_reduction`/
+    `prior_trust`/`policy_temperature` varied vs a fixed `--opponent`
+    (default `ismctsnn`), both seats, Wilson CIs. Watch for the `A9`/`A13`
+    monotonic-decline signature on `prior_trust` specifically -- `A11`'s own
+    `nn_value_trust` sweep instead rose monotonically, the mirror image.
+  - `optimize` -- differential-evolution search over a chosen subset of the
+    four free dials vs a fixed opponent, with a personality-flag check
+    (`prior_trust` collapsing near 0, `c_puct`/`policy_temperature` pinned
+    at search bounds).
+  - `selfplay` -- round-robin among named dial-configuration candidates,
+    `puct` vs `puct`, Bradley-Terry fit.
+  - `validate` -- candidate vs the shipped defaults, vs `--opponent` --
+    `--opponent ismctsnn` is Gate 2 (the real head-to-head bar against this
+    agent's direct predecessor), `--opponent borealis` is Gate 1 (context,
+    an estimated Borealis rating comparable to A11's own 74). Both are
+    measured and reported, neither gates registration (see above).
+
+  A weights file (`export_puct_weights.py`'s output) is REQUIRED for every
+  subcommand via `--weights`, even for a puct-vs-ismcts sanity check -- the
+  C harness always loads it.
+
+## Setup
+
+```bash
+make gen_policy_corpus calib_puct calib_puct_timing   # from the repo root
+```
+
+The Python pipeline (`train_puct_net.py`, `export_puct_weights.py`,
+`calibrate_puct.py`) needs `torch`, `numpy`, `pandas`, `scipy`, `matplotlib`.
+This agent's own tooling deliberately does NOT set up its own `.venv/` --
+`aicalibsrc/ismctsnn/.venv/` already has the identical dependency set (torch
+2.14.0+cpu, numpy, pandas, scipy, matplotlib) and duplicating a ~1.3GB
+install for an identical requirements list bought nothing. Use it directly:
+
+```bash
+cd aicalibsrc/puct
+../ismctsnn/.venv/bin/python3 train_puct_net.py corpus --label full
+```
+
+If that venv is ever removed, set up a fresh one the same way
+`aicalibsrc/ismctsnn/README.md` describes.
+
+## Usage
+
+```bash
+cd aicalibsrc/puct
+
+# Stage 2 -- generate a corpus (see run_selfplay.sh's header for sizing)
+./run_selfplay.sh full 43200 15
+
+# Stage 3 -- train (corpus_dir is a directory, not a glob -- --label selects shards)
+../ismctsnn/.venv/bin/python3 train_puct_net.py corpus --label full
+
+# Stage 3 -- export to the C inference format
+../ismctsnn/.venv/bin/python3 export_puct_weights.py checkpoints/full_puct_net.pt \
+    corpus/full_vs_a3_seed3.bin -o checkpoints/full_c_weights.bin
+
+# Stage 5 -- measure (from the repo root)
+./calibrate_puct.py sweep --weights checkpoints/full_c_weights.bin \
+    --param prior_trust --numsim 500 --replicates 4 --plot
+./calibrate_puct.py validate --weights checkpoints/full_c_weights.bin \
+    --candidate defaults --opponent ismctsnn --numsim 2000 --replicates 4
+./calibrate_puct.py validate --weights checkpoints/full_c_weights.bin \
+    --candidate defaults --opponent borealis --numsim 2000 --replicates 4
+```
+
+## Shipped weights
+
+The packaged weights the binary actually loads
+(`assets/puct/plus1_weights.bin` + its `.json` provenance sidecar, once
+Stage 5 is done) will follow `assets/ismctsnn/prime_657k_weights.json`'s
+exact shape (architecture, training/corpus provenance, measured results).
+See `doc/ai_agents.md`'s A14 section for the narrative once it exists;
+`doc/changelog.md` for the dated record.

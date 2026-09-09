@@ -134,6 +134,10 @@ static const char* strategy_menu_label(AIStrategyType type, ui_language_t lang)
       return LOCALIZED_STRING_L(lang, "Clairvoyant", "Clairvoyant", "Clarividente");
     case AI_STRATEGY_CARTOGRAPHER: // A13 Cartographer
       return LOCALIZED_STRING_L(lang, "Cartographer", "Cartographe", "Cartografo");
+    case AI_STRATEGY_ISMCTS_PUCT: // A14 AlphaOracle Prime Plus I
+      return LOCALIZED_STRING_L(lang, "PUCT + Neural Network",
+                                "PUCT + reseau de neurones",
+                                "PUCT + red neuronal");
     default:
       return "Unknown";
   }
@@ -192,6 +196,15 @@ static const AIStrategyRating AI_STRATEGY_RATINGS[AI_STRATEGY_COUNT] =
   [AI_STRATEGY_ISMCTS_NN]        = { 74, true  },
   [AI_STRATEGY_CLAIRVOYANT]      = { 31, true  },
   [AI_STRATEGY_CARTOGRAPHER]     = { 65, true  },
+  // A14 (2026-09-08): no documented pre-measurement design-intent figure
+  // Measured 2026-09-08: 61.80% vs borealis [60.30%, 63.27%], n=4110 -- see
+  // doc/ai_agents.md's A14 section for the full record, including the
+  // measured 49.34% (Gate 2, parity vs A11/ismctsnn) and the dial
+  // calibration's own definitive null result (48.98% [48.20%, 49.75%],
+  // n=16000, after a full sweep+optimize pass over all four PUCT dials).
+  // Registration was never gated on these numbers (Jonathan's call,
+  // 2026-09-08) -- the search mechanism itself is the milestone.
+  [AI_STRATEGY_ISMCTS_PUCT]      = { 62, true },
 };
 
 // "Random [The Gambler]", or just "Borealis" when the technical label and
@@ -475,6 +488,14 @@ const char* get_strategy_display_name(AIStrategyType strategy,
     case AI_STRATEGY_CARTOGRAPHER:
       return LOCALIZED_STRING_L(lang, "The Cartographer", "Le Cartographe",
                                 "El Cartografo");
+    case AI_STRATEGY_ISMCTS_PUCT:
+      // Reserved name (doc/ai_agents.md's A11 section, doc/oracle_roadmap.md) --
+      // identical across languages, same convention as AlphaOracle Prime
+      // above: a distinct "Plus" lineage (search mechanism itself changes),
+      // not "Prime II" (which would mean one added lookahead ply).
+      return LOCALIZED_STRING_L(lang, "AlphaOracle Prime Plus I",
+                                "AlphaOracle Prime Plus I",
+                                "AlphaOracle Prime Plus I");
     default:
       return "Unknown";
   }
@@ -520,6 +541,7 @@ static const AIStrategyShorthand AI_STRATEGY_SHORTHANDS[] =
   { AI_STRATEGY_ISMCTS_NN,        "ismctsnn" },
   { AI_STRATEGY_CLAIRVOYANT,      "clairvoy" },
   { AI_STRATEGY_CARTOGRAPHER,     "carto" },
+  { AI_STRATEGY_ISMCTS_PUCT,      "puct" },
 };
 #define AI_STRATEGY_SHORTHAND_COUNT \
   (sizeof(AI_STRATEGY_SHORTHANDS) / sizeof(AI_STRATEGY_SHORTHANDS[0]))

@@ -73,7 +73,7 @@ static void decide_and_apply(struct gamestate* gstate, PlayerID player, GameCont
   StrategySet rollout_strats = build_rollout_strategy_set();
 
   GameMove move = ismcts_search_best_move(gstate, player, &sim_ctx, &g_test_params,
-                                          &rollout_strats);
+                                          &rollout_strats, NULL);
   apply_move(gstate, player, &move, ctx);
 } // decide_and_apply
 

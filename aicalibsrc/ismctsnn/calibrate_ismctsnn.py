@@ -87,7 +87,7 @@ PARAM_NAMES = [
     "rollout_max_turns", "rollout_cutoff_depth",
     "weight_energy_advantage", "weight_cash_advantage", "weight_hand_advantage",
     "limit_flat_iterations", "limit_flat_candidates",
-    "nn_value_trust",
+    "nn_value_trust", "nn_value_use_mover_seat",
 ]
 
 _INT_PARAMS = {
@@ -97,12 +97,16 @@ _INT_PARAMS = {
     "search_expand_threshold", "prior_use_heuristic",
     "rollout_max_turns", "rollout_cutoff_depth",
     "limit_flat_iterations", "limit_flat_candidates",
+    "nn_value_use_mover_seat",
 }
 
-# Everything except nn_value_trust is pinned at A10's own shipped values --
-# this agent changes leaf evaluation, not the tree/determinization/compute-
-# budget machinery (about.md's "Deliberately out of scope").
-FREE_PARAM_NAMES = ["nn_value_trust"]
+# Everything except nn_value_trust/nn_value_use_mover_seat is pinned at A10's
+# own shipped values -- this agent changes leaf evaluation, not the
+# tree/determinization/compute-budget machinery (about.md's "Deliberately
+# out of scope"). nn_value_use_mover_seat added for the A14 Stage 0
+# off-distribution fix (doc/ai_agents.md's A14 section) -- see
+# `validate --mover-seat` below.
+FREE_PARAM_NAMES = ["nn_value_trust", "nn_value_use_mover_seat"]
 
 
 def _load_defaults_from_binary():
@@ -121,6 +125,7 @@ def _load_defaults_from_binary():
             "weight_energy_advantage": 0.0, "weight_cash_advantage": 0.0,
             "weight_hand_advantage": 0.0, "limit_flat_iterations": 2000,
             "limit_flat_candidates": 36, "nn_value_trust": 1.0,
+            "nn_value_use_mover_seat": False,
         }
     result = subprocess.run([str(BINARY), "--print-defaults"],
                             capture_output=True, text=True, check=True)
@@ -150,8 +155,8 @@ def merge_params(overrides):
     return {name: coerce_param(name, p[name]) for name in PARAM_NAMES}
 
 
-def trust_params(trust):
-    return merge_params({"nn_value_trust": trust})
+def trust_params(trust, mover_seat=False):
+    return merge_params({"nn_value_trust": trust, "nn_value_use_mover_seat": mover_seat})
 
 
 # ---------------------------------------------------------------------------
@@ -292,7 +297,7 @@ def plot_sweep(summary, opponent, out_path):
 # ---------------------------------------------------------------------------
 
 def cmd_validate(args):
-    candidate = trust_params(args.trust)
+    candidate = trust_params(args.trust, mover_seat=args.mover_seat)
     baseline = trust_params(0.0)  # pure A10 -- the superset-guarantee re-check
     seeds = replicate_seeds(args.base_seed, args.replicates)
 
@@ -315,10 +320,11 @@ def cmd_validate(args):
     b_wins, b_n, b_rate, b_lo, b_hi = vs_opponent(baseline)
     c_wins, c_n, c_rate, c_lo, c_hi = vs_opponent(candidate)
 
+    mover_seat_label = ", mover_seat=True" if args.mover_seat else ""
     print(f"\nWin rate vs {args.opponent} ({b_n} games each):")
     print(f"  trust=0.0 (baseline): {b_rate:.4f} [{b_lo:.4f}, {b_hi:.4f}]  "
          f"(should read ~0.50 -- superset-guarantee sanity check)")
-    print(f"  trust={args.trust}: {c_rate:.4f} [{c_lo:.4f}, {c_hi:.4f}]")
+    print(f"  trust={args.trust}{mover_seat_label}: {c_rate:.4f} [{c_lo:.4f}, {c_hi:.4f}]")
     print(f"  delta: {(c_rate - b_rate) * 100:+.2f} percentage points")
     print(f"\nGate 2 (about.md): {'PASS' if c_lo > 0.5 else 'FAIL'} "
          f"-- Wilson CI lower bound {c_lo:.4f} {'>' if c_lo > 0.5 else '<='} 0.50")
@@ -440,6 +446,11 @@ def main():
     p_val = sub.add_parser("validate", help="one trust value vs trust=0.0, both vs --opponent")
     p_val.add_argument("--weights", required=True)
     p_val.add_argument("--trust", type=float, required=True)
+    p_val.add_argument("--mover-seat", action="store_true",
+                       help="A14 Stage 0: evaluate the net from the leaf's own "
+                            "player-to-move seat instead of the search root's "
+                            "(nn_value_use_mover_seat) -- matches how gen_corpus.c "
+                            "actually labels training records")
     p_val.add_argument("--opponent", default="ismcts")
     p_val.add_argument("--numsim", type=int, default=2000)
     p_val.add_argument("--replicates", type=int, default=4)

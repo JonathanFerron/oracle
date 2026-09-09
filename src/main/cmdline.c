@@ -12,6 +12,7 @@
 #include "../ui/shared/player_config.h"
 #include "../ai_strat/ai_strategy.h"
 #include "../ai_strat/ai_strat_ismctsnn.h"
+#include "../ai_strat/ai_strat_puct.h"
 #include "../roles/stda/stda_rating.h"
 
 /* Hidden option for shell completion scripts; deliberately absent from print_usage() */
@@ -33,12 +34,15 @@
 
 /* --rating.agents: restrict MODE_STDA_RATING's round-robin to a
    comma-separated agent shorthand list (see stda_rating.c) -- mainly to
-   exclude expensive tree-search agents (A10 ismcts/A11 ismctsnn) from a
-   quick fit. --ai.weights: path override for A11's value-net weights
-   (default ISMCTSNN_DEFAULT_WEIGHTS_PATH, loaded once at startup in
-   main.c). */
+   exclude expensive tree-search agents (A10 ismcts/A11 ismctsnn/A14 puct)
+   from a quick fit. --ai.weights: path override for A11's value-net
+   weights (default ISMCTSNN_DEFAULT_WEIGHTS_PATH, loaded once at startup
+   in main.c). --ai.puct-weights: same idea, A14's own two-head net weights
+   (default PUCT_DEFAULT_WEIGHTS_PATH) -- a separate flag/file, not shared
+   with --ai.weights. */
 #define OPT_RATING_AGENTS 1007
 #define OPT_AI_WEIGHTS 1008
+#define OPT_AI_PUCT_WEIGHTS 1009
 
 /* Parse language code from string */
 static ui_language_t parse_language(const char* lang_str)
@@ -121,6 +125,8 @@ void print_usage(const char* prog)
   printf("                                agent]\n\n");
   printf("  -Aw, --ai.weights=PATH        Weights file for A11 AlphaOracle Prime\n");
   printf("                                [default: %s]\n\n", ISMCTSNN_DEFAULT_WEIGHTS_PATH);
+  printf("       --ai.puct-weights=PATH   Weights file for A14 AlphaOracle Prime Plus I\n");
+  printf("                                [default: %s]\n\n", PUCT_DEFAULT_WEIGHTS_PATH);
   printf("Examples:\n");
   printf("  %s -a -p                      Automated AI vs AI, fixed default seed\n", prog);
   printf("  %s -a -p --ai.a=value --ai.b=rand   Value Based vs Random\n", prog);
@@ -213,6 +219,7 @@ static struct option long_options[] =
   {"rating.track", no_argument,     0, OPT_RATING_TRACK},
   {"rating.agents", required_argument, 0, OPT_RATING_AGENTS},
   {"ai.weights", required_argument, 0, OPT_AI_WEIGHTS},
+  {"ai.puct-weights", required_argument, 0, OPT_AI_PUCT_WEIGHTS},
   {"oracle-complete", optional_argument, 0, OPT_ORACLE_COMPLETE},
   {0, 0, 0, 0}
 };
@@ -401,6 +408,9 @@ int parse_options(int argc, char** argv, config_t* cfg)
         break;
       case OPT_AI_WEIGHTS:
         cfg->nn_weights = strdup(optarg);
+        break;
+      case OPT_AI_PUCT_WEIGHTS:
+        cfg->puct_weights = strdup(optarg);
         break;
       default:
         print_usage(argv[0]);

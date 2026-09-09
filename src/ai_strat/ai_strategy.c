@@ -20,6 +20,7 @@
 #include "ai_strat_ismcts_flat.h"
 #include "ai_strat_ismctsnn.h"
 #include "ai_strat_a13.h"
+#include "ai_strat_puct.h"
 #include "ai_strat_lib_heuristics.h"
 
 StrategySet* create_strategy_set(void)
@@ -99,10 +100,13 @@ static const StrategyRegistryEntry STRATEGY_REGISTRY[AI_STRATEGY_COUNT] =
   [AI_STRATEGY_CARTOGRAPHER]     = { a13_attack_strategy, a13_defense_strategy,
     a13_mulligan, a13_discard_to_7
   },
+  // A14 reuses A10's own mulligan/discard-to-7 hooks unchanged, same
+  // reasoning as A11 above -- PUCT and the two-head net only touch
+  // selection/leaf-evaluation inside the shared tree search.
+  [AI_STRATEGY_ISMCTS_PUCT]      = { puct_attack_strategy, puct_defense_strategy,
+    ismcts_mulligan, ismcts_discard_to_7
+  },
   // All other entries default to {NULL, NULL, NULL, NULL} -- not yet implemented.
-  // A13 Cartographer is deliberately absent: implemented, calibrated, and
-  // shelved (2026-08-31) -- see game_types.h's AIStrategyType comment and
-  // ideas/A13 .../about.md.
 };
 
 bool ai_strategy_is_implemented(AIStrategyType type)

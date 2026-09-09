@@ -38,9 +38,43 @@
 #include "../actions/game_move.h"
 #include "ai_strategy.h"
 #include "ai_strat_ismcts1.h" // ISMCTSParams
+#include "ai_strat_puct.h" // PUCTParams
 
+// `puct_params` is NULL for A10/A11 (plain UCT, ai_strat_ismcts_search.c's
+// own select_or_expand()/leaf_value() -- unchanged, bit-for-bit identical
+// to before this parameter existed); A14 AlphaOracle Prime Plus I passes
+// its own PUCTParams to replace selection with PUCT and leaf evaluation
+// with its two-head net (ai_strat_puct_search.c) -- see doc/ai_agents.md's
+// A14 section.
 GameMove ismcts_search_best_move(const struct gamestate* gstate, PlayerID player,
                                  GameContext* sim_ctx, const ISMCTSParams* params,
-                                 const StrategySet* rollout_strats);
+                                 const StrategySet* rollout_strats,
+                                 const PUCTParams* puct_params);
+
+// A14 AlphaOracle Prime Plus I's Stage 2 corpus generation only (see
+// doc/ai_agents.md's A14 section): the root's own children and their final
+// visit counts, snapshotted at the end of the MOST RECENT
+// ismcts_search_best_move() call, in whatever order ismcts_create_child()
+// linked them (reverse creation order -- not sorted, not the order
+// get_available_moves() itself enumerates). A policy head trains on visit
+// FRACTIONS, not raw outcomes, so this is the training-data counterpart to
+// ismcts_backprop()'s own value signal.
+//
+// File-static, like every other "live params"/"last decision" accessor in
+// this codebase (hbt_live_params(), ismcts_live_params()) -- safe ONLY
+// because this project's calibration/corpus-generation parallelism is
+// process-level (aicalibsrc/*/run_selfplay.sh forks whole OS processes),
+// never threads within one process. A future threaded caller would need a
+// real per-call return value instead.
+typedef struct
+{ GameMove move;
+  uint32_t visits;
+} RootVisitRecord;
+
+// Writes up to max_out records to `out`, returns the number written (never
+// more than the root's own child_count, itself bounded by
+// MOVE_GEN_MAX_MOVES). Meaningless before the first ismcts_search_best_move()
+// call in this process.
+uint8_t ismcts_last_root_visit_distribution(RootVisitRecord* out, uint8_t max_out);
 
 #endif // AI_STRAT_ISMCTS_SEARCH_H

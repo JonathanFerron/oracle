@@ -1,6 +1,8 @@
 // ai_strat_ismcts1.c
 // A10 IS-MCTS ("The Omniscient") -- see ai_strat_ismcts1.h.
 
+#include <stddef.h>
+
 #include "ai_strat_ismcts1.h"
 #include "ai_strat_ismcts_search.h"
 #include "ai_strat_playout.h"
@@ -67,7 +69,7 @@ static void decide_and_apply(struct gamestate* gstate, PlayerID player, GameCont
   GameContext sim_ctx = fork_for_decision(ctx);
   StrategySet rollout_strats = heuristic_rollout_strategy_set();
 
-  GameMove move = ismcts_search_best_move(gstate, player, &sim_ctx, params, &rollout_strats);
+  GameMove move = ismcts_search_best_move(gstate, player, &sim_ctx, params, &rollout_strats, NULL);
   apply_move(gstate, player, &move, ctx);
 } // decide_and_apply
 

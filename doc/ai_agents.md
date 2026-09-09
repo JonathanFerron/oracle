@@ -46,6 +46,7 @@ design-intent guess made before the agent existed. Roster order matches
 | A11 | IS-MCTS + NN | AlphaOracle Prime (all languages) | `ismctsnn` | 74 | 97 |
 | A12 | Clairvoyant *(`A8`'s sibling, off-ladder)* | The Clairvoyant / Le Voyant / El Clarividente | `clairvoy` | 31 | — |
 | A13 | Cartographer *(registered for its character, not its strength — see below)* | The Cartographer / Le Cartographe / El Cartógrafo | `carto` | 65 | 68 |
+| A14 | PUCT + Neural Network *(registered for its mechanism, not its strength — see below)* | AlphaOracle Prime Plus I (all languages) | `puct` | 62 | — |
 
 Measured values mirror `AI_STRATEGY_RATINGS[]` (`src/ui/shared/player_config.c`),
 which the interactive AI strategy menu reads to print each agent's rating —
@@ -62,7 +63,10 @@ closed-form agent, making a full round-robin featuring it impractical, and
 since this project's rating *is defined as* win rate vs Borealis, a direct
 measurement against exactly that opponent is arguably more direct anyway, not
 a lesser substitute; `A10`/`A11` similarly from direct pairwise measurement
-(10,008 and 4,110 games) for the same reason (see each section below).
+(10,008 and 4,110 games) for the same reason (see each section below); `A14`
+likewise (4,110 games vs `borealis`) — its registration was unconditional on
+this number rather than gated by it (see its section below), the first
+agent in this project for which that's true.
 
 **Design-intent estimates missed by a wide, informative margin**: `A4` was
 designed to sit above Borealis (est. 62) but measured **36**, below the
@@ -1189,3 +1193,161 @@ sampling, rollouts, or re-determinization of any kind (`A8`, `A10`) — every
 belief quantity here is closed-form and exact given public information;
 reading `deck[*].card_indices` or `hand[opponent].cards` — the
 anti-clairvoyance rule.
+
+---
+
+## A14 — PUCT + Neural Network · "AlphaOracle Prime Plus I" (identical in EN / FR / ES)
+
+|                 |                                                                                                    |
+| --------------- | ---------------------------------------------------------------------------------------------------- |
+| Enum            | `AI_STRATEGY_ISMCTS_PUCT` (appended after `AI_STRATEGY_CARTOGRAPHER`)                                |
+| Shorthand       | `puct`                                                                                                |
+| Borealis rating | **62** (measured, 61.80% [60.30%, 63.27%] vs `borealis`) — registered unconditionally on this number (see below), not gated by it |
+| Source file     | `src/ai_strat/ai_strat_puct.{c,h}` + `ai_strat_puct_search.{c,h}` + `ai_strat_puct_net.{c,h}` + `ai_strat_puct_policy.{c,h}` (implemented and calibrated 2026-09-08, registered 2026-09-08/09) |
+
+**The one thing this agent does**: replaces `A10`/`A11`'s plain UCT selection
+with **PUCT** (Predictor + UCT) — a learned policy prior directs which move
+to explore next, instead of an uninformed `INFINITY`-for-unvisited rule.
+This is the first agent in this project whose *tree structure* differs from
+plain UCT, not just its leaf evaluator (`A11`'s own change). A disjoint
+`PUCTParams` struct (not reusing `ISMCTSParams`, which `A10`/`A11` already
+share — a third agent adding fields there would compound the documented
+shared-struct gotcha) carries four free dials: `c_puct`, `fpu_reduction`,
+`prior_trust`, `policy_temperature`.
+
+```
+q = child_visits ? (flip ? 1 - mean : mean) : (parent_q - fpu_reduction)
+u = c_puct * P(a) * sqrt(denom) / (1 + child_visits)
+score(a) = q + u
+```
+
+The policy prior comes from a **retrained two-head net** (not a frozen `A11`
+trunk): the same 537-float information-set state feeds a shared trunk
+(`537 -> 256 -> 128 -> 64`) into both a value head (unchanged in shape from
+`A11`'s own) and a new 218-logit policy head. The 218 logits are indexed by
+the *same 105-type catalog* `ismctsnn_encode_state()` already uses for the
+hand — `L_play[105]` + `L_target[105]` + `L_type[5]` + `L_count[3]` —
+composed per legal move and softmaxed over the legal move list at inference
+time (`ai_strat_puct_policy.c`'s `puct_move_score()`/`puct_compose_priors()`,
+shared byte-for-byte between live inference and the corpus generator so the
+two can never drift). This corrects a real flaw in the original roadmap
+text, found while designing this agent: a slot-indexed policy head cannot
+work, since the state encoder carries no hand-slot ordering for a
+slot-indexed head to predict over — the type-catalog indexing sidesteps
+this and makes masking to `get_available_moves()` fall out naturally as the
+softmax's own domain.
+
+**Corpus and training**: `A11` (`ismctsnn`) at `limit_iterations=4000` is
+the teacher — `A14` has no weights of its own yet to self-play with, so this
+is round-1 corpus generation, not a bootstrapped AlphaZero loop. 796,914
+records / 5.39GB over the `mirror`/`vs_a7`/`vs_a3` pool (NOT the full
+five-matchup pool the generator supports — `vs_a4`/`vs_a6` were not included
+in this run), logging the full legal-move-list + visit-fraction per decision
+rather than a pre-projected target, so the composition rule stays re-tunable
+without regenerating. Trained 250 epochs (3601.7s, wall-clock-budget-limited,
+not converged) with `A11`'s own hard-won regularization
+(`dropout=0.4, weight_decay=1e-3, lr=3e-4`): **value MSE plateaued
+~0.148-0.165 by matchup, genuinely better than `A11`'s own shipped 0.1705
+floor** — plausibly the richer policy signal enriching the shared trunk,
+exactly as hoped. Exported to `assets/puct/plus1_weights.bin` (772,460
+bytes, 193,115 floats), verified 4.2e-7 max diff (value head) / 6.0e-7 (policy
+head) against the live PyTorch model — both tighter than `A11`'s own 2.4e-7
+precedent.
+
+**Real per-decision cost: mean 1.7s, up to 4.6s at the shipped 4000
+iterations** — far more than the plan's own "~8% over `A11`" estimate.
+Root-caused, not guessed: PUCT's argmax-based selection has no `A10`/`A11`-
+style "untried move always wins" guarantee, so it descends much deeper per
+iteration through already-explored branches before committing to expand
+something new — inherent to the mechanism at Oracle's ~93-move branching
+factor, not a bug. `use_widening=true` (kept as an ablation) does **not**
+fix this (confirmed by direct A/B timing) and has its own flaw (truncates by
+enumeration order, not by prior). Jonathan confirmed 1.7s/decision is an
+acceptable interactive wait for this first shipped version; pthread-based
+root parallelization is noted as a real future lever, not implemented.
+
+**Measured, and reported honestly — a genuine null result on the strength
+question, same shape as `A9`'s `reply_trust` and `A13`'s `hplus_trust`.**
+**Gate 2 (the real bar), vs `A11` (`ismctsnn`) directly**: **49.34%** [47.82%,
+50.87%], n=4110 — a CI straddling 50% almost symmetrically; `A14` does not
+beat its direct predecessor head-to-head, it lands at parity. **Gate 1
+(context), vs `borealis`**: **61.80%** [60.30%, 63.27%], n=4110 → estimated
+Borealis rating **~62**, twelve points below `A11`'s own 74. **A genuine
+non-transitive result, stated plainly rather than glossed over**: if `A14`
+ties `A11` head-to-head, transitive rating logic predicts its own win rate
+vs `borealis` should land near `A11`'s 74%, not 12 points below it — both
+CIs are tight (~1.5pp half-width each), so this gap is real, not noise.
+`A14` has a specifically worse matchup against `borealis` than `A11` does,
+despite being roughly `A11`'s equal overall — not unheard of between
+different search mechanisms, but worth stating directly.
+
+An `limit_iterations` sweet-spot sweep (1500-4000, n=180/point vs `ismctsnn`)
+found no clear iteration-count dependence in that range (42-50% win rate,
+wide overlapping CIs) — the shipped 4000 stays the config, both because it
+was the original target and because nothing else in range measured clearly
+better.
+
+**Dial calibration — the most statistically decisive null result in this
+project's history for this failure pattern.** Four independent sweeps
+(`c_puct`, `fpu_reduction`, `prior_trust`, `policy_temperature`, n=180/point
+each) all came back flat within noise, no dial showing a real trend —
+notably `prior_trust` (the direct on/off switch for whether the learned
+prior matters at all) was non-monotonic, neither `A11`'s own rising
+signature nor `A9`/`A13`'s declining one. A joint `differential_evolution`
+optimize pass, bounds narrowed per-dial from the sweep data, found a nominal
+best candidate at `c_puct=1.048, fpu_reduction=0.139, prior_trust=0.858,
+policy_temperature=1.430` scoring 0.6667 in-search — but that figure came
+from only 42 games, and a proper revalidation at **n=16,000 games measured
+48.98% [48.20%, 49.75%]** — the tightest CI of the entire A14 calibration
+effort, landing at or fractionally under parity, with no personality flags
+raised. **None of the four PUCT dials, individually or jointly, meaningfully
+move win rate away from the shipped defaults** — the shipped config
+(`c_puct=1.5, fpu_reduction=0.2, prior_trust=1.0, policy_temperature=1.0`)
+was kept rather than switching to DE's nominal winner, since it isn't
+actually better.
+
+**Assessment: why PUCT didn't beat plain UCT**, reasoned from the full body
+of evidence above (not just asserted): most likely cause is that **the
+learned prior's ceiling is `A11` itself** — the prior was trained to imitate
+`A11`'s own root visit-count distribution from a single round of corpus
+generation, not a real bootstrapped self-play loop. This was a foreseen risk
+(see this section's own Risks note in the design plan, written before any
+measurement): the gain has to come from spending the same iteration budget
+better, not from a better evaluator, since the prior cannot exceed what it
+imitates. A round-2 self-play cycle (bootstrapping a corpus from `A14`'s own
+play) was the designed answer, gated on the `prior_trust` sweep showing a
+genuine rising signature first — which it didn't, so that gate was never
+met and the bootstrap step never ran. A secondary, mechanism-level factor:
+PUCT's ~4x per-decision cost over `A11` at the *same* nominal iteration
+count may be spending more of that budget re-descending explored branches
+than exploring new breadth, partially canceling out whatever directional
+benefit the prior offers within a fixed 4000-iteration budget. The fact
+that the entire dial-calibration effort — every sweep and the joint
+optimize pass — found nothing, not even a marginal separation from parity
+anywhere, points toward these structural causes rather than a tuning
+failure: a sound mechanism that was simply mis-tuned would be expected to
+show at least some dial or combination nudging the needle.
+
+**Registered unconditionally on this result (Jonathan's call, 2026-09-08,
+made while the corpus was still generating)**: the search mechanism itself
+— a learned prior directing PUCT selection, the first agent in this project
+whose tree structure differs from plain UCT — is the milestone, matching
+`A13`'s own "registered for character, not strength" precedent, adapted to
+this agent's actual reason (the mechanism itself being the milestone, not
+incremental rating). Both the 4000-iteration and a ~2300-iteration "sweet
+spot" configuration were considered per Jonathan's request; the sweep found
+no statistically meaningful difference between them, so 4000 shipped as the
+config everything else was measured against.
+
+**Deliberately out of scope**: self-play round 2 (gated on a rising
+`prior_trust` signature that never materialized — see above); pthread-based
+root parallelization (a real future lever for the 1.7s/decision cost, not
+attempted); any change to `A10`/`A11`'s own shared search code — `A14`
+dispatches to its own `puct_select_or_expand()` only when a non-`NULL`
+`PUCTParams*` is passed, with the superset guarantee verified at the
+`puct_params == NULL` level (both `A10`'s and `A11`'s call sites, and this
+agent's own `decide_and_apply()` when weights aren't loaded), not via a
+`use_puct` flag — `use_puct=false` only swaps PUCT's selection formula for
+plain UCT's while leaf evaluation still runs through this agent's own
+two-head net regardless, an ablation rung rather than a true `A10`-recovery
+path.

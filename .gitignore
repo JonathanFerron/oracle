@@ -26,8 +26,13 @@
 /bin/calib_ismcts_rollout_policy
 /bin/calib_mulligan
 /bin/gen_corpus
+/bin/gen_policy_corpus
 /bin/calib_ismctsnn
 /bin/calib_ismctsnn_timing
+/bin/calib_puct
+/bin/calib_puct_timing
+/bin/test_puct_policy
+/bin/test_puct
 *.o
 *.d
 *.xls
@@ -42,3 +47,7 @@ aicalibsrc/*/results/
 aicalibsrc/ismctsnn/corpus/
 aicalibsrc/ismctsnn/.venv/
 aicalibsrc/ismctsnn/checkpoints/
+aicalibsrc/puct/corpus/
+aicalibsrc/puct/.venv/
+aicalibsrc/puct/checkpoints/
+aicalibsrc/*/*.log

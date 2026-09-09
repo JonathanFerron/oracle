@@ -1,0 +1,98 @@
+{
+  "agent": "A14 PUCT + Neural Network (AlphaOracle Prime Plus I)",
+  "strategy_type": "AI_STRATEGY_ISMCTS_PUCT",
+  "description": "Two-head value/policy network for AlphaOracle Prime Plus I's PUCT selection and leaf evaluation. Loaded by puct_load_weights() -- see src/ai_strat/ai_strat_puct_net.h for the weight file format.",
+
+  "architecture": {
+    "state_dim": 537,
+    "hidden": [256, 128, 64],
+    "value_output": "sigmoid, matching mc_outcome_for()'s 0.0/0.5/1.0 scale",
+    "policy_output": "218 raw logits (PUCT_POLICY_DIM), composed at inference time by puct_move_score()/puct_compose_priors() into a softmax over the legal move list -- see ai_strat_puct_policy.h",
+    "note": "BatchNorm1d fused into Linear1 at export time (exact transform in eval mode, verified 4.2e-7 max diff on the value head and 6.0e-7 on the policy head against the live PyTorch model -- both tighter than A11's own 2.4e-7 precedent's ballpark)."
+  },
+
+  "training": {
+    "source_checkpoint": "full_puct_net.pt",
+    "dropout": 0.4,
+    "weight_decay": 0.001,
+    "policy_weight": 1.0,
+    "lr": 0.0003,
+    "batch_size": 4096,
+    "epochs_run": 250,
+    "elapsed_seconds": 3601.7,
+    "stopped_reason": "wall-clock budget (3600s) reached, not convergence -- no --patience set",
+    "best_val_total_loss": 2.396712,
+    "baseline_val_mse": 0.239219,
+    "train_records": 637940,
+    "val_records": 158974,
+    "seed": 42,
+    "run_name": "full",
+    "note": "Value MSE plateaued genuinely better than A11's own shipped 0.1705 floor (this run's per-matchup val_v_mse: mirror 0.161185, vs_a7 0.159926, vs_a3 0.147737) -- plausibly the richer policy signal enriching the shared trunk. Policy loss plateaued ~2.240-2.244 across the run; top-1 policy/visit-fraction agreement ~53-56%, directional (win/loss) accuracy ~75-78%."
+  },
+
+  "corpus": {
+    "label": "full",
+    "teacher": "A11 (ismctsnn) at limit_iterations=4000 -- A14 has no weights of its own yet to self-play with; this is round-1 corpus generation, not a bootstrapped AlphaZero loop",
+    "generated": "2026-09-08",
+    "duration": "~11-12 hours, 15 parallel workers",
+    "total_records": 796914,
+    "total_size_bytes": 5390000000,
+    "record_format": "headerless flat float32, 1691 floats/record (537-float state + 1-float outcome + 1-float num_moves + 128x9 per-legal-move type/count/play/target/visit_fraction)",
+    "seed_ledger": "aicalibsrc/puct/corpus/seed_ledger.tsv",
+    "note_actual_pool": "Generated with the mirror/vs_a7/vs_a3 pool only (5 shards each, seeds 1-15) -- NOT the full mirror/vs_a7/vs_a3/vs_a4/vs_a6 five-matchup pool gen_policy_corpus.c supports; vs_a4/vs_a6 were never included in this run.",
+    "split": {
+      "mirror": {"description": "A11 (ismctsnn) vs itself", "shards": 5, "seeds": [1, 4, 7, 10, 13]},
+      "vs_a7": {"description": "A11 vs A7 (Hybrid HBT, \"Grandmaster\")", "shards": 5, "seeds": [2, 5, 8, 11, 14]},
+      "vs_a3": {"description": "A11 vs A3 (Borealis) -- fixed rating anchor", "shards": 5, "seeds": [3, 6, 9, 12, 15]}
+    }
+  },
+
+  "measured_results": {
+    "measurement_date": "2026-09-08",
+    "measurement_method": "aicalibsrc/puct/calib_puct.c validate, shipped defaults (c_puct=1.5, fpu_reduction=0.2, prior_trust=1.0, policy_temperature=1.0), limit_iterations=4000",
+    "gate_2_vs_ismctsnn": {
+      "description": "Head-to-head vs A11 (ismctsnn), both seats -- the real ship bar",
+      "n_games": 4110,
+      "win_rate": 0.4934,
+      "ci_95": [0.4782, 0.5087],
+      "result": "NULL/parity -- CI straddles 50% almost symmetrically, same shape as A9's reply_trust / A13's hplus_trust (sound reasoning, no measurable gain)"
+    },
+    "gate_1_vs_borealis": {
+      "description": "Head-to-head vs A3 (Borealis) -- context, estimated Borealis rating",
+      "n_games": 4110,
+      "win_rate": 0.6180,
+      "ci_95": [0.6030, 0.6327],
+      "estimated_borealis_rating": 62,
+      "note_transitivity": "A14 ties A11 head-to-head (Gate 2) but measures 12pp below A11's own 74% vs borealis -- both CIs are tight, so this is a genuine non-transitive result between two different search mechanisms, not noise."
+    },
+    "iteration_sweep": {
+      "description": "limit_iterations sweet-spot sweep, n=180/point vs ismctsnn",
+      "values_tested": [1500, 2000, 2300, 2600, 3000, 3500, 4000],
+      "win_rates": [0.4722, 0.4222, 0.4444, 0.4333, 0.5000, 0.4611, 0.4833],
+      "result": "no clear iteration-count dependence in this range -- 4000 stays shipped, no evidence a lower budget trades away meaningful strength"
+    },
+    "dial_calibration": {
+      "description": "Four independent sweeps (c_puct/fpu_reduction/prior_trust/policy_temperature, n=180/point) then a joint differential_evolution optimize pass with sweep-narrowed bounds, revalidated at n=16000",
+      "sweeps_result": "all four flat within noise, no dial showed a statistically real trend",
+      "optimize_result": {
+        "nominal_best_in_search": {"c_puct": 1.048, "fpu_reduction": 0.139, "prior_trust": 0.858, "policy_temperature": 1.430, "in_search_win_rate_n42": 0.6667},
+        "revalidated_win_rate": 0.48975,
+        "revalidated_ci_95": [0.48200743764153514, 0.49749748322696424],
+        "revalidated_n_games": 16000,
+        "personality_flags": []
+      },
+      "conclusion": "definitive null result -- none of the four PUCT dials, individually or jointly, meaningfully move win rate away from the shipped defaults. Tightest CI of the whole A14 calibration effort. Shipped defaults kept rather than DE's nominal winner, since it isn't actually better."
+    }
+  },
+
+  "timing": {
+    "shipped_limit_iterations": 4000,
+    "mean_ms_per_decision": 1700,
+    "max_ms_per_decision": 4600,
+    "ms_per_decision_a11_baseline": 439.3,
+    "root_cause": "PUCT's argmax-based selection has no A10/A11-style 'untried move always wins' guarantee, so it descends much deeper per iteration through already-explored branches before committing to expand something new -- inherent to the mechanism at Oracle's ~93-move branching factor, not a bug. use_widening=true does not fix this (confirmed by direct A/B timing) and has its own flaw (truncates by enumeration order, not by prior).",
+    "note": "Jonathan confirmed 1.7s/decision is an acceptable interactive wait for this first shipped version; pthread-based root parallelization noted as a real future lever, not implemented."
+  },
+
+  "see_also": "ideas/A10 ai agent is-mcts (the omniscient)/, ideas/A11 ai agent is-mcts + nn (alphaoracle prime)/ for lineage context; doc/ai_agents.md's A14 section for the full narrative; doc/changelog.md for the dated record."
+}

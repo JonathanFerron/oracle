@@ -38,7 +38,29 @@ typedef struct
   uint32_t capacity;
   uint32_t count;
   PlayerID root_player;
+
+  // A14 AlphaOracle Prime Plus I only (see doc/ai_agents.md's A14 section):
+  // one row of `policy_dim` floats per node, indexed the same way as
+  // `nodes` (node index * policy_dim). NULL/0 for A10/A11 -- their arenas
+  // never touch these fields, so their memory profile is unchanged.
+  // Caller-owned (ismcts_search_best_move() mallocs/frees it alongside
+  // `nodes`), same convention as `nodes` itself.
+  float* policy;
+  uint32_t policy_dim;
 } ISMCTSArena;
+
+// Outcome of one selection step at a node: either an existing child to
+// descend into, a not-yet-created move to expand, or (defensively) neither
+// -- shared between A10/A11's plain-UCT select_or_expand()
+// (ai_strat_ismcts_search.c) and A14's PUCT counterpart
+// (ai_strat_puct_search.c), since both walk the same arena/move-list shape
+// and only differ in how they SCORE candidates.
+typedef struct
+{ uint32_t child; // an existing child to descend into (ISMCTS_NO_NODE if not)
+  GameMove expand_move; // valid only when expand is true
+  bool expand; // create a new child for expand_move
+  bool stuck; // defensive: no legal child available and widening forbids expansion
+} SelectOutcome;
 
 // `storage` must hold at least `capacity` elements and outlive `arena` --
 // the arena never allocates or frees memory itself.
@@ -57,10 +79,20 @@ uint32_t ismcts_create_root(ISMCTSArena* arena, PlayerID player_to_move);
 uint32_t ismcts_create_child(ISMCTSArena* arena, uint32_t parent, const GameMove* move,
                              PlayerID player_to_move);
 
-// Linear scan of `node`'s children for one whose move equals `move` (a
-// field-wise comparison of the type's relevant GameMove fields only, not
-// memcmp -- see ai_strat_ismcts_tree.c). Returns ISMCTS_NO_NODE if none
-// match.
+// Field-wise comparison of the two moves' type-relevant GameMove fields
+// only, not memcmp -- move_gen.c/move_apply.c never zero-pad the fields a
+// given MoveType doesn't use, so a full memcmp would risk a false negative
+// against stack garbage. Exposed (not just ismcts_find_child()'s own
+// internal use) for A14 AlphaOracle Prime Plus I's corpus generator
+// (aicalibsrc/puct/gen_policy_corpus.c), which must cross-reference
+// get_available_moves()'s own freshly re-enumerated list against
+// ismcts_last_root_visit_distribution()'s recorded (move, visits) pairs
+// (ai_strat_ismcts_search.h) -- two independently built GameMove lists for
+// the same decision that need matching by value, not by node index.
+bool ismcts_move_equal(const GameMove* a, const GameMove* b);
+
+// Linear scan of `node`'s children for one whose move equals `move` (see
+// ismcts_move_equal() above). Returns ISMCTS_NO_NODE if none match.
 uint32_t ismcts_find_child(const ISMCTSArena* arena, uint32_t node, const GameMove* move);
 
 // UCT value of `child`, from the perspective of whoever chooses among its
@@ -74,6 +106,24 @@ uint32_t ismcts_find_child(const ISMCTSArena* arena, uint32_t node, const GameMo
 // to pass).
 float ismcts_uct_score(const ISMCTSArena* arena, uint32_t child, uint32_t denom,
                        float exploration_constant);
+
+// PUCT value of one candidate move at `parent` -- A14 AlphaOracle Prime
+// Plus I's counterpart to ismcts_uct_score() above (see doc/ai_agents.md's
+// A14 section). Unlike that function, `child` may be ISMCTS_NO_NODE (an
+// untried move has no node yet): first-play urgency then values it at
+// parent's own mean Q minus fpu_reduction, so the LEARNED PRIOR (not
+// enumeration order, and not +infinity) decides whether an untried move
+// looks better than an already-explored sibling -- the mechanism change
+// this agent exists for. `prior` is P(a) for this specific move, already
+// composed+softmaxed by the caller (puct_compose_priors(),
+// ai_strat_puct_policy.c) over the full legal move list. `denom` is always
+// parent visits here -- PUCT's own exploration term is sqrt(N(parent)) in
+// the AlphaZero literature; SO-ISMCTS's availability refinement
+// (search_use_availability, ismcts_uct_score()'s own denom convention)
+// doesn't apply to an untried move (there is no node to have accumulated
+// availability in), so this function does not offer that ablation.
+float ismcts_puct_score(const ISMCTSArena* arena, uint32_t parent, uint32_t child,
+                        uint32_t denom, float prior, float c_puct, float fpu_reduction);
 
 // Backpropagates `result` (always from root_player's own seat) from `leaf`
 // up through every ancestor: visits++, total_score += result at each.

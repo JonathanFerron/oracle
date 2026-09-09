@@ -83,40 +83,43 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
    (`assets/<category>/...`), not a flat dump, specifically so this GUI work has a
    ready-made home (e.g. `assets/champions/`) rather than needing to invent the
    convention from scratch.
-4. **AlphaOracle Prime Plus I -- PUCT + policy head** (Stage 4, gated on Stage 3's
-   ship-gate pass -- now technically unlocked, agreed 2026-09-03 to schedule it
-   here, after SDL3 GUI and before the 3-4 player rework). Of the three
-   AlphaOracle-family options discussed that session, the "bigger training
-   corpus" option was tried and falsified 2026-09-04 (`doc/changelog.md`'s entry
-   that date -- two independent widening axes, volume and opponent diversity,
-   both hit the same val-MSE floor as the shipped net) and the per-decision
-   time-budget push is folded into this item below. This one is the
-   highest-ceiling but highest-cost/highest-uncertainty of the three: it
-   changes *what* `A11`'s search
-   explores (a learned prior directing simulations toward promising moves)
-   rather than just how much, which is the mechanism AlphaZero-class engines
-   actually derive most of their strength from -- and it directly addresses
-   the pathology behind `A10`'s own measured iteration-budget curve (win rate
-   vs `Borealis` peaking around 2000-8000 iterations, then *declining* at
-   higher budgets, diagnosed as unfocused UCT over-committing to noise in
-   under-explored branches once the leaf evaluator is deterministic-ish).
-   Needs, in order: the action-encoding problem solved (fixed-size logits over
-   hand-card-slot "include in subset" plus pass/draw/recall/cash-target, masked
-   to `get_available_moves()`'s legal set); a policy-head architecture and a
-   training-data change to visit-count targets, not just terminal outcomes;
-   PUCT selection replacing plain UCT in `ai_strat_ismcts_search.c`. This
-   project's own track record with "add a smart-sounding mechanism on top of an
-   already-good agent" is genuinely mixed (`A9`'s `reply_trust`, `A13`'s
-   `hplus_trust`, and Layer R's race-aware `defense_stdev_mult` all measured at
-   parity or worse despite sound reasoning going in) -- real chance of a null
-   result here too, budget accordingly. **Pushing the per-decision time budget
-   (`limit_iterations`, currently 4000, ~439ms at `-O2`) is folded in as this
-   item's own natural follow-on step, not a separate roadmap line**: sweeping
-   it *before* a policy prior exists is retesting a mechanism `A10`'s own data
-   already argues against on this exact search code, but *after* PUCT lands,
-   more focused search may finally pay off where raw budget alone would not --
-   re-sweep `limit_iterations`/decision-time once the policy head is in, not
-   before.
+4. **`A14` PUCT + policy head** ("AlphaOracle Prime Plus I") -- ✅ done and
+   **registered 2026-09-08/09** (see `doc/changelog.md`'s 2026-09-09 entry and
+   `doc/ai_agents.md`'s A14 section). PUCT (Predictor + UCT) selection
+   replacing `A10`/`A11`'s plain UCT, directed by a learned policy prior from a
+   retrained two-head value/policy net -- the first agent in this project
+   whose tree structure differs from plain UCT, not just its leaf evaluator.
+   Two roadmap corrections found while designing it: a slot-indexed policy
+   head cannot work (the state encoder carries no hand-slot ordering), fixed
+   by indexing over the same 105-type catalog the state encoder already uses;
+   and `A11`'s own `leaf_value()` evaluates off-distribution at roughly half
+   its leaves (a latent defect independent of PUCT, measured as a null result
+   for `A11` itself and not shipped as a patch, but validating the
+   side-to-move convention this agent depended on regardless). Value MSE
+   plateaued genuinely better than `A11`'s own shipped 0.1705 floor
+   (0.148-0.165 by matchup) -- the retrain itself worked. **The PUCT mechanism
+   and its policy prior measured a genuine null result on strength**: 49.34%
+   [47.82%, 50.87%] head-to-head vs `A11` (parity, not a win), an estimated
+   Borealis rating of ~62 (vs `A11`'s 74, a real non-transitive result worth
+   reading in full), and -- after the most statistically decisive
+   dial-calibration effort in this project's history (four sweeps plus a
+   properly-revalidated joint optimize pass, n=16,000 at the end) -- none of
+   the four PUCT dials move win rate off the shipped defaults at all.
+   `doc/ai_agents.md`'s A14 section gives the full reasoning for why: most
+   likely the learned prior's ceiling is `A11` itself (one round of corpus
+   generation, not a bootstrapped self-play loop), compounded by PUCT's own
+   ~4x per-decision cost (1.7s mean, root-caused to its argmax selection
+   lacking `A10`/`A11`'s "untried move always wins" guarantee) possibly
+   eating into the very search breadth the prior needs to pay off. **Registered
+   anyway, unconditionally** (Jonathan's call, 2026-09-08, made while the
+   corpus was still generating) -- the mechanism itself is the milestone,
+   matching `A13`'s own "registered for character, not strength" precedent.
+   The `limit_iterations` re-sweep this item originally deferred to is now
+   effectively answered: a sweet-spot sweep (1500-4000) found no clear
+   dependence in range, so 4000 stays shipped and no further re-sweep is
+   planned. Self-play round 2 stays a real, distinct future option (not
+   attempted -- gated on a rising `prior_trust` signature that never
+   materialized this round) if there's ever appetite to revisit it.
 5. **3-4 player mode**. Jonathan has an existing physical/tabletop 3-4 player variant of
    the game; digitizing it is a genuine engine-level rework (`PlayerID` is binary
    throughout -- roughly two dozen files use a `1 - current_player`/`1 - defender`

@@ -2,6 +2,7 @@
 // A10 IS-MCTS's node arena and UCT primitives -- see ai_strat_ismcts_tree.h.
 
 #include <math.h>
+#include <stddef.h>
 
 #include "ai_strat_ismcts_tree.h"
 
@@ -11,6 +12,8 @@ void ismcts_arena_init(ISMCTSArena* arena, ISMCTSNode* storage, uint32_t capacit
   arena->capacity = capacity;
   arena->count = 0;
   arena->root_player = root_player;
+  arena->policy = NULL; // A14-only; ismcts_search_best_move() sets these
+  arena->policy_dim = 0; // two fields itself when a PUCTParams* is passed
 } // ismcts_arena_init
 
 static uint32_t new_node(ISMCTSArena* arena, uint32_t parent, const GameMove* move,
@@ -47,10 +50,7 @@ uint32_t ismcts_create_child(ISMCTSArena* arena, uint32_t parent, const GameMove
   return idx;
 } // ismcts_create_child
 
-// Only the fields move_gen.c actually populates for a given MoveType are
-// compared -- move_apply.c/move_gen.c never zero-pad the unused ones, so a
-// full memcmp would risk a false negative against stack garbage.
-static bool game_move_equal(const GameMove* a, const GameMove* b)
+bool ismcts_move_equal(const GameMove* a, const GameMove* b)
 { if(a->type != b->type) return false;
 
   switch(a->type)
@@ -72,12 +72,12 @@ static bool game_move_equal(const GameMove* a, const GameMove* b)
       return a->card == b->card && a->cards[0] == b->cards[0];
   }
   return false;
-} // game_move_equal
+} // ismcts_move_equal
 
 uint32_t ismcts_find_child(const ISMCTSArena* arena, uint32_t node, const GameMove* move)
 { uint32_t child = arena->nodes[node].first_child;
   while(child != ISMCTS_NO_NODE)
-  { if(game_move_equal(&arena->nodes[child].move, move)) return child;
+  { if(ismcts_move_equal(&arena->nodes[child].move, move)) return child;
     child = arena->nodes[child].next_sibling;
   }
   return ISMCTS_NO_NODE;
@@ -96,6 +96,31 @@ float ismcts_uct_score(const ISMCTSArena* arena, uint32_t child, uint32_t denom,
   float exploration = exploration_constant * sqrtf(logf((float)denom) / (float)c->visits);
   return q + exploration;
 } // ismcts_uct_score
+
+float ismcts_puct_score(const ISMCTSArena* arena, uint32_t parent, uint32_t child,
+                        uint32_t denom, float prior, float c_puct, float fpu_reduction)
+{ const ISMCTSNode* p = &arena->nodes[parent];
+  // parent's own mean is stored from root_player's seat (same convention
+  // ismcts_uct_score() relies on); flip it to whoever actually chooses
+  // among parent's children -- parent's own player_to_move.
+  float parent_mean = (p->visits > 0) ? (p->total_score / (float)p->visits) : 0.5f;
+  float parent_q = (p->player_to_move == arena->root_player) ? parent_mean : (1.0f - parent_mean);
+
+  float q, child_visits;
+  if(child == ISMCTS_NO_NODE)
+  { q = parent_q - fpu_reduction; // first-play urgency, not +infinity
+    child_visits = 0.0f;
+  }
+  else
+  { const ISMCTSNode* c = &arena->nodes[child];
+    float mean = (c->visits > 0) ? (c->total_score / (float)c->visits) : parent_q;
+    q = (p->player_to_move == arena->root_player) ? mean : (1.0f - mean);
+    child_visits = (float)c->visits;
+  }
+
+  float u = c_puct * prior * sqrtf((float)denom) / (1.0f + child_visits);
+  return q + u;
+} // ismcts_puct_score
 
 void ismcts_backprop(ISMCTSArena* arena, uint32_t leaf, float result)
 { uint32_t node = leaf;

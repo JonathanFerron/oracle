@@ -203,6 +203,15 @@ typedef enum
   // distinct playing character (race-aware risk appetite, deck-aware draw
   // timing), not for strength. Ships with the Stage 4 calibrated config, not
   // the neutral/A7-recovering one the superset guarantee still allows.
+  AI_STRATEGY_ISMCTS_PUCT,     // A14 AlphaOracle Prime Plus I -- doc/ai_agents.md's
+  // A14 section. PUCT (learned policy prior directing tree selection,
+  // ai_strat_puct_search.c) + a two-head value/policy net
+  // (ai_strat_puct_net.c) replacing A10/A11's plain UCT + single-head value
+  // net -- the first agent in this lineage whose SEARCH MECHANISM itself
+  // differs from A10's, not just its leaf evaluator. Registered
+  // unconditionally on the mechanism (Jonathan's call, 2026-09-08) --
+  // strength is measured and reported (doc/ai_agents.md), not a
+  // registration gate, matching A13's own precedent above.
   AI_STRATEGY_COUNT
 } AIStrategyType;
 
@@ -245,6 +254,13 @@ typedef struct
                                 value-net weights, loaded once at startup
                                 (main.c). NULL = ISMCTSNN_DEFAULT_WEIGHTS_PATH
                                 (the packaged assets/ismctsnn/ asset). */
+  char* puct_weights;       /* --ai.puct-weights: path to A14 AlphaOracle
+                                Prime Plus I's two-head net weights, loaded
+                                once at startup (main.c). NULL =
+                                PUCT_DEFAULT_WEIGHTS_PATH (the packaged
+                                assets/puct/ asset). Separate flag from
+                                --ai.weights -- two independent weight files
+                                for two independent agents/net modules. */
 } config_t;
 
 #include "game_constants.h"

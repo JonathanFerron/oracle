@@ -82,6 +82,18 @@ typedef struct
   // entirely, cheaper); in between blends both. A10 itself never sets this
   // above 0.0f (see ISMCTS_DEFAULTS) -- only ai_strat_ismctsnn.c does.
   float    nn_value_trust;
+
+  // A14 Stage 0 fix (see doc/ai_agents.md's A14 section): every corpus
+  // record gen_corpus.c logs has observer == player_to_move, but
+  // leaf_value() (ai_strat_ismcts_search.c) evaluates with `player` fixed
+  // to the SEARCH ROOT's seat, which is often not who's to move at the
+  // leaf -- the shipped A11 net is trained on-distribution and evaluated
+  // off-distribution at roughly half its leaves. false (default)
+  // reproduces A11's exact shipped behaviour bit-for-bit; true evaluates
+  // ismctsnn_net_value() from sim->player_to_move's own seat and flips the
+  // result back to root-seat before blending/backprop, matching how the
+  // corpus was actually labeled. Read only when nn_value_trust > 0.0f.
+  bool     nn_value_use_mover_seat;
 } ISMCTSParams;
 
 #define ISMCTS_DEFAULTS { \
@@ -105,6 +117,7 @@ typedef struct
     .limit_flat_iterations = 2000, \
     .limit_flat_candidates = 36, \
     .nn_value_trust = 0.0f, \
+    .nn_value_use_mover_seat = false, \
   }
 
 void ismcts_attack_strategy(struct gamestate* gstate, GameContext* ctx);
