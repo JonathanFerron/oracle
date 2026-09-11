@@ -22,6 +22,15 @@
 #include "ai_strat_a13.h"
 #include "ai_strat_puct.h"
 #include "ai_strat_a15.h"
+#include "ai_strat_junior.h"
+#include "ai_strat_auditor.h"
+#include "ai_strat_impersonator.h"
+#include "ai_strat_journeyman.h"
+#include "ai_strat_inconsistent.h"
+#include "ai_strat_sparring_partner.h"
+#include "ai_strat_opportunist.h"
+#include "ai_strat_adept.h"
+#include "ai_strat_experimenter.h"
 #include "ai_strat_lib_heuristics.h"
 
 StrategySet* create_strategy_set(void)
@@ -109,6 +118,33 @@ static const StrategyRegistryEntry STRATEGY_REGISTRY[AI_STRATEGY_COUNT] =
   },
   [AI_STRATEGY_DAREDEVIL]        = { a15_attack_strategy, a15_defense_strategy,
     a15_mulligan, a15_discard_to_7
+  },
+  [AI_STRATEGY_JUNIOR]           = { junior_attack_strategy,
+    junior_defense_strategy
+  },
+  [AI_STRATEGY_AUDITOR]          = { auditor_attack_strategy,
+    auditor_defense_strategy
+  },
+  [AI_STRATEGY_IMPERSONATOR]     = { impersonator_attack_strategy,
+    impersonator_defense_strategy
+  },
+  [AI_STRATEGY_JOURNEYMAN]       = { journeyman_attack_strategy,
+    journeyman_defense_strategy
+  },
+  [AI_STRATEGY_INCONSISTENT]     = { inconsistent_attack_strategy,
+    inconsistent_defense_strategy
+  },
+  [AI_STRATEGY_SPARRING_PARTNER] = { sparring_partner_attack_strategy,
+    sparring_partner_defense_strategy
+  },
+  [AI_STRATEGY_OPPORTUNIST]      = { opportunist_attack_strategy,
+    opportunist_defense_strategy
+  },
+  [AI_STRATEGY_ADEPT]            = { adept_attack_strategy,
+    adept_defense_strategy
+  },
+  [AI_STRATEGY_EXPERIMENTER]     = { experimenter_attack_strategy,
+    experimenter_defense_strategy
   },
   // All other entries default to {NULL, NULL, NULL, NULL} -- not yet implemented.
 };

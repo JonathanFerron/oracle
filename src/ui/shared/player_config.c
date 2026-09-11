@@ -141,6 +141,32 @@ static const char* strategy_menu_label(AIStrategyType type, ui_language_t lang)
     case AI_STRATEGY_DAREDEVIL: // A15 Risk Threshold
       return LOCALIZED_STRING_L(lang, "Risk Threshold", "Seuil de risque",
                                 "Umbral de riesgo");
+    case AI_STRATEGY_JUNIOR: // Junior gap-filler, doc/ai_agents.md's Junior section
+      return LOCALIZED_STRING_L(lang, "Naive Greedy", "Glouton naif",
+                                "Codicioso ingenuo");
+    case AI_STRATEGY_AUDITOR: // gap-2.a, doc/ai_agents.md's gap-2 section
+      return LOCALIZED_STRING_L(lang, "Corrected Ledger", "Registre corrige",
+                                "Libro corregido");
+    case AI_STRATEGY_IMPERSONATOR: // gap-2.b
+      return LOCALIZED_STRING_L(lang, "Uncalibrated Power", "Puissance non calibree",
+                                "Poder no calibrado");
+    case AI_STRATEGY_JOURNEYMAN: // gap-2.c
+      return LOCALIZED_STRING_L(lang, "Partial Synthesis", "Synthese partielle",
+                                "Sintesis parcial");
+    case AI_STRATEGY_INCONSISTENT: // gap-2.d
+      return LOCALIZED_STRING_L(lang, "Weighted Mixture", "Melange pondere",
+                                "Mezcla ponderada");
+    case AI_STRATEGY_SPARRING_PARTNER: // gap-3.a
+      return LOCALIZED_STRING_L(lang, "HBT Lite", "HBT leger", "HBT ligero");
+    case AI_STRATEGY_OPPORTUNIST: // gap-3.b
+      return LOCALIZED_STRING_L(lang, "Tactical Plus", "Tactique plus",
+                                "Tactico plus");
+    case AI_STRATEGY_ADEPT: // gap-3.c
+      return LOCALIZED_STRING_L(lang, "Reduced Heuristic", "Heuristique reduite",
+                                "Heuristica reducida");
+    case AI_STRATEGY_EXPERIMENTER: // gap-3.d
+      return LOCALIZED_STRING_L(lang, "Weighted Mixture II", "Melange pondere II",
+                                "Mezcla ponderada II");
     default:
       return "Unknown";
   }
@@ -216,6 +242,52 @@ static const AIStrategyRating AI_STRATEGY_RATINGS[AI_STRATEGY_COUNT] =
   // of Jonathan's own play, not a design aimed at a rating), so there is
   // nothing to compare this against -- it's simply what got measured.
   [AI_STRATEGY_DAREDEVIL]        = { 48, true },
+  // Junior (2026-09-11): measured via --stda.rating round-robin restricted
+  // to {rand, junior, value, borealis} (36,000 games, stable at both 12k and
+  // 36k sample sizes) -- design target was the log-strength midpoint between
+  // Random (2) and A1 (24), ~7.4, landing inside the accepted [6,9] band on
+  // the first calibration attempt with no parameter tuning needed. See
+  // doc/ai_agents.md's Junior section.
+  [AI_STRATEGY_JUNIOR]           = { 6, true },
+  // Gap-2 cluster (2026-09-11): measured via
+  // --rating.agents=rand,junior,value,combo,balanced,daredevil,borealis,
+  // auditor,imperson,journeyman at --rating.games=10000 (the max
+  // MAX_NUMBER_OF_SIM allows -- see stda_rating.c's clamp, added the same
+  // day after a >10000 request silently overflowed
+  // gstats->game_end_turn_number[] and cost ~2 hours of debugging a
+  // 100+-minute "hang" that turned out to be this, not an agent defect),
+  // 1,800,000 games total. Stable vs. an earlier 6000-games/orientation
+  // pass (39/40/45). Targets were {38, 41, 43, 46} -- see doc/ai_agents.md's
+  // gap-2 section. The Auditor/Journeyman/Impersonator landed naturally
+  // within 1-2 points of 3 of the 4 targets (38/41/46); target 43 is left
+  // for AI_STRATEGY_INCONSISTENT (a separate task) to fill via its tunable
+  // mixture weights.
+  [AI_STRATEGY_AUDITOR]          = { 39, true },
+  [AI_STRATEGY_IMPERSONATOR]     = { 44, true },
+  [AI_STRATEGY_JOURNEYMAN]       = { 40, true },
+  // The Inconsistent (2026-09-11): retargeted from 43 to 46 once
+  // Impersonator's real measured rating (44, not its 46 target) was known
+  // -- see doc/ai_agents.md's gap-2 section. Measured at 20%/20%/60%
+  // combo/balanced/borealis weights (--rating.games=10000): 46, exact.
+  // Gap-2 cluster complete: 39/40/44/46.
+  [AI_STRATEGY_INCONSISTENT]     = { 46, true },
+  // Gap-3 cluster (2026-09-11): targets {54, 56, 58, 60}, see
+  // doc/ai_agents.md's gap-3 section. Measured via --rating.games=10000
+  // (320,000 games/entrant, stable vs. an earlier 6000-games pass).
+  // Sparring Partner and Opportunist landed tied at 54 (the lowest
+  // target); Adept landed at 60 (the highest). 56-58 is left open for
+  // AI_STRATEGY_EXPERIMENTER (a separate task) to fill.
+  [AI_STRATEGY_SPARRING_PARTNER] = { 54, true },
+  [AI_STRATEGY_OPPORTUNIST]      = { 54, true },
+  [AI_STRATEGY_ADEPT]            = { 60, true },
+  // The Experimenter (2026-09-11): retargeted from 56 to 57 once the
+  // other three's real numbers (54/54/60, not their 54/56/58 targets)
+  // were known -- see doc/ai_agents.md's gap-3 section. First weights
+  // (22%/33%/45% borealis/tactical/heuristic) measured 58; nudging 5
+  // points from heuristic to borealis (27%/33%/40%) landed exactly on
+  // 57, confirmed at --rating.games=10000. Gap-3 cluster complete:
+  // 54/54/57/60.
+  [AI_STRATEGY_EXPERIMENTER]     = { 57, true },
 };
 
 // "Random [The Gambler]", or just "Borealis" when the technical label and
@@ -510,6 +582,29 @@ const char* get_strategy_display_name(AIStrategyType strategy,
     case AI_STRATEGY_DAREDEVIL:
       return LOCALIZED_STRING_L(lang, "The Daredevil", "Le Casse-Cou",
                                 "El Temerario");
+    case AI_STRATEGY_JUNIOR:
+      return LOCALIZED_STRING_L(lang, "Junior", "Junior", "Junior");
+    case AI_STRATEGY_AUDITOR:
+      return LOCALIZED_STRING_L(lang, "The Auditor", "L'Auditeur", "El Auditor");
+    case AI_STRATEGY_IMPERSONATOR:
+      return LOCALIZED_STRING_L(lang, "The Impersonator", "L'Imitateur", "El Imitador");
+    case AI_STRATEGY_JOURNEYMAN:
+      return LOCALIZED_STRING_L(lang, "The Journeyman", "Le Compagnon", "El Oficial");
+    case AI_STRATEGY_INCONSISTENT:
+      return LOCALIZED_STRING_L(lang, "The Inconsistent", "L'Inconstant",
+                                "El Inconsistente");
+    case AI_STRATEGY_SPARRING_PARTNER:
+      return LOCALIZED_STRING_L(lang, "The Sparring Partner",
+                                "Le Partenaire d'Entrainement",
+                                "El Companero de Entrenamiento");
+    case AI_STRATEGY_OPPORTUNIST:
+      return LOCALIZED_STRING_L(lang, "The Opportunist", "L'Opportuniste",
+                                "El Oportunista");
+    case AI_STRATEGY_ADEPT:
+      return LOCALIZED_STRING_L(lang, "The Adept", "L'Adepte", "El Adepto");
+    case AI_STRATEGY_EXPERIMENTER:
+      return LOCALIZED_STRING_L(lang, "The Experimenter", "L'Experimentateur",
+                                "El Experimentador");
     default:
       return "Unknown";
   }
@@ -557,6 +652,15 @@ static const AIStrategyShorthand AI_STRATEGY_SHORTHANDS[] =
   { AI_STRATEGY_CARTOGRAPHER,     "carto" },
   { AI_STRATEGY_ISMCTS_PUCT,      "puct" },
   { AI_STRATEGY_DAREDEVIL,        "daredevil" },
+  { AI_STRATEGY_JUNIOR,           "junior" },
+  { AI_STRATEGY_AUDITOR,          "auditor" },
+  { AI_STRATEGY_IMPERSONATOR,     "imperson" },
+  { AI_STRATEGY_JOURNEYMAN,       "journeyman" },
+  { AI_STRATEGY_INCONSISTENT,     "inconsistent" },
+  { AI_STRATEGY_SPARRING_PARTNER, "sparring" },
+  { AI_STRATEGY_OPPORTUNIST,      "opportunist" },
+  { AI_STRATEGY_ADEPT,            "adept" },
+  { AI_STRATEGY_EXPERIMENTER,     "experimenter" },
 };
 #define AI_STRATEGY_SHORTHAND_COUNT \
   (sizeof(AI_STRATEGY_SHORTHANDS) / sizeof(AI_STRATEGY_SHORTHANDS[0]))

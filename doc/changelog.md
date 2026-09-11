@@ -5,6 +5,293 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-11 — Junior gap-filler agent implemented, measured, and registered
+
+New track, not part of the `A1`-`A15` ladder: sorting every registered agent
+by measured Borealis rating exposed 3 standout gaps against a background of
+mostly ≤6-point steps -- Random(2)->`A1`(24) [22 points], `A4`(36)->`A15`(48)
+[12 points], `A6`(52)->`A9`/`A14`(62) [10 points]. Intent: let a human
+player choose gradually stronger opponents as their own skill grows, one
+gap-filler per gap, deterministic/closed-form by explicit requirement (rules
+out imitating `simplemc`/`clairvoy`/the tree-search agents).
+
+**Rating-scale correction found before any code was written**: naively
+bisecting a rating gap linearly (e.g. `(2+24)/2 = 13` for gap 1) is wrong,
+because `rating -> strength` is `s = R/(100-R)` (`doc/bt_rating_system/rating_system.md`
+§3), not linear -- the same rating gap implies a bigger strength ratio near
+the edges of the 1-99 scale than near the middle (§7's own worked table).
+"Halfway in perceived difficulty" between two agents means equal strength
+*ratio* to each neighbor, i.e. the geometric mean of their strengths (the
+arithmetic mean of `log(s)`), not the arithmetic mean of their ratings.
+Worked for gap 1: `s_Random=2/98=0.0204`, `s_A1=24/76=0.3158`,
+`sqrt(s_Random*s_A1)=0.0803` -> `R=100*s/(s+1)~=7.4`, not 13 -- verified by
+checking that this point beats Random at exactly the rate `A1` beats it
+(~79.7% both directions), unlike the naive 13 (88% vs 68%, asymmetric).
+Gaps 2/3 straddle rating 50, where the mapping is nearly linear, so their
+naive midpoints (42, 57) stay valid without this correction.
+
+**Junior ("Naive Greedy"), gap 1's filler, implemented and registered**:
+`src/ai_strat/ai_strat_junior.{c,h}`, enum `AI_STRATEGY_JUNIOR` (appended
+after `AI_STRATEGY_DAREDEVIL`), shorthand `junior`, tech name "Naive Greedy"
+(FR "Glouton naif" / ES "Codicioso ingenuo"), flavour name "Junior"
+(identical EN/FR/ES, same convention as `Borealis`/`AlphaOracle Prime`). A
+deliberately stripped-down `A1` Value Based (`ai_strat_valuebased.c`),
+reusing its shape (`build_affordable_champions()`, greedy-take) but dropping
+the two things that make `A1` non-trivial: ranks champions by raw
+`expected_attack`/`expected_defense` instead of power-per-luna efficiency
+(cost-blind), commits at most one champion per attack instead of `A1`'s
+two, and defends unconditionally with its best available blocker instead of
+`A1`'s threshold-gated `should_defend()` (safe unconditionally here --
+`defense_strategy` is only invoked once `turn_logic.c`'s `defense_phase()`
+has already confirmed an attack is incoming).
+
+**Measured rating 6** (`--stda.rating --rating.agents=rand,junior,value,borealis`,
+stable at both 12,000 and 36,000 total games: 65.7%/29.5%/15.3% win rates for
+`A1`/Junior/Random respectively vs `Borealis`) -- inside the accepted [6,9]
+band (design target 7.4 ± up to 2) on the very first attempt, no parameter
+sweep needed. Head-to-head sanity checks both seat orders: Junior beats
+Random ~62-65% of the time, loses to `A1` ~75-82% of the time -- correctly
+ordered between them. `AI_STRATEGY_RATINGS[]` (`player_config.c`) updated to
+`{6, true}`. Primary regression check (`./bin/oracle -a -p` vs
+`bin/expectedresults.txt`) passes with no diff -- a pure addition, no
+existing agent's behavior changed.
+
+Gaps 2 (`A4`->`A15`, target ~42) and 3 (`A6`->`A9`/`A14`, target ~57) are not
+yet designed.
+
+---
+
+## 2026-09-11 — Gap-2 cluster: The Auditor, The Impersonator, The Journeyman implemented and measured
+
+Continuation of the gap-filler track (see this file's Junior entry above).
+Gap 2 (`A4` Balanced Rules at 36 → `A15`/`A3` Borealis at 48/50) was
+deliberately built as **four distinctly-named agents spread across the
+12-point span**, not four variants clustered on one midpoint -- roster
+depth at a shared tier, not just ladder-smoothing. Splitting the
+log-strength range 36→48 into 5 equal segments gives targets **38, 41, 43,
+46** (nearly identical to naive linear spacing here, since this region
+sits close to the scale's midpoint). Three of the four are deterministic;
+the fourth (The Inconsistent, a per-decision weighted mixture of three
+existing engines) is a deliberate, explicitly-approved exception -- a
+separate, later task, tuned to fill whichever target the other three leave
+uncovered.
+
+**The Auditor** ("Corrected Ledger", `AI_STRATEGY_AUDITOR`,
+`src/ai_strat/ai_strat_auditor.{c,h}`) -- `A4`'s own shape, pushed a bit
+further past its identity-safe calibration optimum (smaller resource
+slopes, `defense_beta=2.3` vs `A4`'s 1.93) without going all the way to
+the degenerate spend-everything/never-defend extreme `A4`'s own
+calibration comment documents finding but rejecting. Landed on **39**
+(target 38) with the first constants tried -- no tuning needed.
+
+**The Impersonator** ("Uncalibrated Power", `AI_STRATEGY_IMPERSONATOR`,
+`src/ai_strat/ai_strat_impersonator.{c,h}`) -- reuses `A3` Borealis's exact
+scoring/enumeration engine with every field identical to the real,
+calibrated Borealis except `luna_value`, deliberately mistuned. This
+required promoting `borealis_best_champion_set()`
+(`ai_strat_borealis_enum.h`) from Borealis-internal to a second legitimate
+consumer -- safe because it takes `BorealisParams` by pointer and touches
+no Borealis-internal state; The Impersonator passes its own local params
+rather than calling `borealis_set_params()`, which would otherwise mutate
+the real Borealis's per-player state and corrupt it in any round-robin
+that plays both. `luna_value=2.0` (the pre-calibration sweep grid's own old
+max) measured only 35 -- too far from the documented 4.0-4.58 peak. Raised
+to `3.3`: measured **45** (target 46).
+
+**The Journeyman** ("Partial Synthesis", `AI_STRATEGY_JOURNEYMAN`,
+`src/ai_strat/ai_strat_journeyman.{c,h}`) -- splits responsibilities by
+phase: a simplified `A2` Combo Threshold attack (efficiency-ranked
+baseline, overridden by a combo above threshold) plus a simplified `A4`
+defense (same capped-selection formula, no resource-target cash gating).
+Took three rounds to land: single-card-only attack measured **21** (weaker
+than `A1`); a proper 2-card efficiency baseline plus `defense_beta=1.0`
+only reached **26**, confirmed via direct head-to-head as genuine parity
+with `A1`, not a bug. The fix was extending to 3-card attacks/combos *and*
+raising `defense_beta` to 1.6-2.2 (blocking *less*, not more) -- a third
+independent confirmation on this roster, after `A1`'s and `A4`'s own
+calibration histories, that over-defending is a real strength cost here.
+Landed on **40** (target 41).
+
+All three measured via `--rating.agents=rand,junior,value,combo,balanced,
+daredevil,borealis,auditor,imperson,journeyman` (108,000 games/round).
+Primary regression check passes with no diff throughout -- pure additions,
+no existing agent's behavior changed. Target 43 is left open for The
+Inconsistent.
+
+**A real, pre-existing bug found while confirming these numbers at a
+larger sample.** `--rating.games=15000` appeared to hang for 100+ minutes
+at ~100% CPU. Live `gdb -p <pid>` attachment (the default build already
+has `-g` debug symbols) traced it to the very first round-robin
+orientation (`rand` vs `junior`), crawling at ~0.4s/game instead of the
+normal ~10 microseconds -- genuinely slow, not looping in one spot.
+Root cause: `gstats->game_end_turn_number[]` is a fixed
+`uint16_t[MAX_NUMBER_OF_SIM]` (10000) array indexed by `simnum` inside
+`run_simulation()`; `stda_auto.c`'s own CLI entry clamps `numsim` via
+`oraclemin()` before calling it, but `stda_rating.c`'s `--rating.games`
+path never did, so any request above 10000 silently wrote out of bounds.
+Bisected exactly: 10000 completes in 0.1s, 10001 hangs catastrophically.
+Not a defect in any agent, Junior included (no prior calibration run had
+ever requested more than 10000 games/orientation). Fixed in
+`stda_rating.c`'s `run_mode_stda_rating()` with the same `oraclemin()`
+clamp plus a warning on truncation. Re-confirmed the gap-2 numbers at
+`--rating.games=10000` (the new safe maximum, 1,800,000 games total):
+Auditor 39, Journeyman 40, Impersonator 44 (was 45 at the smaller,
+now-superseded 6000-games sample) -- all stable, `AI_STRATEGY_RATINGS[]`
+updated to match.
+
+---
+
+## 2026-09-11 — Gap-2 cluster complete: The Inconsistent implemented, measured, and cluster retargeted
+
+Closes out the gap-2 cluster (see this file's Auditor/Impersonator/
+Journeyman entry above). **The Inconsistent** ("Weighted Mixture",
+`AI_STRATEGY_INCONSISTENT`, `src/ai_strat/ai_strat_inconsistent.{c,h}`) is
+the cluster's one deliberate exception to "deterministic": at every
+individual attack/defense decision (re-rolled independently, not once per
+game or per turn), it delegates to one of `A2`/`A4`/`A3`'s own unmodified
+attack/defense functions, chosen by a weighted die roll (20%/20%/60%
+`combo`/`balanced`/`borealis` -- each weight bounded [20%,60%] per
+Jonathan's constraint, so no single contributor can dominate enough to
+erase the "inconsistent" character).
+
+**Retargeted before building**: the original plan gave this agent
+whatever target the other three left uncovered (43, gap-2's log-strength
+midpoint). But The Auditor/Journeyman/Impersonator measured 39/40/44, not
+exactly their 38/41/46 targets -- leaving the real uncovered stretch
+between Impersonator (44) and `A15`/Borealis (48), not down near
+Auditor/Journeyman's already-close 39/40. Jonathan caught this and
+retargeted to **46** (evenly bisecting 44->46->48) before any mixture
+weights were chosen.
+
+**Measured exactly on target (46) on the first weight combination tried**
+(`--rating.games=10000`) -- no search needed, and no headroom remained to
+push higher (60% is this cluster's own bound). Final gap-2 spread: **39,
+40, 44, 46** -- not perfectly uniform, but spanning the full 36->48 width
+instead of clustering near one end.
+
+**A real, pre-existing bug found and fixed along the way** (discovered
+while confirming the Auditor/Impersonator/Journeyman numbers, documented
+in this file's own entry above): `--rating.games` above `MAX_NUMBER_OF_SIM`
+(10000) silently overflowed `gstats->game_end_turn_number[]`, causing a
+100+-minute apparent "hang" that was actually catastrophic per-game
+slowdown from undefined behavior, not an infinite loop. Root-caused via a
+live `gdb -p <pid>` attach to the stuck process (needed `sudo sysctl
+kernel.yama.ptrace_scope=0` first, since Ubuntu's default blocks
+same-user, non-ancestor `ptrace` attachment) and bisected exactly (10000
+fine, 10001 catastrophic). Fixed in `stda_rating.c` with the same
+`oraclemin()` clamp `stda_auto.c`'s own CLI entry already used, plus a
+truncation warning. This session's own gap-2 measurements were never
+affected (all used `--rating.games` at or under 10000).
+
+Primary regression check passes with no diff. `AI_STRATEGY_RATINGS[]`
+(`player_config.c`) updated to `{46, true}` for `AI_STRATEGY_INCONSISTENT`.
+Gap 2 is now complete; gap 3 (targets 54/56/58/60, same
+spread-not-cluster approach: The Sparring Partner, The Opportunist, The
+Adept, The Experimenter) is not yet started.
+
+---
+
+## 2026-09-11 — Gap-3 cluster (task 1): The Sparring Partner, The Opportunist, The Adept implemented and measured
+
+Continuation of the gap-filler track (see this file's Junior and gap-2
+entries above). Gap 3 (`A6` Tactical at 52 → `A9`/`A14` at 62) uses the
+same four-agents-spread-across-the-span approach as gap 2: targets **54,
+56, 58, 60**. Unlike gap 2, all three deterministic designs needed real
+tuning -- the source agents here (`A5` Heuristic 65, `A7` Hybrid HBT 66)
+are strong and formula-sensitive enough that naive "port minus one term"
+attempts overshot wildly before converging.
+
+**The Sparring Partner** ("HBT Lite", `AI_STRATEGY_SPARRING_PARTNER`,
+`src/ai_strat/ai_strat_sparring_partner.{c,h}`) -- keeps `A7`'s T→H
+coupling (`A6`'s aggression factor modulating `A5`'s advantage weights)
+verbatim, drops Layer B (`A4`'s resource-target penalty) and the
+lethal-combo hold entirely. First attempt (`A5`'s own
+`weight_cards_advantage=1.96` unchanged) measured 62 -- barely below full
+`A5`/`A7`, confirming (a third time on this roster, after `A9`'s
+`reply_trust` and `A13`'s `hplus_trust`) that Layer B and lethal-hold
+aren't as load-bearing as they look. Cutting the weight to 0.6 overshot
+to 42 -- extremely sensitive, not smoothly scaling. Interpolating (1.4)
+landed exactly on **54** (target 54).
+
+**The Opportunist** ("Tactical Plus", `AI_STRATEGY_OPPORTUNIST`,
+`src/ai_strat/ai_strat_opportunist.{c,h}`) -- `A6` Tactical's exact
+mechanism plus one added trait. First tried porting `A3`/`A7`'s
+lethal-combo *hold*: at their own threshold (24) measured 52 (parity with
+plain Tactical, too rare to fire); lowered to 12 (firing often) measured
+34, *below* Tactical -- holding is a strict cost here, not a free trait,
+the same signature `A9`/`A13` already showed. Replaced with an
+"opportunistic finisher" override (play any available lethal subset
+immediately, overriding the normal aggression-gated attacker count) --
+structurally can only add value, but lethal-in-one-turn moments proved
+too rare alone to move the needle (51-53, noise-level parity). Layered a
+flat aggression boost on top: 0.08/0.20/0.45 all measured **54** --
+saturates almost immediately against the aggression-band formula's fixed
+thresholds, matching `A6`'s own calibration history. Shipped at 0.20 (same
+effect as 0.45, no reason to ship the larger number). Landed on 54, tied
+with The Sparring Partner rather than its own 56 target -- a real
+plateau, not a tuning miss.
+
+**The Adept** ("Reduced Heuristic", `AI_STRATEGY_ADEPT`,
+`src/ai_strat/ai_strat_adept.{c,h}`) -- `A5`'s exact enumeration shape
+with a much smaller `weight_cards_advantage`. Two aggressive cuts
+rejected first: dropping `cards_advantage` *and* taper together measured
+**10** (catastrophic -- without taper, `cash_advantage`'s weight 1.0
+outweighs `energy_advantage`'s 0.349 even in the endgame, risking a
+hoard-instead-of-finish defect); restoring taper but keeping
+`cards_advantage=0` still measured **11**, showing the term's near-total
+*absence* (not the missing taper) is what devastates this formula,
+matching `A5`'s own documented steep gamma-sensitivity. A small residual
+weight, swept at 0.3 (11), 1.0 (23), 1.6 (**60**), traced that curve to
+land inside the target band (58).
+
+All three measured via `--rating.games=10000` (320,000 games/entrant,
+stable vs. an earlier 6000-games pass). Primary regression check passes
+throughout -- pure additions. Final natural spread: **54, 54, 60** --
+Sparring Partner and Opportunist tied at the low end, Adept at the high
+end, leaving 56-58 open for The Experimenter (gap-3.d, not yet built) to
+fill -- likely retargeted to ~57 (the actual midpoint of 54-60) rather
+than the original 56, the same retargeting gap-2's cluster went through
+once its own real numbers were in.
+
+---
+
+## 2026-09-11 — Gap-3 cluster complete: The Experimenter implemented and measured
+
+Closes out the gap-3 cluster (see this file's Sparring
+Partner/Opportunist/Adept entry above). **The Experimenter** ("Weighted
+Mixture II", `AI_STRATEGY_EXPERIMENTER`,
+`src/ai_strat/ai_strat_experimenter.{c,h}`) uses the same per-decision
+weighted-delegation mechanism as gap-2's The Inconsistent, this time among
+`A3` Borealis / `A6` Tactical / `A5` Heuristic's own unmodified
+attack/defense functions (weights bounded [20%,60%] each).
+
+**Retargeted before building**, same as The Inconsistent: the original
+plan gave this agent whatever target the other three left uncovered (56,
+gap-3's log-strength midpoint). But The Sparring Partner/Opportunist/Adept
+measured 54/54/60, not their 54/56/58 targets -- so retargeted to **57**
+(evenly bisecting the actual 54-60 gap) before any mixture weights were
+chosen.
+
+**Weights**: 27%/33%/40% `borealis`/`tactical`/`heuristic` -- Jonathan's
+own framing (experimenting toward Heuristic's more advanced approach,
+more intuition than mastery) puts the heaviest weight on `heuristic`, the
+strongest of the three contributors. First tried at 22%/33%/45%: measured
+58, within tolerance of 57 but not exact. Jonathan asked how much of a
+nudge from `heuristic` toward `borealis` (holding `tactical` fixed) would
+land exactly on target -- a 5-point shift (22->27 / 45->40) hit **57
+exactly**, confirmed at both 6,000 and 340,000-game samples
+(`--rating.games=10000`).
+
+**Gap 3 is now complete**: final spread **54, 54, 57, 60**. Primary
+regression check passes with no diff. `AI_STRATEGY_RATINGS[]`
+(`player_config.c`) updated to `{57, true}` for `AI_STRATEGY_EXPERIMENTER`.
+
+Both gap-filling clusters (gap 2: 39/40/44/46, gap 3: 54/54/57/60) are
+now done, alongside Junior (6) filling gap 1. The full gap-filler track
+launched this session (2026-09-11) is complete.
+
+---
+
 ## 2026-09-10 — `A15` Risk Threshold ("The Daredevil") implemented, calibrated, and registered
 
 Full design record: `doc/ai_agents.md`'s A15 section (folded in from

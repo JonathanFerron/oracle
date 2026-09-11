@@ -218,6 +218,60 @@ typedef enum
   // rating target -- registration is unconditional on the measured number,
   // a third distinct reason after A13 (character) and A14 (mechanism). See
   // src/ai_strat/ai_strat_a15.h for the full rule chain.
+  AI_STRATEGY_JUNIOR,          // Junior -- doc/ai_agents.md's Junior section.
+  // Not part of the A1-A15 ladder: a gap-filler agent (2026-09-11) targeting
+  // the largest gap on the roster's rating scale (Random at 2 to A1 at 24),
+  // aimed at the log-strength midpoint (~7), not a linear one (13) -- see
+  // doc/ai_agents.md's Junior section for why those differ. A stripped-down
+  // A1: cost-blind raw-power ranking, one card per attack instead of two,
+  // unconditional (no threshold) defense.
+  // Gap-2 cluster (A4 Balanced Rules at 36 -> A15/Borealis at 48/50), four
+  // agents spread across targets {38, 41, 43, 46} rather than clustered on
+  // one midpoint -- see doc/ai_agents.md's gap-2 section. `.a`-`.c` below
+  // are measured as-is first; AI_STRATEGY_INCONSISTENT (`.d`) is a
+  // per-decision weighted mixture of three existing engines, tuned last to
+  // fill whichever target the other three leave uncovered.
+  AI_STRATEGY_AUDITOR,         // "Corrected Ledger" / The Auditor (gap-2.a):
+  // A4 Balanced Rules, pushed a bit further past its own identity-safe
+  // calibration optimum toward (not all the way to) the degenerate
+  // spend-everything/never-defend extreme A4's own calibration comment
+  // documents finding but rejecting.
+  AI_STRATEGY_IMPERSONATOR,    // "Uncalibrated Power" / The Impersonator
+  // (gap-2.b): A3 Borealis's exact scoring engine, deliberately mistuned
+  // luna_value (the one dial Borealis's own docs call out as the strength
+  // dial).
+  AI_STRATEGY_JOURNEYMAN,      // "Partial Synthesis" / The Journeyman
+  // (gap-2.c): a simplified A2 Combo Threshold attack (single/2-card
+  // combos only) plus a simplified A4 Balanced Rules defense (capped
+  // selection, no resource-target cash gating) -- two techniques, neither
+  // fully mastered.
+  AI_STRATEGY_INCONSISTENT,    // "Weighted Mixture" / The Inconsistent
+  // (gap-2.d): per-decision weighted delegation among A2/A4/A3's own
+  // unmodified attack/defense functions (weights bounded [20%,60%] each).
+  // The one deliberate exception to this cluster's otherwise-deterministic
+  // design -- genuine unpredictability is the point. Tuned last, to fill
+  // whichever gap-2 target the other three left uncovered.
+  // Gap-3 cluster (A6 Tactical at 52 -> A9/A14 at 62), four agents spread
+  // across targets {54, 56, 58, 60} -- same spread-not-cluster approach as
+  // gap-2, see doc/ai_agents.md's gap-3 section.
+  AI_STRATEGY_SPARRING_PARTNER, // "HBT Lite" / The Sparring Partner
+  // (gap-3.a): A7 Hybrid HBT's T->H coupling (A6's aggression factor
+  // modulating A5's advantage weights), ported verbatim, but no Layer B
+  // (A4) penalty and no lethal-combo hold -- two of A7's three
+  // ingredients, not three.
+  AI_STRATEGY_OPPORTUNIST,      // "Tactical Plus" / The Opportunist
+  // (gap-3.b): A6 Tactical's exact mechanism, unchanged, plus a
+  // lethal-combo hold (ported from A3) gating the greedily-selected
+  // attack -- one added feature, not a synthesis.
+  AI_STRATEGY_ADEPT,            // "Reduced Heuristic" / The Adept
+  // (gap-3.c): A5 Heuristic's exact enumeration shape, with the
+  // cards-advantage term and the opponent-energy taper both dropped --
+  // energy + cash advantage only, flat throughout the game.
+  AI_STRATEGY_EXPERIMENTER,     // "Weighted Mixture II" / The Experimenter
+  // (gap-3.d): per-decision weighted delegation among A3/A6/A5's own
+  // unmodified attack/defense functions (weights bounded [20%,60%] each).
+  // Same mechanism as AI_STRATEGY_INCONSISTENT. Tuned last, to fill
+  // whichever gap-3 target the other three left uncovered.
   AI_STRATEGY_COUNT
 } AIStrategyType;
 

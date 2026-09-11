@@ -124,6 +124,22 @@ int run_mode_stda_rating(config_t* cfg)
   int games = (cfg->rating_games > 0) ? cfg->rating_games
               : RATING_DEFAULT_GAMES_PER_ORIENTATION;
 
+  // run_simulation() (stda_auto.c) indexes gstats->game_end_turn_number[]
+  // (fixed-size, MAX_NUMBER_OF_SIM entries) by simnum -- stda_auto.c's own
+  // CLI entry clamps numsim via oraclemin() before ever calling it, but
+  // this path didn't, so --rating.games above MAX_NUMBER_OF_SIM silently
+  // wrote out of bounds. Found 2026-09-11 via a live gdb attach to a
+  // --rating.games=15000 round-robin that appeared to hang for 100+
+  // minutes: bisection showed 10000 completes instantly and 10001 times
+  // out catastrophically, an exact match for MAX_NUMBER_OF_SIM=10000 --
+  // not a bug in any agent's logic (see doc/changelog.md's 2026-09-11 entry).
+  if(games > MAX_NUMBER_OF_SIM)
+  { fprintf(stderr,
+            "Warning: --rating.games=%d exceeds MAX_NUMBER_OF_SIM (%d); clamping.\n",
+            games, MAX_NUMBER_OF_SIM);
+    games = MAX_NUMBER_OF_SIM;
+  }
+
   RatingSystem rs;
   rating_init(&rs, NULL);
   rs.config.batch_method = cfg->rating_method_gradient ? RATING_BATCH_GRADIENT

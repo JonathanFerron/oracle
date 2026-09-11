@@ -153,6 +153,84 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
    both restored the intended character and measured better. Rating 48,
    landing inside this project's own 45-55% "moderately experienced
    player" target band without being aimed at it.
+9. **Gap-filler roster agents** (new track, 2026-09-11): sorting all
+   registered agents by measured Borealis rating exposed 3 standout gaps
+   (vs everything else being ≤6 points): Random(2)->`A1`(24) [22],
+   `A4`(36)->`A15`(48) [12], `A6`(52)->`A9`/`A14`(62) [10] -- the intent is
+   to let a human player select gradually stronger opponents as their own
+   skill grows, one gap-filler per gap. Because the Borealis scale is
+   nonlinear (rating->strength is `s=R/(100-R)`, not linear -- see
+   `doc/bt_rating_system/rating_system.md` §3/§7), "halfway in perceived
+   difficulty" is the *log-strength* midpoint (geometric mean of the two
+   neighbors' strengths), not the linear rating average -- this matters a
+   lot near the scale's low end (gap 1's true midpoint is ~7.4, not the
+   naive 13) and barely at all near 50 (gaps 2/3 are close to their naive
+   midpoints). **Junior, gap 1's filler, is done**: registered
+   `AI_STRATEGY_JUNIOR`, shorthand `junior`, tech name "Naive Greedy" /
+   flavour "Junior" (identical EN/FR/ES) -- a deliberately stripped-down
+   `A1` (`src/ai_strat/ai_strat_junior.c`): cost-blind raw-power ranking
+   (no efficiency ratio), one champion per attack instead of `A1`'s two,
+   unconditional (no threshold) single-card defense. Deterministic/closed-form
+   by design, per Jonathan's explicit requirement for every gap-filler in
+   this track (rules out the MC-rollout/tree-search agents as models to
+   imitate). Measured rating **6** (`--rating.agents=rand,junior,value,borealis`,
+   stable across 12k and 36k game samples) -- inside the accepted [6,9] band
+   on the first attempt, no parameter tuning needed.
+
+   **Gap 2** (`A4`(36)→`A15`/`A3`(48/50)) is done as **four distinctly-named
+   agents spread across the 12-point span** (targets 38/41/43/46, roster
+   depth at a shared tier rather than four variants on one midpoint) --
+   see `doc/ai_agents.md`'s gap-2 section and `doc/changelog.md`'s
+   2026-09-11 entry. Three deterministic ones are built and measured: **The
+   Auditor** ("Corrected Ledger", `auditor`) landed on 39 (target 38) with
+   no tuning; **The Impersonator** ("Uncalibrated Power", `imperson`,
+   reusing `A3`'s own scoring engine with a deliberately mistuned
+   `luna_value`) landed on 44 (target 46) after one adjustment (2.0→3.3);
+   **The Journeyman** ("Partial Synthesis", `journeyman`, a simplified
+   `A2` attack + simplified `A4` defense) took three tuning rounds,
+   landing on 40 (target 41) -- along the way reconfirming, a third
+   independent time on this roster, that over-defending is a net strength
+   cost, not a safe default. **The Inconsistent** ("Weighted Mixture",
+   `.d` -- a per-decision reroll among `combo`/`balanced`/`borealis`,
+   weights bounded [20%,60%] each) is **done**: retargeted from 43 to 46
+   once the other three's real numbers (39/40/44, not exactly their own
+   targets) showed the actual uncovered stretch was between Impersonator
+   (44) and `A15`/Borealis (48), not near Auditor/Journeyman's own
+   already-close 39/40 -- landed exactly on 46 (20%/20%/60%
+   combo/balanced/borealis) on the first attempt. **Gap 2 is complete**:
+   39/40/44/46. A pre-existing bug was also found and fixed along the way
+   (`--rating.games` above `MAX_NUMBER_OF_SIM` silently overflowed a
+   fixed-size array, causing an apparent 100+-minute hang -- see
+   `doc/changelog.md`'s 2026-09-11 entries), unrelated to any agent's own
+   logic.
+
+   **Gap 3** (`A6`(52)→`A9`/`A14`(62), targets 54/56/58/60) task 1 is
+   **done**: `.a`-`.c` implemented and measured (`doc/ai_agents.md`'s
+   gap-3 section, `doc/changelog.md`'s matching 2026-09-11 entry). Unlike
+   gap 2, all three needed real tuning -- the source agents here (`A5`
+   Heuristic 65, `A7` Hybrid HBT 66) are strong and formula-sensitive
+   enough that naive "port minus one term" cuts overshot wildly before
+   converging. **The Sparring Partner** ("HBT Lite" -- `A7`'s T→H
+   coupling, no Layer B, no lethal-hold) landed on 54 after interpolating
+   between two data points (62 at full weight, 42 at a too-aggressive
+   cut). **The Opportunist** ("Tactical Plus") swapped a lethal-combo
+   *hold* (measured a strict cost, 34-52, never beating plain Tactical)
+   for an "opportunistic finisher" override plus a flat aggression boost
+   that saturates immediately (0.08/0.20/0.45 all measure 54) -- landed
+   on 54 too, tied with Sparring Partner rather than its own 56 target.
+   **The Adept** ("Reduced Heuristic") needed its residual
+   `weight_cards_advantage` swept from 0.3 (11, still collapsed) to 1.6
+   (60) after two more aggressive cuts measured catastrophically (10-11) --
+   confirming `A5`'s cards term and its taper are both genuinely
+   load-bearing, not decorative. **The Experimenter** ("Weighted Mixture
+   II", a per-decision reroll among `borealis`/`tactical`/`heuristic`,
+   same [20%,60%] bound, gap-3.d) is **done**: retargeted from 56 to 57
+   (evenly bisecting the actual 54-60 gap the other three left), first
+   weighted 22%/33%/45% toward `heuristic` (Jonathan's "experimenting
+   toward mastery" framing) measured 58 -- a 5-point nudge toward
+   `borealis` (27%/33%/40%) hit 57 exactly. **Gap 3 is complete**:
+   54/54/57/60. The full gap-filler track (Junior + gap 2 + gap 3)
+   launched this session (2026-09-11) is now done.
 
 **Bottom of the list** (still intended, least urgent, distinct from the back burner
 below): `ideas/11 skill vs chance eval/` -- an analytical framework for game balance,

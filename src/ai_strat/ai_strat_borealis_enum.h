@@ -3,8 +3,14 @@
 // ai_strat_borealis.c/.h per the handout's Sec.10 file-length guidance --
 // see ai_strat_borealis_enum.c's header comment and
 // doc/ai_agents.md's A3 section
-// Sec.4-6. Internal to the Borealis agent: nothing outside
-// ai_strat_borealis.c should include this.
+// Sec.4-6. Originally internal to the Borealis agent; also used by
+// ai_strat_impersonator.c (doc/ai_agents.md's gap-2 section) as of
+// 2026-09-11 -- The Impersonator is deliberately "Borealis's exact formula,
+// wrong lambda", so it reuses this engine with its own local BorealisParams
+// passed by pointer (never via borealis_set_params(), which would mutate
+// the real Borealis's own per-player state). Safe for any agent to include
+// as long as it passes its own params rather than touching
+// ai_strat_borealis.c's g_params[] directly.
 
 #ifndef AI_STRAT_BOREALIS_ENUM_H
 #define AI_STRAT_BOREALIS_ENUM_H
