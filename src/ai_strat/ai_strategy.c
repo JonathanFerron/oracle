@@ -21,6 +21,7 @@
 #include "ai_strat_ismctsnn.h"
 #include "ai_strat_a13.h"
 #include "ai_strat_puct.h"
+#include "ai_strat_a15.h"
 #include "ai_strat_lib_heuristics.h"
 
 StrategySet* create_strategy_set(void)
@@ -105,6 +106,9 @@ static const StrategyRegistryEntry STRATEGY_REGISTRY[AI_STRATEGY_COUNT] =
   // selection/leaf-evaluation inside the shared tree search.
   [AI_STRATEGY_ISMCTS_PUCT]      = { puct_attack_strategy, puct_defense_strategy,
     ismcts_mulligan, ismcts_discard_to_7
+  },
+  [AI_STRATEGY_DAREDEVIL]        = { a15_attack_strategy, a15_defense_strategy,
+    a15_mulligan, a15_discard_to_7
   },
   // All other entries default to {NULL, NULL, NULL, NULL} -- not yet implemented.
 };

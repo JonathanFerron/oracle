@@ -5,6 +5,101 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-10 — `A15` Risk Threshold ("The Daredevil") implemented, calibrated, and registered
+
+Full design record: `doc/ai_agents.md`'s A15 section (folded in from
+`ideas/A15 ai agent deterministic personal playstyle/about.md`, deleted per
+the usual consolidation pattern). Not part of the roadmap's numbered "Next
+Up" sequence -- a distinct track: a direct transcription of Jonathan's own
+real-table decision procedure (R1-R9), not a design aimed at a rating.
+
+**Five corrections found while implementing, applied rather than worked
+around**: the design doc's claim that `combo_bonus_for_selection()` makes
+this agent "deck-type-correct automatically" is false (that helper
+hardcodes `COMBO_BONUS_RANDOM` by deliberate simplification, harmless only
+because no non-random deck-construction method exists yet); `DeckType` was
+renamed `ComboBonusTable` in August and no longer exists under that name;
+`INITIAL_HAND_SIZE_DEFAULT` is actually spelled `INITAL_HAND_SIZE_DEFAULT`
+(a pre-existing typo); `MULLIGAN_DEFAULT_MAX_CARDS` isn't a public constant
+(the accessor is `mulligan_get_max_cards()`); R1/R2/R5's zero-cost
+protection was scoped to zero-cost *champions* specifically, since Cash
+cards are also zero-cost and R3 wants those discarded, not protected.
+
+**A real bug found by its own unit test before shipping**: the shared
+combo-participation scorer (`a15_combo_participation()`,
+`ai_strat_a15_cards.c` -- drives R9b's play choice, R1/R5's discard victim,
+and R2's mulligan victim with one function) initially scored a card by the
+best RAW subset bonus it appeared in, rather than its MARGINAL contribution
+-- `calc_random_bonus()` falls through to the bare pair tier when a 3-card
+group's third member matches nothing, so a completely unrelated card riding
+along with a real pair was misread as participating in a combo it did
+nothing to earn. Caught by `testsrc/test_a15_combo.c` against Jonathan's own
+worked example (2 Dragons + 2 Elves + 2 Humans + 1 Dwarf + 1 Aven): only the
+marginal-contribution fix reproduces the correct sacrifice order (Aven,
+then Dwarf).
+
+**R8's endgame trigger was redesigned mid-calibration -- the most
+consequential finding of this session.** The first implementation derived
+R8's horizon from hand size alone; calibrating against it found the only
+winning configuration pinned `endgame_q2`-`q4` to a near-zero epsilon
+(44.98% vs `borealis`), meaning R8 fired almost unconditionally rather than
+gating on any real confidence. Jonathan pushed back directly -- that reads
+as "attack recklessly," not the "calculated risk, wait for a well-justified
+chance" character both the design and this agent's own name call for. A
+diagnostic (logging every `P(finish)` the old mechanism evaluated across
+200 games) confirmed it precisely: over 90% of evaluations landed below
+p=0.2 regardless of horizon -- hand size turns out to be almost completely
+decoupled from real finish probability. Fixed by dropping the hand-size
+proxy entirely: every attack turn now checks `P(finish within N)` directly
+for all four horizons, firing on the smallest N that clears its own `q_N`
+(`find_triggering_horizon()`, `ai_strat_a15_endgame.c`). Recalibrated from
+scratch, this let `endgame_q2`/`q3`/`q4` land at genuine, high confidence
+bars (**0.78/0.75/0.69**) -- exactly the intended character -- while
+`endgame_q1` (checked last, structurally the loosest horizon) stayed at a
+small epsilon by design, not oversight: its job is "don't prematurely rule
+out pursuing a win," not "confidently predict one." **R8 measured
+load-bearing under both mechanisms**: 7.06%-7.14% vs `borealis` with it
+disabled, 44.98%-46.56% with it on and calibrated -- this agent's R1-R9
+chain alone is too passive to keep pace with an opponent that actually
+attacks, a real, open question (not pursued here) about R9's own
+passivity independent of R8's tuning.
+
+**Measured: rating 48** (`--rating.agents` round-robin over the 11
+non-tree-search roster agents plus `borealis`, 40,000 games, 53.5% overall
+win rate -- `simplemc`/`clairvoy` excluded, ~100-370x more expensive per
+game than a closed-form agent, making their inclusion impractical for a
+routine fit). Registration was unconditional on this number from the start
+(this agent's whole premise is fidelity to real play, not a rating target)
+-- landing at 48, just below the `borealis` anchor and squarely inside the
+project's own 45-55% "moderately experienced player" calibration target
+band (`doc/ai_agents.md`'s roster section), is a notable coincidence given
+it was never the goal.
+
+**Registered**: enum `AI_STRATEGY_DAREDEVIL` (appended after
+`AI_STRATEGY_ISMCTS_PUCT`), shorthand `daredevil`, tech name "Risk
+Threshold" (FR "Seuil de risque" / ES "Umbral de riesgo" -- both of this
+agent's real dials are probability thresholds, a deliberate sibling to
+`A2`'s own "Combo Threshold"), flavour name "The Daredevil" / "Le
+Casse-Cou" / "El Temerario" (confirmed in the design doc), `AI_STRATEGY_
+RATINGS[]` entry `{48, true}`. New calibration tooling:
+`aicalibsrc/daredevil/` (`calib_daredevil.c` + `calibrate_daredevil.py`,
+the `hbt2ply` pattern -- no pinned fields, no `--identity-safe` mode, since
+this agent inherits no prior agent's tuning to protect).
+
+**Verification**: clean `make` and `make debug` build, no new warnings
+(the latter required an unrelated pre-existing fix -- a missing
+`#include <stdio.h>` in `ai_strat_ismcts_search.c`, the only file using
+`DEBUG_PRINT` without it); `./bin/oracle -a -p` byte-identical to
+`bin/expectedresults.txt` at every stage; `make test_a15_combo` (13/13, new
+-- combo-participation and death/finish-probability sanity checks) plus
+`test_combo`/`test_recall`/`test_cash_exchange`/`test_rating` all green
+throughout; `make format` stable; valgrind-clean on `daredevil` vs `hbt`,
+vs `borealis`, and self-play at every mechanism revision, specifically
+covering the recall path (`play_recall_card()`), which no prior agent had
+exercised.
+
+---
+
 ## 2026-09-09 — `A14` PUCT + Neural Network ("AlphaOracle Prime Plus I") registered -- for its mechanism, not its strength
 
 Full design record: `doc/ai_agents.md`'s A14 section; step-by-step build log:

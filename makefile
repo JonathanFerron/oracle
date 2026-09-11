@@ -77,13 +77,30 @@ AGENT_SRCS := $(SRCDIR)/ai_strat/ai_strategy.c \
               $(SRCDIR)/ai_strat/ai_strat_puct_policy.c \
               $(SRCDIR)/ai_strat/ai_strat_puct_net.c \
               $(SRCDIR)/ai_strat/ai_strat_puct_search.c \
-              $(SRCDIR)/ai_strat/ai_strat_puct.c
+              $(SRCDIR)/ai_strat/ai_strat_puct.c \
+              $(SRCDIR)/ai_strat/ai_strat_a15_prob.c \
+              $(SRCDIR)/ai_strat/ai_strat_a15_cards.c \
+              $(SRCDIR)/ai_strat/ai_strat_a15_attack.c \
+              $(SRCDIR)/ai_strat/ai_strat_a15_defense.c \
+              $(SRCDIR)/ai_strat/ai_strat_a15_endgame.c \
+              $(SRCDIR)/ai_strat/ai_strat_a15.c
 
 # Test targets
 # Object paths are mapped into $(BUILDDIR) (mirroring the main build's pattern rule
 # below) rather than left inside $(SRCDIR)/$(TESTSRCDIR), so test builds share objects
 # with bin/oracle instead of recompiling in place and leaving stray .o files in the
 # source tree.
+TEST_A15_COMBO_TARGET := $(BINDIR)/test_a15_combo
+# ai_strat_a15_cards.c/_prob.c are the only two files under test, but
+# ai_strategy.c pulls in the whole roster transitively (STRATEGY_REGISTRY[]
+# references every agent) -- same "linking the roster it depends on"
+# reasoning as TEST_RECALL_SRCS above.
+TEST_A15_COMBO_SRCS := $(TESTSRCDIR)/test_a15_combo.c \
+                       $(ENGINE_SRCS) \
+                       $(AGENT_SRCS)
+TEST_A15_COMBO_OBJS := $(BUILDDIR)/testsrc/test_a15_combo.o \
+                       $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_A15_COMBO_SRCS)))
+
 TEST_COMBO_TARGET := $(BINDIR)/test_combo
 TEST_COMBO_SRCS := $(TESTSRCDIR)/test_combo_bonus.c \
                    $(SRCDIR)/core/combo_bonus.c \
@@ -462,6 +479,17 @@ CALIB_PUCT_TIMING_SRCS := $(AICALIBDIR)/puct/calib_puct_timing.c \
 CALIB_PUCT_TIMING_OBJS := $(BUILDDIR)/aicalibsrc/puct/calib_puct_timing.o \
                           $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_PUCT_TIMING_SRCS)))
 
+# A15 calibration harness (see aicalibsrc/daredevil/calib_daredevil.c) --
+# same whole-roster link set as every other CALIB_*_SRCS above.
+CALIB_DAREDEVIL_TARGET := $(BINDIR)/calib_daredevil
+CALIB_DAREDEVIL_SRCS := $(AICALIBDIR)/daredevil/calib_daredevil.c \
+                        $(ENGINE_SRCS) \
+                        $(AGENT_SRCS) \
+                        $(SRCDIR)/roles/stda/stda_auto.c \
+                        $(SRCDIR)/ui/shared/player_config.c
+CALIB_DAREDEVIL_OBJS := $(BUILDDIR)/aicalibsrc/daredevil/calib_daredevil.o \
+                        $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(CALIB_DAREDEVIL_SRCS)))
+
 # Batch harness for the mulligan/seat-advantage investigation (see
 # aicalibsrc/mulligan/) -- not an agent calibration, but the same
 # whole-roster link set as every CALIB_* target above since it takes
@@ -507,7 +535,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_ismcts $(BINDIR)/test_puct_policy $(BINDIR)/test_puct $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan $(BINDIR)/gen_corpus $(BINDIR)/calib_ismctsnn $(BINDIR)/calib_ismctsnn_timing $(BINDIR)/gen_policy_corpus $(BINDIR)/calib_puct $(BINDIR)/calib_puct_timing
+	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_a15_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_ismcts $(BINDIR)/test_puct_policy $(BINDIR)/test_puct $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan $(BINDIR)/gen_corpus $(BINDIR)/calib_ismctsnn $(BINDIR)/calib_ismctsnn_timing $(BINDIR)/gen_policy_corpus $(BINDIR)/calib_puct $(BINDIR)/calib_puct_timing $(BINDIR)/calib_daredevil
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -537,6 +565,17 @@ $(TEST_COMBO_TARGET): $(TEST_COMBO_OBJS)
 	@mkdir -p $(BINDIR)
 	$(CC) $(TEST_COMBO_OBJS) -o $(TEST_COMBO_TARGET) $(LIBS)
 	@echo "Test build complete: $(TEST_COMBO_TARGET)"
+
+# Test A15 Risk Threshold's combo-participation scorer and death-probability math
+.PHONY: test_a15_combo
+test_a15_combo: $(TEST_A15_COMBO_TARGET)
+	./$(TEST_A15_COMBO_TARGET)
+
+$(TEST_A15_COMBO_TARGET): $(TEST_A15_COMBO_OBJS)
+	@echo "Linking test_a15_combo..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(TEST_A15_COMBO_OBJS) -o $(TEST_A15_COMBO_TARGET) $(LIBS)
+	@echo "Test build complete: $(TEST_A15_COMBO_TARGET)"
 
 # Test recall mechanic
 .PHONY: test_recall
@@ -826,6 +865,16 @@ $(CALIB_PUCT_TIMING_TARGET): $(CALIB_PUCT_TIMING_OBJS)
 	$(CC) $(CALIB_PUCT_TIMING_OBJS) -o $(CALIB_PUCT_TIMING_TARGET) $(LIBS)
 	@echo "Build complete: $(CALIB_PUCT_TIMING_TARGET)"
 
+# A15 calibration harness (see aicalibsrc/daredevil/calib_daredevil.c)
+.PHONY: calib_daredevil
+calib_daredevil: $(CALIB_DAREDEVIL_TARGET)
+
+$(CALIB_DAREDEVIL_TARGET): $(CALIB_DAREDEVIL_OBJS)
+	@echo "Linking calib_daredevil..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(CALIB_DAREDEVIL_OBJS) -o $(CALIB_DAREDEVIL_TARGET) $(LIBS)
+	@echo "Build complete: $(CALIB_DAREDEVIL_TARGET)"
+
 # Batch harness for the mulligan/seat-advantage investigation (see aicalibsrc/mulligan/)
 .PHONY: calib_mulligan
 calib_mulligan: $(CALIB_MULLIGAN_TARGET)
@@ -856,6 +905,7 @@ help:
 	@echo "  debug            - Build with debug symbols and -Og"
 	@echo "  release          - Build optimized (-O2), no debug symbols"
 	@echo "  test_combo       - Build and run combo bonus tests"
+	@echo "  test_a15_combo   - Build and run A15 Risk Threshold's combo-participation/probability tests"
 	@echo "  test_recall      - Build and run recall mechanic tests"
 	@echo "  test_cash_exchange - Build and run cash exchange tests"
 	@echo "  test_rating      - Build and run Bradley-Terry rating system tests"
@@ -885,6 +935,7 @@ help:
 	@echo "  calib_ismctsnn_timing - Build the A11 per-decision timing harness (aicalibsrc/ismctsnn/)"
 	@echo "  calib_puct       - Build the A14 Stage 5 calibration harness (aicalibsrc/puct/)"
 	@echo "  calib_puct_timing - Build the A14 per-decision timing harness (aicalibsrc/puct/)"
+	@echo "  calib_daredevil  - Build the A15 calibration harness (aicalibsrc/daredevil/)"
 	@echo "  format           - Format the c and h source files using astyle"
 	@echo "  help             - Show this help message"
 	@echo ""

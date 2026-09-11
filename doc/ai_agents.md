@@ -1,10 +1,13 @@
 # Oracle AI Agents — Consolidated Reference
 
-One section per implemented agent (`A1`-`A13`, enum order), consolidated
+One section per implemented agent (`A1`-`A15`, enum order), consolidated
 2026-09-04 from each agent's separate `ideas/A#.../about.md` (the living,
 dated status record), its pre-implementation design handout where one existed,
 and `ideas/G1 AI agent general info/oracle_ai_agent_names.md` (the canonical
 roster/naming file, folded in below as this document's table of contents).
+`A14`/`A15` were appended after that consolidation date, each folding in its
+own source design doc at registration time rather than waiting for a batch
+pass.
 Each per-agent section keeps: the identity card (with its **real measured**
 Borealis rating, not a design-intent estimate, once one exists), what the
 agent does and deliberately doesn't, and a math-oriented account of its
@@ -47,6 +50,7 @@ design-intent guess made before the agent existed. Roster order matches
 | A12 | Clairvoyant *(`A8`'s sibling, off-ladder)* | The Clairvoyant / Le Voyant / El Clarividente | `clairvoy` | 31 | — |
 | A13 | Cartographer *(registered for its character, not its strength — see below)* | The Cartographer / Le Cartographe / El Cartógrafo | `carto` | 65 | 68 |
 | A14 | PUCT + Neural Network *(registered for its mechanism, not its strength — see below)* | AlphaOracle Prime Plus I (all languages) | `puct` | 62 | — |
+| A15 | Risk Threshold *(a transcription of Jonathan's own play, not a rating-target design — see below)* | The Daredevil / Le Casse-Cou / El Temerario | `daredevil` | 48 | — |
 
 Measured values mirror `AI_STRATEGY_RATINGS[]` (`src/ui/shared/player_config.c`),
 which the interactive AI strategy menu reads to print each agent's rating —
@@ -66,7 +70,12 @@ a lesser substitute; `A10`/`A11` similarly from direct pairwise measurement
 (10,008 and 4,110 games) for the same reason (see each section below); `A14`
 likewise (4,110 games vs `borealis`) — its registration was unconditional on
 this number rather than gated by it (see its section below), the first
-agent in this project for which that's true.
+agent in this project for which that's true; `A15` from a `--stda.rating`
+round-robin restricted to the 11 non-tree-search roster agents plus
+`borealis` (`--rating.agents`, 40,000 games) rather than the full roster —
+`simplemc`/`clairvoy` cost ~100-370x more per game than a closed-form agent
+(the same reason `A8` itself was measured directly rather than in a
+round-robin), making their inclusion impractical for a routine fit.
 
 **Design-intent estimates missed by a wide, informative margin**: `A4` was
 designed to sit above Borealis (est. 62) but measured **36**, below the
@@ -89,7 +98,12 @@ does not (`A4` landed at 36, below Borealis rather than between `A2` and
 Borealis as designed). Tune `A3`'s `λ` (`greedy_power_borealis_handout`'s
 lambda, the value of a luna in damage units) against playtest data, not
 simulation win rates — simulation finds the λ that maximizes strength, not
-necessarily the λ that hits the target band.
+necessarily the λ that hits the target band. `A15` — not designed toward
+this target at all, a transcription of Jonathan's own play rather than a
+rating-aimed design — measured 48 (53.5% overall, 46.56%/49.15% direct vs
+`borealis` depending on which calibration pass), landing squarely inside
+the 45-55% band anyway; worth noting as a data point, not claimed as
+validation of anything.
 
 ### Ordering constraints established during design
 
@@ -1351,3 +1365,154 @@ agent's own `decide_and_apply()` when weights aren't loaded), not via a
 plain UCT's while leaf evaluation still runs through this agent's own
 two-head net regardless, an ablation rung rather than a true `A10`-recovery
 path.
+
+---
+
+## A15 — Risk Threshold · "The Daredevil" / "Le Casse-Cou" / "El Temerario"
+
+|                 |                                                                                               |
+| --------------- | --------------------------------------------------------------------------------------------- |
+| Enum            | `AI_STRATEGY_DAREDEVIL` (appended after `AI_STRATEGY_ISMCTS_PUCT`)                            |
+| Shorthand       | `daredevil`                                                                                    |
+| Borealis rating | **48** (measured, roster round-robin, 40,000 games, 53.5% overall win rate) — no design-intent estimate exists; this agent isn't aimed at a rating target (see below) |
+| Source file     | `src/ai_strat/ai_strat_a15{,_prob,_cards,_attack,_defense,_endgame}.{c,h}` (implemented 2026-09-10, redesigned and calibrated same date) |
+
+**What makes this agent different from every other one on this roster**: it
+is a **direct transcription of Jonathan's own real-table decision
+procedure** (a Q&A pass, 2026-09-08/09 — formerly `ideas/A15 ai agent
+deterministic personal playstyle/about.md`, folded into this section), not a
+design aimed at a rating target. Every other agent here was built toward a
+target character or strength and then measured; this one's rules were fixed
+by what Jonathan actually does at the table, and the measured number is
+diagnostic, not a pass/fail bar — a low or high rating are equally
+legitimate outcomes. Scoped to the random deck distribution specifically
+(`doc/game_rules_doc.md`'s "Random Distribution"); monochrome/custom deck
+play is untested.
+
+**The rule chain** (`ai_strat_a15.h`'s header comment has the full
+statements), first match wins: an R8 endgame push, gated by a genuine
+computed finish probability → R6's unconditional immediate play of a
+complete species-3 combo → R1's turn-1 draw-card rule → R9a-c-b-d, an
+ordinary-turn chain balancing "never waste a card to the forced discard"
+against "keep the hand full for combo potential" → R4/R7 on defense, an
+*exact* computed death probability, not a heuristic proxy. R3 (luna-budget
+indifference) is threaded through as a hard rule rather than its own
+branch: this agent never plays a Cash card, full stop.
+
+```
+R4:  decline unless P(this attack kills me, undefended) >= defense_loss_threshold
+R8:  for N = 1..4: if P(finish opponent within N attacks) >= q_N, go all-out
+     (smallest satisfying N wins; falls through to the normal chain otherwise)
+```
+
+Both probabilities are computed by this agent's own new infrastructure
+(`ai_strat_a15_prob.c`), not borrowed from any prior agent's scoring: R4's
+is **exact** (a 3-die convolution over the attacker's already-committed
+`RND_dn` rolls — `RND_dn(n)` is uniform on `[1,n]`, so the dice-sum
+distribution is finite and computable exactly, no approximation); R8's is a
+**normal approximation** over the shared unseen-card pool
+(`strat_common_unseen_pool()`, `ai_strat_common.h` — the same
+anti-clairvoyance pool `A13` Cartographer's belief layer uses), applied
+*symmetrically* to both players' future draws, since a player doesn't know
+their own deck's contents either.
+
+**The shared combo-participation scorer** (`ai_strat_a15_cards.c`) drives
+R9b's play choice, R1/R5's discard-to-7 victim, and R2's mulligan victim
+with one function, replacing the "protect a single best combo" list `A7`'s
+`ai_strat_hbt_cards.c` uses:
+
+```
+a15_combo_participation(hand, card) = max over 2/3-card subsets S containing card
+    of [ combo_bonus_for_selection(S) - combo_bonus_for_selection(S \ {card}) ]
+```
+
+The subtraction (MARGINAL contribution, not raw subset bonus) is load-
+bearing, not cosmetic: `calc_random_bonus()` (`combo_bonus.c`) falls
+through to the bare pair tier when a 3-card group's third member matches
+nothing, so a naive "best subset bonus" reading would credit a completely
+unrelated card with participating in a combo it did nothing to earn —
+caught by `testsrc/test_a15_combo.c` before shipping, via Jonathan's own
+worked example (2 Dragons + 2 Elves + 2 Humans + 1 Dwarf + 1 Aven): the
+correct sacrifices are the Aven (no species/order/color partner at all) and
+the Dwarf (an Order-A bystander to the Elf/Human pairs), and only the
+marginal-contribution formula reproduces that ranking — the raw-bonus
+version scored the Dwarf equal-highest with the genuine species-pair
+holders.
+
+**R8's mechanism was redesigned mid-calibration — a real, instructive
+correction, not a footnote.** The first implementation derived R8's horizon
+N from hand size alone (`ceil(champions-in-hand / 3)`, the design doc's own
+turn arithmetic), and calibration against it found the only winning
+configuration was `endgame_q2`/`q3`/`q4` pinned to a near-zero epsilon
+(44.98% vs `borealis`) — meaning R8 was firing almost unconditionally
+whenever the hand thinned to roughly 2-3 attacks' worth of champions, not
+gating on any real confidence. Jonathan pushed back directly: a near-zero
+threshold reads as "attack almost unconditionally," not the "calculated
+risk, wait for a well-justified chance" character the design (and this
+agent's own name — R4's namesake rule is a *precisely computed* threshold,
+not a reckless one) actually calls for. A direct diagnostic — logging every
+`P(finish)` the old mechanism evaluated across 200 games — confirmed the
+concern precisely: **over 90% of evaluations landed below p=0.2 regardless
+of horizon**. "My hand has thinned to N attacks' worth of champions" turns
+out to be almost completely decoupled from "the opponent is actually close
+to dying," so a genuinely selective q on that horizon fired essentially
+never (~0.5 times/game at q=0.5, vs ~1.5 times/game at the near-zero
+q=0.01) — not because real high-confidence opportunities don't exist (p
+does reach 1.0 in the tail), but because hand size can't find them.
+
+The fix (`ai_strat_a15_endgame.c`'s `find_triggering_horizon()`): drop the
+hand-size proxy entirely. Every attack turn now checks `P(finish within N)`
+directly for **all four** horizons, firing on the smallest N that clears
+its own `q_N` — no resource-state pre-filter anywhere. Recalibrated from
+scratch (sweeps, then a joint `differential_evolution` `optimize` pass vs
+`borealis`, both at 16,000-64,000 games), this produced a materially
+different and far more interpretable answer:
+
+- **R8 is load-bearing, not a refinement — true under both mechanisms.**
+  Ablation (`endgame_enabled=false`, same `defense_loss_threshold`): **7.06%**
+  vs `borealis`, n=32,000. With R8 on and calibrated: **46.56% [46.02%,
+  47.11%]**, n=32,000. This agent's R1-R9 chain alone is too passive to keep
+  pace with an opponent that actually attacks — R8 is what makes it
+  competitive at all, not just what wins the occasional close-out. A real,
+  open question this raises, not pursued here: whether R9's own passivity
+  independently deserves a second look.
+- **`endgame_q2`/`q3`/`q4` are now genuine, high confidence bars** —
+  **0.78 / 0.75 / 0.69** — exactly the "wait for a well-justified chance"
+  character the design called for. This is the result that vindicates
+  dropping the hand-size proxy: once the check reflects real finish
+  probability instead of resource state, selectivity measures *as well as*
+  the old near-zero hack did, while actually meaning what it says.
+- **`endgame_q1` (the 4-attack horizon) is the one deliberate exception**,
+  shipped at a small epsilon (**0.01**) rather than a real confidence bar.
+  It's checked LAST (only once the genuine confidence gates at horizons 1-3
+  have all failed) and is structurally the loosest of the four cumulative
+  probabilities (`P(finish within N)` is monotonic in N), so its role isn't
+  "confidently predict a win in 4 attacks" — it's "don't prematurely rule
+  out pursuing one at all." Raising it to a real bar (tested at 0.5, q2-q4
+  unchanged) measured 31.38% — a large, real regression, confirming this
+  asymmetry is itself load-bearing, not cosmetic. (Both mechanisms also
+  independently confirmed the same narrower finding first: a threshold of
+  exactly `0.0`, as opposed to any small positive epsilon, measurably hurts
+  — `erff()`'s normal approximation can saturate to exactly `0.0` for
+  early-game reads where finishing is numerically impossible, and `q=0.0`
+  lets R8 fire on those hopeless-but-reads-as-zero cases too.)
+
+**Measured: rating 48** (round-robin over the 11 non-tree-search roster
+agents plus `borealis`, 40,000 games, 53.5% overall win rate) — just below
+the `borealis` anchor, consistent with the direct calibration-time
+measurement (46.56%/49.15% depending on rounding, both close). Mid-roster:
+above `balanced` (35), `combo` (29), `value` (24), and `rand` (1); below
+`tactical` (51) and the `A7`-family cluster (`hbt`/`hbt2ply`/`carto`, all
+62-65). See `aicalibsrc/daredevil/README.md` for the full two-pass
+calibration record.
+
+**Deliberately out of scope**: no luna-budget optimization (R3's
+indifference is explicit design, not a missing feature); monochrome/custom
+deck play (the design doc's own scope note — `ai_strat_common.h`'s
+`combo_bonus_for_selection()` hardcodes `COMBO_BONUS_RANDOM`, so this agent
+is deck-type-correct only under the random distribution, not automatically
+for every deck type as an earlier draft of the design doc incorrectly
+claimed); fixing R9's own passivity (flagged above as a real, open
+question, not attempted here — R8's calibration compensates for it rather
+than addressing it directly); recall-target selection beyond "zero-cost or
+extends a combo" (no deeper lookahead into future recall value).

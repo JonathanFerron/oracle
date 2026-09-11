@@ -141,6 +141,18 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
    a prerequisite for the self-play candidate to fully pay off within an interactive
    latency budget, and independently useful to `A10`/`A11`/`A14` regardless). See the
    `about.md` for the full ranking, reasoning, and two more speculative candidates.
+8. **`A15` Risk Threshold** ("The Daredevil") -- ✅ done, implemented and
+   registered 2026-09-10 (`doc/ai_agents.md`'s A15 section,
+   `doc/changelog.md`'s 2026-09-10 entry). A distinct track from this
+   list's `A1`-`A14` ladder progression: a direct transcription of
+   Jonathan's own real-table decision procedure, not a rating-target
+   design. R8's endgame trigger was redesigned mid-calibration after
+   Jonathan flagged the first calibrated config as reading "reckless"
+   rather than "calculated" -- the fix (checking finish probability
+   directly at all four horizons instead of deriving one from hand size)
+   both restored the intended character and measured better. Rating 48,
+   landing inside this project's own 45-55% "moderately experienced
+   player" target band without being aimed at it.
 
 **Bottom of the list** (still intended, least urgent, distinct from the back burner
 below): `ideas/11 skill vs chance eval/` -- an analytical framework for game balance,

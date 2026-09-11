@@ -4,6 +4,7 @@
 *.exe
 /bin/oracle
 /bin/test_combo
+/bin/test_a15_combo
 /bin/test_recall
 /bin/test_cash_exchange
 /bin/test_rating
@@ -33,6 +34,7 @@
 /bin/calib_puct_timing
 /bin/test_puct_policy
 /bin/test_puct
+/bin/calib_daredevil
 *.o
 *.d
 *.xls

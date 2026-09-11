@@ -138,6 +138,9 @@ static const char* strategy_menu_label(AIStrategyType type, ui_language_t lang)
       return LOCALIZED_STRING_L(lang, "PUCT + Neural Network",
                                 "PUCT + reseau de neurones",
                                 "PUCT + red neuronal");
+    case AI_STRATEGY_DAREDEVIL: // A15 Risk Threshold
+      return LOCALIZED_STRING_L(lang, "Risk Threshold", "Seuil de risque",
+                                "Umbral de riesgo");
     default:
       return "Unknown";
   }
@@ -205,6 +208,14 @@ static const AIStrategyRating AI_STRATEGY_RATINGS[AI_STRATEGY_COUNT] =
   // Registration was never gated on these numbers (Jonathan's call,
   // 2026-09-08) -- the search mechanism itself is the milestone.
   [AI_STRATEGY_ISMCTS_PUCT]      = { 62, true },
+  // A15 (2026-09-10): measured via --stda.rating round-robin over the 11
+  // cheap (non-tree-search) agents plus the borealis anchor, 40,000 games,
+  // 53.5% overall win rate -- see doc/ai_agents.md's A15 section for the
+  // full record, including the R8 mechanism redesign this number reflects.
+  // No design-intent estimate exists for this agent (it's a transcription
+  // of Jonathan's own play, not a design aimed at a rating), so there is
+  // nothing to compare this against -- it's simply what got measured.
+  [AI_STRATEGY_DAREDEVIL]        = { 48, true },
 };
 
 // "Random [The Gambler]", or just "Borealis" when the technical label and
@@ -496,6 +507,9 @@ const char* get_strategy_display_name(AIStrategyType strategy,
       return LOCALIZED_STRING_L(lang, "AlphaOracle Prime Plus I",
                                 "AlphaOracle Prime Plus I",
                                 "AlphaOracle Prime Plus I");
+    case AI_STRATEGY_DAREDEVIL:
+      return LOCALIZED_STRING_L(lang, "The Daredevil", "Le Casse-Cou",
+                                "El Temerario");
     default:
       return "Unknown";
   }
@@ -542,6 +556,7 @@ static const AIStrategyShorthand AI_STRATEGY_SHORTHANDS[] =
   { AI_STRATEGY_CLAIRVOYANT,      "clairvoy" },
   { AI_STRATEGY_CARTOGRAPHER,     "carto" },
   { AI_STRATEGY_ISMCTS_PUCT,      "puct" },
+  { AI_STRATEGY_DAREDEVIL,        "daredevil" },
 };
 #define AI_STRATEGY_SHORTHAND_COUNT \
   (sizeof(AI_STRATEGY_SHORTHANDS) / sizeof(AI_STRATEGY_SHORTHANDS[0]))

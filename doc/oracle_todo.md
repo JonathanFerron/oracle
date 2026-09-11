@@ -92,8 +92,22 @@ See `doc/ai_agents.md`'s A11 section for the full detail behind every item below
   algorithm-technical suffix on the display name.
 - [x] **"Bigger training corpus" follow-up attempted and falsified, 2026-09-04** — see
   `doc/changelog.md`'s entry that date. No retrain shipped; shipped `A11` unchanged.
-  
-  
+
+### `A15` Risk Threshold (`ai_strat_a15*.c`, "The Daredevil") — done and registered, 2026-09-10, rating 48
+
+See `doc/ai_agents.md`'s A15 section and `doc/changelog.md`'s 2026-09-10 entry for the
+full record — a transcription of Jonathan's own real-table play, not a rating-target
+design; the rating is diagnostic, not a pass/fail bar.
+
+- [x] R1-R9 rule chain implemented and registered.
+- [x] R8's endgame trigger redesigned mid-calibration — the hand-size-derived horizon
+  measured well but was reading "reckless" rather than "calculated" (Jonathan's own
+  read, confirmed by a diagnostic showing >90% of its P(finish) evaluations below 0.2
+  regardless of horizon); replaced with checking all 4 horizons directly.
+- [x] `aicalibsrc/daredevil/` calibration tooling built and run (sweeps + joint
+  `optimize`, both mechanisms).
+- [x] Measured via `--rating.agents` round-robin (11 non-tree-search agents + `borealis`,
+  `simplemc`/`clairvoy` excluded on cost grounds).
 
 ---
 

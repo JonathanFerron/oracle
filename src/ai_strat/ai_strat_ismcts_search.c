@@ -2,6 +2,7 @@
 // A10 IS-MCTS's SO-ISMCTS iteration loop -- see ai_strat_ismcts_search.h.
 
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 

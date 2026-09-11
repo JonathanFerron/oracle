@@ -212,6 +212,12 @@ typedef enum
   // unconditionally on the mechanism (Jonathan's call, 2026-09-08) --
   // strength is measured and reported (doc/ai_agents.md), not a
   // registration gate, matching A13's own precedent above.
+  AI_STRATEGY_DAREDEVIL,       // A15 Risk Threshold -- doc/ai_agents.md's
+  // A15 section. A direct transcription of Jonathan's own real-table
+  // decision procedure (Q&A pass, 2026-09-08/09), not a design aimed at a
+  // rating target -- registration is unconditional on the measured number,
+  // a third distinct reason after A13 (character) and A14 (mechanism). See
+  // src/ai_strat/ai_strat_a15.h for the full rule chain.
   AI_STRATEGY_COUNT
 } AIStrategyType;
 
