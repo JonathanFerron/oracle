@@ -62,6 +62,23 @@ weights `bin/oracle` loads, git-tracked) was untouched -- but the local
 `export_puct_weights.py` is ever re-run from scratch. All subsequent
 validation runs in this entry used an explicit scratch `--out-dir`.
 
+**Item 1.4 (profile, then cache) skipped as moot (Jonathan's call,
+2026-09-22)**: as originally scoped it would `gprof` `bin/gen_policy_corpus`
+to find `compose_node_priors()`/`get_available_moves()` dominating, then
+cache both per node to bring PUCT's 1.7s/decision down near `A11`'s 439ms.
+Two problems surfaced before running it: `gen_policy_corpus` only ever
+plays `A11` (`ismctsnn`) as teacher, never `A14`/PUCT -- `compose_node_priors()`
+is dead code from that binary's own perspective, so profiling it couldn't
+have found what the item was looking for. More fundamentally, the cost it
+targets is no longer what ships: measuring the current default directly
+(`bin/calib_puct_timing`, `limit_iterations=4000`) gives **536ms mean**,
+already close to `A11`'s own 439ms, now that `use_puct=false` is the
+default (previous entry). The 1.7s problem was specific to PUCT's own
+selection descending deeper through explored branches -- off the shipped
+path now. Flagged in `ideas/A16 .../about.md`'s Candidate 2 section, since
+that candidate's own "prerequisite for Candidate 1" framing rested on the
+same now-superseded cost figure.
+
 ---
 
 ## 2026-09-22 — A14's default flipped to `use_puct=false`, shipping the measured win

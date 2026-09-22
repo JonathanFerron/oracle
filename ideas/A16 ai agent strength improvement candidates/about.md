@@ -93,6 +93,23 @@ parallelization (independent trees per thread from the same root, merged via sum
 visit counts at the end) is the natural fit for this project's existing IS-MCTS
 structure and was already suggested as the approach, twice, in prior memory notes.
 
+**2026-09-22 premise shift, flagged not resolved**: this "prerequisite" reasoning was
+built on PUCT selection's own 1.7s/decision cost being what ships. That's no longer
+true -- `A16` Session 1's item 1.1 measured `use_puct=false` (plain UCT selection
+over `A14`'s own net) decisively beating `A11` head-to-head, and it shipped as `A14`'s
+new default the same day (`doc/ai_agents.md`'s A14 section, 2026-09-22 addendum;
+`doc/changelog.md`). Measured per-decision cost under the new default: **536ms mean**
+(`bin/calib_puct_timing`, `limit_iterations=4000`), close to `A11`'s own 439ms --
+nowhere near the 4x/1.7s problem this paragraph describes. PUCT selection itself
+remains implemented and available via an explicit `use_puct=true` override, so the
+original reasoning still applies to *that* configuration specifically, just not to
+what a player gets by default anymore. Session 1's item 1.4 (gprof-then-cache
+`compose_node_priors()`/`get_available_moves()`) was skipped as moot on this same
+finding rather than executed against a now-mostly-dead code path (Jonathan's call,
+2026-09-22). Whether Candidate 2 is still worth prioritizing as a Candidate-1
+prerequisite, now that the cost driving that framing has largely evaporated, is an
+open question for whoever picks up Session 4 -- not resolved here.
+
 Not necessarily worth a new agent number -- more likely a shared infrastructure
 improvement to `ai_strat_ismcts_search.c`/`ai_strat_puct_search.c` that benefits
 `A10`/`A11`/`A14` (and any bootstrapped successor) alike, the same way the
