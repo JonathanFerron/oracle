@@ -12,21 +12,27 @@ in ai_strat_puct_net.c's C forward pass -- three independent implementations
 of the same formula that must all agree; see export_puct_weights.py's own
 numeric verification for the export-time check).
 
-Corpus format (aicalibsrc/puct/gen_policy_corpus.c): each record is 1691
-raw float32s -- 537 (ISMCTSNNStateVector) + 1 (outcome) + 1 (num_moves) +
-128*9 (per-move type, count, play[3], target[3], visit_fraction). The
-teacher is A11 (ismctsnn), not A14 itself -- see gen_policy_corpus.c's own
-header for why. Data split is by WHOLE SHARD, not by random row, same
+Corpus format (aicalibsrc/puct/gen_policy_corpus.c): each record is 1692
+raw float32s as of 2026-09-22 -- 537 (ISMCTSNNStateVector) + 1 (outcome) +
+1 (num_moves) + 1 (total_visits, added 2026-09-22) + 128*9 (per-move type,
+count, play[3], target[3], visit_fraction). Pre-2026-09-22 shards (1691
+floats, no total_visits) still load -- see load_records()'s own comment.
+The teacher is A11 (ismctsnn), not A14 itself -- see gen_policy_corpus.c's
+own header for why. Data split is by WHOLE SHARD, not by random row, same
 reasoning and the same --val-seeds/--max-train-records tooling as A11's
 train_value_net.py (avoids leaking correlated decisions from the same game
 across train/val; lets a bigger future corpus stay comparable to a smaller
 run's own reported metrics).
 
 Policy loss is soft-target cross-entropy against the visit_fraction
-distribution (AlphaZero's own -pi^T log(p) formulation), computed at
-policy_temperature=1.0 always -- temperature is an INFERENCE-time knob
-(PUCTParams.policy_temperature, calibrated in Stage 5), not something baked
-into what the net learns.
+distribution (AlphaZero's own -pi^T log(p) formulation). Two DIFFERENT
+things are both called "temperature" here, deliberately kept distinct in
+naming: PUCTParams.policy_temperature (calibrated in Stage 5) reshapes the
+NET's own predicted logits at INFERENCE time and is untouched by this
+script; --policy-target-temperature below (added 2026-09-22, A16 Session 1
+item 1.3) reshapes the recorded visit-fraction TARGET at TRAINING time
+(pi_i ~ visit_fraction_i^(1/tau)), default 1.0 (identity, this trainer's
+original behaviour, corpus data unchanged either way).
 
 Usage:
     .venv/bin/python train_puct_net.py corpus --label full
@@ -49,7 +55,14 @@ STATE_DIM = 537
 POLICY_DIM = 218  # PUCT_POLICY_DIM, ai_strat_puct_policy.h
 MAX_MOVES = 128  # MOVE_GEN_MAX_MOVES
 FLOATS_PER_MOVE = 9  # type, count, play[3], target[3], visit_fraction
-RECORD_DIM = STATE_DIM + 1 + 1 + MAX_MOVES * FLOATS_PER_MOVE  # 1691
+# total_visits (added 2026-09-22, A16 Session 1 item 1.3) sits between
+# num_moves and the move block -- see gen_policy_corpus.c's own header
+# comment. OLD_RECORD_DIM is what every shard generated before that date
+# used (no total_visits column); load_records() detects each file's own
+# width from its size and loads either, so pre-2026-09-22 shards keep
+# working without regeneration.
+OLD_RECORD_DIM = STATE_DIM + 1 + 1 + MAX_MOVES * FLOATS_PER_MOVE  # 1691
+RECORD_DIM = OLD_RECORD_DIM + 1  # 1692
 HIDDEN = (256, 128, 64)
 # Same curated pool as A11's own gen_corpus.c/train_value_net.py -- vs_a4/vs_a6
 # are supported by gen_policy_corpus.c but weren't generated for the shipped
@@ -131,21 +144,63 @@ def split_train_val_explicit(groups, val_seeds):
 
 
 def load_records(paths):
-    """Returns (state[N,537], outcome[N], num_moves[N] int64, moves[N,128,9])."""
+    """Returns (state[N,537], outcome[N], num_moves[N] int64, total_visits[N]
+    float32, moves[N,128,9]). Detects each file's own record width from its
+    byte size -- RECORD_DIM (1692, with total_visits) for shards generated
+    2026-09-22 or later, OLD_RECORD_DIM (1691, without it) for anything
+    older -- rather than assuming one width for the whole corpus, so
+    pre-2026-09-22 shards keep loading without regeneration. The two
+    widths are coprime, so a file's size being divisible by both would
+    need ~2.86 million records in one shard, far past anything this
+    project generates -- detection stays unambiguous in practice.
+    Old-format records report total_visits as NaN (never recorded, not a
+    real zero) in the column gen_policy_corpus.c now writes it to."""
     if not paths:
         return (np.empty((0, STATE_DIM), dtype=np.float32), np.empty((0,), dtype=np.float32),
-                np.empty((0,), dtype=np.int64), np.empty((0, MAX_MOVES, FLOATS_PER_MOVE), dtype=np.float32))
-    arrays = []
+                np.empty((0,), dtype=np.int64), np.empty((0,), dtype=np.float32),
+                np.empty((0, MAX_MOVES, FLOATS_PER_MOVE), dtype=np.float32))
+    rows = []
     for p in paths:
         arr = np.fromfile(p, dtype=np.float32)
-        assert arr.size % RECORD_DIM == 0, f"{p}: size not a multiple of {RECORD_DIM} floats"
-        arrays.append(arr.reshape(-1, RECORD_DIM))
-    data = np.concatenate(arrays, axis=0)
+        if arr.size % RECORD_DIM == 0:
+            rows.append(arr.reshape(-1, RECORD_DIM))
+        elif arr.size % OLD_RECORD_DIM == 0:
+            old = arr.reshape(-1, OLD_RECORD_DIM)
+            nan_col = np.full((old.shape[0], 1), np.nan, dtype=np.float32)
+            rows.append(np.concatenate(
+                [old[:, :STATE_DIM + 2], nan_col, old[:, STATE_DIM + 2:]], axis=1))
+        else:
+            raise AssertionError(f"{p}: size not a multiple of RECORD_DIM ({RECORD_DIM}) or "
+                                 f"the pre-2026-09-22 OLD_RECORD_DIM ({OLD_RECORD_DIM})")
+    data = np.concatenate(rows, axis=0)
     state = data[:, :STATE_DIM].copy()
     outcome = data[:, STATE_DIM].copy()
     num_moves = data[:, STATE_DIM + 1].astype(np.int64).copy()
-    moves = data[:, STATE_DIM + 2:].reshape(-1, MAX_MOVES, FLOATS_PER_MOVE).copy()
-    return state, outcome, num_moves, moves
+    total_visits = data[:, STATE_DIM + 2].copy()
+    moves = data[:, STATE_DIM + 3:].reshape(-1, MAX_MOVES, FLOATS_PER_MOVE).copy()
+    return state, outcome, num_moves, total_visits, moves
+
+
+def apply_policy_temperature(moves, num_moves, temperature):
+    """Reshapes the visit_fraction target column (moves[...,8]) in place:
+    pi_i ~ fraction_i^(1/temperature), renormalized over each record's own
+    legal moves (masked by num_moves). temperature=1.0 is a no-op. Uses
+    visit_fraction alone, not total_visits: visit_i = fraction_i *
+    total_visits, so visit_i^(1/tau) = fraction_i^(1/tau) *
+    total_visits^(1/tau), and the second factor is constant across one
+    record's moves, cancelling under renormalization -- see
+    gen_policy_corpus.c's own header comment. Works identically whether or
+    not total_visits was actually recorded (old-format shards included)."""
+    if temperature == 1.0:
+        return moves
+    move_range = torch.arange(moves.shape[1], device=moves.device).unsqueeze(0)
+    legal_mask = (move_range < num_moves.unsqueeze(1)).float()
+    frac = moves[:, :, 8]
+    reshaped = torch.where(frac > 0, frac.clamp(min=1e-12).pow(1.0 / temperature),
+                           torch.zeros_like(frac)) * legal_mask
+    total = reshaped.sum(dim=1, keepdim=True).clamp(min=1e-12)
+    moves[:, :, 8] = reshaped / total
+    return moves
 
 
 class PUCTNet(nn.Module):
@@ -240,6 +295,32 @@ def policy_loss_and_metrics(policy_logits, moves, num_moves):
     return loss, top1_agree, entropy
 
 
+def policy_target_baselines(moves, num_moves):
+    """Two data-only baselines for the policy target, no model involved --
+    added 2026-09-22 (A16 Session 1, item 1.2) so val_p_loss reads as
+    "fraction of available headroom captured" instead of a bare number.
+    `uniform_ce`: cross-entropy of a UNIFORM distribution over the legal
+    moves against the visit_fraction target -- equals mean(log(num_moves))
+    since the target sums to 1 over legal slots, no model needed to define
+    it. `target_entropy`: the target distribution's OWN entropy, the
+    irreducible floor even a perfect net can't beat under this soft-target
+    CE loss (its global minimum is exactly target_entropy). Their
+    difference is the real learnable headroom -- see doc/ai_agents.md's
+    A14 section (Finding 2, folded in from ideas/A16 .../about.md): on the
+    shipped corpus this was tiny (~0.128 nats out of ~2.27), not because
+    the head was broken but because 4000-iteration search rarely
+    concentrates once legal-move count climbs past ~25.
+    torch.xlogy(target, target) is 0 wherever target==0 by definition,
+    sidestepping the log(0)=-inf/NaN case on every illegal or zero-visit
+    slot without a separate mask."""
+    if moves.shape[0] == 0:
+        return float("nan"), float("nan")
+    target = moves[:, :, 8]
+    target_entropy = (-torch.xlogy(target, target).sum(dim=1)).mean().item()
+    uniform_ce = torch.log(num_moves.float()).mean().item()
+    return uniform_ce, target_entropy
+
+
 def predict(model, X_t, batch_size=8192):
     model.eval()
     if X_t.shape[0] == 0:
@@ -278,6 +359,12 @@ def parse_args():
                     help="randomly subsample the training set (not validation), fixed by --seed")
     ap.add_argument("--policy-weight", type=float, default=1.0,
                     help="weight on the policy cross-entropy term added to value MSE")
+    ap.add_argument("--policy-target-temperature", type=float, default=1.0,
+                    help="reshapes the visit_fraction TARGET at training time, "
+                         "pi_i ~ fraction_i^(1/tau); 1.0 (default) is the corpus's "
+                         "own recorded distribution, unchanged -- NOT the same as "
+                         "PUCTParams.policy_temperature (an inference-time dial on "
+                         "the net's own predictions, untouched by this script)")
     ap.add_argument("--max-seconds", type=float, default=3600)
     ap.add_argument("--max-epochs", type=int, default=500)
     ap.add_argument("--batch-size", type=int, default=4096)
@@ -318,7 +405,9 @@ def main():
     Str_parts, otr_parts, ntr_parts, mtr_parts = [], [], [], []
     val_by_matchup = {}
     for m in MATCHUPS:
-        s, o, n, mv = load_records(train_files[m])
+        s, o, n, _tv, mv = load_records(train_files[m])  # total_visits unused
+        # on the train side -- see apply_policy_temperature()'s own comment
+        # on why the temperature transform never needs it
         Str_parts.append(s)
         otr_parts.append(o)
         ntr_parts.append(n)
@@ -331,7 +420,9 @@ def main():
     Sval = np.concatenate([val_by_matchup[m][0] for m in MATCHUPS])
     oval = np.concatenate([val_by_matchup[m][1] for m in MATCHUPS])
     nval = np.concatenate([val_by_matchup[m][2] for m in MATCHUPS])
-    mval = np.concatenate([val_by_matchup[m][3] for m in MATCHUPS])
+    # index 3 is total_visits (unused here, see apply_policy_temperature()'s
+    # own comment); moves moved from index 3 to 4 when that field was added
+    mval = np.concatenate([val_by_matchup[m][4] for m in MATCHUPS])
     print(f"train records: {len(otr)}   val records: {len(oval)}")
     if len(otr) == 0:
         raise SystemExit("No training records found -- check --corpus-dir/--label")
@@ -346,6 +437,8 @@ def main():
                                    torch.from_numpy(ntr), torch.from_numpy(mtr))
     Sval_t, oval_t, nval_t, mval_t = (torch.from_numpy(Sval), torch.from_numpy(oval),
                                        torch.from_numpy(nval), torch.from_numpy(mval))
+    mtr_t = apply_policy_temperature(mtr_t, ntr_t, args.policy_target_temperature)
+    mval_t = apply_policy_temperature(mval_t, nval_t, args.policy_target_temperature)
 
     model = PUCTNet(dropout=args.dropout)
     opt = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
@@ -354,6 +447,12 @@ def main():
     baseline_pred = float(otr_t.mean().item())
     baseline_mse = float(((oval_t - baseline_pred) ** 2).mean().item()) if len(oval) else float("nan")
     print(f"Baseline value (predict train mean={baseline_pred:.4f}) val MSE: {baseline_mse:.6f}")
+
+    uniform_ce, target_entropy = policy_target_baselines(mval_t, nval_t)
+    headroom = uniform_ce - target_entropy
+    print(f"Baseline policy (uniform prior) val CE: {uniform_ce:.4f} nats   "
+         f"target entropy (irreducible floor): {target_entropy:.4f} nats   "
+         f"learnable headroom: {headroom:.4f} nats")
 
     gen = torch.Generator().manual_seed(args.seed)
     best_total, best_state, epoch = float("inf"), None, 0
@@ -385,9 +484,11 @@ def main():
         val_p_loss = val_p_loss.item() if torch.is_tensor(val_p_loss) else val_p_loss
         dir_acc = directional_accuracy(val_v_pred, oval_t)
         val_total = val_v_mse + args.policy_weight * val_p_loss
+        captured = (uniform_ce - val_p_loss) / headroom if headroom > 0 else float("nan")
         elapsed = time.time() - start
         print(f"epoch {epoch:4d}  train_v_mse={train_v_mse:.6f}  train_p_loss={train_p_loss:.6f}  "
               f"val_v_mse={val_v_mse:.6f}  val_p_loss={val_p_loss:.6f}  val_top1={val_top1:.3%}  "
+              f"headroom_captured={captured:.1%}  "
               f"dir_acc={dir_acc:.3%}  elapsed={elapsed:.0f}s", flush=True)
 
         if val_total < best_total:
@@ -416,18 +517,24 @@ def main():
     print()
     print("Per-matchup validation breakdown:")
     for m in MATCHUPS:
-        Sm, om, nm, mm = val_by_matchup[m]
+        Sm, om, nm, _tvm, mm = val_by_matchup[m]  # total_visits unused, see above
         if len(om) == 0:
             print(f"  {m:8s}: no held-out shard")
             continue
         Sm_t, om_t, nm_t, mm_t = (torch.from_numpy(Sm), torch.from_numpy(om),
                                    torch.from_numpy(nm), torch.from_numpy(mm))
+        mm_t = apply_policy_temperature(mm_t, nm_t, args.policy_target_temperature)
         vm, pm = predict(model, Sm_t)
         v_mse_m = value_loss_fn(vm, om_t).item()
         p_loss_m, top1_m, _ = policy_loss_and_metrics(pm, mm_t, nm_t)
         dir_m = directional_accuracy(vm, om_t)
+        uniform_ce_m, target_entropy_m = policy_target_baselines(mm_t, nm_t)
+        headroom_m = uniform_ce_m - target_entropy_m
+        captured_m = ((uniform_ce_m - p_loss_m.item()) / headroom_m
+                     if headroom_m > 0 else float("nan"))
         print(f"  {m:8s} n={len(om):7d}  val_v_mse={v_mse_m:.6f}  val_p_loss={p_loss_m.item():.6f}  "
-              f"val_top1={top1_m:.3%}  dir_acc={dir_m:.3%}")
+              f"val_top1={top1_m:.3%}  headroom_captured={captured_m:.1%} "
+              f"(uniform_ce={uniform_ce_m:.4f} floor={target_entropy_m:.4f})  dir_acc={dir_m:.3%}")
 
     run_name = args.run_name or args.label
     out_dir = Path(args.out_dir) if args.out_dir else Path(args.corpus_dir).parent / "checkpoints"
@@ -442,8 +549,11 @@ def main():
         "dropout": args.dropout,
         "weight_decay": args.weight_decay,
         "policy_weight": args.policy_weight,
+        "policy_target_temperature": args.policy_target_temperature,
         "best_val_total_loss": best_total,
         "baseline_val_mse": baseline_mse,
+        "baseline_uniform_policy_ce": uniform_ce,
+        "baseline_policy_target_entropy": target_entropy,
         "train_records": int(len(otr)),
         "val_records": int(len(oval)),
         "epochs_run": epoch,

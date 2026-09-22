@@ -17,16 +17,36 @@
 // available teacher; its own visit-count distribution is what a policy
 // head first learns to imitate.
 //
-// Record format: 537 (state, ISMCTSNNStateVector) + 1 (outcome) + 1
-// (num_moves) + 128 * 9 (per-move type, count, play[3], target[3],
-// visit_fraction) = 1691 raw native-endian float32s back to back, no
+// Record format (bumped 2026-09-22, A16 Session 1 item 1.3): 537 (state,
+// ISMCTSNNStateVector) + 1 (outcome) + 1 (num_moves) + 1 (total_visits,
+// the root visit-count sum this decision's search actually accumulated --
+// NEW, see below) + 128 * 9 (per-move type, count, play[3], target[3],
+// visit_fraction) = 1692 raw native-endian float32s back to back, no
 // per-file header -- same concatenate-byte-for-byte convention as A11's
 // own corpus. Unused move slots (index >= num_moves) are zero-padded.
 // play[]/target[] hold CATALOG indices (puct_move_features(),
 // ai_strat_puct_policy.h), never fullDeck[] indices, so the Python side
 // never needs the deck table; -1.0f marks an unused play/target sub-slot
 // (never a valid catalog index, 0..104). Load in Python via
-// numpy.fromfile(path, dtype=np.float32).reshape(-1, 1691).
+// numpy.fromfile(path, dtype=np.float32).reshape(-1, 1692).
+//
+// total_visits was added so a policy-target temperature (pi_i ~
+// visit_i^(1/tau)) can be applied at TRAINING time instead of only ever
+// baked into the corpus at temperature=1.0 -- see
+// aicalibsrc/puct/train_puct_net.py's --policy-target-temperature.
+// Recorded as raw provenance (also useful on its own for diagnosing how
+// concentrated a given decision's search was, doc/ai_agents.md's A14
+// section Finding 2), even though the temperature transform itself only
+// needs visit_fraction: visit_i = fraction_i * total_visits, so
+// visit_i^(1/tau) = fraction_i^(1/tau) * total_visits^(1/tau), and the
+// second factor is constant across one record's moves, cancelling under
+// renormalization -- fraction alone is sufficient, total_visits is not
+// actually read by that code path. Shards written before this date have
+// no total_visits column (1691 floats/record, the OLD_RECORD_DIM the
+// Python side still loads, with total_visits reported as NaN for those
+// records) -- the two widths are coprime, so a shard would need ~2.86
+// million records before size-based format detection could ever be
+// ambiguous, far past anything this project generates.
 //
 // visit_fraction is read back from ismcts_last_root_visit_distribution()
 // (ai_strat_ismcts_search.h) IMMEDIATELY after the real decision call
@@ -85,6 +105,8 @@ typedef struct
   // (sizeof(struct gamestate) is a few hundred bytes, not KB).
   PlayerID observer;
   uint8_t num_moves;
+  uint32_t total_visits; // added 2026-09-22 (A16 Session 1, item 1.3) --
+  // see this file's own header comment on the record format bump
   float move_features[MOVE_GEN_MAX_MOVES * GEN_POLICY_FLOATS_PER_MOVE];
 } PendingPolicyRecord;
 
@@ -117,8 +139,11 @@ static void write_move_block(float* slot, const GameMove* move, float visit_frac
 // search that JUST ran (ismcts_last_root_visit_distribution()) to build
 // this record's move-feature block. Returns the number of legal moves
 // written (num_moves); the rest of `out` (up to MOVE_GEN_MAX_MOVES) is
-// zero-padded.
-static uint8_t build_move_features(const struct gamestate* gstate, PlayerID player, float* out)
+// zero-padded. `*out_total_visits` receives the root visit-count sum this
+// decision's search accumulated (added 2026-09-22, see this file's own
+// header comment).
+static uint8_t build_move_features(const struct gamestate* gstate, PlayerID player, float* out,
+                                   uint32_t* out_total_visits)
 { GameMove moves[MOVE_GEN_MAX_MOVES];
   uint8_t n = get_available_moves(gstate, player, &g_limits, moves, MOVE_GEN_MAX_MOVES);
 
@@ -126,6 +151,7 @@ static uint8_t build_move_features(const struct gamestate* gstate, PlayerID play
   uint8_t visit_n = ismcts_last_root_visit_distribution(visits, MOVE_GEN_MAX_MOVES);
   uint32_t total_visits = 0;
   for(uint8_t i = 0; i < visit_n; i++) total_visits += visits[i].visits;
+  *out_total_visits = total_visits;
 
   for(uint8_t i = 0; i < n; i++)
   { uint32_t v = 0;
@@ -171,7 +197,8 @@ static void logging_attack_strategy(struct gamestate* gstate, GameContext* ctx)
   uint32_t idx = g_pending_count - 1;
   ismctsnn_attack_strategy(gstate, ctx); // mutates *gstate -- use the
   g_pending[idx].num_moves = // pre-move snapshot below, not gstate itself
-    build_move_features(&g_pending[idx].pre_move_gstate, observer, g_pending[idx].move_features);
+    build_move_features(&g_pending[idx].pre_move_gstate, observer, g_pending[idx].move_features,
+                        &g_pending[idx].total_visits);
 } // logging_attack_strategy
 
 static void logging_defense_strategy(struct gamestate* gstate, GameContext* ctx)
@@ -180,7 +207,8 @@ static void logging_defense_strategy(struct gamestate* gstate, GameContext* ctx)
   uint32_t idx = g_pending_count - 1;
   ismctsnn_defense_strategy(gstate, ctx); // mutates *gstate -- use the
   g_pending[idx].num_moves = // pre-move snapshot below, not gstate itself
-    build_move_features(&g_pending[idx].pre_move_gstate, observer, g_pending[idx].move_features);
+    build_move_features(&g_pending[idx].pre_move_gstate, observer, g_pending[idx].move_features,
+                        &g_pending[idx].total_visits);
 } // logging_defense_strategy
 
 static void flush_game_records(const struct gamestate* final_gstate)
@@ -188,9 +216,11 @@ static void flush_game_records(const struct gamestate* final_gstate)
   { PendingPolicyRecord* rec = &g_pending[i];
     float outcome = mc_outcome_for(final_gstate, rec->observer);
     float num_moves_f = (float)rec->num_moves;
+    float total_visits_f = (float)rec->total_visits;
     fwrite(&rec->state, sizeof(ISMCTSNNStateVector), 1, g_out);
     fwrite(&outcome, sizeof(float), 1, g_out);
     fwrite(&num_moves_f, sizeof(float), 1, g_out);
+    fwrite(&total_visits_f, sizeof(float), 1, g_out);
     fwrite(rec->move_features, sizeof(float), MOVE_GEN_MAX_MOVES * GEN_POLICY_FLOATS_PER_MOVE, g_out);
   }
   g_total_records += g_pending_count;

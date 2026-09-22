@@ -44,8 +44,13 @@ cd "$REPO_ROOT"
 CORPUS_DIR="$SCRIPT_DIR/corpus"
 LEDGER="$CORPUS_DIR/seed_ledger.tsv"
 LOG_DIR="$CORPUS_DIR/logs"
-RECORD_BYTES=6764 # (537 + 1 + 1 + 128*9) * sizeof(float) -- see
-                   # gen_policy_corpus.c's own record format note
+RECORD_BYTES=6768 # (537 + 1 + 1 + 1 + 128*9) * sizeof(float) -- bumped
+                   # 2026-09-22 for the total_visits field added that date;
+                   # see gen_policy_corpus.c's own record format note.
+                   # Pre-2026-09-22 shards are 6764 bytes/record (no
+                   # total_visits) -- this script only ever reports on
+                   # shards it just generated itself (this run's own
+                   # $LABEL), so the new width is always the right one here
 MONITOR_INTERVAL_S=600 # 10 minutes
 
 LABEL="${1:?Usage: $0 <label> <duration_seconds> [workers] [limit_iterations] [matchups_csv]}"

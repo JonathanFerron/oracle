@@ -5,6 +5,65 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-22 — A16 Session 1 items 1.2/1.3: interpretable policy-target diagnostics, raw visit counts
+
+Continuation of `A16` Session 1 (`ideas/A16 .../about.md`), calibration
+tooling only -- no `src/` changes, so unaffected by the primary regression
+check (confirmed clean anyway).
+
+**1.2 -- `aicalibsrc/puct/train_puct_net.py`**: added a data-only
+`policy_target_baselines()` (uniform-prior CE and the target distribution's
+own entropy, no model involved) printed alongside the existing value
+baseline, plus a `headroom_captured` percentage on every epoch and
+per-matchup line, so `val_p_loss` reads as "fraction of the real learnable
+headroom captured" instead of a bare number -- the diagnostic Finding 2's
+own ad hoc analysis needed and didn't have. Validated against Finding 2's
+own figures: reproduced 2.2697/2.1430/0.1267 nats (uniform CE / target
+entropy / headroom) on `corpus/full_mirror_seed13.bin` in isolation
+(`--val-seeds mirror=13`), matching the ≈2.27/≈2.14 the plan required at
+its own stated precision.
+
+**1.3 -- `gen_policy_corpus.c`/`train_puct_net.py`/`export_puct_weights.py`/
+`run_selfplay.sh`**: corpus records gained a `total_visits` field (the root
+visit-count sum a decision's search actually accumulated), bumping the
+record width from 1691 to 1692 floats. Recorded as raw provenance and to
+enable a training-time policy-target temperature
+(`--policy-target-temperature`, `pi_i ~ fraction_i^(1/tau)`) instead of one
+ever baked into the corpus at generation time -- though the temperature
+transform itself turns out to need only `visit_fraction`, not
+`total_visits` (the latter's contribution is a per-record constant that
+cancels under renormalization, documented in both files). Pre-2026-09-22
+shards (1691 floats, no `total_visits`) still load: `load_records()`
+detects each file's own width from its byte size (the two widths are
+coprime, so ambiguity would need ~2.86M records in one shard) and fills
+`total_visits` with NaN for old-format records. `export_puct_weights.py`'s
+own separate corpus-loading path (`load_sample_states()`) got the same
+fix -- its usage example references an old-format shard that would
+otherwise have started failing.
+
+Verified: a C-side smoke test (`gen_policy_corpus` at tiny scale, scratch
+output) confirmed the new 1692-float layout and a `total_visits` value
+matching the iteration budget passed in; a Python-side smoke test mixed one
+real old-format shard with the new-format smoke output under one label and
+trained one epoch successfully with `--policy-target-temperature 0.5`, no
+crash; re-running 1.2's own validation after 1.3 landed reproduced the
+identical numbers (default temperature=1.0 is a true no-op, confirmed both
+by code construction and by measurement). `make gen_policy_corpus` clean,
+no warnings; `./bin/oracle -a -p` byte-identical to
+`bin/expectedresults.txt`.
+
+**Process note, self-reported**: the 1.2 validation run initially wrote its
+checkpoint to the default `aicalibsrc/puct/checkpoints/` output path
+(mistake -- should have redirected `--out-dir` to scratch first) and
+overwrote the real 250-epoch `full_puct_net.pt` with a throwaway 1-epoch
+one. No shipped impact -- `assets/puct/plus1_weights.bin` (the actual
+weights `bin/oracle` loads, git-tracked) was untouched -- but the local
+`.pt` checkpoint would need a ~1-hour retrain to restore if
+`export_puct_weights.py` is ever re-run from scratch. All subsequent
+validation runs in this entry used an explicit scratch `--out-dir`.
+
+---
+
 ## 2026-09-22 — A14's default flipped to `use_puct=false`, shipping the measured win
 
 Follow-up to this same day's ablation measurement (next entry below).

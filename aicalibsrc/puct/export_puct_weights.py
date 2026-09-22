@@ -36,7 +36,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from train_puct_net import STATE_DIM, RECORD_DIM, HIDDEN, POLICY_DIM, PUCTNet
+from train_puct_net import STATE_DIM, RECORD_DIM, OLD_RECORD_DIM, HIDDEN, POLICY_DIM, PUCTNet
 
 
 def fuse_batchnorm(bn_state, w1, b1):
@@ -69,9 +69,20 @@ def numpy_forward(x, fw1, fb1, w2, b2, w3, b3, wv, bv, wp, bp):
 
 
 def load_sample_states(corpus_path, n=2000):
+    """The state vector sits at the same offset (columns 0:STATE_DIM)
+    regardless of record width, so this only needs to detect which width
+    the file actually is -- same RECORD_DIM/OLD_RECORD_DIM coprime
+    detection as train_puct_net.py's own load_records(), since a shard
+    generated before 2026-09-22 (no total_visits column) works equally
+    well as a sanity-check reference here."""
     arr = np.fromfile(corpus_path, dtype=np.float32)
-    assert arr.size % RECORD_DIM == 0, f"{corpus_path}: not a multiple of {RECORD_DIM} floats"
-    data = arr.reshape(-1, RECORD_DIM)
+    if arr.size % RECORD_DIM == 0:
+        data = arr.reshape(-1, RECORD_DIM)
+    elif arr.size % OLD_RECORD_DIM == 0:
+        data = arr.reshape(-1, OLD_RECORD_DIM)
+    else:
+        raise AssertionError(f"{corpus_path}: not a multiple of RECORD_DIM ({RECORD_DIM}) "
+                             f"or the pre-2026-09-22 OLD_RECORD_DIM ({OLD_RECORD_DIM})")
     idx = np.random.default_rng(0).choice(len(data), size=min(n, len(data)), replace=False)
     return data[idx, :STATE_DIM]
 

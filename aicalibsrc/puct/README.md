@@ -75,11 +75,15 @@ shares a struct -- verify disjointness, don't assume it.
   ```
   gen_policy_corpus <mirror|vs_a7|vs_a3|vs_a4|vs_a6> <numgames> <seed> <output_path> [limit_iterations]
   ```
-  Output: a headerless flat float32 shard, 1691 floats/record -- 537 (state)
-  + 1 (outcome) + 1 (num_moves) + 128*9 (per-move type/count/play[3]/
-  target[3]/visit_fraction). See the file's own header comment for the full
-  layout and `ai_strat_puct_policy.h` for the catalog-index convention
-  play[]/target[] use.
+  Output: a headerless flat float32 shard, 1692 floats/record as of
+  2026-09-22 -- 537 (state) + 1 (outcome) + 1 (num_moves) + 1
+  (total_visits, added 2026-09-22 for `--policy-target-temperature`, see
+  below) + 128*9 (per-move type/count/play[3]/target[3]/visit_fraction).
+  Shards from before that date (1691 floats/record, no total_visits) still
+  load fine -- `train_puct_net.py`'s `load_records()` detects each file's
+  own width. See the file's own header comment for the full layout and
+  `ai_strat_puct_policy.h` for the catalog-index convention play[]/target[]
+  use.
 - `run_selfplay.sh` -- fans `gen_policy_corpus` out across several
   background workers (process-level parallelism), bounded by wall-clock
   rather than a fixed game count, ported from
@@ -111,6 +115,15 @@ shares a struct -- verify disjointness, don't assume it.
   plateaued by epoch ~5-6, policy loss similarly, while train MSE kept
   falling for 70+ more epochs -- protected by `best_state` tracking on the
   combined validation loss, same overfit-protection A11's own trainer uses).
+  As of 2026-09-22 (A16 Session 1, items 1.2/1.3) it also prints a uniform-
+  prior CE baseline and the target distribution's own entropy alongside
+  `val_p_loss`, so the loss reads as "fraction of headroom captured"
+  (`headroom_captured` in the per-epoch and per-matchup lines) instead of a
+  bare number, and takes `--policy-target-temperature` (`pi_i ~
+  fraction_i^(1/tau)`, reshaping the visit_fraction TARGET at training
+  time, default 1.0 = unchanged) -- not the same knob as
+  `PUCTParams.policy_temperature`, which reshapes the NET's own predictions
+  at inference time and this script never touches.
 - `export_puct_weights.py` -- exports a trained `.pt` checkpoint to the flat
   headerless float32 format `ai_strat_puct_net.h` expects (`W1,b1,W2,b2,W3,b3`
   fused trunk, then `Wv,bv` value head, then `Wp,bp` policy head), fusing the
