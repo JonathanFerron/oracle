@@ -5,30 +5,38 @@
 # wall-clock-bounded via `timeout` so the same script serves a pilot and
 # the full run, seed_ledger.tsv's no-seed-reuse guarantee, the CPU/corpus-
 # size monitor). Only the target binary, record size, and default label
-# prefix differ -- the teacher here is A11 (ismctsnn), not A10, and the
-# corpus format is the full-legal-move-list format Stage 4's policy head
-# needs (aicalibsrc/puct/gen_policy_corpus.c), not A11's own state+outcome
-# format -- the two corpora are not interchangeable despite the shared
-# teacher.
+# prefix differ -- the corpus format is the full-legal-move-list format
+# Stage 4's policy head needs (aicalibsrc/puct/gen_policy_corpus.c), not
+# A11's own state+outcome format -- the two corpora are not interchangeable
+# even when the teacher is the same agent.
+#
+# Teacher generalized 2026-09-22 (A16 Session 2 item 2) -- previously
+# hardcoded to A11 (ismctsnn). `puct` teaches from A14 in whatever
+# PUCTParams its module defaults currently are; as of 2026-09-22 that's
+# use_puct=false, i.e. today's real shipped A14 config, not a forced
+# PUCT-selection variant -- see gen_policy_corpus.c's own Usage comment.
 #
 # Usage:
-#   ./run_selfplay.sh <label> <duration_seconds> [workers] [limit_iterations] [matchups_csv]
+#   ./run_selfplay.sh <label> <duration_seconds> <teacher> [weights_path] [workers] [limit_iterations] [matchups_csv]
 #
 # Examples:
-#   ./run_selfplay.sh pilot 3600                       # 1-hour pilot, auto worker count (~75% CPU)
-#   ./run_selfplay.sh full 43200                       # 12-hour full run, once the pilot looks good
-#   ./run_selfplay.sh smoketest 60 4 200               # fast wiring check: 60s, 4 workers, tiny budget
+#   ./run_selfplay.sh pilot 3600 ismctsnn                    # 1-hour A11-taught pilot, auto worker count (~75% CPU)
+#   ./run_selfplay.sh round2 43200 puct                      # 12-hour A14-taught run, once the pilot looks good
+#   ./run_selfplay.sh smoketest 60 puct '' 4 200              # fast wiring check: 60s, 4 workers, tiny budget
 #
+# `teacher` is ismctsnn (A11) or puct (A14) -- required, no default, since
+# silently generating against the wrong teacher would corrupt the corpus.
+# `weights_path` defaults per-teacher (assets/ismctsnn/prime_657k_weights.bin
+# or assets/puct/plus1_weights.bin) if omitted or passed as ''; pass your
+# own to teach from a different checkpoint (e.g. a later bootstrap round).
 # `workers` defaults to 75% of nproc, split round-robin across the opponent
 # pool given by `matchups_csv` (default: mirror,vs_a7,vs_a3 -- A11's own
 # original curated pool; vs_a4/vs_a6 are also supported, see
 # gen_policy_corpus.c). `limit_iterations` defaults to 0, which tells
-# gen_policy_corpus to use A11's own shipped default (4000) -- only
-# override it for a quick wiring smoke test, never for a real corpus (it
-# must reflect the agent being distilled from). Requires a trained A11
-# weights file at the fixed path gen_policy_corpus.c loads
-# (assets/ismctsnn/prime_657k_weights.bin) -- every worker refuses to run
-# without it.
+# gen_policy_corpus to use the teacher's own shipped default (4000 either
+# way) -- only override it for a quick wiring smoke test, never for a real
+# corpus (it must reflect the agent being distilled from). Every worker
+# refuses to run without a successfully loaded weights file.
 
 set -euo pipefail
 
@@ -36,11 +44,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 GEN_CORPUS="$REPO_ROOT/bin/gen_policy_corpus"
 
-# gen_policy_corpus.c loads A11's weights from a repo-root-relative path
-# (ISMCTSNN_DEFAULT_WEIGHTS_PATH, ai_strat_ismctsnn.h) -- unlike
-# calib_ismctsnn.c, it takes no CLI override, so every worker needs cwd ==
-# repo root regardless of where this script itself was invoked from.
-cd "$REPO_ROOT"
+# No longer needs cwd == repo root (removed 2026-09-22): gen_policy_corpus.c
+# now takes an explicit weights_path argument instead of loading A11's
+# weights from a fixed repo-root-relative path, and every other path this
+# script builds ($GEN_CORPUS, $CORPUS_DIR, $LEDGER, $LOG_DIR) is already
+# absolute via $SCRIPT_DIR/$REPO_ROOT. A relative --weights_path the CALLER
+# passes is left relative to wherever they invoked this script from, not
+# silently reinterpreted against the repo root.
 CORPUS_DIR="$SCRIPT_DIR/corpus"
 LEDGER="$CORPUS_DIR/seed_ledger.tsv"
 LOG_DIR="$CORPUS_DIR/logs"
@@ -53,13 +63,22 @@ RECORD_BYTES=6768 # (537 + 1 + 1 + 1 + 128*9) * sizeof(float) -- bumped
                    # $LABEL), so the new width is always the right one here
 MONITOR_INTERVAL_S=600 # 10 minutes
 
-LABEL="${1:?Usage: $0 <label> <duration_seconds> [workers] [limit_iterations] [matchups_csv]}"
-DURATION="${2:?Usage: $0 <label> <duration_seconds> [workers] [limit_iterations] [matchups_csv]}"
-WORKERS="${3:-$(( $(nproc) * 3 / 4 ))}"
-LIMIT_ITERATIONS="${4:-0}"
+USAGE="Usage: $0 <label> <duration_seconds> <teacher: ismctsnn|puct> [weights_path] [workers] [limit_iterations] [matchups_csv]"
+LABEL="${1:?$USAGE}"
+DURATION="${2:?$USAGE}"
+TEACHER="${3:?$USAGE}"
+case "$TEACHER" in
+  ismctsnn) DEFAULT_WEIGHTS="$REPO_ROOT/assets/ismctsnn/prime_657k_weights.bin" ;;
+  puct)     DEFAULT_WEIGHTS="$REPO_ROOT/assets/puct/plus1_weights.bin" ;;
+  *) echo "teacher must be one of: ismctsnn, puct" >&2; exit 1 ;;
+esac
+WEIGHTS_PATH="${4:-$DEFAULT_WEIGHTS}"
+[ -n "$WEIGHTS_PATH" ] || WEIGHTS_PATH="$DEFAULT_WEIGHTS" # '' also falls back, see Usage note
+WORKERS="${5:-$(( $(nproc) * 3 / 4 ))}"
+LIMIT_ITERATIONS="${6:-0}"
 NUMGAMES_CAP=10000000 # effectively unbounded; `timeout` is the real limit
 
-IFS=',' read -r -a MATCHUPS <<< "${5:-mirror,vs_a7,vs_a3}"
+IFS=',' read -r -a MATCHUPS <<< "${7:-mirror,vs_a7,vs_a3}"
 NUM_MATCHUPS=${#MATCHUPS[@]}
 
 if [ ! -x "$GEN_CORPUS" ]; then
@@ -69,7 +88,12 @@ fi
 
 mkdir -p "$CORPUS_DIR" "$LOG_DIR"
 if [ ! -s "$LEDGER" ]; then
-  printf 'seed\tlabel\tmatchup\tworker\ttimestamp\toutput_path\n' > "$LEDGER"
+  # `teacher` appended 2026-09-22 as the LAST column (not inserted earlier)
+  # so pre-existing rows (fewer columns, teacher implicitly ismctsnn --
+  # A11 was the only teacher before that date) stay valid for next_seed()'s
+  # own field-1-only read; nothing else in this script indexes by a fixed
+  # later column.
+  printf 'seed\tlabel\tmatchup\tworker\ttimestamp\toutput_path\tteacher\n' > "$LEDGER"
 fi
 MONITOR_LOG="$LOG_DIR/${LABEL}_monitor.tsv"
 printf 'timestamp\telapsed_s\tcpu_pct\tcorpus_mb_so_far\n' > "$MONITOR_LOG"
@@ -125,7 +149,7 @@ monitor_workers() {
 } # monitor_workers
 
 START_TS=$(date +%s)
-echo "=== A14 self-play (teacher: A11): label=$LABEL duration=${DURATION}s workers=$WORKERS limit_iterations=${LIMIT_ITERATIONS} ==="
+echo "=== A14 self-play (teacher: $TEACHER, weights: $WEIGHTS_PATH): label=$LABEL duration=${DURATION}s workers=$WORKERS limit_iterations=${LIMIT_ITERATIONS} ==="
 echo "Started: $(date -Iseconds)"
 
 pids=()
@@ -134,11 +158,11 @@ for ((i = 0; i < WORKERS; i++)); do
   seed=$(next_seed)
   outfile="$CORPUS_DIR/${LABEL}_${matchup}_seed${seed}.bin"
   logfile="$LOG_DIR/${LABEL}_${matchup}_seed${seed}.log"
-  printf '%s\t%s\t%s\t%d\t%s\t%s\n' "$seed" "$LABEL" "$matchup" "$i" "$(date -Iseconds)" \
-    "$outfile" >> "$LEDGER"
+  printf '%s\t%s\t%s\t%d\t%s\t%s\t%s\n' "$seed" "$LABEL" "$matchup" "$i" "$(date -Iseconds)" \
+    "$outfile" "$TEACHER" >> "$LEDGER"
 
-  timeout "$DURATION" "$GEN_CORPUS" "$matchup" "$NUMGAMES_CAP" "$seed" "$outfile" \
-    "$LIMIT_ITERATIONS" > "$logfile" 2>&1 &
+  timeout "$DURATION" "$GEN_CORPUS" "$TEACHER" "$WEIGHTS_PATH" "$matchup" "$NUMGAMES_CAP" "$seed" \
+    "$outfile" "$LIMIT_ITERATIONS" > "$logfile" 2>&1 &
   pids+=($!)
   echo "  worker $i: matchup=$matchup seed=$seed -> $(basename "$outfile")"
 done

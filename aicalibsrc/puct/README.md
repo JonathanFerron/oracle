@@ -61,20 +61,29 @@ shares a struct -- verify disjointness, don't assume it.
 ## Files
 
 - `gen_policy_corpus.c` -- Stage 2 self-play corpus generator. Plays real
-  `A11` (`ismctsnn`) games across the curated opponent pool
+  games under a chosen teacher (`ismctsnn`=`A11` or `puct`=`A14`, see below
+  -- generalized 2026-09-22, A16 Session 2 item 2; previously hardcoded to
+  `A11`) across the curated opponent pool
   (`mirror`/`vs_a7`/`vs_a3`/`vs_a4`/`vs_a6`, same as `aicalibsrc/ismctsnn/gen_corpus.c`'s
-  own pool) and logs, from `A11`'s own decision points only, the full
+  own pool) and logs, from the teacher's own decision points only, the full
   legal-move-list + visit-fraction record this agent's policy head trains
   on -- NOT A11's own state+outcome-only format; the two corpora are not
-  interchangeable despite sharing a teacher. `A11` is the teacher here, not
-  `A14` itself: `A14` has no trained weights yet (that's what this corpus is
-  for), so self-play under an untrained net would just be noise. Requires
-  `ismctsnn_load_weights()` to succeed (refuses to run otherwise -- an
-  unloaded A11 silently degrades to plain A10, which would corrupt the whole
-  corpus). Build with `make gen_policy_corpus` -> `bin/gen_policy_corpus`.
+  interchangeable even when the teacher is the same agent. A `puct` teacher
+  runs whatever `PUCTParams` its module defaults currently are
+  (`PUCT_DEFAULTS`) -- as of 2026-09-22 that's `use_puct=false`, i.e.
+  today's real shipped `A14` config, not a forced PUCT-selection variant.
+  Requires the chosen teacher's weights to load successfully (refuses to
+  run otherwise -- an unloaded `ismctsnn`/`puct` net silently degrades to
+  plain A10, which would corrupt the whole corpus). Build with
+  `make gen_policy_corpus` -> `bin/gen_policy_corpus`.
   ```
-  gen_policy_corpus <mirror|vs_a7|vs_a3|vs_a4|vs_a6> <numgames> <seed> <output_path> [limit_iterations]
+  gen_policy_corpus <ismctsnn|puct> <weights_path> <mirror|vs_a7|vs_a3|vs_a4|vs_a6> <numgames> <seed> <output_path> [limit_iterations]
   ```
+  Prints its full resolved config (teacher, weights, matchup, seed,
+  `limit_iterations`, search settings, `use_puct` when the teacher is
+  `puct`) to stderr once at startup (added 2026-09-22, A16 Session 2 item
+  2.1) -- every per-shard worker log is self-documenting provenance,
+  the source to hand-author a sidecar from once a real round ships.
   Output: a headerless flat float32 shard, 1692 floats/record as of
   2026-09-22 -- 537 (state) + 1 (outcome) + 1 (num_moves) + 1
   (total_visits, added 2026-09-22 for `--policy-target-temperature`, see
@@ -88,15 +97,19 @@ shares a struct -- verify disjointness, don't assume it.
   background workers (process-level parallelism), bounded by wall-clock
   rather than a fixed game count, ported from
   `aicalibsrc/ismctsnn/run_selfplay.sh` (same `corpus/seed_ledger.tsv`
-  no-seed-reuse guarantee, same CPU/corpus-size monitor). **Always `cd`s to
-  the repo root before launching workers** -- `gen_policy_corpus.c` loads
-  A11's weights from a repo-root-relative path with no CLI override, so
-  every worker needs that cwd regardless of where this script itself was
-  invoked from (a real bug hit once during this agent's own Stage 2 run,
-  fixed here).
+  no-seed-reuse guarantee, same CPU/corpus-size monitor -- `seed_ledger.tsv`
+  gained a trailing `teacher` column 2026-09-22; pre-existing rows without
+  it are implicitly `ismctsnn`, A11 was the only teacher before that date).
+  No longer needs `cd` to the repo root (fixed 2026-09-22 alongside the
+  teacher generalization below) -- every path it builds is already
+  absolute, and `gen_policy_corpus.c` now takes an explicit weights path
+  instead of a fixed repo-root-relative one.
   ```
-  ./run_selfplay.sh <label> <duration_seconds> [workers] [limit_iterations] [matchups_csv]
+  ./run_selfplay.sh <label> <duration_seconds> <teacher: ismctsnn|puct> [weights_path] [workers] [limit_iterations] [matchups_csv]
   ```
+  `teacher` is required (no default -- silently generating against the
+  wrong teacher would corrupt the corpus); `weights_path` defaults
+  per-teacher if omitted or passed as `''`.
 - `train_puct_net.py` -- PyTorch (CPU) training script. Two-head net
   (537->256->128->64 shared trunk, BatchNorm+dropout, then a value head and
   a policy head as separate `nn.Linear` attributes -- not buried in one
@@ -202,7 +215,8 @@ If that venv is ever removed, set up a fresh one the same way
 cd aicalibsrc/puct
 
 # Stage 2 -- generate a corpus (see run_selfplay.sh's header for sizing)
-./run_selfplay.sh full 43200 15
+./run_selfplay.sh full 43200 ismctsnn '' 15   # A11-taught (the original round)
+./run_selfplay.sh round2 43200 puct '' 15     # A14-taught (added 2026-09-22, A16 Session 2)
 
 # Stage 3 -- train (corpus_dir is a directory, not a glob -- --label selects shards)
 ../ismctsnn/.venv/bin/python3 train_puct_net.py corpus --label full
