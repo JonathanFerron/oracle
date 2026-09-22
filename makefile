@@ -564,6 +564,55 @@ release: CFLAGS := -O2 -Wall -std=c23 -MMD -MP
 release: clean all
 	@echo "Release build complete"
 
+# Generation/calibration tools, optimized build (added 2026-09-22, A16
+# Session 2 item 0) -- `make release` does NOT help here: `all: $(TARGET)`
+# builds ONLY bin/oracle, so none of the GEN_*/CALIB_* targets below are
+# part of it. Before this target existed, `make release && make
+# gen_policy_corpus` (or any GEN_*/CALIB_* target) silently linked a MIXED
+# binary: the engine objects `release` left in $(BUILDDIR) at -O2, plus a
+# freshly-compiled harness object at the DEFAULT CFLAGS (-Og, since that
+# target never overrides it) -- no warning, no rebuild trigger, since
+# $(BUILDDIR) carries no per-object flag tracking. A plausible (not
+# confirmed) explanation for otherwise-unexplained FP-level measurement
+# drift elsewhere in this project: different optimization levels change FP
+# contraction in hand-written forward passes like linear_relu()
+# (ai_strat_ismctsnn_net.c), which changes net outputs in the last bits,
+# which can flip close search decisions. Same clean-then-build atomicity as
+# `release`/`debug` above -- rebuilds EVERY GEN_*/CALIB_* binary from a
+# clean $(BUILDDIR) in one pass, so there is no window where stale-flag
+# objects can survive into the link. Deliberately does NOT depend on `all`
+# -- a single shared $(BUILDDIR) can't hold an -O2 and a -Og copy of the
+# same object at once (the existing *_OBJS variables use `:=`, frozen
+# against $(BUILDDIR) at parse time, so a target-specific $(BUILDDIR)
+# override wouldn't actually redirect them without a real per-flavour
+# object-directory refactor -- out of scope here). Consequence: `clean`
+# removes bin/oracle same as it does for `release`/`debug`, and this
+# target does NOT rebuild it -- run a plain `make` afterward if you need
+# bin/oracle back. Re-measure with
+# bin/calib_puct_timing/calib_ismctsnn_timing after building -- -O2 over
+# -Og is very likely the big step (A11's own -O2 speedup was measured at
+# only ~11.5% over -Og for this exact kind of loop, doc/ai_agents.md's A11
+# section), so don't assume a large win without measuring it.
+.PHONY: release_tools
+release_tools: CFLAGS := -O2 -Wall -std=c23 -MMD -MP
+release_tools: clean calib_valuebased calib_combo_threshold calib_borealis calib_balanced calib_heuristic calib_tactical calib_hbt calib_hbt2ply calib_simplemc calib_a13 calib_ismcts_timing calib_ismcts_efficiency calib_ismcts_rollout_policy gen_corpus calib_ismctsnn calib_ismctsnn_timing gen_policy_corpus calib_puct calib_puct_timing calib_daredevil calib_mulligan
+	@echo "Generation/calibration tools optimized (-O2) build complete"
+
+# Opt-in, NOT portable -- -march=native ties the binary to the machine it
+# was built on, breaking this project's otherwise strict-FP-portable -O2
+# convention (see `release`'s own comment above). Only ever for
+# GEN_*/CALIB_* tools, NEVER for bin/oracle -- do not add $(TARGET) or
+# `all` to this target's prerequisites. Measure the actual gain over
+# release_tools with bin/calib_puct_timing before assuming -march=native
+# buys much on top of plain -O2 for a hand-written triple loop under
+# strict FP -- it may be a small increment over the -Og-to-O2 jump, not a
+# second big one. Any corpus generated under this flag regime should
+# record that in its provenance sidecar (A16 Session 2 item 2.1).
+.PHONY: release_tools_native
+release_tools_native: CFLAGS := -O3 -march=native -Wall -std=c23 -MMD -MP
+release_tools_native: clean calib_valuebased calib_combo_threshold calib_borealis calib_balanced calib_heuristic calib_tactical calib_hbt calib_hbt2ply calib_simplemc calib_a13 calib_ismcts_timing calib_ismcts_efficiency calib_ismcts_rollout_policy gen_corpus calib_ismctsnn calib_ismctsnn_timing gen_policy_corpus calib_puct calib_puct_timing calib_daredevil calib_mulligan
+	@echo "Generation/calibration tools -O3 -march=native build complete (NOT portable -- do not distribute this binary, generation-only)"
+
 # Test combo bonus calculator
 .PHONY: test_combo
 test_combo: $(TEST_COMBO_TARGET)
@@ -913,6 +962,8 @@ help:
 	@echo "  clean            - Remove build artifacts"
 	@echo "  debug            - Build with debug symbols and -Og"
 	@echo "  release          - Build optimized (-O2), no debug symbols"
+	@echo "  release_tools    - Build every GEN_*/CALIB_* tool optimized (-O2); removes bin/oracle (its own clean step, same as release/debug) -- run 'make' afterward to restore it"
+	@echo "  release_tools_native - Same, at -O3 -march=native (NOT portable, generation-only)"
 	@echo "  test_combo       - Build and run combo bonus tests"
 	@echo "  test_a15_combo   - Build and run A15 Risk Threshold's combo-participation/probability tests"
 	@echo "  test_recall      - Build and run recall mechanic tests"
