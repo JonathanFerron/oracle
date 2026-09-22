@@ -1375,6 +1375,51 @@ plain UCT's while leaf evaluation still runs through this agent's own
 two-head net regardless, an ablation rung rather than a true `A10`-recovery
 path.
 
+**2026-09-22 addendum — the `use_puct=false` ablation, measured** (`A16`
+Session 1, item 1.1 — see `ideas/A16 .../about.md`): this ablation existed
+since `A14`'s own registration (previous paragraph) but had never been run.
+Isolates the net from PUCT's selection rule — both sides are pure-net
+(`A11` ships `nn_value_trust=1.0f`, so `leaf_value()` short-circuits to pure
+net; `puct_leaf_value()` never rolls out either), so the comparison is
+selection rule alone, net held fixed. Measured at the same n=4110 as the
+gates above, same weights (`checkpoints/full_c_weights.bin`):
+
+| comparison | shipped `A14` (defaults) | `use_puct=false` | delta |
+|---|---|---|---|
+| vs `A11` head-to-head | 50.24% [48.72%, 51.77%] | **57.15% [55.63%, 58.66%]** | +6.91pp |
+| vs `Borealis` (rating context) | 62.70% [61.21%, 64.17%] → ~63 | 74.53% [73.17%, 75.83%] → ~75 | +11.82pp |
+
+(The defaults-vs-`A11` figure re-measured 50.24% here, not the 49.34%
+recorded above — same seeds, same params, no intervening change to any file
+in the causal path traced and ruled out at commit granularity; most likely
+toolchain floating-point drift between the two measurement dates. Both
+figures are well inside each other's noise band relative to the ablation's
+own margin, so this doesn't affect the reading below.)
+
+**Plain UCT selection + `A14`'s own two-head net decisively beats `A11`
+head-to-head** — 57.15%, Wilson lower bound 55.63%, clearing 50% by the same
+margin `A11` itself used to clear `A10` (56.93% lower bound) for its own
+promotion. `A14`'s null result decomposes cleanly, as Finding 1 in the `A16`
+plan hoped: **good net, bad selection rule** — PUCT's own selection
+mechanism was giving back what the retrained net gained, not adding to it.
+
+The Borealis-anchored rating tells a softer story: ~75, [73, 76] by Wilson
+CI — essentially tied with `A11`'s own 74 (the CI straddles it), not the
+~79 a naive pairwise inversion from the head-to-head number would suggest.
+This is the same non-transitivity shape already documented above for `A14`
+itself (tying `A11` head-to-head while trailing 12pp on the Borealis
+matchup specifically) — real but smaller here. **Read the head-to-head
+number as the finding; read the Borealis number as context, not as
+confirmation of a new roster ceiling by itself.**
+
+This result is **recorded, not shipped** — no default changed, no new
+`AIStrategyType` was registered, and `AI_STRATEGY_ISMCTS_PUCT`'s shipped
+config is unchanged (`use_puct=true` stays the default). Whether/how to act
+on it (ship `use_puct=false` as `A14`'s new default, register it as a
+distinct agent, or redirect `A16`'s own Session 2/3 design toward the value
+head per the `A16` plan's own branching) is an open decision, not resolved
+by this measurement alone.
+
 ---
 
 ## A15 — Risk Threshold · "The Daredevil" / "Le Casse-Cou" / "El Temerario"

@@ -5,6 +5,48 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-22 — `AGENT_SRCS` build fix, and A14's own `use_puct=false` ablation finally measured
+
+Two pieces of `A16` (self-play bootstrapping scaffolding) Session 1, resumed
+after a prior session paused on a build blocker.
+
+**Build fix**: `makefile`'s `AGENT_SRCS` was never updated by `1570dd3` (the
+gap-filler roster commit) to include the nine new agents' `.c` files, even
+though `ai_strategy.c`'s `STRATEGY_REGISTRY[]` already referenced all nine —
+every target built from `AGENT_SRCS` (all `CALIB_*`/`GEN_*` harnesses, the
+roster-linking `TEST_*` targets) failed to link with `undefined reference to
+'junior_attack_strategy'` etc. `bin/oracle` itself was unaffected (built
+from an auto-discovered file list, not `AGENT_SRCS`). Fixed by appending the
+nine missing paths; verified `./bin/oracle -a -p` byte-identical to
+`bin/expectedresults.txt` (pure link-set change) and
+`test_puct`/`test_puct_policy`/`test_combo`/`test_rating` all green.
+
+**The `use_puct=false` ablation** (`PUCTParams.use_puct=false`, i.e. plain
+UCT selection over `A14`'s own retrained two-head net — implemented since
+`A14`'s registration but never run, per the `A16` plan's Finding 1) measured
+at n=4110, same weights and seeds as `A14`'s own gate logs:
+
+- vs `A11` head-to-head: **57.15% [55.63%, 58.66%]**, a decisive win — clears
+  50% by the same margin `A11` used to clear `A10` for its own promotion.
+- vs `Borealis`: 74.53% [73.17%, 75.83%] → estimated rating **~75**,
+  statistically tied with `A11`'s own 74 (CI straddles it) — not the ~79 a
+  naive pairwise inversion from the head-to-head number would suggest, the
+  same non-transitivity shape already on record for `A14` itself.
+
+Decomposes `A14`'s own null result cleanly: **good net, bad selection
+rule** — PUCT's selection mechanism was giving back what the retrained net
+gained, not adding to it. See `doc/ai_agents.md`'s A14 section (2026-09-22
+addendum) for the full writeup, including the baseline re-measurement
+(50.24% here vs 49.34% in `A14`'s own gate2 log, same seeds — traced to no
+code change in the causal path, most likely toolchain drift, doesn't affect
+the reading). Recorded only — no default changed, no new agent registered;
+whether/how to act on it is open, deferred to `A16` Session 2 or a separate
+decision. `aicalibsrc/puct/use_puct_false.json` is the candidate file;
+`aicalibsrc/puct/ablation_use_puct_run.log` /
+`ablation_use_puct_borealis_run.log` hold the raw runs.
+
+---
+
 ## 2026-09-11 — Junior gap-filler agent implemented, measured, and registered
 
 New track, not part of the `A1`-`A15` ladder: sorting every registered agent

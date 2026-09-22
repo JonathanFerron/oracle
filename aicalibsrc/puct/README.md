@@ -206,3 +206,25 @@ Stage 5 is done) will follow `assets/ismctsnn/prime_657k_weights.json`'s
 exact shape (architecture, training/corpus provenance, measured results).
 See `doc/ai_agents.md`'s A14 section for the narrative once it exists;
 `doc/changelog.md` for the dated record.
+
+## The `use_puct=false` ablation (2026-09-22)
+
+`PUCTParams.use_puct=false` isolates the retrained two-head net from PUCT's
+selection rule (plain UCT selection, same net at the leaves) — implemented
+since `A14`'s own registration but not measured until `A16` Session 1.
+`use_puct_false.json` is the one-key candidate file:
+
+```bash
+./calibrate_puct.py validate --weights checkpoints/full_c_weights.bin \
+    --candidate use_puct_false.json --opponent ismctsnn \
+    --numsim 137 --replicates 15   # n=4110, matches the gate logs above
+./calibrate_puct.py validate --weights checkpoints/full_c_weights.bin \
+    --candidate use_puct_false.json --opponent borealis \
+    --numsim 137 --replicates 15
+```
+
+Result: a decisive 57.15% [55.63%, 58.66%] head-to-head win over `A11`
+(`A14`'s own null result decomposes into "good net, bad selection rule"),
+softer on the Borealis-anchored rating (~75, tied with `A11`'s own 74 within
+CI). Full writeup: `doc/ai_agents.md`'s A14 section, 2026-09-22 addendum;
+raw output in `ablation_use_puct_run.log` / `ablation_use_puct_borealis_run.log`.
