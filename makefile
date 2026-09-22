@@ -83,7 +83,16 @@ AGENT_SRCS := $(SRCDIR)/ai_strat/ai_strategy.c \
               $(SRCDIR)/ai_strat/ai_strat_a15_attack.c \
               $(SRCDIR)/ai_strat/ai_strat_a15_defense.c \
               $(SRCDIR)/ai_strat/ai_strat_a15_endgame.c \
-              $(SRCDIR)/ai_strat/ai_strat_a15.c
+              $(SRCDIR)/ai_strat/ai_strat_a15.c \
+              $(SRCDIR)/ai_strat/ai_strat_junior.c \
+              $(SRCDIR)/ai_strat/ai_strat_auditor.c \
+              $(SRCDIR)/ai_strat/ai_strat_impersonator.c \
+              $(SRCDIR)/ai_strat/ai_strat_journeyman.c \
+              $(SRCDIR)/ai_strat/ai_strat_inconsistent.c \
+              $(SRCDIR)/ai_strat/ai_strat_sparring_partner.c \
+              $(SRCDIR)/ai_strat/ai_strat_opportunist.c \
+              $(SRCDIR)/ai_strat/ai_strat_adept.c \
+              $(SRCDIR)/ai_strat/ai_strat_experimenter.c
 
 # Test targets
 # Object paths are mapped into $(BUILDDIR) (mirroring the main build's pattern rule
