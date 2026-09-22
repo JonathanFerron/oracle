@@ -1473,11 +1473,33 @@ menu string in three languages plus anything that mirrors it (shorthand,
 completion script); worth a deliberate look if it reads as misleading in
 practice.
 
-This also answers `A16`'s own Finding 1 and redirects its Session 2/3
+This also answers `A16`'s own Finding 1 and redirected its Session 2
 framing: the policy head's small measured headroom (0.128 nats, Finding 2)
 was never the reason PUCT selection under-delivered — the selection rule
-itself was. `A16` Session 2's sharpening work should be re-scoped with that
-in mind rather than assumed unchanged; see `ideas/A16 .../about.md`.
+itself was. `A16` Session 2 (same date) was re-scoped around this,
+end to end: fixed a real build-system defect first (`GEN_*`/`CALIB_*`
+tools had no way to build optimized without risking a silently mixed-flags
+binary — `release_tools`/`release_tools_native`, `makefile`), which also
+cut `A14`'s own per-decision cost to 448ms at `-O2`; generalized
+`gen_policy_corpus.c`'s hardcoded `A11` teacher to accept `A14` running its
+own real shipped config (`use_puct=false`, not a forced PUCT-selection
+override); ran the policy-weight ablation the original headroom gate was
+standing in for (`--policy-weight 1.0` vs `0.0` on the *existing* corpus,
+no new data needed) — result diverged from this plan's own prediction:
+the policy loss genuinely helps the value head (~0.6pp of reduction,
+consistent across all three matchups), kept rather than dropped; then a
+40-minute wiring-and-throughput probe with the new teacher — 40,093
+records, 60,140 records/hour (~722k projected for a 12h round, close to
+the plan's own ~700k estimate), **zero diversity collapse** (0% duplicate
+states, 0% repeated (state, chosen-move) pairs, chosen-move entropy 2.87
+of a possible 4.14 nats), confirming root noise isn't needed for round 1
+after all — the structural argument (widening already prevents the
+blind-spot failure mode noise exists to fix) held up empirically, not just
+on paper. Label sanity also checked out: `probe1`'s per-matchup outcomes
+(mirror 50.5%, `vs_a3`/Borealis 70.1%, `vs_a7`/HBT 59.0%) are directionally
+consistent with the agents' own known ratings. No blockers found for a
+real round-1 generation run. See `doc/changelog.md`'s 2026-09-22 entries
+and `ideas/A16 .../about.md` for the full record.
 
 ---
 

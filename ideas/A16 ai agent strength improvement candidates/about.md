@@ -85,11 +85,21 @@ nothing (confirmed by grep, 2026-09-22) -- not needed for round 1 regardless: pl
 UCT's own root widening already structurally prevents the blind-spot failure mode
 noise exists to fix (widening_cap=127 at 4000 visits, comfortably above ~93 typical
 legal moves, so every legal root move gets expanded at least once by construction).
-A genuine wiring-and-diversity probe (`A16` Session 2 item 2.4) is the way to check
-whether the new corpus is reinforcing round 1's own blind
-spots; whether round 2's corpus should still include the curated `vs_a7`/`vs_a3`
-opponents or move toward pure self-play now that there's a real policy prior worth
-bootstrapping.
+**Resolved, 2026-09-22**: the probe ran (item 2.4, 40 min, teacher=`puct` running
+today's shipped config, `mirror,vs_a7,vs_a3` pool, `limit_iterations=4000`) --
+40,093 records, 60,140 records/hour, **zero diversity collapse**: 0% duplicate
+state vectors, 0% repeated (state, chosen-move) pairs among early-game records,
+chosen-move entropy 2.87 of a possible 4.14 nats, essentially matching the
+*existing* `A11`-taught corpus's own baseline (0% duplicates, 2.94/4.49 nats,
+measured the same date for comparison). The structural argument above held up
+empirically, not just on paper -- round 1 does not need round-2 exploration
+noise. Label sanity also checked out (per-matchup outcomes directionally
+consistent with known agent ratings: mirror 50.5%, `vs_a3` 70.1%, `vs_a7`
+59.0%). **No blockers found for a real round-1 generation run.** Whether
+round 2's corpus should still include the curated `vs_a7`/`vs_a3` opponents or
+move toward pure self-play remains open, deferred to whenever a round 2 is
+actually planned. See `doc/changelog.md`'s 2026-09-22 A16 Session 2 entry for
+the full record.
 
 ## Candidate 2 (infrastructure, not necessarily its own agent) -- pthread-based root parallelization
 

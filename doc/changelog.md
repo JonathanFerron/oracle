@@ -5,6 +5,84 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-22 — A16 Session 2 complete: build-flags fix, teacher generalized, probe clean, no blockers for round 1
+
+Full session, redirected mid-plan after Session 1's `use_puct=false`
+finding broke the original Session 2 premise (sharpening a policy prior
+PUCT selection, which the shipped default never reads). Re-scoped around
+the value head, using today's shipped `A14` config as its own teacher.
+
+**Step 0 (own commit)**: found a real build-system defect while planning --
+`make release` only ever builds `bin/oracle` (`all: $(TARGET)`), so no
+`GEN_*`/`CALIB_*` binary could be built optimized without risking a
+silently mixed-flags link (stale `-O2` engine objects + freshly-compiled
+`-Og` harness object, no warning, no rebuild trigger). Added
+`release_tools`/`release_tools_native` (same clean-then-build atomicity as
+`release`/`debug`). Re-measured `A14`'s own per-decision cost at the new
+`-O2` build: **448ms mean**, down from 536ms at `-Og`, now essentially
+matching `A11`'s own 439ms.
+
+**Step 1**: ran the policy-weight ablation planned for item 2.0 --
+`--policy-weight 1.0` vs `0.0` on the *existing* corpus (no new data),
+identical `--seed 42` (a genuinely paired comparison). Result diverged
+from the plan's own prediction: best val_v_mse 0.156399 (`pw=1.0`, epoch
+9) vs 0.157840 (`pw=0.0`, epoch 5) -- a small (~0.6pp of reduction) but
+real, consistent-across-all-three-matchups advantage for keeping the
+policy loss, despite its own value barely moving across 250 epochs.
+Carrying `--policy-weight 1.0` forward on this measurement.
+
+**Steps 2-3**: `gen_policy_corpus.c` no longer hardcodes `A11` as teacher
+-- new `<ismctsnn|puct>` argument plus an explicit `<weights_path>` (the
+`run_selfplay.sh` repo-root-cwd requirement is gone too, since nothing
+depends on it anymore). A `puct` teacher runs `A14`'s own real module
+defaults (`use_puct=false` as of today), not a forced PUCT-selection
+override. Verified end to end: a C-level smoke test confirmed
+`visit_fraction` populates correctly under a `puct` teacher (never
+previously exercised); a full `run_selfplay.sh` invocation completed with
+0 worker failures. Also made generation config self-documenting (prints
+teacher/weights/matchup/seed/`limit_iterations`/search settings/`use_puct`
+to stderr once per worker) -- the source a provenance sidecar gets
+hand-authored from, matching this project's existing convention rather
+than inventing auto-generated JSON.
+
+**Step 4 -- the probe, 40 minutes, teacher=`puct`, real weights, the
+`mirror,vs_a7,vs_a3` pool, `limit_iterations=4000` (play parity)**: 40,093
+records, 258MB, 12 shards, 0 worker failures. Throughput ~60,140
+records/hour -> ~722k records / ~4GB projected for a 12h round, close to
+the plan's own ~700k estimate. **Diversity diagnostic came back clean**:
+0% duplicate state vectors, 0% repeated (state, chosen-move) pairs among
+early-game records, chosen-move entropy 2.87 of a possible 4.14 nats --
+essentially the same profile as the *existing* `A11`-taught corpus (also
+measured this session as a baseline: 0% duplicates, 2.94/4.49 nats),
+confirming the structural argument against needing root noise (widening
+already prevents the AlphaZero blind-spot failure mode) held up
+empirically. Label sanity checked out too: per-matchup outcomes (mirror
+50.5%, `vs_a3`/Borealis 70.1%, `vs_a7`/HBT 59.0%) are directionally
+consistent with the agents' own known ratings.
+
+**No blockers found for a real round-1 generation run.** A genuine Session
+3 blocker was surfaced and documented (not fixed, out of this session's
+scope): `ai_strat_puct_net.c`'s `g_weights`/`g_loaded` are single static
+globals, so a bootstrapped net can't be gated head-to-head against the
+round-1 net it's meant to replace without either a `net_slot` change or a
+separate roster entry -- the round-1 workaround is gating against `A11`
+as a fixed reference instead, same method as Session 1's own 57.15% figure.
+
+Verified throughout: `./bin/oracle -a -p` byte-identical to
+`bin/expectedresults.txt` after every step (no `src/` engine files
+touched beyond the one `PUCTParams` comment fix); `make gen_policy_corpus`
+and `make release_tools` both clean, no warnings; `bash -n` on
+`run_selfplay.sh`. Along the way, found and worked around (not fixed --
+pre-existing, inherited from `aicalibsrc/ismctsnn/run_selfplay.sh`,
+harmless for real standalone runs) a latent orphaned-child-process issue
+in `monitor_workers()`'s cleanup, only visible when a run's stdout is
+piped into something awaiting EOF.
+
+Full writeup: `doc/ai_agents.md`'s A14 section (2026-09-22 addendum,
+updated); `ideas/A16 .../about.md`'s Candidate 1 section.
+
+---
+
 ## 2026-09-22 — A16 Session 1 items 1.2/1.3: interpretable policy-target diagnostics, raw visit counts
 
 Continuation of `A16` Session 1 (`ideas/A16 .../about.md`), calibration
