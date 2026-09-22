@@ -4,16 +4,23 @@
 //
 // Reuses A10/A11's exact ISMCTSParams/ismcts_search_best_move() for
 // compute budget, candidate enumeration, and rollout/determinization
-// machinery -- this agent changes SELECTION (PUCT replacing plain UCT,
-// ai_strat_puct_search.c) and LEAF EVALUATION (the two-head net,
-// ai_strat_puct_net.c, supplying both a value and a policy prior from one
-// shared forward pass), never A10/A11's own tree/determinization
-// structure itself. This agent's leaf evaluation never calls the shared
-// ai_strat_ismcts_search.c's own leaf_value() (it has its own
-// puct_leaf_value(), ai_strat_puct_search.c) -- so its own ISMCTSParams
-// instance leaves nn_value_trust/nn_value_use_mover_seat entirely unread,
-// dead weight kept only because A10/A11 still need those fields in the
-// struct they share.
+// machinery. This agent's own SELECTION mechanism is PUCT (replacing
+// plain UCT, ai_strat_puct_search.c) and its LEAF EVALUATION is a
+// two-head net (ai_strat_puct_net.c, supplying both a value and a policy
+// prior from one shared forward pass) -- never A10/A11's own
+// tree/determinization structure itself. **As of 2026-09-22, PUCT
+// selection is measured and shipped OFF by default** (`use_puct=false`,
+// see PUCT_DEFAULTS below and this field's own comment) -- the shipped
+// default is plain UCT selection over this agent's own two-head net, not
+// PUCT selection. The PUCT mechanism remains fully implemented and
+// tested; `use_puct=true` is a real, exercised configuration, just not
+// the default one. See doc/ai_agents.md's A14 section, 2026-09-22
+// addendum, for the measurement that drove this. This agent's leaf
+// evaluation never calls the shared ai_strat_ismcts_search.c's own
+// leaf_value() (it has its own puct_leaf_value(), ai_strat_puct_search.c)
+// -- so its own ISMCTSParams instance leaves nn_value_trust/
+// nn_value_use_mover_seat entirely unread, dead weight kept only because
+// A10/A11 still need those fields in the struct they share.
 //
 // PUCTParams below is a genuinely DISJOINT struct from ISMCTSParams --
 // unlike A11 (which shares ISMCTSParams with A10, see ai_strat_ismcts1.h's
@@ -30,11 +37,17 @@
 
 typedef struct
 { // -- Selection --
-  bool use_puct; // false -> plain UCT SELECTION (ai_strat_ismcts_search.c's
-  // own select_or_expand()) while leaf evaluation still uses this agent's
-  // own two-head net regardless -- isolates PUCT's own contribution from
-  // the net's (the "new net + plain UCT" rung of the ablation ladder in
-  // doc/ai_agents.md's A14 section). NOT a full A10/A11 restoration --
+  bool use_puct; // SHIPPED DEFAULT (2026-09-22): false -> plain UCT
+  // SELECTION (ai_strat_ismcts_search.c's own select_or_expand()) while
+  // leaf evaluation still uses this agent's own two-head net regardless.
+  // Originally built as an ablation rung isolating the net's own
+  // contribution from PUCT's, this measured a decisive 57.15%
+  // [55.63%, 58.66%] head-to-head win vs A11 (n=4110) -- A14's own
+  // original null result decomposes into "good net, bad selection rule",
+  // so this became the shipped default rather than staying an ablation
+  // (doc/ai_agents.md's A14 section, 2026-09-22 addendum). true restores
+  // real PUCT selection -- still fully implemented and tested, just no
+  // longer the default. Neither setting is a full A10/A11 restoration --
   // that only happens when the CALLER passes puct_params == NULL entirely
   // (ai_strat_ismcts1.c's/ai_strat_ismctsnn.c's own call sites, and this
   // agent's own decide_and_apply() when weights aren't loaded).
@@ -60,7 +73,7 @@ typedef struct
 } PUCTParams;
 
 #define PUCT_DEFAULTS { \
-    .use_puct = true, \
+    .use_puct = false, \
     .c_puct = 1.5f, \
     .fpu_reduction = 0.2f, \
     .prior_trust = 1.0f, \

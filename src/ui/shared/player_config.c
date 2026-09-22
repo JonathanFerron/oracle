@@ -225,15 +225,21 @@ static const AIStrategyRating AI_STRATEGY_RATINGS[AI_STRATEGY_COUNT] =
   [AI_STRATEGY_ISMCTS_NN]        = { 74, true  },
   [AI_STRATEGY_CLAIRVOYANT]      = { 31, true  },
   [AI_STRATEGY_CARTOGRAPHER]     = { 65, true  },
-  // A14 (2026-09-08): no documented pre-measurement design-intent figure
-  // Measured 2026-09-08: 61.80% vs borealis [60.30%, 63.27%], n=4110 -- see
-  // doc/ai_agents.md's A14 section for the full record, including the
-  // measured 49.34% (Gate 2, parity vs A11/ismctsnn) and the dial
-  // calibration's own definitive null result (48.98% [48.20%, 49.75%],
-  // n=16000, after a full sweep+optimize pass over all four PUCT dials).
-  // Registration was never gated on these numbers (Jonathan's call,
-  // 2026-09-08) -- the search mechanism itself is the milestone.
-  [AI_STRATEGY_ISMCTS_PUCT]      = { 62, true },
+  // A14 (2026-09-08): no documented pre-measurement design-intent figure.
+  // Original shipped config (use_puct=true, real PUCT selection) measured
+  // 61.80% vs borealis [60.30%, 63.27%], n=4110 -- parity vs A11/ismctsnn
+  // head-to-head (49.34%) and a definitive dial-calibration null result
+  // (48.98% [48.20%, 49.75%], n=16000). Registration was never gated on
+  // these numbers (Jonathan's call, 2026-09-08) -- the search mechanism
+  // itself was the milestone.
+  // 2026-09-22: the use_puct=false ablation (plain UCT selection over the
+  // same net) measured a decisive 57.15% [55.63%, 58.66%] vs A11 and
+  // 74.53% [73.17%, 75.83%] vs borealis -- A14's null result decomposes
+  // into "good net, bad selection rule". Shipped as the new default
+  // (Jonathan's call, 2026-09-22); PUCT selection (use_puct=true) remains
+  // implemented and tested, just no longer default. See doc/ai_agents.md's
+  // A14 section, 2026-09-22 addendum, for the full record.
+  [AI_STRATEGY_ISMCTS_PUCT]      = { 75, true },
   // A15 (2026-09-10): measured via --stda.rating round-robin over the 11
   // cheap (non-tree-search) agents plus the borealis anchor, 40,000 games,
   // 53.5% overall win rate -- see doc/ai_agents.md's A15 section for the

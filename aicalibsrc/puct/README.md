@@ -6,13 +6,22 @@ replacing A11's own single-head value net at the leaves). See
 `doc/ai_agents.md`'s A14 section for the full design record and
 `doc/changelog.md` for the dated write-up of whatever Stage 5 measured.
 
-**No ship gate here.** Unlike every prior agent in this family, registration
-does not wait on what this tooling measures (Jonathan's call, 2026-09-08) --
-the search mechanism itself (a learned prior directing PUCT selection, the
-first agent in this project whose tree structure differs from plain UCT, not
-just its leaf evaluator) is the milestone. The numbers below are still
-measured and reported honestly in `doc/ai_agents.md`, exactly like every
-other agent's real result -- they just don't decide whether `A14` shipped.
+**As of 2026-09-22, `PUCT_DEFAULTS.use_puct=false` is the shipped
+default** -- PUCT selection measured worse than plain UCT selection over
+this agent's own net (see "The `use_puct=false` ablation" below). PUCT
+selection remains fully implemented/tested; `use_puct=true` restores it as
+an explicit override, just not the default a player gets.
+
+**No ship gate here, historically.** Unlike every prior agent in this
+family, *registration* never waited on what this tooling measures
+(Jonathan's call, 2026-09-08) -- the search mechanism itself (a learned
+prior directing PUCT selection, the first agent in this project whose tree
+structure differs from plain UCT, not just its leaf evaluator) was the
+milestone. That principle is unchanged; what changed 2026-09-22 is the
+*default config* for an already-registered agent, based on a later
+measurement this tooling made possible. The numbers are still measured and
+reported honestly in `doc/ai_agents.md`, exactly like every other agent's
+real result.
 
 One subfolder per agent under `aicalibsrc/`, mirroring `aicalibsrc/hbt/` etc.
 -- keep each agent's harness and driver self-contained rather than
@@ -207,12 +216,14 @@ exact shape (architecture, training/corpus provenance, measured results).
 See `doc/ai_agents.md`'s A14 section for the narrative once it exists;
 `doc/changelog.md` for the dated record.
 
-## The `use_puct=false` ablation (2026-09-22)
+## The `use_puct=false` ablation (2026-09-22) — now the shipped default
 
 `PUCTParams.use_puct=false` isolates the retrained two-head net from PUCT's
 selection rule (plain UCT selection, same net at the leaves) — implemented
 since `A14`'s own registration but not measured until `A16` Session 1.
-`use_puct_false.json` is the one-key candidate file:
+`use_puct_false.json` is the one-key candidate file, still useful for
+re-running or comparing against `use_puct=true` (now the non-default
+config):
 
 ```bash
 ./calibrate_puct.py validate --weights checkpoints/full_c_weights.bin \
@@ -226,5 +237,7 @@ since `A14`'s own registration but not measured until `A16` Session 1.
 Result: a decisive 57.15% [55.63%, 58.66%] head-to-head win over `A11`
 (`A14`'s own null result decomposes into "good net, bad selection rule"),
 softer on the Borealis-anchored rating (~75, tied with `A11`'s own 74 within
-CI). Full writeup: `doc/ai_agents.md`'s A14 section, 2026-09-22 addendum;
-raw output in `ablation_use_puct_run.log` / `ablation_use_puct_borealis_run.log`.
+CI). Shipped as `A14`'s new default the same day (Jonathan's call) — see
+`src/ai_strat/ai_strat_puct.h`'s `PUCT_DEFAULTS`. Full writeup:
+`doc/ai_agents.md`'s A14 section, 2026-09-22 addendum; raw output in
+`ablation_use_puct_run.log` / `ablation_use_puct_borealis_run.log`.

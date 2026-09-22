@@ -1225,8 +1225,18 @@ anti-clairvoyance rule.
 | --------------- | ---------------------------------------------------------------------------------------------------- |
 | Enum            | `AI_STRATEGY_ISMCTS_PUCT` (appended after `AI_STRATEGY_CARTOGRAPHER`)                                |
 | Shorthand       | `puct`                                                                                                |
-| Borealis rating | **62** (measured, 61.80% [60.30%, 63.27%] vs `borealis`) — registered unconditionally on this number (see below), not gated by it |
-| Source file     | `src/ai_strat/ai_strat_puct.{c,h}` + `ai_strat_puct_search.{c,h}` + `ai_strat_puct_net.{c,h}` + `ai_strat_puct_policy.{c,h}` (implemented and calibrated 2026-09-08, registered 2026-09-08/09) |
+| Borealis rating | **75** (shipped default as of 2026-09-22: `use_puct=false`, 74.53% [73.17%, 75.83%] vs `borealis`) — see the 2026-09-22 addendum below. Original shipped config (`use_puct=true`) measured 62. |
+| Source file     | `src/ai_strat/ai_strat_puct.{c,h}` + `ai_strat_puct_search.{c,h}` + `ai_strat_puct_net.{c,h}` + `ai_strat_puct_policy.{c,h}` (implemented and calibrated 2026-09-08, registered 2026-09-08/09, default flipped 2026-09-22) |
+
+**As of 2026-09-22, read this table and the header below with one
+correction in mind**: the shipped default no longer uses PUCT selection
+(`use_puct=false`) — see the 2026-09-22 addendum at the end of this section
+for why. Everything from here through that addendum describes the agent
+**as originally built and registered** (2026-09-08/09), which is still an
+accurate account of the mechanism and how it was measured then; the
+addendum explains what changed and why. PUCT selection itself remains
+fully implemented and tested, just not the default (`use_puct=true`
+restores it).
 
 **The one thing this agent does**: replaces `A10`/`A11`'s plain UCT selection
 with **PUCT** (Predictor + UCT) — a learned policy prior directs which move
@@ -1375,9 +1385,10 @@ plain UCT's while leaf evaluation still runs through this agent's own
 two-head net regardless, an ablation rung rather than a true `A10`-recovery
 path.
 
-**2026-09-22 addendum — the `use_puct=false` ablation, measured** (`A16`
-Session 1, item 1.1 — see `ideas/A16 .../about.md`): this ablation existed
-since `A14`'s own registration (previous paragraph) but had never been run.
+**2026-09-22 addendum — the `use_puct=false` ablation, measured and shipped
+as the new default** (`A16` Session 1, item 1.1 — see `ideas/A16 .../about.md`):
+this ablation existed since `A14`'s own registration (previous paragraph)
+but had never been run.
 Isolates the net from PUCT's selection rule — both sides are pure-net
 (`A11` ships `nn_value_trust=1.0f`, so `leaf_value()` short-circuits to pure
 net; `puct_leaf_value()` never rolls out either), so the comparison is
@@ -1412,13 +1423,32 @@ matchup specifically) — real but smaller here. **Read the head-to-head
 number as the finding; read the Borealis number as context, not as
 confirmation of a new roster ceiling by itself.**
 
-This result is **recorded, not shipped** — no default changed, no new
-`AIStrategyType` was registered, and `AI_STRATEGY_ISMCTS_PUCT`'s shipped
-config is unchanged (`use_puct=true` stays the default). Whether/how to act
-on it (ship `use_puct=false` as `A14`'s new default, register it as a
-distinct agent, or redirect `A16`'s own Session 2/3 design toward the value
-head per the `A16` plan's own branching) is an open decision, not resolved
-by this measurement alone.
+**Shipped as `A14`'s new default (Jonathan's call, 2026-09-22)**:
+`PUCT_DEFAULTS.use_puct` is now `false` (`src/ai_strat/ai_strat_puct.h`),
+under the unchanged flavour name "AlphaOracle Prime Plus I" and the
+unchanged `AI_STRATEGY_ISMCTS_PUCT` enum/`puct` shorthand — no new
+`AIStrategyType` was registered, this is a default-config change to the
+existing agent. `AI_STRATEGY_RATINGS[]` (`player_config.c`) now reads `75`.
+PUCT selection remains fully implemented and tested (`use_puct=true`
+restores it exactly, still exercised by `testsrc/test_puct.c`'s direct
+`puct_select_or_expand()` tests and available as an explicit config
+override) — it simply isn't what a player gets by default anymore.
+
+**One naming wrinkle worth flagging, not yet resolved**: the CLI/TUI player
+menu's technical display string is still "PUCT + Neural Network"
+(`get_strategy_display_name()`, `player_config.c`), which now overstates
+what the default configuration actually does at the tree-search level —
+selection is plain UCT by default, only leaf evaluation (the two-head net)
+differs from `A10`/`A11`. Left unchanged for now since renaming touches the
+menu string in three languages plus anything that mirrors it (shorthand,
+completion script); worth a deliberate look if it reads as misleading in
+practice.
+
+This also answers `A16`'s own Finding 1 and redirects its Session 2/3
+framing: the policy head's small measured headroom (0.128 nats, Finding 2)
+was never the reason PUCT selection under-delivered — the selection rule
+itself was. `A16` Session 2's sharpening work should be re-scoped with that
+in mind rather than assumed unchanged; see `ideas/A16 .../about.md`.
 
 ---
 

@@ -12,8 +12,10 @@
 // Both start at the plain, safe baseline -- ISMCTS_DEFAULTS (A10's own
 // 200000-node arena; A14 bypasses nn_value_trust/nn_value_use_mover_seat
 // entirely, see ai_strat_puct.h, so their value here never matters) and
-// PUCT_DEFAULTS (use_puct=true is already safe on its own -- see
-// decide_and_apply()'s own guard below). puct_load_weights() promotes
+// PUCT_DEFAULTS (use_puct=false as of 2026-09-22 -- see that field's own
+// comment; either setting is safe regardless, since decide_and_apply()'s
+// own guard below degrades to plain A10 whenever weights aren't loaded).
+// puct_load_weights() promotes
 // g_ismcts_params[] to this agent's real, smaller-arena default on
 // success, same "a successful load is what actually turns real play into
 // this agent rather than a degraded fallback" pattern A11's

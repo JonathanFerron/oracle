@@ -5,6 +5,44 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-22 — A14's default flipped to `use_puct=false`, shipping the measured win
+
+Follow-up to this same day's ablation measurement (next entry below).
+Jonathan's call: ship `use_puct=false` — plain UCT selection over `A14`'s
+own retrained two-head net — as `AI_STRATEGY_ISMCTS_PUCT`'s new default,
+keeping the existing flavour name ("AlphaOracle Prime Plus I"), enum, and
+`puct` shorthand unchanged. This is a default-config change to the
+existing agent, not a new registration.
+
+Changed: `PUCT_DEFAULTS.use_puct` (`src/ai_strat/ai_strat_puct.h`) from
+`true` to `false`, with the field's own comment and the file's top design
+comment rewritten to describe the new shipped behavior; `ai_strat_puct.c`'s
+matching comment updated; `AI_STRATEGY_RATINGS[AI_STRATEGY_ISMCTS_PUCT]`
+(`src/ui/shared/player_config.c`) updated from `{62, true}` to `{75, true}`
+with the surrounding comment rewritten. PUCT selection itself is untouched
+and remains fully implemented/tested — `use_puct=true` restores it exactly
+as an explicit override, still exercised directly by `testsrc/test_puct.c`.
+
+Verified: clean `make` (no new warnings); `make test_puct test_puct_policy
+test_combo test_rating` all green (21/33/20/41); `./bin/oracle -a -p`
+byte-identical to `bin/expectedresults.txt` (the default players never
+select `puct`, so this default-config change has no effect on the primary
+regression check); `bin/calib_puct --print-defaults` confirms the binary's
+own reported default is now `use_puct: false`, which `calibrate_puct.py`'s
+`DEFAULTS` reads dynamically at import time, so it stays in sync with no
+separate edit needed.
+
+**One naming wrinkle flagged, not resolved**: the CLI/TUI menu's technical
+display string ("PUCT + Neural Network") now overstates what the shipped
+default does at the tree-search level (selection is plain UCT by default;
+only the two-head net differs from `A10`/`A11`). Left as-is for now — see
+`doc/ai_agents.md`'s A14 section for the full note.
+
+Full writeup: `doc/ai_agents.md`'s A14 section (header table + 2026-09-22
+addendum).
+
+---
+
 ## 2026-09-22 — `AGENT_SRCS` build fix, and A14's own `use_puct=false` ablation finally measured
 
 Two pieces of `A16` (self-play bootstrapping scaffolding) Session 1, resumed
