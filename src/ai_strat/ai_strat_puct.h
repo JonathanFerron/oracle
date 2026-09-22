@@ -67,9 +67,24 @@ typedef struct
   // bearing; true reuses ISMCTSParams' own threshold_widening_k/_alpha/
   // search_expand_threshold fields
 
-  // -- Self-play exploration (round-2 corpus generation only) --
-  float root_dirichlet_alpha; // 0.0 for real play; noise mixed into the
-  float root_noise_frac; // root's own priors during self-play generation
+  // -- Self-play exploration (declared, NOT wired -- read by nothing) --
+  // Originally intended to mix Dirichlet noise into the root's own priors
+  // during self-play generation (AlphaZero-style), parsed/pinned by
+  // calib_puct.c/calibrate_puct.py but never consumed by
+  // compose_node_priors() or anywhere else in src/ (confirmed by grep,
+  // 2026-09-22, A16 Session 2 item 2.2 -- see doc/ai_agents.md's A14
+  // section, 2026-09-22 addendum, for why: compose_node_priors() lives
+  // inside puct_select_or_expand(), which the shipped default
+  // (use_puct=false) never calls, so wiring this would only matter for an
+  // explicit use_puct=true configuration, not for anything that ships).
+  // Also, root widening already structurally prevents the blind-spot
+  // failure mode this noise exists to fix, at least at the shipped
+  // limit_iterations=4000 (widening_cap = ceil(2*sqrt(4000)) = 127,
+  // comfortably above Oracle's ~93 typical legal moves -- every legal root
+  // move gets expanded at least once under plain UCT, by construction).
+  float root_dirichlet_alpha; // meaningful only if this ever gets wired
+  // AND use_puct=true is explicitly set -- currently inert either way
+  float root_noise_frac; // same caveat as root_dirichlet_alpha above
 } PUCTParams;
 
 #define PUCT_DEFAULTS { \

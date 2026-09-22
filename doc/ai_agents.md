@@ -1287,6 +1287,24 @@ bytes, 193,115 floats), verified 4.2e-7 max diff (value head) / 6.0e-7 (policy
 head) against the live PyTorch model — both tighter than `A11`'s own 2.4e-7
 precedent.
 
+**2026-09-22 correction and follow-up** (`A16` Session 2 item 2.0): the raw
+comparison above (0.148-0.165 vs 0.1705) is two different corpora and two
+different teachers, not an ablation — not strictly comparable, since
+achievable MSE depends on how predictable the specific games in each
+corpus are. The apples-to-apples version (reduction vs. each net's own
+baseline-predict-mean MSE) is real but far less dramatic: `A11`
+0.24508→0.17051 = 30.4% reduction; `A14` 0.23922→0.15574 = 34.9% — a 4.5pp
+gap, still confounded by teacher/corpus. The actual question — does the
+policy loss itself help the value head — was properly ablated this same
+date: `--policy-weight 1.0` vs `0.0`, identical seed, on the existing
+corpus (a genuinely paired comparison). Result: best val_v_mse 0.156399
+(`pw=1.0`) vs 0.157840 (`pw=0.0`) — a small (~0.6pp of reduction-vs-baseline)
+but real, consistent-across-all-three-matchups advantage for keeping the
+policy loss, despite the policy loss's own value barely moving across 250
+epochs (2.2609→2.2399→2.2411) — a flat loss curve turned out not to mean
+zero regularization effect on the shared trunk. See `doc/changelog.md`'s
+2026-09-22 entry for the full ablation numbers.
+
 **Real per-decision cost: mean 1.7s, up to 4.6s at the shipped 4000
 iterations** — far more than the plan's own "~8% over `A11`" estimate.
 Root-caused, not guessed: PUCT's argmax-based selection has no `A10`/`A11`-
@@ -1298,6 +1316,17 @@ fix this (confirmed by direct A/B timing) and has its own flaw (truncates by
 enumeration order, not by prior). Jonathan confirmed 1.7s/decision is an
 acceptable interactive wait for this first shipped version; pthread-based
 root parallelization is noted as a real future lever, not implemented.
+
+**2026-09-22 update — this cost figure describes the retired `use_puct=true`
+config specifically, not what ships now.** Under the shipped default
+(`use_puct=false`, plain UCT selection — see this section's 2026-09-22
+addendum below), the deep-descent behavior this paragraph root-causes
+doesn't occur, since plain UCT retains the "untried move always wins"
+guarantee. Measured directly: 536ms mean at the project's default `-Og`
+build, **448ms mean at the `-O2` `release_tools` build** (`A16` Session 2
+item 0, `bin/calib_puct_timing`) — essentially matching `A11`'s own 439ms.
+PUCT selection itself is unaffected by this and remains at ~1.7s when
+explicitly enabled via `use_puct=true`.
 
 **Measured, and reported honestly — a genuine null result on the strength
 question, same shape as `A9`'s `reply_trust` and `A13`'s `hplus_trust`.**

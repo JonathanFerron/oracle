@@ -69,14 +69,24 @@ flat `prior_trust` sweep on round-1 data doesn't actually rule out round 2 payin
 (and/or a curated opponent pool) at its shipped config, generate a new corpus from
 *that* self-play (not `A11`'s), retrain the two-head net on it, re-measure. The
 existing `aicalibsrc/puct/` tooling (`gen_policy_corpus.c`, `run_selfplay.sh`,
-`train_puct_net.py`, `export_puct_weights.py`) should need only the teacher swapped
-from `ismctsnn` to `puct` -- most of Stage 2/3's infrastructure is reusable as-is.
+`train_puct_net.py`, `export_puct_weights.py`) needed a teacher *argument* (done
+2026-09-22, `A16` Session 2 item 2 -- previously hardcoded to `ismctsnn`), and the
+teacher is specifically `puct` running its own module defaults (`PUCT_DEFAULTS`,
+`use_puct=false` as of that date -- i.e. today's real shipped `A14` config), not a
+forced PUCT-selection variant -- "swap `ismctsnn` for `puct`" undersold what that
+distinction actually requires. Most of Stage 2/3's infrastructure was otherwise
+reusable as-is, confirmed by the actual generalization work.
 
 **Open questions**: how many bootstrap rounds are worth running before diminishing
 returns set in (unknown -- this project has no data on this yet, since round 1 is all
-that's ever been tried); whether to add real exploration noise
-(`root_dirichlet_alpha`/`root_noise_frac`, already plumbed but unused) during
-self-play generation to avoid the new corpus just reinforcing round 1's own blind
+that's ever been tried); real exploration noise
+(`root_dirichlet_alpha`/`root_noise_frac`) turned out to be declared but read by
+nothing (confirmed by grep, 2026-09-22) -- not needed for round 1 regardless: plain
+UCT's own root widening already structurally prevents the blind-spot failure mode
+noise exists to fix (widening_cap=127 at 4000 visits, comfortably above ~93 typical
+legal moves, so every legal root move gets expanded at least once by construction).
+A genuine wiring-and-diversity probe (`A16` Session 2 item 2.4) is the way to check
+whether the new corpus is reinforcing round 1's own blind
 spots; whether round 2's corpus should still include the curated `vs_a7`/`vs_a3`
 opponents or move toward pure self-play now that there's a real policy prior worth
 bootstrapping.
