@@ -49,7 +49,7 @@ design-intent guess made before the agent existed. Roster order matches
 | A11 | IS-MCTS + NN | AlphaOracle Prime (all languages) | `ismctsnn` | 74 | 97 |
 | A12 | Clairvoyant *(`A8`'s sibling, off-ladder)* | The Clairvoyant / Le Voyant / El Clarividente | `clairvoy` | 31 | — |
 | A13 | Cartographer *(registered for its character, not its strength — see below)* | The Cartographer / Le Cartographe / El Cartógrafo | `carto` | 65 | 68 |
-| A14 | PUCT + Neural Network *(registered for its mechanism, not its strength — see below)* | AlphaOracle Prime Plus I (all languages) | `puct` | 62 | — |
+| A14 | PUCT + Neural Network *(registered for its mechanism, not its strength — see below)* | AlphaOracle Prime Plus I (all languages) | `puct` | 75 | — |
 | A15 | Risk Threshold *(a transcription of Jonathan's own play, not a rating-target design — see below)* | The Daredevil / Le Casse-Cou / El Temerario | `daredevil` | 48 | — |
 | — | Naive Greedy *(gap-filler between Random and A1 — not part of the A1-A15 ladder, see below)* | Junior (identical in EN / FR / ES) | `junior` | 6 | — |
 | — | Corrected Ledger *(gap-2.a filler, between A4 and A15/Borealis — see below)* | The Auditor / L'Auditeur / El Auditor | `auditor` | 39 | — |

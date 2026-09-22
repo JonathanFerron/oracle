@@ -79,10 +79,14 @@ See `doc/oracle_roadmap.md`'s "Phase: AI Development" for the full agent ladder 
 See `doc/ai_agents.md`'s A11 section for the full detail behind every item below — this checklist is the short/actionable form of that.
 
 - [x] **Item 4**: Stage 4 policy head + PUCT — done, registered 2026-09-08/09 as
-  `A14` "AlphaOracle Prime Plus I", rating 62 (registered unconditionally on this
-  number, not gated by it — see `doc/ai_agents.md`'s A14 section and
-  `doc/changelog.md`'s 2026-09-09 entry for the full record, including a genuine
-  null result on the strength question after a full dial-calibration effort).
+  `A14` "AlphaOracle Prime Plus I" (registered unconditionally on the number, not
+  gated by it — see `doc/ai_agents.md`'s A14 section and `doc/changelog.md`'s
+  2026-09-09 entry for the full record, including a genuine null result on the
+  strength question after a full dial-calibration effort). Rating 62 as originally
+  shipped (`use_puct=true`, real PUCT selection); **2026-09-22: `use_puct=false`
+  (plain UCT selection over the same net) measured a decisive win and shipped as
+  the new default, rating ~75** — see `doc/ai_agents.md`'s A14 section, 2026-09-22
+  addendum, and `doc/changelog.md`'s same-date entries.
 - [x] **Naming decided**: flavor name stays "AlphaOracle Prime" for this whole
   UCT+value-net lineage; a hypothetical future Stage 4 (PUCT+policy) agent would be
   "AlphaOracle Prime Plus I" (revised 2026-09-04 from an earlier "Prime II"
