@@ -213,3 +213,54 @@ demonstrate within an interactive latency budget. Candidates 3 and 4 only after 
 maybe 2) are tried and their results are in -- both are more speculative and, in
 Candidate 3's case, structurally closer to the failure pattern this whole ranking is
 built to avoid repeating.
+
+## Session 4 plan (not yet started) -- round 2 of self-play bootstrapping
+
+Written 2026-09-23 at the close of `A16` Session 3, for whoever picks this back up.
+Jonathan's attention is shifting to SDL3 GUI work for now (`A14` at rating ~76 is
+"quite strong" as shipped) -- this section is the durable starting point, not an
+active task.
+
+**Recipe**: same pipeline Session 3 already used end to end, no new tooling needed --
+`run_selfplay.sh` (teacher = `puct`, now pointing at `plus2_weights.bin` by default) ->
+`train_puct_net.py` -> `export_puct_weights.py` -> `calibrate_puct.py validate
+--weights-b` (the delta+CI option added this session). Teacher is the now-promoted
+Plus II net, not Plus I -- true second-order self-play.
+
+**Two things Session 3 resolved that change how round 2 should be run, versus what
+was still open when this section was first drafted**:
+
+1. **Corpus composition: keep it mixed, don't go pure self-play.** This was an
+   explicit open question (see Candidate 1's write-up above). Session 3 answered it:
+   the `round1`-only net (pure self-play, no original `A11`-taught data) tied the
+   round-0 baseline even after a seed-block extension; only the *pooled* corpus
+   (`full,round1`) won. So round 2's training label should be `full,round1,round2`
+   (compounding all three corpora), not a `round2`-only variant -- test the pooled
+   composition first, don't re-litigate the pure-self-play question a second time
+   without a new reason to.
+2. **Don't re-test PUCT selection.** Session 3's same-day follow-up confirmed
+   (directly, not just by inference from the original round-0 measurement) that a
+   materially stronger net does not rescue PUCT selection -- delta -7.71pp,
+   `use_puct=true` vs the shipped default, same net. This question is closed for
+   this game; round 2 should stay scoped to the value/policy net under plain UCT.
+
+**Gate**: identical shape to Session 3's -- delta vs the Plus II baseline (re-measure
+Plus II fresh, don't reuse Session 3's own numbers), pre-registered bar (95% CI
+excludes 0, point estimate >= +2.0pp), one pre-registered seed-block extension if it
+ties close. No net-slot fix needed: `A11` sits at ~57-59% as a discriminator against
+`A14`, nowhere near saturating (~70%+ would be the trigger).
+
+**Cost**: same shape as Session 3 -- ~12h generation (own terminal, this session's own
+precedent for handoff) + a few hours training/gating. A full session, not foldable
+into a shorter one.
+
+**Still genuinely open**: whether round 2 compounds the round-1 gain, plateaus, or
+does something else entirely -- this project has zero data on multi-round diminishing
+returns yet. That's the actual question round 2 answers; don't assume the answer
+going in.
+
+**Lower priority, not next in line**: Candidate 2 (pthread root parallelization) is
+still on the table as infrastructure but lost its original "Candidate 1 prerequisite"
+urgency once `use_puct=false` shipped at ~536ms/decision (see Candidate 2's own
+2026-09-22 note above). Candidates 3 and 4 remain explicitly scoped for after
+Candidate 1 is exhausted or found not worth pursuing further.
