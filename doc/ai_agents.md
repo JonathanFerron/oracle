@@ -1565,6 +1565,28 @@ session (no net-slot fix needed yet: `A11` isn't close to saturating as a
 discriminator at ~57-59%). See `doc/changelog.md`'s 2026-09-23 entry and
 `ideas/A16 .../about.md` for the full record.
 
+**2026-09-23 follow-up — does a stronger net rescue PUCT selection? No.**
+Re-ran the original `use_puct` ablation (Session 1's own methodology) with
+`plus2_weights.bin` in place of `plus1`'s, both arms vs `A11`, n=4110:
+
+| selection rule | win rate vs `A11` |
+|---|---|
+| plain UCT (shipped default) | 59.25% [57.74%, 60.74%] |
+| PUCT (`use_puct=true`) | 51.53% [50.00%, 53.06%] |
+
+Delta -7.71pp, same net both arms. **A materially stronger net does not
+rescue PUCT selection** — it still costs real strength relative to plain
+UCT over the identical net, at almost exactly the same margin qualitative
+pattern Session 1 first found. This confirms the mechanism-level
+diagnosis directly: PUCT's argmax-based selection has no `A10`/`A11`-style
+"untried move always wins" guarantee, so it re-descends already-explored
+branches at Oracle's ~93-move branching factor regardless of how good the
+prior is — a structural cost of the selection formula itself, not a
+symptom of an undertrained prior that a better net was ever going to fix.
+Closes this specific open question; PUCT selection remains implemented
+and available (`use_puct=true`) but there is now direct evidence, not just
+inference from a single net, that it isn't the way forward for this game.
+
 ---
 
 ## A15 — Risk Threshold · "The Daredevil" / "Le Casse-Cou" / "El Temerario"

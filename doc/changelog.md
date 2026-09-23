@@ -95,6 +95,17 @@ round 2 either: `A11` isn't remotely saturating as a discriminator at
 ~57-59%. See `doc/ai_agents.md`'s A14 section (2026-09-23 addendum) and
 `ideas/A16 .../about.md` for the full record.
 
+**Same-day follow-up: does a stronger net rescue PUCT selection? No.**
+Re-ran Session 1's own `use_puct` ablation with `plus2_weights.bin`: plain
+UCT (shipped default) 59.25% [57.74%,60.74%] vs `A11`, `use_puct=true`
+(PUCT selection, same net) 51.53% [50.00%,53.06%] -- delta -7.71pp, same
+qualitative pattern as Session 1's original finding on the round-0 net.
+Confirms PUCT's selection formula itself (not prior quality) is the
+bottleneck: it lacks `A10`/`A11`-style "untried move always wins", so it
+re-descends explored branches at Oracle's ~93-move branching factor
+regardless of how good the net is. Closes the "would a better net help
+PUCT" question directly rather than by inference.
+
 ---
 
 ## 2026-09-22 — A16 Session 2 complete: build-flags fix, teacher generalized, probe clean, no blockers for round 1
