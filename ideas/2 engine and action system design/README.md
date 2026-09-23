@@ -1,5 +1,9 @@
 # Game Engine Refactoring — Scope
 
+> **2026-09-22 — read `ideas/9 gui/gui_architecture_synthesis.md` first.** It supersedes
+> this file's engine/GUI-integration, `Action`, and `VisibleGameState` material where they
+> disagree, and its §12 table lists exactly which parts of this file are still kept.
+
 **Purpose**: design notes for the pollable game-engine state machine
 (`core/game_engine.c`) that would let the same core engine drive blocking modes
 (CLI/TUI/server) and event-driven modes (GUI) alike, plus the `Action*` object system

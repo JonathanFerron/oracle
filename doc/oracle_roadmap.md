@@ -82,7 +82,11 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
    (`assets/ismctsnn/`) -- that folder is deliberately category-scoped per subfolder
    (`assets/<category>/...`), not a flat dump, specifically so this GUI work has a
    ready-made home (e.g. `assets/champions/`) rather than needing to invent the
-   convention from scratch.
+   convention from scratch. **Architecture design (2026-09-22)**: see
+   `ideas/9 gui/gui_architecture_synthesis.md` -- library choice (SDL3, Linux +
+   Android), the `VisibleGameState`/`PlayerDecision`/event/step-driver/session-thread
+   layering that keeps the GUI responsive and client/server-ready, and a step-by-step
+   implementation roadmap. Start there.
 4. **`A14` PUCT + policy head** ("AlphaOracle Prime Plus I") -- ✅ done and
    **registered 2026-09-08/09** (see `doc/changelog.md`'s 2026-09-09 entry and
    `doc/ai_agents.md`'s A14 section). PUCT (Predictor + UCT) selection
@@ -314,7 +318,9 @@ the engine state-machine/action-system rework in
 
 SDL3 desktop GUI (`ideas/9 gui/oracle_sdl3_gui_plan.md`): card rendering, font/texture
 management, responsive layout, input handling; asset pipeline (champion artwork, frames,
-species/order icons); mobile ports (iOS/Android) as a long-term stretch goal.
+species/order icons); Android port as a later milestone (iOS is not a goal). Engine/GUI
+architecture and implementation order: `ideas/9 gui/gui_architecture_synthesis.md`
+(2026-09-22), which supersedes the older plan where they disagree.
 
 ---
 

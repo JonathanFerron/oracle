@@ -1,5 +1,9 @@
 # Supplementary Game-Loop & Client API Notes
 
+> **2026-09-22 — read `ideas/9 gui/gui_architecture_synthesis.md` first.** It supersedes
+> this file's engine/GUI-integration, `Action`, and `VisibleGameState` material where they
+> disagree, and its §12 table lists exactly which parts of this file are still kept.
+
 **Status**: secondary to `Client Server Architecture Ideas 1.md` and `Client Server
 Architecture Ideas 2 (consolidated).md` in this folder — those two are the
 authoritative, detailed design (protocol, server main loop, client network loop, action

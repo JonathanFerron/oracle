@@ -1,5 +1,9 @@
 # Oracle: The Champions of Arcadia
 
+> **2026-09-22 — read `ideas/9 gui/gui_architecture_synthesis.md` first.** It supersedes
+> this file's engine/GUI-integration, `Action`, and `VisibleGameState` material where they
+> disagree, and its §12 table lists exactly which parts of this file are still kept.
+
 ## SDL3 GUI Development Plan
 
 **Target Platforms**: Windows (MSYS2), Linux (Arch), iOS (tablets), Android (tablets)  

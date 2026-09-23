@@ -1,5 +1,9 @@
 # GUI Main-Loop / Engine Integration Notes
 
+> **2026-09-22 — read `ideas/9 gui/gui_architecture_synthesis.md` first.** It supersedes
+> this file's engine/GUI-integration, `Action`, and `VisibleGameState` material where they
+> disagree, and its §12 table lists exactly which parts of this file are still kept.
+
 **Scope**: `oracle_sdl3_gui_plan.md` (this folder) covers SDL3 setup, card rendering,
 fonts/assets, input-key-mapping, and platform specifics in depth, but doesn't address a
 different question: **how does an event-driven GUI main loop actually poll and drive
