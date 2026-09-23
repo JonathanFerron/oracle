@@ -101,6 +101,36 @@ move toward pure self-play remains open, deferred to whenever a round 2 is
 actually planned. See `doc/changelog.md`'s 2026-09-22 A16 Session 2 entry for
 the full record.
 
+**Round 1 executed and CONFIRMED, 2026-09-23 (`A16` Session 3) -- this
+project's first validated self-bootstrap win.** 838,157 records generated
+over 12h with `A14` itself (its own shipped `use_puct=false` default) as
+teacher, pool matched to the existing corpus's size/shape. Two net variants
+gated against the round-0 baseline (re-measured fresh, not reused) vs
+`A11`, on a pre-registered delta bar (95% CI excludes 0, point estimate
+>= +2.0pp -- not a vacuous absolute threshold, since round-0 already clears
+50%): the pure `round1`-only net **tied** even after one pre-registered
+seed-block extension (n=8220: delta +0.40pp [-1.11,+1.91]pp, not promoted),
+but the **pooled `full,round1` net won decisively** after one further
+extension approved given how close the first miss was (n=8220: delta
++2.25pp, 95% CI [+0.74pp, +3.76pp]) -- 56.63% round-0 vs 58.88% new net,
+both vs `A11`. **Promoted in place**, documented as "AlphaOracle Prime Plus
+II" (a naming/changelog label only, same `AI_STRATEGY_ISMCTS_PUCT` code
+path -- `assets/puct/plus2_weights.bin` alongside the untouched
+`plus1_weights.bin`, `PUCT_DEFAULT_WEIGHTS_PATH` repointed). See
+`doc/changelog.md`'s 2026-09-23 entry and `doc/ai_agents.md`'s A14 section
+for the full record.
+
+This is real, if still single-round, evidence for the meta-pattern this
+whole ranking is built on: "changing what gets learned" is now 3-for-3
+(`A5`'s rollout-policy fix, `A10`->`A11`'s trained value net, and this),
+against "adding formula sophistication" staying 0-for-4. It does **not**
+resolve the open question above about round 2's corpus composition, nor
+does it show pure self-play alone (without the original corpus mixed in)
+is sufficient -- the `round1`-only variant's own tie is a real, specific
+data point suggesting the mix matters, not just the presence of self-play
+data. Round 2 itself remains a deliberately separate future session's
+decision, not started here.
+
 ## Candidate 2 (infrastructure, not necessarily its own agent) -- pthread-based root parallelization
 
 Flagged repeatedly and never implemented (see `[[project_a10_a11_multicore_rollouts]]`

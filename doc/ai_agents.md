@@ -1219,14 +1219,14 @@ anti-clairvoyance rule.
 
 ---
 
-## A14 — PUCT + Neural Network · "AlphaOracle Prime Plus I" (identical in EN / FR / ES)
+## A14 — PUCT + Neural Network · "AlphaOracle Prime Plus I" / "Plus II" (identical in EN / FR / ES)
 
 |                 |                                                                                                    |
 | --------------- | ---------------------------------------------------------------------------------------------------- |
 | Enum            | `AI_STRATEGY_ISMCTS_PUCT` (appended after `AI_STRATEGY_CARTOGRAPHER`)                                |
 | Shorthand       | `puct`                                                                                                |
-| Borealis rating | **75** (shipped default as of 2026-09-22: `use_puct=false`, 74.53% [73.17%, 75.83%] vs `borealis`) — see the 2026-09-22 addendum below. Original shipped config (`use_puct=true`) measured 62. |
-| Source file     | `src/ai_strat/ai_strat_puct.{c,h}` + `ai_strat_puct_search.{c,h}` + `ai_strat_puct_net.{c,h}` + `ai_strat_puct_policy.{c,h}` (implemented and calibrated 2026-09-08, registered 2026-09-08/09, default flipped 2026-09-22) |
+| Borealis rating | **~76** (shipped weights as of 2026-09-23: "AlphaOracle Prime Plus II", `assets/puct/plus2_weights.bin`, 75.64% [74.31%, 76.93%] vs `borealis`) — see the 2026-09-23 addendum below. Round-0 net ("Plus I", `use_puct=false`) measured ~75; original `use_puct=true` config measured 62. |
+| Source file     | `src/ai_strat/ai_strat_puct.{c,h}` + `ai_strat_puct_search.{c,h}` + `ai_strat_puct_net.{c,h}` + `ai_strat_puct_policy.{c,h}` (implemented and calibrated 2026-09-08, registered 2026-09-08/09, default flipped 2026-09-22, self-play-retrained weights promoted 2026-09-23) |
 
 **As of 2026-09-22, read this table and the header below with one
 correction in mind**: the shipped default no longer uses PUCT selection
@@ -1500,6 +1500,70 @@ on paper. Label sanity also checked out: `probe1`'s per-matchup outcomes
 consistent with the agents' own known ratings. No blockers found for a
 real round-1 generation run. See `doc/changelog.md`'s 2026-09-22 entries
 and `ideas/A16 .../about.md` for the full record.
+
+**2026-09-23 addendum — round 1 of self-play bootstrapping, executed and
+confirmed (`A16` Session 3): this project's first-ever validated
+self-bootstrap result.** 838,157 records / 5.28GB generated over 12h (15
+workers, `mirror`/`vs_a7`/`vs_a3` pool, seeds 28-42), `A14` itself (running
+its own shipped `use_puct=false` default) as teacher rather than `A11` —
+zero diversity collapse, matching the 2026-09-22 probe's own finding.
+Two net variants were trained and gated against the round-0 baseline
+(re-measured fresh on today's `-O2` binary, not reused from an earlier
+session) vs `A11`, using a pre-registered **delta** bar rather than a
+vacuous absolute one (the round-0 net already clears 50%): 95% CI on
+Δ excludes 0 and the point estimate is ≥ +2.0pp.
+
+- **`round1`-only** (trained on the new self-play data alone, `label
+  round1`): tied the baseline at n=4110 (Δ = -0.51pp [-2.65,+1.63]pp); one
+  pre-registered seed-block extension pooled to n=8220 and still tied
+  (Δ = +0.40pp [-1.11,+1.91]pp). **Not promoted** — the plan's own Tie
+  branch.
+- **`full,round1` pooled** (`label full,round1` — both the original
+  `A11`-taught corpus and the new self-play data): also tied at n=4110
+  (Δ = +2.09pp [-0.04,+4.22]pp, the closest possible miss on the CI-excludes-
+  zero criterion alone). One further disjoint-seed extension (Jonathan's
+  call, given how close the miss was) pooled to **n=8220 and passed
+  decisively: Δ = +2.25pp, 95% CI [+0.74pp, +3.76pp]** — round-0 56.63%
+  [55.56%,57.70%] vs the new net's 58.88% [57.81%,59.94%], both vs `A11`.
+  **Promoted.**
+
+**Shipped in place (Jonathan's call, 2026-09-23)**: kept under the existing
+`A14` slot/`AI_STRATEGY_ISMCTS_PUCT` — this project mints new agent numbers
+for new *mechanisms*, not retrained weights of the same one (Session 1's own
+`use_puct=false` default flip is the same-day precedent), and the pooled
+net is the identical code path, only retrained. Named **"AlphaOracle Prime
+Plus II"** as a documentation/changelog label only, not a new
+`AIStrategyType` or roster entry — `src/ai_strat/ai_strat_puct.h`'s
+`PUCT_DEFAULT_WEIGHTS_PATH` now points at `assets/puct/plus2_weights.bin`
+instead of `plus1_weights.bin` (Jonathan's explicit request: keep
+`plus1_weights.bin`/`.json` alongside, untouched, so reverting to Plus I is
+a one-line `#define` edit, not a git operation). `./bin/oracle -a -p`
+re-confirmed byte-identical to `bin/expectedresults.txt` after the swap
+(that check's default players never reference this strategy). Updated
+Borealis-context measurement: **75.64% [74.31%, 76.93%]**, n=4110 →
+estimated rating **~76** — a modest further gain over round-0's own
+74.53%→~75, in the same direction as (though smaller than) the +2.25pp
+head-to-head gain vs `A11`.
+
+**Mechanically new for this session**: `aicalibsrc/puct/calibrate_puct.py`'s
+`validate` gained a `--weights-b` option — runs the identical job set
+against a second weights file and reports Δ with its own CI directly
+(`cmd_validate_weights_delta()`), rather than hand-recovering integer win
+counts from four-decimal printed rates for a manual delta. Reusable for any
+future round's gate.
+
+**What this confirms and what it doesn't**: this is real evidence for
+`ideas/A16 .../about.md`'s Candidate 1 thesis — "changing what gets
+learned" (here: adding genuine self-play data alongside the original
+teacher-imitation corpus) is a different, so far more productive, category
+than "adding formula sophistication to an already-good agent" (`A9`, `A13`,
+`A14`'s own PUCT dials — all null). It does **not** yet show pure self-play
+alone (the `round1`-only tie) beats the *mixed* corpus, nor does it say
+anything about round 2 — diminishing-returns behavior across multiple
+bootstrap rounds remains unmeasured, deliberately deferred to a future
+session (no net-slot fix needed yet: `A11` isn't close to saturating as a
+discriminator at ~57-59%). See `doc/changelog.md`'s 2026-09-23 entry and
+`ideas/A16 .../about.md` for the full record.
 
 ---
 

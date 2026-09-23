@@ -605,23 +605,76 @@ def cmd_selfplay(args):
 # validate: one candidate vs the shipped defaults, vs a chosen opponent
 # ---------------------------------------------------------------------------
 
+def _vs_opponent(weights, params, opponent, numsim, seeds, workers):
+    """One arm: candidate `params` (with a given weights file) vs the shipped
+    defaults, playing `opponent`, both seats. Shared by cmd_validate's
+    single-weights path and its --weights-b delta path."""
+    jobs = []
+    for seed in seeds:
+        jobs.append(dict(weights=weights, numsim=numsim, seed=seed,
+                         agent_a="puct", agent_b=opponent, params_a=params,
+                         params_b=dict(DEFAULTS)))
+        jobs.append(dict(weights=weights, numsim=numsim, seed=seed,
+                         agent_a=opponent, agent_b="puct", params_a=dict(DEFAULTS),
+                         params_b=params))
+    df = run_many(jobs, max_workers=workers)
+    wins, n = puct_win_rate(df)
+    lo, hi = wilson_ci(wins, n)
+    return wins, n, (wins / n if n else 0.0), lo, hi
+
+
+def cmd_validate_weights_delta(args, candidate, seeds):
+    """--weights-b path: same candidate params, two DIFFERENT weights files
+    (e.g. round-0 vs round-1 self-play nets), vs a fixed --opponent. Reports
+    Delta = arm_B - arm_A with its own CI, treating the two arms as
+    independent binomial proportions (not a paired/within-game comparison --
+    bin/calib_puct's single net-slot means arm A and arm B are separate
+    processes, never a direct puct-vs-puct match). See A16 Session 3 plan's
+    "the promotion bar needs to be a delta" section."""
+    print(f"Validating two weights files vs {args.opponent} "
+         f"({len(seeds) * 2} matches per arm)...", file=sys.stderr)
+    print(f"  arm A (--weights):   {args.weights}", file=sys.stderr)
+    print(f"  arm B (--weights-b): {args.weights_b}", file=sys.stderr)
+    a_wins, a_n, a_rate, a_lo, a_hi = _vs_opponent(
+        args.weights, candidate, args.opponent, args.numsim, seeds, args.workers)
+    b_wins, b_n, b_rate, b_lo, b_hi = _vs_opponent(
+        args.weights_b, candidate, args.opponent, args.numsim, seeds, args.workers)
+
+    delta = b_rate - a_rate
+    se_a = math.sqrt(a_rate * (1 - a_rate) / a_n) if a_n else float("nan")
+    se_b = math.sqrt(b_rate * (1 - b_rate) / b_n) if b_n else float("nan")
+    se_delta = math.sqrt(se_a**2 + se_b**2)
+    z = 1.96
+    d_lo, d_hi = delta - z * se_delta, delta + z * se_delta
+
+    print(f"\nWin rate vs {args.opponent} ({a_n} games arm A, {b_n} games arm B):")
+    print(f"  arm A: {a_rate:.4f} [{a_lo:.4f}, {a_hi:.4f}]  ({a_wins}/{a_n})")
+    print(f"  arm B: {b_rate:.4f} [{b_lo:.4f}, {b_hi:.4f}]  ({b_wins}/{b_n})")
+    print(f"  delta (B - A): {delta * 100:+.2f}pp   95% CI [{d_lo * 100:+.2f}, "
+         f"{d_hi * 100:+.2f}]pp   SE={se_delta * 100:.2f}pp")
+
+    excludes_zero = d_lo > 0 or d_hi < 0
+    passes = excludes_zero and delta > 0 and delta * 100 >= 2.0
+    print(f"\nPromotion bar (A16 Session 3 plan): 95% CI on delta excludes 0 AND "
+         f"point estimate >= +2.0pp: {'PASS' if passes else 'FAIL'}")
+    if not excludes_zero:
+        print("  -> CI straddles 0: per the plan, one pre-registered extension "
+             "(disjoint seeds, pooled n) is allowed before calling this a tie.")
+    elif delta < 0:
+        print("  -> delta significantly NEGATIVE: per the plan, this is the most "
+             "informative outcome, not just a fail -- see the Loss branch.")
+
+
 def cmd_validate(args):
     candidate = load_candidate(args.candidate)
     seeds = replicate_seeds(args.base_seed, args.replicates)
 
+    if args.weights_b:
+        cmd_validate_weights_delta(args, candidate, seeds)
+        return
+
     def vs_opponent(params):
-        jobs = []
-        for seed in seeds:
-            jobs.append(dict(weights=args.weights, numsim=args.numsim, seed=seed,
-                             agent_a="puct", agent_b=args.opponent, params_a=params,
-                             params_b=dict(DEFAULTS)))
-            jobs.append(dict(weights=args.weights, numsim=args.numsim, seed=seed,
-                             agent_a=args.opponent, agent_b="puct", params_a=dict(DEFAULTS),
-                             params_b=params))
-        df = run_many(jobs, max_workers=args.workers)
-        wins, n = puct_win_rate(df)
-        lo, hi = wilson_ci(wins, n)
-        return wins, n, (wins / n if n else 0.0), lo, hi
+        return _vs_opponent(args.weights, params, args.opponent, args.numsim, seeds, args.workers)
 
     print(f"Validating vs {args.opponent} ({len(seeds) * 2} matches per config)...",
          file=sys.stderr)
@@ -701,6 +754,11 @@ def main():
 
     p_val = sub.add_parser("validate", help="one candidate vs the shipped defaults")
     p_val.add_argument("--weights", required=True)
+    p_val.add_argument("--weights-b", default=None,
+                       help="if given, ignores the defaults-vs-candidate comparison and "
+                            "instead reports Delta = (--weights-b) - (--weights), same "
+                            "--candidate params on both, vs --opponent (e.g. round-1 net "
+                            "vs round-0 net, both playing ismctsnn)")
     p_val.add_argument("--candidate", required=True, help="'defaults' or a JSON param file")
     p_val.add_argument("--opponent", default="ismctsnn",
                        help="'ismctsnn' = Gate 2 (real bar); 'borealis' = Gate 1 (context)")

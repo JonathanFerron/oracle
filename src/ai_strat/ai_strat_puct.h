@@ -100,7 +100,18 @@ typedef struct
 
 // Repo-root-relative, same assumption ISMCTSNN_DEFAULT_WEIGHTS_PATH already
 // relies on. Not yet wired into main.c/cmdline.c -- Stage 7's registration.
-#define PUCT_DEFAULT_WEIGHTS_PATH "assets/puct/plus1_weights.bin"
+//
+// Points at plus2_weights.bin as of 2026-09-23 (A16 Session 3): the same
+// AI_STRATEGY_ISMCTS_PUCT code/mechanism, retrained on a corpus that adds
+// A14's own round-1 self-play data (label "full,round1") to the original
+// A11-taught "full" corpus -- confirmed a real win over the round-0 net
+// vs A11 (delta +2.25pp [+0.74,+3.76]pp, n=8220/arm, CI excludes 0). Named
+// "AlphaOracle Prime Plus II" in docs/changelog only -- this project mints
+// new agent numbers for new mechanisms, not retrained weights of the same
+// one (see doc/ai_agents.md's A14 section), so this stays the A14 slot.
+// plus1_weights.bin/.json are kept alongside, untouched, specifically so
+// reverting to Plus I is a one-line edit of this path, not a git operation.
+#define PUCT_DEFAULT_WEIGHTS_PATH "assets/puct/plus2_weights.bin"
 
 // Loads the trained two-head net's weights (ai_strat_puct_net.h's file
 // format). Returns false on failure (missing file, size mismatch); any

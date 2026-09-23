@@ -134,7 +134,7 @@ static const char* strategy_menu_label(AIStrategyType type, ui_language_t lang)
       return LOCALIZED_STRING_L(lang, "Clairvoyant", "Clairvoyant", "Clarividente");
     case AI_STRATEGY_CARTOGRAPHER: // A13 Cartographer
       return LOCALIZED_STRING_L(lang, "Cartographer", "Cartographe", "Cartografo");
-    case AI_STRATEGY_ISMCTS_PUCT: // A14 AlphaOracle Prime Plus I
+    case AI_STRATEGY_ISMCTS_PUCT: // A14 AlphaOracle Prime Plus I/II (weights promoted 2026-09-23, same slot)
       return LOCALIZED_STRING_L(lang, "PUCT + Neural Network",
                                 "PUCT + reseau de neurones",
                                 "PUCT + red neuronal");
@@ -237,9 +237,16 @@ static const AIStrategyRating AI_STRATEGY_RATINGS[AI_STRATEGY_COUNT] =
   // 74.53% [73.17%, 75.83%] vs borealis -- A14's null result decomposes
   // into "good net, bad selection rule". Shipped as the new default
   // (Jonathan's call, 2026-09-22); PUCT selection (use_puct=true) remains
-  // implemented and tested, just no longer default. See doc/ai_agents.md's
-  // A14 section, 2026-09-22 addendum, for the full record.
-  [AI_STRATEGY_ISMCTS_PUCT]      = { 75, true },
+  // implemented and tested, just no longer default.
+  // 2026-09-23 (A16 Session 3): round 1 of self-play bootstrapping
+  // confirmed a real gain -- a net retrained on A14's own self-play data
+  // pooled with the original corpus beat the round-0 baseline by +2.25pp
+  // [+0.74,+3.76]pp vs A11 (n=8220), 75.64% [74.31%,76.93%] vs borealis.
+  // Promoted in place, documented as "AlphaOracle Prime Plus II" (same
+  // AI_STRATEGY_ISMCTS_PUCT slot -- assets/puct/plus2_weights.bin). See
+  // doc/ai_agents.md's A14 section, 2026-09-23 addendum, for the full
+  // record.
+  [AI_STRATEGY_ISMCTS_PUCT]      = { 76, true },
   // A15 (2026-09-10): measured via --stda.rating round-robin over the 11
   // cheap (non-tree-search) agents plus the borealis anchor, 40,000 games,
   // 53.5% overall win rate -- see doc/ai_agents.md's A15 section for the

@@ -86,7 +86,13 @@ See `doc/ai_agents.md`'s A11 section for the full detail behind every item below
   shipped (`use_puct=true`, real PUCT selection); **2026-09-22: `use_puct=false`
   (plain UCT selection over the same net) measured a decisive win and shipped as
   the new default, rating ~75** — see `doc/ai_agents.md`'s A14 section, 2026-09-22
-  addendum, and `doc/changelog.md`'s same-date entries.
+  addendum, and `doc/changelog.md`'s same-date entries. **2026-09-23: round 1 of
+  self-play bootstrapping (`A16` Session 3) confirmed a real gain — a net retrained
+  on `A14`'s own self-play data pooled with the original corpus beat the round-0
+  baseline by +2.25pp [+0.74,+3.76]pp vs `A11` (n=8220), promoted in place as
+  "AlphaOracle Prime Plus II" (doc name only, same `A14` slot,
+  `assets/puct/plus2_weights.bin`)** — see `doc/ai_agents.md`'s A14 section,
+  2026-09-23 addendum.
 - [x] **Naming decided**: flavor name stays "AlphaOracle Prime" for this whole
   UCT+value-net lineage; a hypothetical future Stage 4 (PUCT+policy) agent would be
   "AlphaOracle Prime Plus I" (revised 2026-09-04 from an earlier "Prime II"

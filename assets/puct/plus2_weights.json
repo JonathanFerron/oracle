@@ -1,0 +1,97 @@
+{
+  "agent": "A14 PUCT + Neural Network (AlphaOracle Prime Plus II)",
+  "strategy_type": "AI_STRATEGY_ISMCTS_PUCT",
+  "description": "Same code/mechanism as AlphaOracle Prime Plus I (PUCT selection with use_puct=false, i.e. plain UCT over this net's own value+policy heads) -- only the weights differ. Retrained on a corpus that adds A14's own round-1 self-play data to the original A11-taught corpus. 'Plus II' is a documentation/changelog name only, not a separate AIStrategyType or roster entry -- see src/ai_strat/ai_strat_puct.h's PUCT_DEFAULT_WEIGHTS_PATH comment. plus1_weights.bin/.json are kept alongside, untouched, so reverting is a one-line #define edit.",
+
+  "architecture": {
+    "state_dim": 537,
+    "hidden": [256, 128, 64],
+    "value_output": "sigmoid, matching mc_outcome_for()'s 0.0/0.5/1.0 scale",
+    "policy_output": "218 raw logits (PUCT_POLICY_DIM), composed at inference time by puct_move_score()/puct_compose_priors() into a softmax over the legal move list -- see ai_strat_puct_policy.h",
+    "note": "Unchanged from Plus I -- same fused-BatchNorm export pipeline (export_puct_weights.py), verified 3.0e-7 max diff on the value head and 3.9e-7 on the policy head against the live PyTorch model on this checkpoint."
+  },
+
+  "training": {
+    "source_checkpoint": "round1_pooled_puct_net.pt",
+    "dropout": 0.4,
+    "weight_decay": 0.001,
+    "policy_weight": 1.0,
+    "lr": 0.0003,
+    "batch_size": 4096,
+    "run_name": "round1_pooled",
+    "label": "full,round1",
+    "patience": 20,
+    "seed": 42,
+    "epochs_run": 31,
+    "best_epoch": 10,
+    "stopped_reason": "patience (20 epochs, no val total-loss improvement) -- not a wall-clock budget this time",
+    "best_val_total_loss": 2.433861,
+    "baseline_val_mse": 0.239659,
+    "train_records": 1467490,
+    "val_records": 167581,
+    "val_seeds_pinned": "mirror=40,vs_a7=41,vs_a3=42 -- the round-1 shards only, held out identically across the round1-only and pooled variants for direct comparability",
+    "note": "Per-matchup val_v_mse at best epoch: mirror 0.165022, vs_a7 0.160645, vs_a3 0.139247 -- comparable to Plus I's own 0.148-0.165 range, not a leap in val MSE (this project's own history already shows val MSE is a weak proxy for playing strength -- see Plus I's own PUCT-dial null result)."
+  },
+
+  "corpus": {
+    "label": "full,round1 (pooled -- both prior and self-play-generated corpora)",
+    "components": {
+      "full": {
+        "teacher": "A11 (ismctsnn) at limit_iterations=4000",
+        "generated": "2026-09-08",
+        "total_records": 796914,
+        "split": {
+          "mirror": {"shards": 5, "seeds": [1, 4, 7, 10, 13]},
+          "vs_a7": {"shards": 5, "seeds": [2, 5, 8, 11, 14]},
+          "vs_a3": {"shards": 5, "seeds": [3, 6, 9, 12, 15]}
+        }
+      },
+      "round1": {
+        "teacher": "A14 itself (puct), running its own shipped defaults (use_puct=false, i.e. plain UCT over Plus I's net) -- this project's first-ever self-play bootstrap round",
+        "generated": "2026-09-22T17:36:04 to 2026-09-23T05:36:04 (12h wall-clock, 15 parallel workers)",
+        "total_records": 838157,
+        "total_size_bytes": 5409000000,
+        "throughput": "69846 records/hour",
+        "record_format": "headerless flat float32, 1692 floats/record (537-float state + 1-float outcome + 1-float num_moves + 1-float total_visits + 128x9 per-legal-move type/count/play/target/visit_fraction)",
+        "seed_ledger": "aicalibsrc/puct/corpus/seed_ledger.tsv",
+        "split": {
+          "mirror": {"description": "A14 vs itself", "shards": 5, "seeds": [28, 31, 34, 37, 40]},
+          "vs_a7": {"description": "A14 vs A7 (Hybrid HBT, \"Grandmaster\")", "shards": 5, "seeds": [29, 32, 35, 38, 41]},
+          "vs_a3": {"description": "A14 vs A3 (Borealis) -- fixed rating anchor", "shards": 5, "seeds": [30, 33, 36, 39, 42]}
+        },
+        "pre-run_diversity_probe": "40-min probe on 2026-09-22 found zero diversity collapse (0% duplicate states, entropy 2.87/4.14 nats, matching the existing corpus's own 2.94/4.49 baseline) before committing to the full 12h run -- see doc/changelog.md's 2026-09-22 entry."
+      }
+    }
+  },
+
+  "measured_results": {
+    "measurement_date": "2026-09-23",
+    "measurement_method": "aicalibsrc/puct/calibrate_puct.py validate --weights-b (new option added this session for a direct two-weights-file delta+CI), shipped defaults on both arms, limit_iterations=4000",
+    "promotion_gate_vs_round0": {
+      "description": "Delta = Plus II win rate vs A11 (ismctsnn) minus round-0 (Plus I) win rate vs A11, same seeds/binary, re-measured baseline (not reused from an earlier session)",
+      "n_games_per_arm": 8220,
+      "round0_win_rate": 0.5663,
+      "round0_ci_95": [0.5556, 0.5770],
+      "plus2_win_rate": 0.5888,
+      "plus2_ci_95": [0.5781, 0.5994],
+      "delta_pp": 2.25,
+      "delta_ci_95_pp": [0.74, 3.76],
+      "result": "PASS -- CI excludes 0, point estimate clears the pre-registered +2.0pp practical-significance floor. Confirmed via one pre-registered seed-block extension (round1-only variant tied at delta +0.40pp [-1.11,+1.91]pp, n=8220 -- NOT promoted; pooled variant tested next per the plan's Tie branch and is what this file documents)."
+    },
+    "gate_1_vs_borealis": {
+      "description": "Head-to-head vs A3 (Borealis) -- context, estimated Borealis rating",
+      "n_games": 4110,
+      "win_rate": 0.7564,
+      "ci_95": [0.7431, 0.7693],
+      "estimated_borealis_rating": 76,
+      "note": "Up from round-0's own 74.53%->~75 (use_puct=false baseline, 2026-09-22) and Plus I's original 62 (use_puct=true, 2026-09-08). Compare against A11's 74."
+    }
+  },
+
+  "timing": {
+    "shipped_limit_iterations": 4000,
+    "note": "use_puct=false (Session 1, 2026-09-22) is the load-bearing timing fact here, not this retrain -- measured 536ms mean/decision under that default, close to A11's own ~439ms. This retrain changes only the weights, not the search mechanism or its cost."
+  },
+
+  "see_also": "ideas/A16 ai agent strength improvement candidates/about.md (Candidate 1 -- this is its first execution); doc/ai_agents.md's A14 section for the full narrative; doc/changelog.md for the dated record; assets/puct/plus1_weights.json for the round-0 predecessor's own full record."
+}

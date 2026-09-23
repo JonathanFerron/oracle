@@ -5,6 +5,98 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-23 — A16 Session 3 complete: round 1 of self-play bootstrapping confirmed, "AlphaOracle Prime Plus II" promoted in place
+
+This project's first-ever validated self-play bootstrap result. Session 2
+had cleared every blocker (build-flags fix, `A14`-as-teacher generalized,
+a 40-minute probe finding zero diversity collapse); Session 3 ran the real
+round.
+
+**Step 0**: clean `make release_tools` rebuild (the tree had been re-dirtied
+by Session 2's own later edits triggering `-Og` recompiles of the search
+path), plus two small stale-doc fixes (`doc/ai_agents.md`'s roster table
+and `doc/oracle_todo.md` still said rating 62, missed by Session 1's own
+A14-section-only update).
+
+**Step 1 -- generation, 12h, 15 workers, `A14` itself as teacher** (run by
+Jonathan directly in his own terminal, this session's Claude Code process
+closed and resumed after): 838,157 records, 5.28GB, 0 worker failures,
+69,846 records/hour (above the probe's 60,140/hour estimate). Seeds 28-42,
+same `mirror`/`vs_a7`/`vs_a3` pool as the existing corpus, matched in size
+(797k) for a clean single-variable comparison.
+
+**Step 2 -- training, two variants**, both `--policy-weight 1.0`
+(Session 2's own ablation finding) and `--patience 20`, pinned identical
+`--val-seeds mirror=40,vs_a7=41,vs_a3=42` (the round-1 shards) for direct
+comparability:
+- `round1`-only (the new self-play data alone): best epoch 11/31,
+  val_v_mse 0.1595, val total loss 2.4376.
+- `full,round1` pooled (both corpora): best epoch 10/31, val_v_mse 0.1552,
+  val total loss 2.4339.
+
+Both landed in the same range as the existing net's own 0.148-0.165
+by-matchup floor -- no dramatic leap in val MSE, consistent with this
+project's own repeated finding that val MSE is a weak proxy for playing
+strength.
+
+**Step 3 -- export**: both variants cross-checked clean (max diffs
+3.0-6.6e-7 on value/policy heads, well within the existing ~4-6e-7
+tolerance band).
+
+**Step 4 -- the gate, a genuinely new tool addition**:
+`aicalibsrc/puct/calibrate_puct.py`'s `validate` gained a `--weights-b`
+option (`cmd_validate_weights_delta()`) -- runs the identical job set
+against a second weights file and reports the delta with its own CI
+directly, rather than hand-recovering win counts from printed rates. Used
+throughout this session's gating.
+
+Promotion bar (pre-registered, a **delta** vs the round-0 baseline
+re-measured fresh on today's binary, not a vacuous absolute threshold --
+the round-0 net already clears 50%): 95% CI on delta excludes 0 and the
+point estimate is >= +2.0pp.
+
+- **`round1`-only**: n=4110 tied (delta -0.51pp [-2.65,+1.63]pp); one
+  pre-registered seed-block extension pooled to n=8220, still tied
+  (delta +0.40pp [-1.11,+1.91]pp). **Not promoted.**
+- **`full,round1` pooled**: n=4110 tied, but the closest possible miss
+  (delta +2.09pp [-0.04,+4.22]pp -- lower bound a hair below zero). Given
+  how close it landed, Jonathan approved one further disjoint-seed
+  extension beyond what the plan itself pre-registered. Pooled to
+  **n=8220: delta +2.25pp, 95% CI [+0.74pp, +3.76pp]** -- round-0 56.63%
+  [55.56%,57.70%] vs the new net's 58.88% [57.81%,59.94%], both vs `A11`.
+  **Confirmed win, promoted.**
+
+**Shipped as "AlphaOracle Prime Plus II" -- a documentation name only, not
+a new agent.** This project mints new agent numbers for new *mechanisms*,
+not retrained weights of the same one (Session 1's own `use_puct=false`
+default flip is the same-day precedent) -- the pooled net is the identical
+`AI_STRATEGY_ISMCTS_PUCT` code path, only retrained. Per Jonathan's
+explicit request, the promotion is NOT a plain in-place overwrite:
+`assets/puct/plus1_weights.bin`/`.json` are kept untouched, a new
+`assets/puct/plus2_weights.bin`/`.json` pair was added alongside them, and
+`src/ai_strat/ai_strat_puct.h`'s `PUCT_DEFAULT_WEIGHTS_PATH` now points at
+`plus2_weights.bin` -- reverting to Plus I is a one-line `#define` edit,
+not a git operation. `./bin/oracle -a -p` re-confirmed byte-identical to
+`bin/expectedresults.txt` after the swap (that check's default players
+never reference this strategy). Updated Borealis-context measurement:
+75.64% [74.31%,76.93%], n=4110 -> estimated rating ~76, a modest further
+gain over round-0's own 74.53%->~75.
+
+**What this confirms and what it doesn't**: real evidence for
+`ideas/A16 .../about.md`'s Candidate 1 thesis -- "changing what gets
+learned" is a different, more productive category than "adding formula
+sophistication to an already-good agent" (`A9`, `A13`, `A14`'s own PUCT
+dials -- all null, `A5`'s rollout-policy fix and `A10`->`A11`'s trained
+value net both real wins, now 3-for-3). Doesn't show pure self-play alone
+beats the mixed corpus (the `round1`-only tie), and says nothing about
+round 2 -- diminishing-returns behavior across multiple bootstrap rounds is
+still unmeasured, deliberately deferred. No net-slot fix needed for a
+round 2 either: `A11` isn't remotely saturating as a discriminator at
+~57-59%. See `doc/ai_agents.md`'s A14 section (2026-09-23 addendum) and
+`ideas/A16 .../about.md` for the full record.
+
+---
+
 ## 2026-09-22 — A16 Session 2 complete: build-flags fix, teacher generalized, probe clean, no blockers for round 1
 
 Full session, redirected mid-plan after Session 1's `use_puct=false`
