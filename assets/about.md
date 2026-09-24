@@ -50,8 +50,17 @@ provenance, corpus composition, measured results).
     | `ORDER_C` | `-` | horizontal ellipse | Ember Light |
     | `ORDER_D` | `x` | 4-petal bubble, rotated | Eternal Light |
     | `ORDER_E` | `\|` | vertical ellipse | Moonlight |
-  - `species/` -- the 15 species emblem glyphs, rasterised from
-    `emblemes especes/*.svg`.
+  - `species/` -- **done 2026-09-23**: all 15 species emblems, imported via
+    the new `tools/assets/import_species_emblems.sh` (each was already its
+    own standalone SVG in `emblemes especes/`, unlike the Order/currency
+    combined sheets, so this is a straight plain-SVG copy + rasterize, no
+    `--export-id` extraction needed). Filenames are English, matching
+    `game_types.h`'s `ChampionSpecies` enum, not the French source names:
+    `human.svg`/`.png` (from `humain.svg`), `elf` (`elfe`), `dwarf`
+    (`nain`), `orc` (`orque`), `goblin` (`gobelin`), `dragon`, `hobbit`,
+    `centaur` (`centaure`), `minotaur` (`minotaure`), `aven`, `cyclops`
+    (`cyclope`), `faun` (`faune`), `fairy` (`fée`), `koatl`, `lycan`. All
+    still black; colour later, same as Aureus/Opale above.
   - `currency/` -- **done 2026-09-23**: the 3 currency symbols, extracted
     from `symboles monnaie.svg` the same way as the Order glyphs
     (Inkscape `--export-id`/`--export-id-only`, group ids confirmed by
