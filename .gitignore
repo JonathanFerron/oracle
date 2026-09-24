@@ -3,6 +3,7 @@
 *.zip
 *.exe
 /bin/oracle
+/bin/oracle-gui
 /bin/test_combo
 /bin/test_a15_combo
 /bin/test_recall

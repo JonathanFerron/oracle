@@ -15,6 +15,7 @@ make                              # build bin/oracle (auto-discovers all src/**/
 make clean                        # remove obj/ and bin/oracle*
 make debug                        # rebuild with -O0 -DDEBUG -DDEBUG_ENABLED=1
 make release                      # rebuild with -O2, no debug symbols (added for A11; long sim runs/tree-search agents)
+make gui                          # build bin/oracle-gui (SDL3 GUI, MODE_STDA_GUI); needs libsdl3-dev/libsdl3-ttf-dev/libsdl3-image-dev, separate obj-gui/ tree
 make format                       # format all .c/.h via astyle (uses .astylerc — see below; excludes ideas/)
 make help                         # list targets
 ```
@@ -28,7 +29,7 @@ Run modes (see `src/main/cmdline.c` for the full option table; both single-lette
 ./bin/oracle --stda.tui                    # ncurses TUI (human-vs-AI or AI-vs-AI, TAB toggles PLAY/COMMAND mode)
 ```
 
-Other modes (`stda.sim/.gui`, `server`, `client.*`) are wired into `main.c`'s dispatch switch but currently just print "not yet implemented" — see `src/main/main.c`. `stda.tui` is real as of 2026-07-14 and, as of 2026-07-23 (Milestone 2), supports full human-vs-AI play, not just AI-vs-AI display — see below.
+Other modes (`stda.sim`, `server`, `client.*`) are wired into `main.c`'s dispatch switch but currently just print "not yet implemented" — see `src/main/main.c`. `stda.tui` is real as of 2026-07-14 and, as of 2026-07-23 (Milestone 2), supports full human-vs-AI play, not just AI-vs-AI display — see below. `stda.gui` is real as of 2026-09-23 but only in the `make gui` build (`bin/oracle-gui --stda.gui`); a plain `bin/oracle --stda.gui` prints a "rebuild with make gui" message instead (`src/roles/stda/stda_gui.c`) — see "SDL3 GUI" in `doc/oracle_roadmap.md` for where the M1 "hello window" it currently shows goes next.
 
 Bash tab-completion: `source tools/oracle-completion.bash` (e.g. from `~/.bashrc`). It calls the binary's hidden `--oracle-complete[=WHAT]` option (intentionally absent from `--help`/`print_usage()`) for every candidate list — option spellings, `-A`/`--ai` agent codes, `-u`/`--ui.lang` codes — so the script has nothing to hardcode.
 
@@ -65,7 +66,7 @@ There is no other automated test runner yet; most other validation is manual pla
 - `rating/` — Bradley-Terry rating system (implemented 2026-08-23): `rating.h` (the single public header), `rating_core.c` (registration/lookup/strength↔rating math), `rating_update.c` (incremental `A^delta` updates for live play), `rating_batch.c` (order-independent MLE fit — MM default, gradient ascent kept for cross-checking), `rating_csv.c` (persistence, the first file I/O anywhere in `src/`). Deliberately depends only on `game_types.h` + libc, no `src/ui/`/`src/ai_strat/` — see `rating.h`'s own comment and `doc/changelog.md`.
 - `actions/` — `game_move.h` (`GameMove`, the move representation search agents A8+ use), `move_gen.c/h` (`get_available_moves()`: legal-move enumeration per turn phase, with `MoveGenLimits` capping the recall/cash branching factor for search — see the file's own header comment), `move_apply.c/h` (`apply_move()`, no re-validation). This was a planning-notes-only stub as of 2026-07; don't trust older references to that.
 - `visibility/` — `visible_state.h/.c`: `VisibleGameState` + `visibility_filter()`, the GUI/future-network-client filter that keeps hidden info (opponent hand contents, deck order) out of what's handed to a UI — added 2026-09-23 as step 1 of the SDL3 GUI work (see `doc/oracle_roadmap.md`'s "SDL3 GUI" item and `ideas/9 gui/gui_architecture_synthesis.md`). Depends only on `game_types.h` + libc, same pattern as `rating/`. `NUM_PLAYERS` (`game_types.h`) is the constant new code in here/`ui/gui/` should loop over rather than hardcoding `2`, so the later 3-4 player rework is additive.
-- `ui/gui/` — not implemented yet beyond the SDL3 GUI plan above; `ui/simulation/` — not implemented yet, only a planning `.txt` note.
+- `ui/gui/` — SDL3 GUI (`MODE_STDA_GUI`), built only via `make gui`/`make gui-debug` (see "Build & Run" above) so the default build stays SDL3-free. `gui_app.c/h`: `SDL_EnterAppMainCallbacks()`-based main loop (M1 "hello window" as of 2026-09-23 — window, table colour, logo, wordmark; no game state rendered yet). The mode-entry seam, `src/roles/stda/stda_gui.c`, IS in the default build (guarded by `#ifdef HAVE_SDL3` internally) — see its own header comment. `ui/simulation/` — not implemented yet, only a planning `.txt` note.
 
 Some file/module names in `doc/oracle_design.md` (e.g. `strat_random.c`, flat `src/*.c`) reflect an older pre-reorg layout; trust the actual `src/` tree (with `core/`, `ai_strat/`, `roles/stda/`, etc. subdirectories) over that doc when they disagree.
 

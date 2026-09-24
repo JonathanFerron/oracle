@@ -14,9 +14,25 @@ LIBS := -lm -lncursesw
 #LIBS=-pthread -lncursesw -lpanelw -lformw -lmenuw
 
 
-# Automatically find all .c files in src directory
-SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
+# Automatically find all .c files in src directory. src/ui/gui/ is excluded
+# here -- it #includes SDL3 headers, and this project's default/debug/
+# release/release_tools builds (calibration boxes included) must stay
+# SDL3-free. src/roles/stda/stda_gui.c is NOT excluded: it's the mode-entry
+# seam, guarded by #ifdef HAVE_SDL3 internally, so it builds fine either
+# way -- see the `gui`/`gui-debug` targets below for the SDL3-enabled build.
+SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT) -not -path '$(SRCDIR)/ui/gui/*')
 OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
+
+# GUI build: same sources PLUS src/ui/gui/, into a separate obj-gui/ tree so
+# an SDL3-flagged object never collides with a plain one in the shared
+# obj/ tree (same "one BUILDDIR can't hold two flag flavours of the same
+# object" reasoning as release_tools' own comment below).
+GUI_BUILDDIR := obj-gui
+GUI_TARGET := $(BINDIR)/oracle-gui
+GUI_SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
+GUI_OBJECTS := $(patsubst $(SRCDIR)/%,$(GUI_BUILDDIR)/%,$(GUI_SOURCES:.$(SRCEXT)=.o))
+SDL_CFLAGS := $(shell pkg-config --cflags sdl3 sdl3-ttf sdl3-image)
+SDL_LIBS := $(shell pkg-config --libs sdl3 sdl3-ttf sdl3-image)
 
 # Compiler flags
 # -MMD -MP generate a per-object .d file listing the headers it includes, so
@@ -554,7 +570,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_a15_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_ismcts $(BINDIR)/test_puct_policy $(BINDIR)/test_puct $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan $(BINDIR)/gen_corpus $(BINDIR)/calib_ismctsnn $(BINDIR)/calib_ismctsnn_timing $(BINDIR)/gen_policy_corpus $(BINDIR)/calib_puct $(BINDIR)/calib_puct_timing $(BINDIR)/calib_daredevil
+	$(RM) -r $(BUILDDIR)/* $(GUI_BUILDDIR) $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_a15_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_ismcts $(BINDIR)/test_puct_policy $(BINDIR)/test_puct $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan $(BINDIR)/gen_corpus $(BINDIR)/calib_ismctsnn $(BINDIR)/calib_ismctsnn_timing $(BINDIR)/gen_policy_corpus $(BINDIR)/calib_puct $(BINDIR)/calib_puct_timing $(BINDIR)/calib_daredevil
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -573,6 +589,35 @@ debug: clean all
 release: CFLAGS := -O2 -Wall -std=c23 -MMD -MP
 release: clean all
 	@echo "Release build complete"
+
+# SDL3 GUI build (MODE_STDA_GUI, src/ui/gui/ + src/roles/stda/stda_gui.c) --
+# opt-in, separate from `all`/`debug`/`release` so bin/oracle and every
+# calibration tool stay SDL3-free (see the SOURCES comment above). Needs
+# libsdl3-dev/libsdl3-ttf-dev/libsdl3-image-dev (Ubuntu 26.04's own
+# repos have these -- see doc/oracle_roadmap.md's "SDL3 GUI" item for the
+# exact package names/versions verified on this box).
+.PHONY: gui
+gui: CFLAGS := -g -Og -Wall -std=c23 -MMD -MP -DHAVE_SDL3 $(SDL_CFLAGS)
+gui: LIBS := $(LIBS) $(SDL_LIBS)
+gui: $(GUI_TARGET)
+	@echo "GUI build complete: $(GUI_TARGET)"
+
+.PHONY: gui-debug
+gui-debug: CFLAGS := -g -Og -Wall -std=c23 -MMD -MP -DDEBUG -DDEBUG_ENABLED=1 -DHAVE_SDL3 $(SDL_CFLAGS)
+gui-debug: LIBS := $(LIBS) $(SDL_LIBS)
+gui-debug: $(GUI_TARGET)
+	@echo "GUI debug build complete: $(GUI_TARGET)"
+
+$(GUI_TARGET): $(GUI_OBJECTS)
+	@echo "Linking $(GUI_TARGET)..."
+	@mkdir -p $(BINDIR)
+	$(CC) $^ -o $(GUI_TARGET) $(LIBS)
+	@echo "Build complete: $(GUI_TARGET)"
+
+$(GUI_BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
+	@mkdir -p "$(@D)"
+	@echo "Compiling $< (GUI)..."
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 # Generation/calibration tools, optimized build (added 2026-09-22, A16
 # Session 2 item 0) -- `make release` does NOT help here: `all: $(TARGET)`
@@ -984,6 +1029,8 @@ help:
 	@echo "  clean            - Remove build artifacts"
 	@echo "  debug            - Build with debug symbols and -Og"
 	@echo "  release          - Build optimized (-O2), no debug symbols"
+	@echo "  gui              - Build bin/oracle-gui (SDL3 GUI, MODE_STDA_GUI); needs libsdl3-dev/libsdl3-ttf-dev/libsdl3-image-dev"
+	@echo "  gui-debug        - Same, with debug symbols and -DDEBUG"
 	@echo "  release_tools    - Build every GEN_*/CALIB_* tool optimized (-O2); removes bin/oracle (its own clean step, same as release/debug) -- run 'make' afterward to restore it"
 	@echo "  release_tools_native - Same, at -O3 -march=native (NOT portable, generation-only)"
 	@echo "  test_combo       - Build and run combo bonus tests"
@@ -1035,5 +1082,5 @@ help:
 # $(shell find ...) rather than a static list since .d files only exist
 # after a .o has been compiled at least once (harmless on a clean checkout
 # or right after `make clean` -- there's simply nothing to -include yet).
-DEPS := $(shell find $(BUILDDIR) -type f -name '*.d' 2>/dev/null)
+DEPS := $(shell find $(BUILDDIR) $(GUI_BUILDDIR) -type f -name '*.d' 2>/dev/null)
 -include $(DEPS)

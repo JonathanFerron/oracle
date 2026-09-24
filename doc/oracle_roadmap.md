@@ -104,11 +104,25 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
    `game_types.h`, `testsrc/test_visibility.c` (20/20 passing, `make test_visibility`),
    valgrind-clean, `make format`-clean, `-a -p` still matches `bin/expectedresults.txt`.
    Asset source material surveyed the same date: champion art selections
-   (`ave1_Aven_Sourlio.jpg`-style filenames per species folder), 54 fractal-art PNGs
-   (18 designs x 3 colour variants, already 556x839) for a legacy-art toggle, order/species
-   SVG emblems, thematic border-colour HSL values, and the ModernRifgo font, all under
-   `../oracle outside git/` -- import tooling and the `assets/gui/` layout are step 2's
-   asset-script sub-step.
+   (`ave1_Aven_Sourlio.jpg`-style filenames per species folder), fractal-art PNGs
+   (confirmed 18 of 34 designed variants actually rendered -- 54 PNGs, 3 colour variants
+   each -- the rest exist only as GIMP Fractal Explorer recipe files) for a legacy-art
+   toggle, species SVG emblems, thematic border-colour HSL values, and the ModernRifgo
+   font, all under `../oracle outside git/`; the 5 Order glyphs turned out to live inside
+   the `cartes champions pgN.svg` print-sheet source rather than as standalone files (to
+   be extracted). **Step 2 done 2026-09-23**: `make gui`/`make gui-debug` build
+   `bin/oracle-gui` into a separate `obj-gui/` tree with `-DHAVE_SDL3` + pkg-config SDL3
+   flags (`src/ui/gui/` excluded from the default `SOURCES` find, so `make`/`debug`/
+   `release`/`release_tools` all stay SDL3-free); `src/roles/stda/stda_gui.c` is the
+   always-built mode-entry seam (prints a "rebuild with make gui" message when
+   `HAVE_SDL3` isn't defined); `src/ui/gui/gui_app.c` is the M1 "hello window" --
+   `SDL_EnterAppMainCallbacks()` called from `gui_app_run()` (not the `SDL_MAIN_USE_CALLBACKS`
+   macro, so `main.c` keeps owning `main()`), a resizable window, the table teal
+   background (HSL 181/23/60), the Oracle logo, and "Oracle" in ModernRifgo -- smoke-tested
+   visually (window opened correctly) and under valgrind (0 definitely/indirectly/possibly
+   lost). Assets already available were imported to `assets/` (top-level categories,
+   matching the `ismctsnn/`/`puct/` convention, not a nested `gui/`): `assets/logo/
+   oracle_logo.png`, `assets/fonts/ModernRifgoRegular-MAvdP.otf` -- see `assets/about.md`.
 4. **`A14` PUCT + policy head** ("AlphaOracle Prime Plus I") -- ✅ done and
    **registered 2026-09-08/09** (see `doc/changelog.md`'s 2026-09-09 entry and
    `doc/ai_agents.md`'s A14 section). PUCT (Predictor + UCT) selection
