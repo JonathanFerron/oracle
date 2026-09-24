@@ -15,6 +15,14 @@ typedef enum
   PLAYER_B = 1
 } PlayerID;
 
+// Number of players in today's engine. New code (src/visibility/, src/ui/gui/)
+// should use this rather than a literal 2, so the planned 3-4 player engine
+// rework is an extension, not a search-and-replace -- see
+// doc/oracle_roadmap.md's "SDL3 GUI" item and
+// ideas/9 gui/gui_architecture_synthesis.md section 5.1a. struct gamestate's
+// own [2] arrays are untouched by this (pre-existing, not migrated here).
+#define NUM_PLAYERS 2
+
 // Game state enum
 typedef enum
 { PLAYER_A_WINS = 0,

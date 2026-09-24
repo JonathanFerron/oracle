@@ -243,6 +243,16 @@ TEST_RATING_SRCS := $(TESTSRCDIR)/test_rating.c \
 TEST_RATING_OBJS := $(BUILDDIR)/testsrc/test_rating.o \
                     $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_RATING_SRCS)))
 
+# src/visibility/ is likewise dependency-free (game_types.h + libc only) --
+# see visible_state.h's own comment.
+TEST_VISIBILITY_TARGET := $(BINDIR)/test_visibility
+TEST_VISIBILITY_SRCS := $(TESTSRCDIR)/test_visibility.c \
+                        $(SRCDIR)/visibility/visible_state.c \
+                        $(SRCDIR)/structures/card_collection.c \
+                        $(SRCDIR)/structures/deckstack.c
+TEST_VISIBILITY_OBJS := $(BUILDDIR)/testsrc/test_visibility.o \
+                        $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_VISIBILITY_SRCS)))
+
 # Calibration harness for A1 Value Based's tunable parameters (see
 # aicalibsrc/value/). One subfolder per agent under aicalibsrc/ as more
 # agents get calibration tooling. Links the engine directly (same pattern as
@@ -732,6 +742,18 @@ $(TEST_RATING_TARGET): $(TEST_RATING_OBJS)
 	$(CC) $(TEST_RATING_OBJS) -o $(TEST_RATING_TARGET) $(LIBS)
 	@echo "Test build complete: $(TEST_RATING_TARGET)"
 
+# Test the VisibleGameState filter (src/visibility/) -- the GUI/future
+# network client's hidden-information boundary.
+.PHONY: test_visibility
+test_visibility: $(TEST_VISIBILITY_TARGET)
+	./$(TEST_VISIBILITY_TARGET)
+
+$(TEST_VISIBILITY_TARGET): $(TEST_VISIBILITY_OBJS)
+	@echo "Linking test_visibility..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(TEST_VISIBILITY_OBJS) -o $(TEST_VISIBILITY_TARGET) $(LIBS)
+	@echo "Test build complete: $(TEST_VISIBILITY_TARGET)"
+
 # Calibration harness (see aicalibsrc/value/README.md or the file header for CLI usage)
 .PHONY: calib_valuebased
 calib_valuebased: $(CALIB_VALUEBASED_TARGET)
@@ -969,6 +991,7 @@ help:
 	@echo "  test_recall      - Build and run recall mechanic tests"
 	@echo "  test_cash_exchange - Build and run cash exchange tests"
 	@echo "  test_rating      - Build and run Bradley-Terry rating system tests"
+	@echo "  test_visibility  - Build and run VisibleGameState filter tests"
 	@echo "  test_moves       - Build and run move enumeration (src/actions/) tests"
 	@echo "  test_ismcts      - Build and run A10 IS-MCTS node arena/UCT tree tests"
 	@echo "  test_puct_policy - Build and run A14 policy action-encoding tests"

@@ -86,7 +86,29 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
    `ideas/9 gui/gui_architecture_synthesis.md` -- library choice (SDL3, Linux +
    Android), the `VisibleGameState`/`PlayerDecision`/event/step-driver/session-thread
    layering that keeps the GUI responsive and client/server-ready, and a step-by-step
-   implementation roadmap. Start there.
+   implementation roadmap. Start there. **Implementation plan (2026-09-23)**:
+   `~/.claude/plans/let-s-please-make-a-noble-neumann.md` reorders that roadmap slightly
+   (SDL3 toolchain/hello-window moved up to right after `VisibleGameState`; save/load and
+   the config file pushed to after GUI M1) and records corrections found while scanning
+   the synthesis doc against current code (recall/cash legality can't be a
+   `get_available_moves()` membership check -- `RECALL_POOL_CAP` caps at 6 and the variant
+   count would overflow `MOVE_GEN_MAX_MOVES`; `play_turn()` stays, it's what A8-A14's
+   rollouts call; `end_of_turn()` needs splitting for the driver's discard-to-7 wait; the
+   500-turn cap was missing from the flow; `SDL_EnterAppMainCallbacks()` from
+   `MODE_STDA_GUI` keeps one `main()` rather than `SDL_MAIN_USE_CALLBACKS` taking over).
+   Also settles the packages question: `libsdl3-dev`/`libsdl3-ttf-dev`/`libsdl3-image-dev`
+   are in this box's regular apt repos (Ubuntu 26.04 "resolute" universe, SDL3
+   3.4.2/SDL3_ttf 3.2.2/SDL3_image 3.4.0), no PPA/source build needed. **Step 1 done
+   2026-09-23**: `src/visibility/visible_state.h/.c` (`VisibleGameState` +
+   `visibility_filter()`, including a `VIEWER_SPECTATOR` view), `NUM_PLAYERS` added to
+   `game_types.h`, `testsrc/test_visibility.c` (20/20 passing, `make test_visibility`),
+   valgrind-clean, `make format`-clean, `-a -p` still matches `bin/expectedresults.txt`.
+   Asset source material surveyed the same date: champion art selections
+   (`ave1_Aven_Sourlio.jpg`-style filenames per species folder), 54 fractal-art PNGs
+   (18 designs x 3 colour variants, already 556x839) for a legacy-art toggle, order/species
+   SVG emblems, thematic border-colour HSL values, and the ModernRifgo font, all under
+   `../oracle outside git/` -- import tooling and the `assets/gui/` layout are step 2's
+   asset-script sub-step.
 4. **`A14` PUCT + policy head** ("AlphaOracle Prime Plus I") -- ✅ done and
    **registered 2026-09-08/09** (see `doc/changelog.md`'s 2026-09-09 entry and
    `doc/ai_agents.md`'s A14 section). PUCT (Predictor + UCT) selection
