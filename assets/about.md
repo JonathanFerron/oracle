@@ -52,8 +52,16 @@ provenance, corpus composition, measured results).
     | `ORDER_E` | `\|` | vertical ellipse | Moonlight |
   - `species/` -- the 15 species emblem glyphs, rasterised from
     `emblemes especes/*.svg`.
-  - `currency/` -- luna/opale currency symbols, rasterised from
-    `symboles monnaie.svg`.
+  - `currency/` -- **done 2026-09-23**: the 3 currency symbols, extracted
+    from `symboles monnaie.svg` the same way as the Order glyphs
+    (Inkscape `--export-id`/`--export-id-only`, group ids confirmed by
+    each shape's bounding-box X position -- left to right = Luna, Aureus,
+    Opale). `luna.svg`/`.png` recoloured to `#216778` (used as the GUI's
+    window/taskbar icon); `aureus.svg`/`.png` and `opale.svg`/`.png` still
+    black -- colour to be set later, trivial to change at the SVG level.
+    Opale's symbol was fixed by Jonathan in Inkscape since the first
+    extraction attempt (smoothing + the previously-missing small ellipse,
+    now present).
   - `backgrounds/` -- table background tiles.
   - `logo/` -- `oracle_logo.png` (from `logo base/choix final.png`,
     1024x1024).
