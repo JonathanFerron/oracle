@@ -61,6 +61,23 @@ provenance, corpus composition, measured results).
     `centaur` (`centaure`), `minotaur` (`minotaure`), `aven`, `cyclops`
     (`cyclope`), `faun` (`faune`), `fairy` (`fée`), `koatl`, `lycan`. All
     still black; colour later, same as Aureus/Opale above.
+    **Coloured versions added the same date**: `<species>_colour.svg`/
+    `.png`, extracted by `tools/assets/extract_species_colour_icons.sh`
+    from `cartes/dos des cartes.svg` (the card-back print sheet -- a 3x3
+    grid of 9 identical card backs, each showing all 15 species icons in
+    miniature; only one copy is extracted from). That sheet has no id/text
+    labels naming each icon, so identification relies on each coloured
+    icon sharing its exact SVG bounding-box size with its black-outline
+    counterpart above (same source art, recoloured) -- all 15 sizes
+    matched uniquely and the result was cross-checked against a screenshot
+    Jonathan provided of the rendered sheet (every icon matched). Note
+    some of the coloured art differs from its black emblem in subject, not
+    just colour, once actually compared side by side (e.g. `faun`'s black
+    emblem and its `faun_colour` counterpart are both the same goat-horned
+    face -- confirmed identical; but this cross-check is what caught and
+    corrected an initial mismatch during identification, worth
+    re-verifying by eye if this script is ever re-run against updated
+    source art).
   - `currency/` -- **done 2026-09-23**: the 3 currency symbols, extracted
     from `symboles monnaie.svg` the same way as the Order glyphs
     (Inkscape `--export-id`/`--export-id-only`, group ids confirmed by
