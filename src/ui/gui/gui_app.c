@@ -27,10 +27,11 @@
 
 #define GUI_WINDOW_TITLE "Oracle: The Champions of Arcadia"
 #define GUI_LOGO_PATH "assets/logo/oracle_logo.png"
+#define GUI_ICON_PATH "assets/currency/luna.png"
 #define GUI_FONT_PATH "assets/fonts/ModernRifgoRegular-MAvdP.otf"
 #define GUI_TITLE_FONT_PT 48.0f
 #define GUI_LOGO_DISPLAY_SIZE 256.0f
-#define GUI_LOGO_ALPHA 77 // 70% transparent (~30% opacity, 0.30 * 255)
+#define GUI_LOGO_ALPHA 51 // 80% transparent (~20% opacity, 0.20 * 255)
 
 // Table teal, HSL(181, 23%, 60%) -- the "table top in gui" entry in
 // ../oracle outside git/oracle thematic colours.txt.
@@ -79,6 +80,23 @@ static bool gui_load_logo(GuiAppState* state)
   SDL_SetTextureAlphaMod(state->logo, GUI_LOGO_ALPHA);
   return true;
 } // gui_load_logo
+
+// Sets the window/taskbar icon to the Luna currency symbol (replacing
+// SDL's own default) -- non-fatal, same as the logo/font: a missing icon
+// just leaves the platform default in place. SDL_SetWindowIcon() copies
+// the surface, so it's freed right after the call.
+static void gui_load_window_icon(GuiAppState* state)
+{ char path[512];
+  gui_asset_path(path, sizeof(path), GUI_ICON_PATH);
+  SDL_Surface* icon = IMG_Load(path);
+  if(!icon)
+  { fprintf(stderr, "GUI: could not load window icon (%s): %s\n", path, SDL_GetError());
+    return;
+  }
+
+  SDL_SetWindowIcon(state->window, icon);
+  SDL_DestroySurface(icon);
+} // gui_load_window_icon
 
 static bool gui_load_title_text(GuiAppState* state)
 { char path[512];
@@ -152,6 +170,7 @@ static SDL_AppResult gui_sdl_init(void** appstate, int argc, char** argv)
     return SDL_APP_FAILURE;
   }
 
+  gui_load_window_icon(state);
   gui_load_logo(state);
   gui_load_title_text(state);
   return SDL_APP_CONTINUE;
