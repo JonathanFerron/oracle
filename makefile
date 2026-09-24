@@ -58,7 +58,8 @@ ENGINE_SRCS := $(SRCDIR)/core/card_actions.c \
                $(SRCDIR)/util/rnd.c \
                $(SRCDIR)/actions/move_gen.c \
                $(SRCDIR)/actions/move_apply.c \
-               $(SRCDIR)/actions/player_decision.c
+               $(SRCDIR)/actions/player_decision.c \
+               $(SRCDIR)/visibility/game_event.c
 
 AGENT_SRCS := $(SRCDIR)/ai_strat/ai_strategy.c \
               $(SRCDIR)/ai_strat/ai_strat_random.c \
@@ -281,6 +282,15 @@ TEST_VISIBILITY_SRCS := $(TESTSRCDIR)/test_visibility.c \
                         $(SRCDIR)/structures/deckstack.c
 TEST_VISIBILITY_OBJS := $(BUILDDIR)/testsrc/test_visibility.o \
                         $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_VISIBILITY_SRCS)))
+
+# game_event.c is likewise dependency-free at link time -- it only includes
+# GameMove/CombatDetails headers for their struct definitions, never calls
+# into actions/move_gen.c or core/combat.c (see game_event.h's own comment).
+TEST_GAME_EVENT_TARGET := $(BINDIR)/test_game_event
+TEST_GAME_EVENT_SRCS := $(TESTSRCDIR)/test_game_event.c \
+                        $(SRCDIR)/visibility/game_event.c
+TEST_GAME_EVENT_OBJS := $(BUILDDIR)/testsrc/test_game_event.o \
+                        $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_GAME_EVENT_SRCS)))
 
 # Calibration harness for A1 Value Based's tunable parameters (see
 # aicalibsrc/value/). One subfolder per agent under aicalibsrc/ as more
@@ -583,7 +593,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(GUI_BUILDDIR) $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_a15_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_player_decision $(BINDIR)/test_ismcts $(BINDIR)/test_puct_policy $(BINDIR)/test_puct $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan $(BINDIR)/gen_corpus $(BINDIR)/calib_ismctsnn $(BINDIR)/calib_ismctsnn_timing $(BINDIR)/gen_policy_corpus $(BINDIR)/calib_puct $(BINDIR)/calib_puct_timing $(BINDIR)/calib_daredevil
+	$(RM) -r $(BUILDDIR)/* $(GUI_BUILDDIR) $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_a15_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_player_decision $(BINDIR)/test_game_event $(BINDIR)/test_ismcts $(BINDIR)/test_puct_policy $(BINDIR)/test_puct $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan $(BINDIR)/gen_corpus $(BINDIR)/calib_ismctsnn $(BINDIR)/calib_ismctsnn_timing $(BINDIR)/gen_policy_corpus $(BINDIR)/calib_puct $(BINDIR)/calib_puct_timing $(BINDIR)/calib_daredevil
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -822,6 +832,18 @@ $(TEST_VISIBILITY_TARGET): $(TEST_VISIBILITY_OBJS)
 	@mkdir -p $(BINDIR)
 	$(CC) $(TEST_VISIBILITY_OBJS) -o $(TEST_VISIBILITY_TARGET) $(LIBS)
 	@echo "Test build complete: $(TEST_VISIBILITY_TARGET)"
+
+# Test GameEvent/event_filter_for_viewer()/cards_added()/cards_removed()
+# (src/visibility/game_event.c)
+.PHONY: test_game_event
+test_game_event: $(TEST_GAME_EVENT_TARGET)
+	./$(TEST_GAME_EVENT_TARGET)
+
+$(TEST_GAME_EVENT_TARGET): $(TEST_GAME_EVENT_OBJS)
+	@echo "Linking test_game_event..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(TEST_GAME_EVENT_OBJS) -o $(TEST_GAME_EVENT_TARGET) $(LIBS)
+	@echo "Test build complete: $(TEST_GAME_EVENT_TARGET)"
 
 # Calibration harness (see aicalibsrc/value/README.md or the file header for CLI usage)
 .PHONY: calib_valuebased
@@ -1065,6 +1087,7 @@ help:
 	@echo "  test_visibility  - Build and run VisibleGameState filter tests"
 	@echo "  test_moves       - Build and run move enumeration (src/actions/) tests"
 	@echo "  test_player_decision - Build and run PlayerDecision/decision_is_legal() tests"
+	@echo "  test_game_event  - Build and run GameEvent/diff-helper tests"
 	@echo "  test_ismcts      - Build and run A10 IS-MCTS node arena/UCT tree tests"
 	@echo "  test_puct_policy - Build and run A14 policy action-encoding tests"
 	@echo "  test_puct        - Build and run A14 PUCT selection/search tests"

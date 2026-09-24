@@ -162,7 +162,15 @@ design; the rating is diagnostic, not a pass/fail bar.
   (a human may pick any variant, not just the one `move_gen.c`'s
   `RECALL_POOL_CAP`-capped template samples) -- see the correction #1 note
   in the plan file.
-- [ ] Step 4: `GameEvent` + viewer filtering + before/after diff helpers.
+- [x] Step 4 (`ideas/9 gui/gui_architecture_synthesis.md` section 6/§10):
+  `GameEvent` + `event_filter_for_viewer()` (`src/visibility/game_event.h/.c`)
+  and the generic `cards_added()`/`cards_removed()` before/after diff
+  helpers (work on any `cards[]`+`size` array -- Hand/Discard/CombatZone all
+  share that shape), `testsrc/test_game_event.c`/`make test_game_event`
+  (15/15 passing). Header-only dependency on `GameMove`/`CombatDetails`;
+  `game_event.c` links nothing else, same dependency-free tier as
+  `visible_state.c`. `EVT_CARD_DRAWN` is the only event needing redaction
+  today -- every other event type is already public per the rules doc.
 - [ ] French/Spanish localization: `-u=fr`/`-u=es` currently has no effect on
   `bin/oracle-gui` (confirmed 2026-09-23) -- the hello-window step has no
   `LOCALIZED_STRING` calls at all yet (window title, "Oracle" wordmark are
