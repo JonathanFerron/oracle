@@ -386,12 +386,12 @@ int main(int argc, char** argv)
   // used. Write that sidecar once a real round is generated+trained, using
   // these lines plus run_selfplay.sh's own banner as the source.
   fprintf(stderr,
-         "gen_policy_corpus config: teacher=%s weights=%s matchup=%s seed=%lu "
-         "limit_iterations=%u search_exploration_constant=%.4f "
-         "widening_k=%.2f widening_alpha=%.2f",
-         teacher_name, weights_path, matchup, seed, params.limit_iterations,
-         params.search_exploration_constant, params.threshold_widening_k,
-         params.threshold_widening_alpha);
+          "gen_policy_corpus config: teacher=%s weights=%s matchup=%s seed=%lu "
+          "limit_iterations=%u search_exploration_constant=%.4f "
+          "widening_k=%.2f widening_alpha=%.2f",
+          teacher_name, weights_path, matchup, seed, params.limit_iterations,
+          params.search_exploration_constant, params.threshold_widening_k,
+          params.threshold_widening_alpha);
   if(g_teacher == AI_STRATEGY_ISMCTS_PUCT)
   { PUCTParams pp = puct_get_default_params();
     fprintf(stderr, " use_puct=%s\n", pp.use_puct ? "true" : "false");
