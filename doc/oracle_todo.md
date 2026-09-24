@@ -189,6 +189,37 @@ design; the rating is diagnostic, not a pass/fail bar.
   byte-for-byte; fixed-seed `-A` matchups for hbt-vs-ismcts and
   ismctsnn-vs-puct also verified byte-identical against the pre-Step-5
   binary (git worktree diff).
+- [x] Step 6 (`ideas/9 gui/gui_architecture_synthesis.md` section 8/§10):
+  session thread + `SessionClient` (`src/roles/stda/stda_session.h/.c`).
+  Windows/MSYS2 descoped project-wide (2026-09-24, see this file's own
+  "Dev environment" note) settled the threading choice: **C11 `<threads.h>`**,
+  not SDL3 -- keeps this file dependency-free/testable like every other
+  `roles/stda/` file (no `#ifdef HAVE_SDL3`), needs only `-pthread` (added to
+  `makefile`'s `LIBS`). Also departs from the synthesis doc's own
+  `SDL_PushEvent()` wake-up: `session_client_poll()` is plain non-blocking
+  polling (the GUI already redraws every frame), and the session batches
+  every event since the last human decision into one publish rather than
+  publishing after each `engine_advance()` step, so a single-slot "latest
+  update" can't silently drop events from a silent AI-only stretch. Also
+  added `engine_resign()` (`game_engine.h/.c`) for `SessionCommand`'s
+  `CMD_RESIGN`. `testsrc/test_session.c`/`make test_session` (8/8 passing):
+  a headless harness drives full games through a real session thread with a
+  "human" seat submitting random legal decisions built from each poll's
+  `legal[]`/hand, plus dedicated resign and illegal-submission-then-retry
+  coverage. Verified under both `valgrind --leak-check=full` (clean) and
+  `valgrind --tool=helgrind` (0 errors, several repeated runs) -- helgrind's
+  altered timing caught a **real bug**, not a race it flagged directly: the
+  main loop republished after a rejected submission via
+  `advance_until_human_or_over()`, silently overwriting the single-slot
+  "rejected" update before the client could ever poll it (fixed by
+  `resolve_pending()`'s inner loop, which stays on the same pending decision
+  without re-publishing). `-fsanitize=thread` could not be run: confirmed via
+  a minimal repro (bare `thrd_create()`, zero project code) that glibc's C11
+  `<threads.h>` crashes immediately under ThreadSanitizer on this toolchain
+  (GCC 15.2/Ubuntu) even in isolation, while the same test via raw
+  `pthread_create()` works fine under TSan -- a pre-existing
+  glibc/ThreadSanitizer incompatibility, not a project bug. `./bin/oracle -a
+  -p` unaffected (nothing yet calls `stda_session.c`).
 - [ ] French/Spanish localization: `-u=fr`/`-u=es` currently has no effect on
   `bin/oracle-gui` (confirmed 2026-09-23) -- the hello-window step has no
   `LOCALIZED_STRING` calls at all yet (window title, "Oracle" wordmark are

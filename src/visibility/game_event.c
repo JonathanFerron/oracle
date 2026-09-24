@@ -34,3 +34,8 @@ void event_buf_push(EventBuf* buf, GameEvent e)
 { if(buf->count >= EVENT_BUF_CAP) return;
   buf->ev[buf->count++] = e;
 } // event_buf_push
+
+void event_buf_append(EventBuf* dst, const EventBuf* src)
+{ for(uint8_t i = 0; i < src->count; i++)
+    event_buf_push(dst, src->ev[i]);
+} // event_buf_append

@@ -359,6 +359,31 @@ static void test_card_drawn_event_and_redaction(TestSuite* suite)
   destroy_game_context(ctx);
 } // test_card_drawn_event_and_redaction
 
+static void test_engine_resign(TestSuite* suite)
+{ printf("\n=== engine_resign: immediate GAME_OVER, opponent wins ===\n");
+
+  GameEngine e = {0};
+  init_blank(&e.state);
+  e.state.current_player = PLAYER_A;
+  e.phase = ENG_ATTACK_WAIT;
+  e.pending = (PendingDecision)
+  { .kind = DECISION_KIND_ATTACK, .player = PLAYER_A
+  };
+
+  EventBuf events = {0};
+  engine_resign(&e, PLAYER_A, &events);
+
+  check(suite, "phase is ENG_GAME_OVER", e.phase == ENG_GAME_OVER);
+  check(suite, "no further decision pending", e.pending.kind == DECISION_KIND_NONE);
+  check(suite, "PLAYER_B wins (PLAYER_A resigned)", e.state.game_state == PLAYER_B_WINS);
+  check(suite, "someone_has_zero_energy set", e.state.someone_has_zero_energy);
+
+  bool saw_game_over = false;
+  for(uint8_t i = 0; i < events.count; i++)
+    if(events.ev[i].type == EVT_GAME_OVER && events.ev[i].player == PLAYER_B) saw_game_over = true;
+  check(suite, "EVT_GAME_OVER emitted with the winner", saw_game_over);
+} // test_engine_resign
+
 int main(void)
 { TestSuite suite = {0, 0};
 
@@ -372,6 +397,7 @@ int main(void)
   test_discard_wait_triggers_and_skips(&suite);
   test_max_turns_cap_ends_in_draw(&suite);
   test_card_drawn_event_and_redaction(&suite);
+  test_engine_resign(&suite);
 
   printf("\n%d passed, %d failed\n", suite.passed, suite.failed);
   return suite.failed == 0 ? 0 : 1;

@@ -13,6 +13,7 @@
 /bin/test_player_decision
 /bin/test_game_event
 /bin/test_game_engine
+/bin/test_session
 /bin/test_visibility
 /bin/calib_valuebased
 /bin/calib_combo_threshold

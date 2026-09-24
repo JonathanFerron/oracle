@@ -273,6 +273,12 @@ static void run_ai_discard(GameEngine* e, const StrategySet* strategies, GameCon
   e->phase = ENG_SWITCH_PLAYER;
 } // run_ai_discard
 
+void engine_resign(GameEngine* e, PlayerID loser, EventBuf* out)
+{ e->state.someone_has_zero_energy = true;
+  e->state.game_state = (loser == PLAYER_A) ? PLAYER_B_WINS : PLAYER_A_WINS;
+  enter_game_over(e, out);
+} // engine_resign
+
 void engine_run_ai(GameEngine* e, const StrategySet* strategies, GameContext* ctx,
                    EventBuf* out)
 { PlayerID player = e->pending.player;

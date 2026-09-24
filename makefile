@@ -10,7 +10,7 @@ BINDIR := bin
 TARGET := $(BINDIR)/oracle
 SRCEXT := c
 INCEXT := h
-LIBS := -lm -lncursesw
+LIBS := -lm -lncursesw -pthread
 #LIBS=-pthread -lncursesw -lpanelw -lformw -lmenuw
 
 
@@ -240,6 +240,19 @@ TEST_GAME_ENGINE_SRCS := $(TESTSRCDIR)/test_game_engine.c \
                          $(AGENT_SRCS)
 TEST_GAME_ENGINE_OBJS := $(BUILDDIR)/testsrc/test_game_engine.o \
                          $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_GAME_ENGINE_SRCS)))
+
+# Test the session thread (src/roles/stda/stda_session.c) -- GUI step 6.
+# Same whole-roster shape as TEST_GAME_ENGINE_SRCS, plus stda_session.c
+# itself (not in ENGINE_SRCS -- roles/stda/ files are added ad hoc per test
+# target, matching stda_auto.c's own precedent). Needs -pthread (in LIBS).
+TEST_SESSION_TARGET := $(BINDIR)/test_session
+TEST_SESSION_SRCS := $(TESTSRCDIR)/test_session.c \
+                     $(SRCDIR)/roles/stda/stda_session.c \
+                     $(SRCDIR)/visibility/visible_state.c \
+                     $(ENGINE_SRCS) \
+                     $(AGENT_SRCS)
+TEST_SESSION_OBJS := $(BUILDDIR)/testsrc/test_session.o \
+                     $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_SESSION_SRCS)))
 
 # Test A10 IS-MCTS's node arena/UCT tree (ai_strat_ismcts_tree.c) and search
 # loop (ai_strat_ismcts_search.c) -- same whole-roster reasoning as
@@ -605,7 +618,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(GUI_BUILDDIR) $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_a15_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_player_decision $(BINDIR)/test_game_event $(BINDIR)/test_game_engine $(BINDIR)/test_ismcts $(BINDIR)/test_puct_policy $(BINDIR)/test_puct $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan $(BINDIR)/gen_corpus $(BINDIR)/calib_ismctsnn $(BINDIR)/calib_ismctsnn_timing $(BINDIR)/gen_policy_corpus $(BINDIR)/calib_puct $(BINDIR)/calib_puct_timing $(BINDIR)/calib_daredevil
+	$(RM) -r $(BUILDDIR)/* $(GUI_BUILDDIR) $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_a15_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_player_decision $(BINDIR)/test_game_event $(BINDIR)/test_game_engine $(BINDIR)/test_session $(BINDIR)/test_ismcts $(BINDIR)/test_puct_policy $(BINDIR)/test_puct $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan $(BINDIR)/gen_corpus $(BINDIR)/calib_ismctsnn $(BINDIR)/calib_ismctsnn_timing $(BINDIR)/gen_policy_corpus $(BINDIR)/calib_puct $(BINDIR)/calib_puct_timing $(BINDIR)/calib_daredevil
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -801,6 +814,17 @@ $(TEST_GAME_ENGINE_TARGET): $(TEST_GAME_ENGINE_OBJS)
 	@mkdir -p $(BINDIR)
 	$(CC) $(TEST_GAME_ENGINE_OBJS) -o $(TEST_GAME_ENGINE_TARGET) $(LIBS)
 	@echo "Test build complete: $(TEST_GAME_ENGINE_TARGET)"
+
+# Test the session thread (src/roles/stda/stda_session.c)
+.PHONY: test_session
+test_session: $(TEST_SESSION_TARGET)
+	./$(TEST_SESSION_TARGET)
+
+$(TEST_SESSION_TARGET): $(TEST_SESSION_OBJS)
+	@echo "Linking test_session..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(TEST_SESSION_OBJS) -o $(TEST_SESSION_TARGET) $(LIBS)
+	@echo "Test build complete: $(TEST_SESSION_TARGET)"
 
 # Test A10 IS-MCTS's node arena/UCT tree and search loop
 .PHONY: test_ismcts
@@ -1112,6 +1136,7 @@ help:
 	@echo "  test_player_decision - Build and run PlayerDecision/decision_is_legal() tests"
 	@echo "  test_game_event  - Build and run GameEvent/diff-helper tests"
 	@echo "  test_game_engine - Build and run the step driver (game_engine.c) tests"
+	@echo "  test_session     - Build and run the session thread (stda_session.c) tests"
 	@echo "  test_ismcts      - Build and run A10 IS-MCTS node arena/UCT tree tests"
 	@echo "  test_puct_policy - Build and run A14 policy action-encoding tests"
 	@echo "  test_puct        - Build and run A14 PUCT selection/search tests"

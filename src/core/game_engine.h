@@ -85,4 +85,10 @@ bool engine_submit(GameEngine* e, PlayerID player, const PlayerDecision* d,
 void engine_run_ai(GameEngine* e, const StrategySet* strategies, GameContext* ctx,
                    EventBuf* out);
 
+// Ends the game immediately as a resignation: `loser` concedes, the other
+// player wins. Not reachable through engine_advance()'s own flow -- no game
+// rule triggers this internally; it exists for a future human quitting
+// mid-game (the session layer's CMD_RESIGN, src/roles/stda/stda_session.h).
+void engine_resign(GameEngine* e, PlayerID loser, EventBuf* out);
+
 #endif // GAME_ENGINE_H

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Oracle ("Les Champions d'Arcadie") is a fixed-pool strategic dueling card game implemented in portable C, and a testbed for progressively stronger game-playing AI (Random → rule-based → heuristic → Monte Carlo → IS-MCTS → IS-MCTS+NN), with a Bradley-Terry rating system (`src/rating/`, implemented 2026-08-23) for objective strength measurement. It's a hobby/research project by a solo developer (JonathanFerron), currently in active early development — expect unimplemented stubs, TODOs, and some drift between docs and code.
 
-**Dev environment**: Kubuntu Linux, GCC, GNU Make, editor Kate, Python available. Cross-platform (MSYS2/Windows + Linux) portability remains a goal and is kept working, but Kubuntu is the primary/active target — `doc/oracle_design.md`'s "Geany"/"MSYS2/Arch" is outdated.
+**Dev environment**: Kubuntu Linux, GCC, GNU Make, editor Kate, Python available. Kubuntu Linux is the only target platform (decided 2026-09-24) — Windows/MSYS2 support is explicitly descoped, not just deprioritized; don't add or preserve `#ifdef _WIN32`-style portability code for new work. `doc/oracle_design.md`'s "Geany"/"MSYS2/Arch" is outdated.
 
 ## Build & Run
 
@@ -107,7 +107,7 @@ AI strategies are attack/defense function pointer pairs (`AttackStrategyFunc`/`D
 - Snake_case is the target naming convention; some legacy camelCase exists (known debt) — don't propagate it in new code.
 - **Module prefixes** on public functions, matching the module: `RND_`, `DeckStk_`, `Hand_`, `Discard_`, `tui_`, etc.
 - Manual/duplicated code is preferred over macro-magic abstractions for readability.
-- Cross-platform target: MSYS2/Windows and Linux both need to keep working (see `#ifdef _WIN32` blocks for UTF-8 console setup and `prng_seed.c`'s platform-specific secure RNG).
+- **Kubuntu Linux only** (decided 2026-09-24) — Windows/MSYS2 is explicitly descoped, not a target. Existing `#ifdef _WIN32` blocks (UTF-8 console setup, `prng_seed.c`'s platform-specific secure RNG) are pre-existing dead weight, not maintained going forward; don't add new ones, and feel free to remove them opportunistically when touching that code, but no dedicated cleanup pass is needed.
 - **Trilingual UI**: every user-facing string must go through `LOCALIZED_STRING(en, fr, es)` / `LOCALIZED_STRING_L(lang, en, fr, es)` (`ui/shared/localization.h`) with English, French, and Spanish variants. The in-game/world language is French; the UI itself defaults to English.
 - **Error handling**: return `bool` for success/failure; anything with a `create_*`/allocator has a matching `destroy_*`/`free_*`.
 
@@ -131,8 +131,9 @@ AI strategies are attack/defense function pointer pairs (`AttackStrategyFunc`/`D
 - **No premature optimization.** Current perf is fine (10k sims < 5 min). No memory pools, caching, or PGO unless profiling (gprof) shows a real bottleneck.
 - **Network/client-server** is designed but not built — don't scaffold `sh_`/`sr_`/`cl_`/`pr_`-style modules unless explicitly asked.
 - **SDL3 GUI** is active future work (promoted from "long-horizon" 2026-08-28) — see
-  `doc/oracle_roadmap.md`'s sequencing. Target platform is Kubuntu Linux first; Windows
-  and iOS are explicitly not goals. Keep it reasonably portable toward a future Android
+  `doc/oracle_roadmap.md`'s sequencing. Kubuntu Linux is the target platform (see the
+  project-wide "Dev environment" note above); Windows and iOS are explicitly not goals,
+  not just deprioritized. Keep it reasonably portable toward a future Android
   build (Jonathan's Samsung Galaxy Tab) where that costs little — SDL3 has an official
   Android target, so this mostly means favoring SDL3's own input/rendering/windowing
   abstractions over Linux-specific assumptions, and keeping touch-sized hit targets in

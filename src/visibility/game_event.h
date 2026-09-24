@@ -89,4 +89,9 @@ typedef struct
 // worth finding via a shrunk buffer in a test, not a runtime crash).
 void event_buf_push(EventBuf* buf, GameEvent e);
 
+// Appends every event in `src` to `dst` (event_buf_push() per entry) --
+// used by a session/driver accumulating events across several engine steps
+// into one batch before publishing it (src/roles/stda/stda_session.c).
+void event_buf_append(EventBuf* dst, const EventBuf* src);
+
 #endif // GAME_EVENT_H
