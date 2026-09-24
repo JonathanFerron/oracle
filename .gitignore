@@ -10,6 +10,7 @@
 /bin/test_cash_exchange
 /bin/test_rating
 /bin/test_moves
+/bin/test_player_decision
 /bin/test_visibility
 /bin/calib_valuebased
 /bin/calib_combo_threshold

@@ -153,6 +153,16 @@ design; the rating is diagnostic, not a pass/fail bar.
 
 ### GUI Mode (`stda_gui.c`, `ui/gui/`) — M1 "hello window" in progress, see `doc/oracle_roadmap.md`'s "SDL3 GUI" item
 
+- [x] Step 3 (`ideas/9 gui/gui_architecture_synthesis.md` section 4/§10):
+  `PlayerDecision` + `decision_is_legal()` (`src/actions/player_decision.h/.c`),
+  `testsrc/test_player_decision.c`/`make test_player_decision` (29/29 passing).
+  ATTACK/DEFENSE moves check canonical (order-insensitive) membership against
+  `get_available_moves()` built with limits `{1,1}`; the recall/cash
+  sub-choice is checked structurally against the real discard/hand instead
+  (a human may pick any variant, not just the one `move_gen.c`'s
+  `RECALL_POOL_CAP`-capped template samples) -- see the correction #1 note
+  in the plan file.
+- [ ] Step 4: `GameEvent` + viewer filtering + before/after diff helpers.
 - [ ] French/Spanish localization: `-u=fr`/`-u=es` currently has no effect on
   `bin/oracle-gui` (confirmed 2026-09-23) -- the hello-window step has no
   `LOCALIZED_STRING` calls at all yet (window title, "Oracle" wordmark are
