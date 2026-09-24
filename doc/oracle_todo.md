@@ -151,6 +151,16 @@ design; the rating is diagnostic, not a pass/fail bar.
 
 
 
+### GUI Mode (`stda_gui.c`, `ui/gui/`) — M1 "hello window" in progress, see `doc/oracle_roadmap.md`'s "SDL3 GUI" item
+
+- [ ] French/Spanish localization: `-u=fr`/`-u=es` currently has no effect on
+  `bin/oracle-gui` (confirmed 2026-09-23) -- the hello-window step has no
+  `LOCALIZED_STRING` calls at all yet (window title, "Oracle" wordmark are
+  plain English literals). Needs doing once there's real UI text to
+  localize (labels, buttons, the message log) -- CLI/TUI's existing
+  `LOCALIZED_STRING`/`LOCALIZED_STRING_L` macros (`ui/shared/localization.h`)
+  are the established pattern to reuse, not a new one.
+
 ### Simulation UI (`stda.sim`) — back burnered
 
 - [ ] ncurses-based results display, live progress bar, win-rate display, strategy
