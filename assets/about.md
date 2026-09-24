@@ -35,9 +35,21 @@ provenance, corpus composition, measured results).
     fractal designs x 3 colour variants (54 PNGs, already 556x839; a
     further 16 designs exist only as GIMP Fractal Explorer recipes, not
     yet rendered -- see the fractal inventory note in the GUI plan file).
-  - `orders/` -- the 5 Order glyphs (Dawn/Verdant/Ember/Eternal/Moonlight
-    Light), extracted from the `cartes champions pgN.svg` print-sheet
-    source, rasterised to PNG.
+  - `orders/` -- **done 2026-09-23**: the 5 Order glyphs (`order_a.svg`/
+    `.png` .. `order_e.svg`/`.png`, matching `game_types.h`'s `ChampionOrder`
+    enum order/index), Jonathan's "bubble" line-art versions of his printed
+    cards' ASCII order markers, extracted via
+    `tools/assets/extract_order_symbols.sh` from his combined
+    `Order Symbols.svg` source sheet (5 shapes left to right). ASCII <->
+    shape <-> Order mapping (confirmed by rendering and visual inspection,
+    matches `ChampionOrder`'s own species groupings):
+    | Order | ASCII | Shape | Light name |
+    |---|---|---|---|
+    | `ORDER_A` | `o` | circle | Dawn Light |
+    | `ORDER_B` | `+` | 4-petal bubble | Verdant Light |
+    | `ORDER_C` | `-` | horizontal ellipse | Ember Light |
+    | `ORDER_D` | `x` | 4-petal bubble, rotated | Eternal Light |
+    | `ORDER_E` | `\|` | vertical ellipse | Moonlight |
   - `species/` -- the 15 species emblem glyphs, rasterised from
     `emblemes especes/*.svg`.
   - `currency/` -- luna/opale currency symbols, rasterised from
@@ -47,4 +59,13 @@ provenance, corpus composition, measured results).
     1024x1024).
   - `fonts/` -- `ModernRifgoRegular-MAvdP.otf` (the base logo/UI font) and
     any Google Fonts picks added later. Licence terms not yet verified for
-    every font here -- check before any public distribution.
+    every font here -- check before any public distribution. **Comic Sans
+    MS is NOT here** despite being one of Jonathan's requested runtime font
+    options (it's what the printed cards use) -- Microsoft's EULA for the
+    `ttf-mscorefonts-installer` package (already installed on this box,
+    `/usr/share/fonts/truetype/msttcorefonts/Comic_Sans_MS.ttf`) prohibits
+    redistributing the font file itself, which is exactly why that package
+    ships as a downloader rather than the `.ttf` directly. The GUI's
+    font-swap feature (M1 step 7) should look it up from that well-known
+    system path at runtime with a graceful fallback (e.g. to ModernRifgo)
+    when it's absent, not bundle it.

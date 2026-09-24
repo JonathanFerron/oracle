@@ -37,6 +37,14 @@
 #define GUI_TABLE_G 176
 #define GUI_TABLE_B 176
 
+// Title wordmark colour: #216778, the same colour used in
+// ../oracle outside git/Text Logo.svg, at 50% opacity so it sits quietly
+// on the table rather than competing with the logo.
+#define GUI_TITLE_R 0x21
+#define GUI_TITLE_G 0x67
+#define GUI_TITLE_B 0x78
+#define GUI_TITLE_A 128
+
 typedef struct
 { SDL_Window* window;
   SDL_Renderer* renderer;
@@ -83,7 +91,7 @@ static bool gui_load_title_text(GuiAppState* state)
   if(!state->title_text)
     return false;
 
-  TTF_SetTextColor(state->title_text, 30, 30, 30, 255); // "card text gray" HSL 0/0/30
+  TTF_SetTextColor(state->title_text, GUI_TITLE_R, GUI_TITLE_G, GUI_TITLE_B, GUI_TITLE_A);
   return true;
 } // gui_load_title_text
 
