@@ -5,6 +5,100 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-23 — SDL3 GUI: steps 1-2 done (`VisibleGameState`, toolchain + M1 hello window), then paused for a future session
+
+First real implementation work on the SDL3 GUI (`doc/oracle_roadmap.md`'s "SDL3
+GUI" item), following the architecture from `ideas/9 gui/gui_architecture_synthesis.md`
+(written 2026-09-22) via a step-by-step plan written this session:
+`~/.claude/plans/let-s-please-make-a-noble-neumann.md` -- **read that file first in
+any future session picking this back up**, it's the authoritative status/next-steps
+document, kept current throughout. Six commits, `a87fb84`..`45ecb25`.
+
+**Step 0 -- packages**: `libsdl3-dev`/`libsdl3-ttf-dev`/`libsdl3-image-dev` installed
+from this box's regular apt repos (Ubuntu 26.04 "resolute" universe: SDL3 3.4.2,
+SDL3_ttf 3.2.2, SDL3_image 3.4.0) -- no PPA or source build needed, settling the
+synthesis doc's own open question on this.
+
+**Step 1 -- `VisibleGameState`** (`a87fb84`): `src/visibility/visible_state.h/.c`,
+the filter that will keep the GUI (and later a network client) from ever seeing
+hidden information (opponent hand contents, deck order) -- built from today's real
+`struct gamestate` types, not the stale sketch in `ideas/8 client server/`. Added
+`NUM_PLAYERS` to `game_types.h` so this and future GUI code loop over players rather
+than hardcoding 2, keeping the planned 3-4 player engine rework additive later.
+`VIEWER_SPECTATOR` covers the AI-vs-AI watch case. `testsrc/test_visibility.c`,
+20/20 passing (`make test_visibility`), valgrind-clean. Two corrections to the
+synthesis doc found and fixed here: `actions/`/`visibility/` in `CLAUDE.md` said
+"planning notes only" when `actions/` has had real move-generation code since `A8`;
+`play_turn()` can't be deleted as the doc's step 7.5 suggested, since every search
+agent's rollout still calls it.
+
+**Step 2 -- toolchain + M1 hello window** (`2bd8289`): `make gui`/`make gui-debug`
+build `bin/oracle-gui` into a separate `obj-gui/` tree (`-DHAVE_SDL3` + pkg-config
+flags); `src/ui/gui/` is excluded from the default `SOURCES` find so
+`make`/`debug`/`release`/`release_tools` (calibration boxes included) stay
+SDL3-free, per `CLAUDE.md`'s "Out of scope" section. `src/roles/stda/stda_gui.c` is
+the always-built `MODE_STDA_GUI` entry seam (prints a "rebuild with make gui"
+message when `HAVE_SDL3` isn't defined, replacing the old unconditional "not yet
+implemented" stub). `src/ui/gui/gui_app.c` is the actual M1 window:
+`SDL_EnterAppMainCallbacks()` called explicitly from `gui_app_run()` rather than
+the `SDL_MAIN_USE_CALLBACKS` macro path, so `main.c` keeps owning `main()` and the
+shared `cmdline.c` parsing -- a resizable window, the table teal background, the
+Oracle logo, and the "Oracle" wordmark in ModernRifgo. Visually confirmed by
+Jonathan; valgrind-clean. Asset layout corrected mid-step from a first draft nested
+`assets/gui/` to the existing top-level-category convention (`assets/logo/`,
+`assets/fonts/`, ... alongside `assets/ismctsnn/`/`assets/puct/`) that
+`doc/oracle_roadmap.md` had already anticipated. Asset inventory corrections found
+while re-checking the plan against the real source material: only 18 of 34 designed
+fractal-art variants are actually rendered (the rest are GIMP Fractal Explorer
+recipe files, not images); the 5 Order glyphs turned out to live inside the
+`cartes champions pgN.svg` print-sheet source rather than as standalone files.
+
+**Polish pass, same session, driven by Jonathan looking at the running window**
+(`c2072d8`, `8d1b385`, `ac8cc7c`, `45ecb25`):
+- Order glyphs extracted: Jonathan placed his "bubble" line-art versions (used on
+  the printed cards) in a combined `Order Symbols.svg`; a new
+  `tools/assets/extract_order_symbols.sh` (Inkscape `--export-id`/`--export-id-only`
+  per shape) produced `assets/orders/order_a.svg`/`.png` .. `order_e.svg`/`.png`,
+  index-matched to `game_types.h`'s `ChampionOrder` enum. Mapping confirmed by
+  rendering the sheet and visually inspecting it (o/+/-/x/| for Orders A-E, Dawn
+  through Moonlight Light) -- full table in `assets/about.md`.
+- Luna currency symbol extracted the same way from `symboles monnaie.svg`
+  (`assets/currency/luna.svg`/`.png`) and set as the window/taskbar icon
+  (`SDL_SetWindowIcon()`), replacing SDL's own generic default -- then recoloured
+  at the SVG source level from black to `#216778` (the same teal used in
+  `Text Logo.svg` and the title wordmark; matches "teal logo text" HSL 192/57/30
+  in Jonathan's thematic-colours notes) per Jonathan's request.
+- Title wordmark coloured `#216778` at 50% alpha; logo alpha tuned twice on
+  feedback, landing at 80% transparent (SDL_SetTextureAlphaMod, 20% opacity).
+- `-V`/`--version` bumped to `v2026.09` (`src/main/version.h`'s `VERSION_MONTH`).
+- Found and recorded, not yet fixed: `-u=fr`/`-u=es` has no effect on
+  `bin/oracle-gui` -- the hello window has no `LOCALIZED_STRING` calls yet at all
+  (new `doc/oracle_todo.md` "GUI Mode" subsection).
+- Found and recorded, not yet needed: Jonathan wants Comic Sans MS as a runtime
+  font option (matches the printed cards); it's on this box via
+  `ttf-mscorefonts-installer` but Microsoft's EULA for that package prohibits
+  redistributing the `.ttf`, so it must be looked up from the system path at
+  runtime (M1 step 7) rather than bundled in `assets/fonts/`.
+
+**Verification, every commit**: `./bin/oracle -a -p` still matches
+`bin/expectedresults.txt` byte-for-byte, `make test_visibility` 20/20,
+`bin/oracle-gui` valgrind-clean (0 definitely/indirectly/possibly lost) on every
+build. One recurring incidental finding, reverted each time as out of scope:
+`make format`'s tree-wide `--recursive` catches a pre-existing formatting drift in
+`aicalibsrc/puct/gen_policy_corpus.c` -- worth a dedicated pass sometime, not this
+session's concern.
+
+**Paused here** (Jonathan's call, work is clean and committed at every step) --
+**next up is step 3, `PlayerDecision` + `decision_is_legal()`** in `src/actions/`,
+pure engine code with no SDL3/art dependency. See the plan file's numbered steps
+4-10 for everything after that (events, the step driver, the session thread, GUI
+M1 proper, then M2/Android/network). The plan file also records two more corrections
+to the synthesis doc found but not yet acted on: `end_of_turn()` needs splitting
+for the driver's discard-to-7 wait, and the flow was missing the
+`MAX_NUMBER_OF_TURNS` (500) cap.
+
+---
+
 ## 2026-09-23 — A16 Session 3 complete: round 1 of self-play bootstrapping confirmed, "AlphaOracle Prime Plus II" promoted in place
 
 This project's first-ever validated self-play bootstrap result. Session 2

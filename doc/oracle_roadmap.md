@@ -123,6 +123,23 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
    lost). Assets already available were imported to `assets/` (top-level categories,
    matching the `ismctsnn/`/`puct/` convention, not a nested `gui/`): `assets/logo/
    oracle_logo.png`, `assets/fonts/ModernRifgoRegular-MAvdP.otf` -- see `assets/about.md`.
+   **Polish pass, same date** (`c2072d8`/`8d1b385`/`ac8cc7c`/`45ecb25`, driven by Jonathan
+   looking at the running window): Order glyphs extracted from his "bubble" line-art sheet
+   (`tools/assets/extract_order_symbols.sh`, new) into `assets/orders/`; the Luna currency
+   symbol extracted from `symboles monnaie.svg` into `assets/currency/` and set as the
+   window/taskbar icon; both the title wordmark and the Luna icon coloured `#216778`
+   (Jonathan's own `Text Logo.svg` teal); logo transparency tuned twice to 80%; `-V` bumped
+   to `v2026.09`. Found and recorded, not yet acted on: `-u=fr`/`-u=es` has no effect on
+   `bin/oracle-gui` yet (no `LOCALIZED_STRING` calls in `src/ui/gui/` -- new
+   `doc/oracle_todo.md` "GUI Mode" item); Comic Sans MS (wanted as a font option, matches
+   the printed cards) is on this box via `ttf-mscorefonts-installer` but its EULA forbids
+   bundling the `.ttf`, so it must be a runtime system-path lookup, not a committed asset.
+   **Paused here 2026-09-23** (Jonathan's call, work clean and committed at every step) --
+   **the authoritative next-steps document is
+   `~/.claude/plans/let-s-please-make-a-noble-neumann.md`** (Steps 3-10; step 3,
+   `PlayerDecision` + `decision_is_legal()` in `src/actions/`, is pure engine code with no
+   SDL3/art dependency and is safe to pick up cold in a new session). Full dated writeup:
+   `doc/changelog.md`'s 2026-09-23 entry.
 4. **`A14` PUCT + policy head** ("AlphaOracle Prime Plus I") -- ✅ done and
    **registered 2026-09-08/09** (see `doc/changelog.md`'s 2026-09-09 entry and
    `doc/ai_agents.md`'s A14 section). PUCT (Predictor + UCT) selection

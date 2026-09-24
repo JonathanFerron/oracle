@@ -20,10 +20,12 @@ Oracle is an open-source implementation of a fixed-pool strategic dueling card g
 
 ## 🤖 AI Research Focus
 
-This project serves as a testbed for AI development, progressing from simple to sophisticated (12 planned agents, `A1`–`A11` plus the side-exploration `A12`; see `doc/oracle_roadmap.md`):
-
-- ✅ **Random strategy** (baseline, functional)
-- ✅ **Value Based** ("The Apprentice", `A1`), **Combo Threshold** ("The Showboat", `A2`), **Borealis** (the Bradley-Terry benchmark, `A3`), **Balanced Rules** ("Bean Counter", `A4`), **Heuristic** ("ε-γ-δ", `A5`), **Tactical** ("Pressure Cooker", `A6`), **Hybrid HBT** ("The Grandmaster", `A7`), **Simple Monte Carlo** ("The Soothsayer", `A8`), **HBT 2-Ply** ("Grandmaster II", `A9`), **IS-MCTS** ("The Omniscient", `A10`, rating 69), **IS-MCTS + Neural Network** ("AlphaOracle Prime", `A11`, a trained value network layered onto `A10`'s search — rating 74, the roster ceiling), and **Clairvoyant** (`A8`'s sibling, `A12`) — implemented and calibrated, closing out the original `A1`–`A11` ladder
+This project is a testbed for AI development, from simple to sophisticated. All fifteen
+originally-planned agents (`A1`–`A15`) plus the exploratory `A16` self-play bootstrapping
+work are implemented and registered — see `doc/ai_agents.md` for the full roster (naming,
+scoring model, measured strength) and `doc/changelog.md` for the dated history. Highlights:
+**IS-MCTS + Neural Network** ("AlphaOracle Prime", `A11`) and **PUCT + policy net**
+("AlphaOracle Prime Plus I/II", `A14`) are the current roster ceiling.
 
 A Bradley-Terry rating system for objective AI strength measurement is implemented (`src/rating/`): every agent gets a rating on a 1–99 scale that is its measured win probability against Borealis, the fixed rating-50 anchor.
 
@@ -31,7 +33,7 @@ A Bradley-Terry rating system for objective AI strength measurement is implement
 
 - **Clean C architecture**: modular design, functions targeting ≤35 lines
 - **Cross-platform**: Linux (primary) and MSYS2 (Windows) support
-- **Multiple interfaces**: CLI (working), ncurses TUI (working, human-vs-AI), SDL3 GUI (planned)
+- **Multiple interfaces**: CLI (working), ncurses TUI (working, human-vs-AI), SDL3 GUI (M1 "hello window" in progress — `make gui`, see `doc/oracle_roadmap.md`'s "SDL3 GUI" item)
 - **Network-ready**: client/server architecture designed for multiplayer
 - **Testable**: GameContext pattern enables dependency injection
 
@@ -62,11 +64,12 @@ make
 
 ## 🎯 Current Status
 
-**First non-dumb AI strategy** is the active focus (see `doc/oracle_roadmap.md`'s "Next Up").
+**SDL3 GUI** is the active focus (see `doc/oracle_roadmap.md`'s "SDL3 GUI" item and
+`doc/changelog.md`'s 2026-09-23 entry) — `A1`–`A16` closed out the AI ladder first.
 
 Working features:
 
-- ✅ Random AI strategy
+- ✅ Full `A1`–`A16` AI roster (`doc/ai_agents.md`), plus a Bradley-Terry rating system
 - ✅ CLI interactive mode (human vs AI, human vs human, AI vs AI)
 - ✅ TUI interactive mode (ncurses, human vs AI)
 - ✅ Automated simulation
@@ -79,7 +82,8 @@ Working features:
 
 In development:
 
-- ⚠️ AI strategies beyond Random (`A1`–`A11`, see above)
+- ⚠️ SDL3 GUI (`make gui`; M1 "hello window" done, game rendering next — see
+  `doc/oracle_roadmap.md`)
 - ⚠️ TUI polish items (staged-card highlighting, help overlay — see `doc/oracle_todo.md`)
 
 ## 🤝 Contributing
