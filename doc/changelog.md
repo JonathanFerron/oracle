@@ -5,7 +5,7 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
-## 2026-09-23 — SDL3 GUI: steps 1-2 done (`VisibleGameState`, toolchain + M1 hello window), then paused for a future session
+## 2026-09-23 — SDL3 GUI: steps 1-2 done (`VisibleGameState`, toolchain + M1 hello window), art assets for currency/species pulled in, paused twice for a future session
 
 First real implementation work on the SDL3 GUI (`doc/oracle_roadmap.md`'s "SDL3
 GUI" item), following the architecture from `ideas/9 gui/gui_architecture_synthesis.md`
@@ -88,13 +88,40 @@ build. One recurring incidental finding, reverted each time as out of scope:
 `aicalibsrc/puct/gen_policy_corpus.c` -- worth a dedicated pass sometime, not this
 session's concern.
 
-**Paused here** (Jonathan's call, work is clean and committed at every step) --
-**next up is step 3, `PlayerDecision` + `decision_is_legal()`** in `src/actions/`,
-pure engine code with no SDL3/art dependency. See the plan file's numbered steps
-4-10 for everything after that (events, the step driver, the session thread, GUI
-M1 proper, then M2/Android/network). The plan file also records two more corrections
-to the synthesis doc found but not yet acted on: `end_of_turn()` needs splitting
-for the driver's discard-to-7 wait, and the flow was missing the
+**Asset-only follow-on, after the pause above** (`a0b273a`, `3c3b50d`, `55e4b4b`,
+`a920166` -- Jonathan kept feeding in source art, none of this touches code):
+- Aureus and Opale currency symbols extracted the same way as Luna (`assets/currency/`)
+  -- Opale's previously-flagged gap (a missing small ellipse) was fixed by Jonathan in
+  Inkscape first. Both still black; colour later, trivial at the SVG level.
+- All 15 species emblems imported from `emblemes especes/*.svg` into `assets/species/`
+  (new `tools/assets/import_species_emblems.sh`) -- these were already standalone
+  per-species files, so a straight plain-SVG copy + rasterize, no `--export-id`
+  extraction needed. Renamed to English (`human`, `elf`, `dwarf`, ... matching
+  `ChampionSpecies`) rather than the French source filenames. One follow-up fix:
+  `faun.svg`'s page bounds hadn't been fit to its artwork (Jonathan's "resize page to
+  selection" in Inkscape), leaving `faun.png` mostly blank canvas -- re-exported once
+  fixed.
+- All 15 **coloured** species icons additionally extracted from `cartes/dos des
+  cartes.svg` (the card-back print sheet, a 3x3 grid of 9 identical card backs each
+  showing all 15 in miniature) into `assets/species/<name>_colour.svg`/`.png`. New
+  `tools/assets/extract_species_colour_icons.sh` identifies each one by an exact
+  bounding-box size match against its black-outline counterpart, since the sheet
+  carries no id/text labels. Cross-checked against a screenshot Jonathan provided of
+  the rendered sheet -- caught and corrected a mapping mistake made while first
+  eyeballing the screenshot alone (some coloured icons differ from the black emblem
+  in subject, not just colour, so eyeballing wasn't reliable on its own). Worth
+  knowing if a similar unlabeled sheet needs extracting again: the size-match method,
+  not eyeballing, is what actually worked.
+- None of this new art (species emblems, Aureus, Opale) is wired into any code yet --
+  only Luna (the window icon) is actually used anywhere.
+
+**Paused here (second time)** (Jonathan's call both times, work clean and committed
+at every step) -- **next up is still step 3, `PlayerDecision` + `decision_is_legal()`**
+in `src/actions/`, pure engine code with no SDL3/art dependency. See the plan file's
+numbered steps 4-10 for everything after that (events, the step driver, the session
+thread, GUI M1 proper, then M2/Android/network). The plan file also records two more
+corrections to the synthesis doc found but not yet acted on: `end_of_turn()` needs
+splitting for the driver's discard-to-7 wait, and the flow was missing the
 `MAX_NUMBER_OF_TURNS` (500) cap.
 
 ---
