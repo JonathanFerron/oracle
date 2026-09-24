@@ -30,6 +30,7 @@
 #define GUI_FONT_PATH "assets/fonts/ModernRifgoRegular-MAvdP.otf"
 #define GUI_TITLE_FONT_PT 48.0f
 #define GUI_LOGO_DISPLAY_SIZE 256.0f
+#define GUI_LOGO_ALPHA 77 // 70% transparent (~30% opacity, 0.30 * 255)
 
 // Table teal, HSL(181, 23%, 60%) -- the "table top in gui" entry in
 // ../oracle outside git/oracle thematic colours.txt.
@@ -70,8 +71,13 @@ static bool gui_load_logo(GuiAppState* state)
   gui_asset_path(path, sizeof(path), GUI_LOGO_PATH);
   state->logo = IMG_LoadTexture(state->renderer, path);
   if(!state->logo)
-    fprintf(stderr, "GUI: could not load logo (%s): %s\n", path, SDL_GetError());
-  return state->logo != NULL;
+  { fprintf(stderr, "GUI: could not load logo (%s): %s\n", path, SDL_GetError());
+    return false;
+  }
+
+  SDL_SetTextureBlendMode(state->logo, SDL_BLENDMODE_BLEND);
+  SDL_SetTextureAlphaMod(state->logo, GUI_LOGO_ALPHA);
+  return true;
 } // gui_load_logo
 
 static bool gui_load_title_text(GuiAppState* state)
