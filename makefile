@@ -52,6 +52,7 @@ ENGINE_SRCS := $(SRCDIR)/core/card_actions.c \
                $(SRCDIR)/core/game_context.c \
                $(SRCDIR)/core/game_state.c \
                $(SRCDIR)/core/turn_logic.c \
+               $(SRCDIR)/core/game_engine.c \
                $(SRCDIR)/structures/card_collection.c \
                $(SRCDIR)/structures/deckstack.c \
                $(SRCDIR)/util/mtwister.c \
@@ -228,6 +229,17 @@ TEST_PLAYER_DECISION_SRCS := $(TESTSRCDIR)/test_player_decision.c \
                              $(AGENT_SRCS)
 TEST_PLAYER_DECISION_OBJS := $(BUILDDIR)/testsrc/test_player_decision.o \
                              $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_PLAYER_DECISION_SRCS)))
+
+# Test the step driver (src/core/game_engine.c) -- GUI step 5. Same
+# whole-roster shape as TEST_MOVES_SRCS/TEST_PLAYER_DECISION_SRCS: exercises
+# real StrategySet dispatch (AI_STRATEGY_RANDOM) and mc_fork_context()
+# (ai_strat_playout.c, in AGENT_SRCS) for its bit-for-bit reference check.
+TEST_GAME_ENGINE_TARGET := $(BINDIR)/test_game_engine
+TEST_GAME_ENGINE_SRCS := $(TESTSRCDIR)/test_game_engine.c \
+                         $(ENGINE_SRCS) \
+                         $(AGENT_SRCS)
+TEST_GAME_ENGINE_OBJS := $(BUILDDIR)/testsrc/test_game_engine.o \
+                         $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_GAME_ENGINE_SRCS)))
 
 # Test A10 IS-MCTS's node arena/UCT tree (ai_strat_ismcts_tree.c) and search
 # loop (ai_strat_ismcts_search.c) -- same whole-roster reasoning as
@@ -593,7 +605,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(GUI_BUILDDIR) $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_a15_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_player_decision $(BINDIR)/test_game_event $(BINDIR)/test_ismcts $(BINDIR)/test_puct_policy $(BINDIR)/test_puct $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan $(BINDIR)/gen_corpus $(BINDIR)/calib_ismctsnn $(BINDIR)/calib_ismctsnn_timing $(BINDIR)/gen_policy_corpus $(BINDIR)/calib_puct $(BINDIR)/calib_puct_timing $(BINDIR)/calib_daredevil
+	$(RM) -r $(BUILDDIR)/* $(GUI_BUILDDIR) $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_a15_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_player_decision $(BINDIR)/test_game_event $(BINDIR)/test_game_engine $(BINDIR)/test_ismcts $(BINDIR)/test_puct_policy $(BINDIR)/test_puct $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan $(BINDIR)/gen_corpus $(BINDIR)/calib_ismctsnn $(BINDIR)/calib_ismctsnn_timing $(BINDIR)/gen_policy_corpus $(BINDIR)/calib_puct $(BINDIR)/calib_puct_timing $(BINDIR)/calib_daredevil
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -778,6 +790,17 @@ $(TEST_PLAYER_DECISION_TARGET): $(TEST_PLAYER_DECISION_OBJS)
 	@mkdir -p $(BINDIR)
 	$(CC) $(TEST_PLAYER_DECISION_OBJS) -o $(TEST_PLAYER_DECISION_TARGET) $(LIBS)
 	@echo "Test build complete: $(TEST_PLAYER_DECISION_TARGET)"
+
+# Test the step driver (src/core/game_engine.c)
+.PHONY: test_game_engine
+test_game_engine: $(TEST_GAME_ENGINE_TARGET)
+	./$(TEST_GAME_ENGINE_TARGET)
+
+$(TEST_GAME_ENGINE_TARGET): $(TEST_GAME_ENGINE_OBJS)
+	@echo "Linking test_game_engine..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(TEST_GAME_ENGINE_OBJS) -o $(TEST_GAME_ENGINE_TARGET) $(LIBS)
+	@echo "Test build complete: $(TEST_GAME_ENGINE_TARGET)"
 
 # Test A10 IS-MCTS's node arena/UCT tree and search loop
 .PHONY: test_ismcts
@@ -1088,6 +1111,7 @@ help:
 	@echo "  test_moves       - Build and run move enumeration (src/actions/) tests"
 	@echo "  test_player_decision - Build and run PlayerDecision/decision_is_legal() tests"
 	@echo "  test_game_event  - Build and run GameEvent/diff-helper tests"
+	@echo "  test_game_engine - Build and run the step driver (game_engine.c) tests"
 	@echo "  test_ismcts      - Build and run A10 IS-MCTS node arena/UCT tree tests"
 	@echo "  test_puct_policy - Build and run A14 policy action-encoding tests"
 	@echo "  test_puct        - Build and run A14 PUCT selection/search tests"

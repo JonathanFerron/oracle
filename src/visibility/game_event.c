@@ -29,3 +29,8 @@ uint8_t cards_removed(const uint8_t* before, uint8_t n_before,
                       uint8_t* out, uint8_t max_out)
 { return cards_added(after, n_after, before, n_before, out, max_out);
 } // cards_removed
+
+void event_buf_push(EventBuf* buf, GameEvent e)
+{ if(buf->count >= EVENT_BUF_CAP) return;
+  buf->ev[buf->count++] = e;
+} // event_buf_push

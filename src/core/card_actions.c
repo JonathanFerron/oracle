@@ -127,6 +127,34 @@ void play_recall_card(struct gamestate* gstate, PlayerID player, uint8_t card_id
   DEBUG_PRINT(" Recalled %u champion(s) via card index %u\n", count, card_idx);
 } // play_recall_card
 
+// Headless engine counterpart to ui/interactive/game_commands.c's
+// discard_and_draw_cards(draw_replacements=true) -- used there for the
+// interactive CLI/TUI mulligan prompt, which takes hand *positions* and
+// needs a descending-index sort to avoid shifting. `cards` here holds
+// `count` fullDeck[] indices (PlayerDecision's own card-identity convention,
+// player_decision.h), so no such sort is needed -- Hand_remove() removes by
+// value. Discards every named card, then draws `count` replacements, same
+// order as the interactive path (batch discard, then batch draw).
+void mulligan_apply(struct gamestate* gstate, PlayerID player, const uint8_t* cards,
+                    uint8_t count, GameContext* ctx)
+{ for(uint8_t i = 0; i < count; i++)
+  { Hand_remove(&gstate->hand[player], cards[i]);
+    Discard_add(&gstate->discard[player], cards[i]);
+  }
+  for(uint8_t i = 0; i < count; i++)
+    draw_1_card(gstate, player, ctx);
+} // mulligan_apply
+
+// Headless engine counterpart to discard_and_draw_cards(draw_replacements=
+// false) for discard-to-7 -- same fullDeck[]-index convention as
+// mulligan_apply() above, no replacement draw.
+void discard_to_7_apply(struct gamestate* gstate, PlayerID player,
+                        const uint8_t* cards, uint8_t count)
+{ for(uint8_t i = 0; i < count; i++)
+  { Hand_remove(&gstate->hand[player], cards[i]);
+    Discard_add(&gstate->discard[player], cards[i]);
+  }
+} // discard_to_7_apply
 
 // AI/automated path: auto-selects the lowest-power champion to exchange.
 void play_cash_card_ai(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx)

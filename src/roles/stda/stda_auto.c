@@ -6,8 +6,7 @@
 #include "../../core/game_types.h"
 #include "../../core/game_constants.h"
 #include "../../ai_strat/ai_strategy.h"
-#include "../../core/game_state.h"
-#include "../../core/turn_logic.h"
+#include "../../core/game_engine.h"
 #include "../../util/debug.h"
 #include "../../ui/shared/player_config.h"
 #include "stats_constants.h"
@@ -69,52 +68,47 @@ void run_simulation(uint16_t numsim, uint16_t initial_cash,
   }
 }
 
+// Driven entirely through the step driver (src/core/game_engine.c, GUI
+// step 5) -- engine_advance() runs every automatic step (mulligan is always
+// player B's own AI hook, no interactive path here) and engine_run_ai()
+// makes every pending decision via the real strategy hooks, until
+// DECISION_KIND_NONE reports the game over (someone_has_zero_energy, or the
+// engine's own MAX_NUMBER_OF_TURNS cap -- both handled inside the engine
+// now, not this loop). Verified byte-for-byte identical to the old
+// play_turn()-driven loop this replaced (testsrc/test_game_engine.c, plus
+// the -a -p regression check). turn_logic.c's play_turn()/begin_of_turn()/
+// etc. are untouched and stay in permanent use by every search agent's
+// rollouts (ai_strat_playout.c) -- only this top-level loop moved.
 void play_stda_auto_game(uint16_t initial_cash, struct gamestats* gstats,
                          StrategySet* strategies, GameContext* ctx)  // need to accept a *cfg here so as to use later on
-{ struct gamestate gstate;
-  setup_game(initial_cash, &gstate, ctx);
-
-  // setup_game() doesn't initialize turn/turn_phase/player_to_move (only
-  // begin_of_turn() does -- see CLAUDE.md's "known architectural gaps").
-  // Set them before apply_mulligan(), not after: a mulligan hook that
-  // simulates forward (A10's flat-rollout scoring, ai_strat_ismcts_flat.c)
-  // calls begin_of_turn() internally via its rollouts, and begin_of_turn()
-  // increments gstate->turn rather than just overwriting it, so an
-  // uninitialized turn here is a genuine uninitialized-read, not just a
-  // stale-value risk (found via valgrind, 2026-08-27).
-  gstate.turn = 0;
-  gstate.turn_phase = ATTACK;
-  gstate.player_to_move = gstate.current_player;
-
-  // Apply mulligan for player B: when in interactive mode (CLI, TUI, GUI), this needs to be delegated to the user or AI to make a choice of what to mulligan (if anything)
-  apply_mulligan(&gstate, strategies, ctx);
+{ GameEngine engine = {0};
+  EventBuf events = {0};
+  engine_init(&engine, initial_cash, ctx, &events);
 
   DEBUG_PRINT("Game started with %d A, %d B cash; %d A, %d B energy\n",
-              gstate.current_cash_balance[PLAYER_A],
-              gstate.current_cash_balance[PLAYER_B],
-              gstate.current_energy[PLAYER_A],
-              gstate.current_energy[PLAYER_B]);
+              engine.state.current_cash_balance[PLAYER_A],
+              engine.state.current_cash_balance[PLAYER_B],
+              engine.state.current_energy[PLAYER_A],
+              engine.state.current_energy[PLAYER_B]);
 
-  do
-  { play_turn(gstats, &gstate, strategies, ctx); // need to pass cfg pointer to provide game mode information
+  for(;;)
+  { events.count = 0;
+    PendingDecision pending = engine_advance(&engine, ctx, &events);
+    if(pending.kind == DECISION_KIND_NONE) break;
+    engine_run_ai(&engine, strategies, ctx, &events);
   }
-  while(gstate.turn < MAX_NUMBER_OF_TURNS && !gstate.someone_has_zero_energy);
-
-  if(!gstate.someone_has_zero_energy)
-    gstate.game_state = DRAW;
 
   DEBUG_PRINT("Game ended at round %.4u, turn %.4u, winner is %s\n",
-              (uint16_t)((gstate.turn-1) * 0.5)+1,
-              gstate.turn,
-              GAME_STATE_NAMES[gstate.game_state]);
+              (uint16_t)((engine.state.turn-1) * 0.5)+1,
+              engine.state.turn,
+              GAME_STATE_NAMES[engine.state.game_state]);
 
-
-  record_final_stats(gstats, &gstate); // need to pass cfg pointer to provide game mode information
+  record_final_stats(gstats, &engine.state); // need to pass cfg pointer to provide game mode information
 
   // Free heap memory - No cleanup needed for fixed arrays
-  DeckStk_emptyOut(&gstate.deck[PLAYER_A]);
-  DeckStk_emptyOut(&gstate.deck[PLAYER_B]);
-} // play_game
+  DeckStk_emptyOut(&engine.state.deck[PLAYER_A]);
+  DeckStk_emptyOut(&engine.state.deck[PLAYER_B]);
+} // play_stda_auto_game
 
 // Dispatches to Player B's mulligan hook (StrategySet's mulligan_strategy[],
 // filled in by set_player_strategy_by_type() -- the shared power-based

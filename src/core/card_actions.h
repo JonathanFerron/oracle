@@ -17,6 +17,12 @@ void play_draw_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx,
 // in gstate->discard[player]; no legality re-check is performed.
 void play_recall_card(struct gamestate* gstate, PlayerID player, uint8_t card_idx,
                       const uint8_t* champions, uint8_t count, GameContext* ctx);
+// Headless mulligan/discard-to-7 primitives for a human decision (see
+// card_actions.c's own comments) -- `cards` are fullDeck[] indices.
+void mulligan_apply(struct gamestate* gstate, PlayerID player, const uint8_t* cards,
+                    uint8_t count, GameContext* ctx);
+void discard_to_7_apply(struct gamestate* gstate, PlayerID player,
+                        const uint8_t* cards, uint8_t count);
 void play_cash_card_ai(struct gamestate* gstate, PlayerID player, uint8_t card_idx, GameContext* ctx);
 void play_cash_card_interactive(struct gamestate* gstate, PlayerID player,
                                 uint8_t card_idx, uint8_t champion_idx, GameContext* ctx);

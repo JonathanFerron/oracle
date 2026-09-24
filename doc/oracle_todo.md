@@ -171,6 +171,24 @@ design; the rating is diagnostic, not a pass/fail bar.
   `game_event.c` links nothing else, same dependency-free tier as
   `visible_state.c`. `EVT_CARD_DRAWN` is the only event needing redaction
   today -- every other event type is already public per the rules doc.
+- [x] Step 5 (`ideas/9 gui/gui_architecture_synthesis.md` section 7/§10,
+  corrections #2-#4): step driver `src/core/game_engine.h/.c`
+  (`engine_init`/`engine_advance`/`engine_submit`/`engine_run_ai`, the
+  `EnginePhase` state machine incl. a real `ENG_DISCARD_WAIT` between
+  `end_of_turn()`'s three pieces (correction #3) and the
+  `MAX_NUMBER_OF_TURNS` cap as a `GAME_OVER`/`DRAW` (correction #4)); two
+  new headless primitives `mulligan_apply()`/`discard_to_7_apply()`
+  (`src/core/card_actions.c`) for a future human decision.
+  `testsrc/test_game_engine.c`/`make test_game_engine` (23/23 passing,
+  valgrind-clean), including a full AI-vs-AI game driven through the engine
+  matching `play_turn()`'s own primitives bit-for-bit across 21 seeds.
+  `src/roles/stda/stda_auto.c`'s `play_stda_auto_game()` now drives the
+  engine (per correction #2, `turn_logic.c`/`play_turn()` themselves are
+  UNCHANGED -- every search agent's rollouts, `ai_strat_playout.c`, still
+  use them). `./bin/oracle -a -p` matches `bin/expectedresults.txt`
+  byte-for-byte; fixed-seed `-A` matchups for hbt-vs-ismcts and
+  ismctsnn-vs-puct also verified byte-identical against the pre-Step-5
+  binary (git worktree diff).
 - [ ] French/Spanish localization: `-u=fr`/`-u=es` currently has no effect on
   `bin/oracle-gui` (confirmed 2026-09-23) -- the hello-window step has no
   `LOCALIZED_STRING` calls at all yet (window title, "Oracle" wordmark are

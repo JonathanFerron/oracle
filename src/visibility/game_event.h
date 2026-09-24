@@ -72,4 +72,21 @@ uint8_t cards_removed(const uint8_t* before, uint8_t n_before,
                       const uint8_t* after, uint8_t n_after,
                       uint8_t* out, uint8_t max_out);
 
+// Fixed-capacity event log for one engine_advance()/engine_submit()/
+// engine_run_ai() call (game_engine.h, Step 5) -- 32 matches the synthesis
+// doc's own proposed size, comfortably above the handful of events any one
+// step actually produces (at most: reshuffle + card drawn + turn began, or
+// move played + combat resolved + luna collected).
+#define EVENT_BUF_CAP 32
+
+typedef struct
+{ GameEvent ev[EVENT_BUF_CAP];
+  uint8_t count;
+} EventBuf;
+
+// Appends `e` if there's room; silently drops it otherwise (a caller
+// producing more than EVENT_BUF_CAP events in one driver step is a bug
+// worth finding via a shrunk buffer in a test, not a runtime crash).
+void event_buf_push(EventBuf* buf, GameEvent e);
+
 #endif // GAME_EVENT_H
