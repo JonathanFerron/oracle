@@ -5,6 +5,93 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-24 — SDL3 GUI: steps 3-6 done (`PlayerDecision`, `GameEvent`, the step driver, the session thread) — engine side complete, paused before Step 7 (GUI M1)
+
+Continuation of the SDL3 GUI work (`~/.claude/plans/let-s-please-make-a-noble-neumann.md`
+is the authoritative status/next-steps doc, kept current throughout -- **read it first**
+in any future session picking this back up). Six commits, `d209c86`..`ccef9c6`, plus a
+full-tree `make format` pass (`a97bbea`). This finishes every engine-side step (1-6) the
+GUI needs; only the GUI layer itself (Step 7) remains.
+
+**Platform decision (permanent, not GUI-specific)**: Windows/MSYS2 is fully descoped for
+Oracle -- Kubuntu Linux is the only target platform going forward. `CLAUDE.md` updated in
+three places. This settled Step 6's open threading-primitive question (see below).
+
+**Step 3 -- `PlayerDecision` + `decision_is_legal()`** (`d209c86`,
+`src/actions/player_decision.h/.c`): the server-side "never trust the client" legality
+gate every future decision-submission path must run. ATTACK/DEFENSE moves are checked by
+canonical (order-insensitive) membership against `get_available_moves()` built with
+exhaustive-enough limits; the recall/cash sub-choice is checked structurally against the
+real hand/discard instead, since a human may pick any legal variant, not just the one
+`move_gen.c`'s `RECALL_POOL_CAP`-capped template happens to sample -- exercised by a
+10-champion-discard test picking a pair outside that capped pool. `make test_player_decision`,
+29/29, valgrind-clean.
+
+**Step 4 -- `GameEvent` + viewer filtering** (`fac1b11`, `src/visibility/game_event.h/.c`):
+what happened this step, as data rather than a callback (a callback would fire on the
+future session thread, where a GUI can't safely act). Generic `cards_added()`/
+`cards_removed()` diff helpers work on any `cards[]`+`size` array (Hand/Discard/CombatZone
+all share that shape). `event_filter_for_viewer()` redacts only `EVT_CARD_DRAWN` -- every
+other event type is already public. `make test_game_event`, 15/15, valgrind-clean,
+confirmed dependency-free at link time.
+
+**Step 5 -- the step driver** (`3d9e66d`, `src/core/game_engine.h/.c`): `GameEngine`, one
+pollable implementation of the turn flow (`engine_init`/`engine_advance`/`engine_submit`/
+`engine_run_ai`) that runs until the next point a player must decide. Per the synthesis
+doc's correction #2, `turn_logic.c`/`play_turn()` are **completely unchanged** -- every
+search agent's rollouts (`ai_strat_playout.c`, A8-A14) still use them; only
+`stda_auto.c`'s real (non-rollout) game loop now drives the new engine. Verified via
+`testsrc/test_game_engine.c` (23/23, valgrind-clean): a full AI-vs-AI game driven entirely
+through the engine matches the old `play_turn()`-driven loop bit-for-bit across 21 seeds
+-- this also settles the synthesis doc's own open question that
+`resolve_combat_with_details()` preserves `resolve_combat()`'s exact RNG order. Caught and
+fixed one real bug along the way: comparing two uninitialized `struct gamestate`/
+`GameEngine` locals via `memcmp()` was picking up indeterminate padding-byte garbage, not
+a real logic error -- fixed by zero-initializing both before use. `./bin/oracle -a -p`
+matches `bin/expectedresults.txt` byte-for-byte; fixed-seed `-A` matchups for
+`hbt`-vs-`ismcts` (A7 vs A10) and `ismctsnn`-vs-`puct` (A11 vs A14) also verified
+byte-identical against a `git worktree` build of the pre-Step-5 commit.
+
+**Step 6 -- session thread + `SessionClient`** (`ccef9c6`,
+`src/roles/stda/stda_session.h/.c`): the opaque handle a GUI (or a headless test) talks to
+instead of touching the engine/`GameContext` directly. Two decisions made this session:
+threading is **C11 `<threads.h>`**, not SDL threads (the Windows/MSYS2 descoping above
+removed the one real risk C11 threads carried; this also keeps the file dependency-free
+and testable like every other `roles/stda/` file, needing only `-pthread`); the GUI's
+wake-up is plain polling (`session_client_poll()` every frame) rather than the synthesis
+doc's own `SDL_PushEvent()`, keeping `stda_session.c` SDL-free for good. Also a deliberate
+departure from the doc's own §8.2 pseudocode: publishes are batched (every event since the
+last human decision, published once) rather than firing after every single
+`engine_advance()` step, since a single-slot "latest update" would otherwise lose events
+from a quiet AI-only stretch between two human turns. Added `engine_resign()`
+(`game_engine.h/.c`) for the session's `CMD_RESIGN`.
+
+`testsrc/test_session.c` (8/8 passing): a headless harness drives full games through a
+real session thread, a "human" seat submitting random legal decisions built from each
+poll's `legal[]`/hand, plus dedicated resign and illegal-submission-then-retry coverage.
+Verified under `valgrind --leak-check=full` (clean) and `valgrind --tool=helgrind` (0
+errors across several runs) -- **helgrind's altered timing caught a real bug**, not a race
+it flagged directly: the session loop was republishing right after a *rejected*
+submission, silently clobbering the single-slot "rejected" update before the client could
+ever poll it (this "worked" under normal scheduling by luck, and reliably failed only once
+helgrind slowed the poller enough to expose it). Fixed via `resolve_pending()`, an inner
+loop that stays on the same pending decision and waits for another command without
+re-publishing. `-fsanitize=thread` could not be run: a minimal repro (a bare
+`thrd_create()`/`thrd_join()` program with zero project code) confirmed glibc's C11
+`<threads.h>` crashes immediately under ThreadSanitizer on this toolchain (GCC
+15.2/Ubuntu) even in complete isolation, while the identical test using raw
+`pthread_create()` runs clean under TSan -- a pre-existing glibc/ThreadSanitizer
+incompatibility, not a project bug; helgrind is the concurrency-verification tool here
+instead.
+
+`./bin/oracle -a -p` still matches `bin/expectedresults.txt` byte-for-byte throughout --
+nothing in Steps 3-6 touches a runtime path the regression check exercises, except Step 5's
+`stda_auto.c` migration, which was verified byte-for-byte as described above.
+
+**Next up**: Step 7 (GUI M1 desktop) -- the step that actually wires `bin/oracle-gui` to
+`SessionClient` and renders the game. See the plan file's "Next up" section for concrete
+starting guidance.
+
 ## 2026-09-23 — SDL3 GUI: steps 1-2 done (`VisibleGameState`, toolchain + M1 hello window), art assets for currency/species pulled in, paused twice for a future session
 
 First real implementation work on the SDL3 GUI (`doc/oracle_roadmap.md`'s "SDL3
