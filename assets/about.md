@@ -83,23 +83,35 @@ provenance, corpus composition, measured results).
     (Inkscape `--export-id`/`--export-id-only`, group ids confirmed by
     each shape's bounding-box X position -- left to right = Luna, Aureus,
     Opale). `luna.svg`/`.png` recoloured to `#216778` (used as the GUI's
-    window/taskbar icon); `aureus.svg`/`.png` and `opale.svg`/`.png` still
-    black -- colour to be set later, trivial to change at the SVG level.
+    window/taskbar icon), then to a lighter `#acacac` (2026-09-25, Jonathan's
+    call); `aureus.svg`/`.png` and `opale.svg`/`.png` still black -- colour
+    to be set later, trivial to change at the SVG level.
     Opale's symbol was fixed by Jonathan in Inkscape since the first
     extraction attempt (smoothing + the previously-missing small ellipse,
     now present).
   - `backgrounds/` -- table background tiles.
   - `logo/` -- `oracle_logo.png` (from `logo base/choix final.png`,
     1024x1024).
-  - `fonts/` -- `ModernRifgoRegular-MAvdP.otf` (the base logo/UI font) and
-    any Google Fonts picks added later. Licence terms not yet verified for
-    every font here -- check before any public distribution. **Comic Sans
-    MS is NOT here** despite being one of Jonathan's requested runtime font
-    options (it's what the printed cards use) -- Microsoft's EULA for the
-    `ttf-mscorefonts-installer` package (already installed on this box,
-    `/usr/share/fonts/truetype/msttcorefonts/Comic_Sans_MS.ttf`) prohibits
-    redistributing the font file itself, which is exactly why that package
-    ships as a downloader rather than the `.ttf` directly. The GUI's
+  - `fonts/` -- `ModernRifgoRegular-MAvdP.otf` (the base logo/UI font;
+    licence terms not yet verified -- check before any public distribution).
+    **Comic Sans MS is NOT here** despite being one of Jonathan's requested
+    runtime font options (it's what the printed cards use) -- Microsoft's
+    EULA for the `ttf-mscorefonts-installer` package (already installed on
+    this box, `/usr/share/fonts/truetype/msttcorefonts/Comic_Sans_MS.ttf`)
+    prohibits redistributing the font file itself, which is exactly why that
+    package ships as a downloader rather than the `.ttf` directly. The GUI's
     font-swap feature (M1 step 7) should look it up from that well-known
     system path at runtime with a graceful fallback (e.g. to ModernRifgo)
     when it's absent, not bundle it.
+    **Comic Sans lookalikes added 2026-09-25** (Jonathan's call, for easier
+    redistribution with fewer host dependencies than the EULA-gated system
+    lookup above): `ComicNeue-Regular/Bold/Light/Italic/BoldItalic/
+    LightItalic.ttf` (all 6 static weights) and `PatrickHand-Regular.ttf`
+    (its only weight), both downloaded from the `google/fonts` GitHub repo's
+    `ofl/comicneue/` and `ofl/patrickhand/` directories, SIL Open Font
+    License 1.1 (freely bundleable) -- licence text alongside as
+    `ComicNeue-OFL.txt`/`PatrickHand-OFL.txt`. Comic Neue is the closer
+    match (explicitly designed as a Comic Sans redesign); Patrick Hand is a
+    rougher handwriting-style alternative. Jonathan is also installing both
+    as system fonts on this box manually. Neither is wired into the GUI's
+    font-swap feature yet.
