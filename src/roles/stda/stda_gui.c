@@ -13,12 +13,35 @@
 
 #ifdef HAVE_SDL3
   #include "../../ui/gui/gui_app.h"
+  #include "../../ui/shared/player_config.h"
+  #include "../../ui/shared/player_selection.h"
+#endif
+
+#ifdef HAVE_SDL3
+// Plain stdio prompts in the launching terminal, run before the SDL window
+// opens -- mirrors stda_tui.c's tui_setup_player_configuration() (same
+// player_config.c/player_selection.c flow the CLI/TUI already use). Per the
+// plan file's Step 7 note, an in-window setup screen is a later polish
+// pass, not an M1 blocker.
+static void gui_setup_player_configuration(config_t* cfg, PlayerConfig* pconfig)
+{ init_player_config(pconfig);
+  cfg->player_config = pconfig;
+
+  display_player_selection_menu(cfg);
+  int choice = get_player_type_choice(cfg);
+  apply_player_selection(pconfig, cfg, choice);
+
+  get_player_names(cfg, pconfig);
+  get_ai_strategies(cfg, pconfig);
+} // gui_setup_player_configuration
 #endif
 
 int run_mode_stda_gui(config_t* cfg)
 {
   #ifdef HAVE_SDL3
-  return gui_app_run(cfg);
+  PlayerConfig pconfig;
+  gui_setup_player_configuration(cfg, &pconfig);
+  return gui_app_run(cfg, &pconfig);
   #else
   printf("%s\n", LOCALIZED_STRING(
            "Standalone GUI mode: this binary was built without SDL3 support. "

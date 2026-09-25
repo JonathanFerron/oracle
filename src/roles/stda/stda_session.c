@@ -56,7 +56,7 @@ static void fill_legal(SessionUpdate* u, const struct gamestate* gs, PendingDeci
 } // fill_legal
 
 static void publish(SessionClient* c, PendingDecision pending, EventBuf events, bool rejected)
-{ for(uint8_t i = 0; i < events.count; i++)
+{ for(uint16_t i = 0; i < events.count; i++)
     event_filter_for_viewer(&events.ev[i], c->viewer);
 
   SessionUpdate u = {0};

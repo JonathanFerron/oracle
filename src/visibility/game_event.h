@@ -72,16 +72,33 @@ uint8_t cards_removed(const uint8_t* before, uint8_t n_before,
                       const uint8_t* after, uint8_t n_after,
                       uint8_t* out, uint8_t max_out);
 
-// Fixed-capacity event log for one engine_advance()/engine_submit()/
-// engine_run_ai() call (game_engine.h, Step 5) -- 32 matches the synthesis
-// doc's own proposed size, comfortably above the handful of events any one
-// step actually produces (at most: reshuffle + card drawn + turn began, or
-// move played + combat resolved + luna collected).
-#define EVENT_BUF_CAP 32
+// Fixed-capacity event log. Originally sized for one engine step (32,
+// the synthesis doc's own proposed size -- comfortably above the handful
+// of events any single engine_advance()/engine_submit()/engine_run_ai()
+// call produces). But stda_session.c's publish cadence accumulates events
+// across an entire silent AI-only stretch into one shared EventBuf before
+// publishing -- for a full AI-vs-AI game (no human ever interrupting to
+// force a publish), that stretch is the whole game, not one step. Bumped
+// to 512 (2026-09-25) after gui_log.c made the resulting silent truncation
+// visible for the first time (event_buf_push() drops anything past the
+// cap with no error): measured empirically via a scratch harness driving
+// engine_advance()/engine_run_ai() directly (not part of the test suite),
+// 200 seeded Borealis-vs-Daredevil games peaked at 189 events in one game
+// (39 turns, ~4.85 events/turn; mean 70.4) -- 512 leaves >2.7x headroom
+// over that observed max for sampling variance and other agent pairings,
+// at a trivial cost (a GameEvent is 104 bytes, so 512 of them is ~52KB,
+// copied only once per publish -- a human decision point or game end --
+// never per frame). `count` widened from uint8_t to uint16_t to actually
+// support a cap above 255; every uint8_t loop variable that used to scan
+// EventBuf.count was widened to match (game_event.c, stda_session.c,
+// gui_log.c, testsrc/test_game_engine.c) -- a uint8_t loop counter bounded
+// by a uint16_t count would itself wrap at 255 and either infinite-loop or
+// silently stop early, so this isn't optional once the cap exceeds 255.
+#define EVENT_BUF_CAP 512
 
 typedef struct
 { GameEvent ev[EVENT_BUF_CAP];
-  uint8_t count;
+  uint16_t count;
 } EventBuf;
 
 // Appends `e` if there's room; silently drops it otherwise (a caller

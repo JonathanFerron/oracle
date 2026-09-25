@@ -249,7 +249,7 @@ static void test_attack_pass_skips_defense_and_combat(TestSuite* suite)
                "(no COMBAT event emitted)", pending.kind == DECISION_KIND_ATTACK);
 
   bool saw_combat = false;
-  for(uint8_t i = 0; i < events.count; i++)
+  for(uint16_t i = 0; i < events.count; i++)
     if(events.ev[i].type == EVT_COMBAT_RESOLVED) saw_combat = true;
   check(suite, "no EVT_COMBAT_RESOLVED", !saw_combat);
 
@@ -313,7 +313,7 @@ static void test_max_turns_cap_ends_in_draw(TestSuite* suite)
   check(suite, "turn was not incremented past the cap", e.state.turn == MAX_NUMBER_OF_TURNS);
 
   bool saw_game_over = false;
-  for(uint8_t i = 0; i < events.count; i++)
+  for(uint16_t i = 0; i < events.count; i++)
     if(events.ev[i].type == EVT_GAME_OVER) saw_game_over = true;
   check(suite, "EVT_GAME_OVER emitted", saw_game_over);
 
@@ -340,7 +340,7 @@ static void test_card_drawn_event_and_redaction(TestSuite* suite)
   engine_advance(&e, ctx, &events);
 
   GameEvent* drawn = NULL;
-  for(uint8_t i = 0; i < events.count; i++)
+  for(uint16_t i = 0; i < events.count; i++)
     if(events.ev[i].type == EVT_CARD_DRAWN) drawn = &events.ev[i];
 
   check(suite, "EVT_CARD_DRAWN emitted", drawn != NULL);
@@ -379,7 +379,7 @@ static void test_engine_resign(TestSuite* suite)
   check(suite, "someone_has_zero_energy set", e.state.someone_has_zero_energy);
 
   bool saw_game_over = false;
-  for(uint8_t i = 0; i < events.count; i++)
+  for(uint16_t i = 0; i < events.count; i++)
     if(events.ev[i].type == EVT_GAME_OVER && events.ev[i].player == PLAYER_B) saw_game_over = true;
   check(suite, "EVT_GAME_OVER emitted with the winner", saw_game_over);
 } // test_engine_resign

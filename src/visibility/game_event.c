@@ -36,6 +36,6 @@ void event_buf_push(EventBuf* buf, GameEvent e)
 } // event_buf_push
 
 void event_buf_append(EventBuf* dst, const EventBuf* src)
-{ for(uint8_t i = 0; i < src->count; i++)
+{ for(uint16_t i = 0; i < src->count; i++)
     event_buf_push(dst, src->ev[i]);
 } // event_buf_append
