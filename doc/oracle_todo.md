@@ -151,7 +151,7 @@ design; the rating is diagnostic, not a pass/fail bar.
 
 
 
-### GUI Mode (`stda_gui.c`, `ui/gui/`) — M1 "hello window" in progress, see `doc/oracle_roadmap.md`'s "SDL3 GUI" item
+### GUI Mode (`stda_gui.c`, `ui/gui/`) — M1 core playable (2026-09-25), rounding out in progress, see `doc/oracle_roadmap.md`'s "SDL3 GUI" item
 
 - [x] Step 3 (`ideas/9 gui/gui_architecture_synthesis.md` section 4/§10):
   `PlayerDecision` + `decision_is_legal()` (`src/actions/player_decision.h/.c`),
@@ -220,13 +220,28 @@ design; the rating is diagnostic, not a pass/fail bar.
   `pthread_create()` works fine under TSan -- a pre-existing
   glibc/ThreadSanitizer incompatibility, not a project bug. `./bin/oracle -a
   -p` unaffected (nothing yet calls `stda_session.c`).
-- [ ] French/Spanish localization: `-u=fr`/`-u=es` currently has no effect on
-  `bin/oracle-gui` (confirmed 2026-09-23) -- the hello-window step has no
-  `LOCALIZED_STRING` calls at all yet (window title, "Oracle" wordmark are
-  plain English literals). Needs doing once there's real UI text to
-  localize (labels, buttons, the message log) -- CLI/TUI's existing
-  `LOCALIZED_STRING`/`LOCALIZED_STRING_L` macros (`ui/shared/localization.h`)
-  are the established pattern to reuse, not a new one.
+- [x] Step 7 core (2026-09-25, `ideas/9 gui/gui_architecture_synthesis.md`
+  section 9/§10): `bin/oracle-gui` is genuinely playable now -- wired to
+  `SessionClient`, renders the real board every frame (`gui_layout.c`/
+  `gui_render.c`/`gui_card.c`/`gui_palette.c`), accepts mouse input
+  (`gui_input.c`, the §9.4 click-to-stage table in full), and logs what
+  happened (`gui_log.c`, fed from `SessionUpdate.events`). Verified with a
+  real human-vs-AI playtest (mulligan through a won game against `value`,
+  no crashes) plus repeated valgrind passes (0 errors, 0 leaked bytes
+  throughout). See `doc/changelog.md`'s 2026-09-25 entry and the plan
+  file's own Step 7 bullet for the full record, including a real bug this
+  work surfaced and fixed (`EventBuf`/`EVENT_BUF_CAP`, `game_event.h`).
+  **Still open** (not blocking, tracked in the plan file's "Next up:
+  rounding out GUI M1"): card art (text-only cards today), a visual
+  combat/dice panel (the log has a text summary only), runtime font/tile
+  swap, the legacy-fractal toggle, and the acceptance bar specifically
+  against A14 (played against `value` instead so far).
+- [x] French/Spanish localization: mostly done as of Step 7 (2026-09-25) --
+  status bar, action bar, per-seat info, card text, and the message log
+  all go through `LOCALIZED_STRING_L` now. What's left is cosmetic: the
+  window title itself (`GUI_WINDOW_TITLE`) is still a plain English
+  literal, and a future settings/font-swap UI will need its own strings
+  localized when built.
 
 ### Simulation UI (`stda.sim`) — back burnered
 

@@ -139,7 +139,22 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
    `~/.claude/plans/let-s-please-make-a-noble-neumann.md`** (Steps 3-10; step 3,
    `PlayerDecision` + `decision_is_legal()` in `src/actions/`, is pure engine code with no
    SDL3/art dependency and is safe to pick up cold in a new session). Full dated writeup:
-   `doc/changelog.md`'s 2026-09-23 entry.
+   `doc/changelog.md`'s 2026-09-23 entry. **Steps 3-6 done 2026-09-24** (engine side
+   complete: `PlayerDecision`, `GameEvent`, the step driver `game_engine.c`, the session
+   thread `stda_session.c`/`SessionClient`; Windows/MSYS2 descoped project-wide the same
+   date, settling Step 6's threading choice as C11 `<threads.h>`) -- full record in
+   `doc/changelog.md`'s 2026-09-24 entry. **Step 7 (GUI M1) core done 2026-09-25**:
+   `bin/oracle-gui` is genuinely playable now -- wired to `SessionClient`, renders the real
+   board every frame (`gui_layout.c`/`gui_render.c`/`gui_card.c`/`gui_palette.c`, cards
+   procedural/no-art-yet), accepts mouse input (`gui_input.c`, the synthesis doc's full §9.4
+   click-to-stage table), and logs what happened (`gui_log.c`). Two Comic-Sans-MS
+   lookalikes from Google Fonts (ComicNeue, PatrickHand) replace the earlier EULA-gated
+   system-font-lookup plan for in-game text. Verified with a real human-vs-AI playtest and
+   repeated valgrind passes (clean throughout); also found and fixed a real pre-existing
+   bug this work surfaced (`EventBuf`'s 32-event cap silently dropping events during long
+   AI-only stretches, `game_event.h`). Still open: card art, a visual combat/dice panel,
+   runtime font/tile swap, the legacy-fractal toggle -- see the plan file's own "Next up:
+   rounding out GUI M1" and `doc/changelog.md`'s 2026-09-25 entry for the full record.
 4. **`A14` PUCT + policy head** ("AlphaOracle Prime Plus I") -- ✅ done and
    **registered 2026-09-08/09** (see `doc/changelog.md`'s 2026-09-09 entry and
    `doc/ai_agents.md`'s A14 section). PUCT (Predictor + UCT) selection

@@ -5,6 +5,88 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-25 — SDL3 GUI: Step 7 (GUI M1) core done — `bin/oracle-gui` is genuinely playable
+
+Continuation of the SDL3 GUI work (`~/.claude/plans/let-s-please-make-a-noble-neumann.md`
+is the authoritative status/next-steps doc, kept current throughout -- **read it first**
+in any future session picking this back up). Two commits, `f72e657` (fonts + Luna
+recolour) and `14c1528` (Step 7 itself). Verified with a real human-vs-AI playtest
+(mulligan through a won game against `value`, no crashes) plus repeated valgrind passes
+throughout (0 errors, 0 leaked bytes every time).
+
+**`stda_gui.c`/`gui_app.c`**: pre-window stdio player setup (mirrors `stda_tui.c`'s own
+flow), then `session_local_start()` and an `SDL_AppIterate` loop that polls
+`session_client_poll()` and renders from the latest `SessionUpdate` -- render-from-state,
+no animation, per the architecture's core constraint. `SDL_SetRenderVSync()` was added
+after Jonathan measured `bin/oracle-gui` idling at ~7% CPU (100% in this sandbox, which
+has no compositor throttling) -- `SDL_AppIterate` has no built-in frame cap on its own;
+vsync alone brought it to 1.8% on Jonathan's desktop. The "skip redraw when nothing
+changed" further optimization (synthesis doc §9.2) was discussed and explicitly deferred
+to M2 polish (its own stated motivation is Android battery, not desktop CPU, and the
+render surface is still actively growing).
+
+**`gui_layout.c`**: every region rect computed from window size, indexed by seat slot
+(0 = viewer) rather than raw `PlayerID`, so a future 3-4 player rework only touches this
+file.
+
+**`gui_palette.c`/`gui_card.c`**: procedural (no-art-yet) cards -- a coloured border (HSL
+values from the thematic-colours reference, cross-checked by rasterizing the actual
+printed card sheets and sampling pixels, not just trusting the table) plus species/cost/
+dice/base-attack text.
+
+**`gui_input.c`**: the synthesis doc's §9.4 click-to-stage table in full -- champion
+toggle (1-3 for ATTACK, 0-3 for DEFENSE), a draw-vs-recall branch with a discard overlay
+for picking exactly `choose_num` champions, cash-exchange targeting, unconditional Pass/
+Decline. Confirm's enabled state mirrors `SessionUpdate.legal[]` as a UX convenience only
+-- `engine_submit()`'s `decision_is_legal()` remains the real, server-side gate regardless
+of what the GUI thinks. Verified via a throwaway integration harness (not committed --
+this sandbox has no mouse automation) driving real coordinates from `gui_layout.c`
+against a hand-built gamestate and a real `get_available_moves()` call: all 20 checks
+passed on the first run.
+
+**`gui_log.c`**: a scrolling event log fed from `SessionUpdate.events` -- mulligans,
+draws, moves played, combat results (attack/defense totals, damage, energy before/after,
+already carried by `EVT_COMBAT_RESOLVED`'s `CombatDetails`, no new engine plumbing
+needed), luna collection, discards, game over. This is what surfaced a real pre-existing
+bug (see below).
+
+**Fonts**: ComicNeue-Regular (status bar, per-seat energy/cash/name) and
+PatrickHand-Regular (card text, deck/discard count badges) replace ModernRifgo for
+in-game text -- both Comic-Sans-MS lookalikes pulled from the `google/fonts` GitHub repo
+(SIL Open Font License, freely bundleable), superseding the earlier plan's EULA-gated
+system-Comic-Sans-MS runtime lookup idea entirely (Jonathan's call, for easier
+redistribution with fewer host dependencies). Luna's window/taskbar icon also recoloured
+`#216778` -> `#acacac` (Jonathan's call).
+
+**Bug found and fixed**: `EventBuf` (`game_event.h`) capped at `EVENT_BUF_CAP` (32) and
+silently dropped anything past it (`event_buf_push()`, no error) -- sized for one engine
+step, but `stda_session.c`'s Step-6 publish cadence batches an entire silent AI-only
+stretch into one shared `EventBuf` before publishing, and for a full AI-vs-AI game (never
+triggered by human-vs-AI in practice, since a human always interrupts within a handful of
+events) that stretch is the whole game. Nothing consumed `.events` for display before
+`gui_log.c`, so the silent truncation had no visible consequence until now. Measured
+empirically via a scratch harness (not committed) mirroring
+`advance_until_human_or_over()`'s exact loop but counting instead of capping: 200 seeded
+Borealis-vs-Daredevil games peaked at 189 events in one game (39 turns, ~4.85/turn; mean
+70.4). Bumped `EVENT_BUF_CAP` to 512 (>2.7x headroom) and widened `EventBuf.count` from
+`uint8_t` to `uint16_t` to actually support a cap above 255 -- every `uint8_t` loop
+variable scanning it needed widening too (`game_event.c`, `stda_session.c`, `gui_log.c`,
+`testsrc/test_game_engine.c`), since a `uint8_t` loop counter bounded by a `uint16_t`
+count would itself wrap at 255 and either infinite-loop or silently stop early.
+
+`make test_game_event` (15/15), `make test_game_engine` (28/28), `make test_session`
+(8/8), plus a broader sweep (`test_combo`/`test_recall`/`test_cash_exchange`/
+`test_player_decision`) all pass. `./bin/oracle -a -p` still matches
+`bin/expectedresults.txt` byte-for-byte -- nothing here touches a runtime path outside
+`src/ui/gui/` except the `EventBuf` widening, which is type-only (no logic change) and is
+itself covered by the passing test suite above. `make format` clean throughout.
+
+**Not done yet**: card art (text-only cards today), a visual combat/dice panel (the log
+has a text summary; `CombatDetails` already carries full per-champion dice data for a
+richer panel later), runtime font/tile swap, the legacy-fractal toggle, and the plan's own
+acceptance bar specifically against A14 (played against `value` instead so far). See the
+plan file's "Next up: rounding out GUI M1" for the concrete list.
+
 ## 2026-09-24 — SDL3 GUI: steps 3-6 done (`PlayerDecision`, `GameEvent`, the step driver, the session thread) — engine side complete, paused before Step 7 (GUI M1)
 
 Continuation of the SDL3 GUI work (`~/.claude/plans/let-s-please-make-a-noble-neumann.md`
