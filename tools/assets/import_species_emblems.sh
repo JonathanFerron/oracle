@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-SRC_DIR="${1:-../oracle outside git/emblemes especes}"
+SRC_DIR="${1:-/mnt/nougatoctet/oracle/emblemes especes}"
 OUT_DIR="assets/species"
 PNG_HEIGHT=512
 

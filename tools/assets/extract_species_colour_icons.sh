@@ -23,7 +23,7 @@
 
 set -euo pipefail
 
-SRC="${1:-../oracle outside git/cartes/dos des cartes.svg}"
+SRC="${1:-/mnt/nougatoctet/oracle/cartes/dos des cartes.svg}"
 OUT_DIR="assets/species"
 PNG_HEIGHT=512
 

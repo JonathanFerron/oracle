@@ -24,8 +24,8 @@ provenance, corpus composition, measured results).
   and its `.json` provenance sidecar, following `ismctsnn/`'s own shape.
 - SDL3 GUI art (added 2026-09-23, see `doc/oracle_roadmap.md`'s "SDL3 GUI"
   item and `~/.claude/plans/let-s-please-make-a-noble-neumann.md`), sourced
-  from Jonathan's own art under `../oracle outside git/` (sibling to this
-  repo, not checked in) via `tools/assets/` import scripts -- each
+  from Jonathan's own art under `/mnt/nougatoctet/oracle/` (NAS storage,
+  moved there 2026-09-26, not checked in) via `tools/assets/` import scripts -- each
   subfolder is a manifest of *committed* selections, never the full source
   pool (most of which is uncleared web reference material):
   - `champions/` -- champion portraits, one per `fullDeck[]` champion,

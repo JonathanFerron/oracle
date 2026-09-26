@@ -45,13 +45,13 @@
 #define GUI_LOGO_ALPHA 51 // 80% transparent (~20% opacity, 0.20 * 255)
 
 // Table teal, HSL(181, 23%, 60%) -- the "table top in gui" entry in
-// ../oracle outside git/oracle thematic colours.txt.
+// /mnt/nougatoctet/oracle/oracle thematic colours.txt.
 #define GUI_TABLE_R 130
 #define GUI_TABLE_G 176
 #define GUI_TABLE_B 176
 
 // Title wordmark colour: #216778, the same colour used in
-// ../oracle outside git/Text Logo.svg, at 50% opacity so it sits quietly
+// /mnt/nougatoctet/oracle/Text Logo.svg, at 50% opacity so it sits quietly
 // on the table rather than competing with the logo.
 #define GUI_TITLE_R 0x21
 #define GUI_TITLE_G 0x67

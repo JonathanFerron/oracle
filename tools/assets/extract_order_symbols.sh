@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-SRC="${1:-../oracle outside git/Order Symbols.svg}"
+SRC="${1:-/mnt/nougatoctet/oracle/Order Symbols.svg}"
 OUT_DIR="assets/orders"
 PNG_HEIGHT=512
 
