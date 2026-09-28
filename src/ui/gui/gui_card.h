@@ -1,7 +1,7 @@
 // gui_card.h
-// Procedural (no-art-yet) card rendering: coloured border + name/cost/dice/
-// base-attack text, per the plan file's "three changes agreed" note (art is
-// a later wiring pass, not an M1 blocker). Also hosts gui_draw_text(), a
+// Card rendering: procedural (coloured border + name/cost/dice/
+// base-attack text) with optional fractal art behind it on champions (gui_art.h;
+// off unless legacy_fractal is set). Also hosts gui_draw_text(), a
 // small one-shot text helper every gui_*.c file needs (status labels, card
 // text, panel headers) -- see its own comment for why it isn't cached.
 
@@ -27,8 +27,8 @@ void gui_draw_text(SDL_Renderer* renderer, TTF_Font* font, const char* text,
 void gui_card_draw_back(SDL_Renderer* renderer, SDL_FRect rect);
 
 // A face-up card (fullDeck[card_index]): coloured border (gui_palette.h),
-// name/cost/dice/base-attack text, no art yet. `highlighted` draws a
-// thicker border -- unused until gui_input.c raises staged cards, but
+// name/cost/dice/base-attack text, plus fractal art on champions when
+// enabled (gui_art.h). `highlighted` draws a thicker border -- unused until gui_input.c raises staged cards, but
 // threaded through now so that file won't need to touch this signature.
 // `lang` localizes the draw/recall/cash-exchange label text (champion
 // species names stay English/unlocalized, matching every other UI surface

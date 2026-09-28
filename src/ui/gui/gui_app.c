@@ -31,6 +31,8 @@
 #include "../../core/game_context.h"
 #include "../../ai_strat/ai_strategy.h"
 #include "../../roles/stda/stda_session.h"
+#include "gui_config.h"
+#include "gui_art.h"
 
 #define GUI_WINDOW_TITLE "Oracle: The Champions of Arcadia"
 #define GUI_LOGO_PATH "assets/logo/oracle_logo.png"
@@ -38,6 +40,8 @@
 #define GUI_TITLE_FONT_PATH "assets/fonts/Modern_Rifgo/ModernRifgoRegular-MAvdP.otf"
 #define GUI_STATUS_FONT_PATH "assets/fonts/Comic_Neue/ComicNeue-Regular.ttf"
 #define GUI_CARD_FONT_PATH "assets/fonts/Patrick_Hand/PatrickHand-Regular.ttf"
+#define GUI_CONFIG_FILE "oracle_config.ini" // next to the executable
+#define GUI_FRACTAL_DIR "assets/fractals"
 #define GUI_TITLE_FONT_PT 48.0f
 #define GUI_STATUS_FONT_PT 16.0f
 #define GUI_CARD_FONT_PT 16.0f
@@ -75,6 +79,7 @@ typedef struct
   // splash on screen during the brief startup window before it
   GuiInputState input;   // viewer's own staging state (gui_input.c)
   GuiLog log;             // message log (gui_log.c)
+  GuiConfig config;       // [gui] section of oracle_config.ini (gui_config.h)
 } GuiAppState;
 
 // SDL_EnterAppMainCallbacks() offers no user-data slot besides argc/argv, so
@@ -175,33 +180,61 @@ static bool gui_load_title_text(GuiAppState* state)
   return true;
 } // gui_load_title_text
 
-// Status bar + per-seat energy/cash/name text -- ComicNeue-Regular, the
-// closer Comic-Sans lookalike (Jonathan's call, 2026-09-25). Non-fatal like
-// the other assets: gui_draw_text() just draws nothing if font is NULL.
-static bool gui_load_status_font(GuiAppState* state)
+// Opens an in-game text font: the [gui] font_path override if set and
+// loadable (absolute, or relative to the project root like every other
+// asset), else the bundled `default_rel`. Non-fatal like the other assets:
+// gui_draw_text() just draws nothing if font is NULL.
+static TTF_Font* gui_open_text_font(const GuiAppState* state, const char* default_rel,
+                                    float pt, const char* what)
 { char path[512];
-  gui_asset_path(path, sizeof(path), GUI_STATUS_FONT_PATH);
-  state->status_font = TTF_OpenFont(path, GUI_STATUS_FONT_PT);
-  if(!state->status_font)
-  { fprintf(stderr, "GUI: could not load status font (%s): %s\n", path, SDL_GetError());
-    return false;
+  if(state->config.font_path[0])
+  { if(state->config.font_path[0] == '/')
+      snprintf(path, sizeof(path), "%s", state->config.font_path);
+    else
+      gui_asset_path(path, sizeof(path), state->config.font_path);
+    TTF_Font* font = TTF_OpenFont(path, pt);
+    if(font)
+      return font;
+    fprintf(stderr, "GUI: could not load configured font_path (%s): %s -- using default\n",
+            path, SDL_GetError());
   }
-  return true;
+  gui_asset_path(path, sizeof(path), default_rel);
+  TTF_Font* font = TTF_OpenFont(path, pt);
+  if(!font)
+    fprintf(stderr, "GUI: could not load %s font (%s): %s\n", what, path, SDL_GetError());
+  return font;
+} // gui_open_text_font
+
+// Status bar + per-seat energy/cash/name text -- ComicNeue-Regular by
+// default, the closer Comic-Sans lookalike (Jonathan's call, 2026-09-25).
+static bool gui_load_status_font(GuiAppState* state)
+{ state->status_font = gui_open_text_font(state, GUI_STATUS_FONT_PATH, GUI_STATUS_FONT_PT,
+                                          "status");
+  return state->status_font != NULL;
 } // gui_load_status_font
 
 // Card text (species/cost/dice/base-attack, draw/recall/cash labels) +
-// deck/discard count badges -- PatrickHand-Regular, the rougher
+// deck/discard count badges -- PatrickHand-Regular by default, the rougher
 // handwriting-style Comic-Sans alternative (Jonathan's call, 2026-09-25).
 static bool gui_load_card_font(GuiAppState* state)
-{ char path[512];
-  gui_asset_path(path, sizeof(path), GUI_CARD_FONT_PATH);
-  state->card_font = TTF_OpenFont(path, GUI_CARD_FONT_PT);
-  if(!state->card_font)
-  { fprintf(stderr, "GUI: could not load card font (%s): %s\n", path, SDL_GetError());
-    return false;
-  }
-  return true;
+{ state->card_font = gui_open_text_font(state, GUI_CARD_FONT_PATH, GUI_CARD_FONT_PT, "card");
+  return state->card_font != NULL;
 } // gui_load_card_font
+
+// Reads <executable dir>/oracle_config.ini's [gui] section (gui_config.h).
+// A missing file just means all defaults, and enables fractal art if asked.
+static void gui_load_config(GuiAppState* state)
+{ char path[512];
+  const char* base = SDL_GetBasePath();
+  snprintf(path, sizeof(path), "%s%s", base ? base : "./", GUI_CONFIG_FILE);
+  gui_config_defaults(&state->config);
+  gui_config_load(&state->config, path);
+
+  if(state->config.legacy_fractal)
+  { gui_asset_path(path, sizeof(path), GUI_FRACTAL_DIR);
+    gui_art_init(state->renderer, path);
+  }
+} // gui_load_config
 
 static void gui_draw_logo(GuiAppState* state)
 { if(!state->logo)
@@ -270,6 +303,7 @@ static SDL_AppResult gui_sdl_init(void** appstate, int argc, char** argv)
   if(!SDL_SetRenderVSync(state->renderer, 1))
     fprintf(stderr, "GUI: SDL_SetRenderVSync failed: %s\n", SDL_GetError());
 
+  gui_load_config(state);
   gui_load_window_icon(state);
   gui_load_logo(state);
   gui_load_title_text(state);
@@ -374,6 +408,7 @@ static void gui_sdl_quit(void* appstate, SDL_AppResult result)
     TTF_CloseFont(state->font);
   if(state->logo)
     SDL_DestroyTexture(state->logo);
+  gui_art_shutdown();
   if(state->renderer)
     SDL_DestroyRenderer(state->renderer);
   if(state->window)

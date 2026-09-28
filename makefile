@@ -618,7 +618,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(GUI_BUILDDIR) $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_a15_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_moves $(BINDIR)/test_player_decision $(BINDIR)/test_game_event $(BINDIR)/test_game_engine $(BINDIR)/test_session $(BINDIR)/test_ismcts $(BINDIR)/test_puct_policy $(BINDIR)/test_puct $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan $(BINDIR)/gen_corpus $(BINDIR)/calib_ismctsnn $(BINDIR)/calib_ismctsnn_timing $(BINDIR)/gen_policy_corpus $(BINDIR)/calib_puct $(BINDIR)/calib_puct_timing $(BINDIR)/calib_daredevil
+	$(RM) -r $(BUILDDIR)/* $(GUI_BUILDDIR) $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_a15_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_gui_config $(BINDIR)/test_moves $(BINDIR)/test_player_decision $(BINDIR)/test_game_event $(BINDIR)/test_game_engine $(BINDIR)/test_session $(BINDIR)/test_ismcts $(BINDIR)/test_puct_policy $(BINDIR)/test_puct $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan $(BINDIR)/gen_corpus $(BINDIR)/calib_ismctsnn $(BINDIR)/calib_ismctsnn_timing $(BINDIR)/gen_policy_corpus $(BINDIR)/calib_puct $(BINDIR)/calib_puct_timing $(BINDIR)/calib_daredevil
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -856,6 +856,19 @@ $(TEST_PUCT_TARGET): $(TEST_PUCT_OBJS)
 	@mkdir -p $(BINDIR)
 	$(CC) $(TEST_PUCT_OBJS) -o $(TEST_PUCT_TARGET) $(LIBS)
 	@echo "Test build complete: $(TEST_PUCT_TARGET)"
+
+# Test the GUI's [gui] INI reader (src/ui/gui/gui_config.c, SDL-free)
+TEST_GUI_CONFIG_TARGET := $(BINDIR)/test_gui_config
+TEST_GUI_CONFIG_OBJS := $(BUILDDIR)/testsrc/test_gui_config.o $(BUILDDIR)/ui/gui/gui_config.o
+
+.PHONY: test_gui_config
+test_gui_config: $(TEST_GUI_CONFIG_TARGET)
+	./$(TEST_GUI_CONFIG_TARGET)
+
+$(TEST_GUI_CONFIG_TARGET): $(TEST_GUI_CONFIG_OBJS)
+	@echo "Linking test_gui_config..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(TEST_GUI_CONFIG_OBJS) -o $(TEST_GUI_CONFIG_TARGET) $(LIBS)
 
 # Test the Bradley-Terry rating system (src/rating/)
 .PHONY: test_rating
@@ -1131,6 +1144,7 @@ help:
 	@echo "  test_recall      - Build and run recall mechanic tests"
 	@echo "  test_cash_exchange - Build and run cash exchange tests"
 	@echo "  test_rating      - Build and run Bradley-Terry rating system tests"
+	@echo "  test_gui_config  - Build and run the GUI [gui] INI reader tests"
 	@echo "  test_visibility  - Build and run VisibleGameState filter tests"
 	@echo "  test_moves       - Build and run move enumeration (src/actions/) tests"
 	@echo "  test_player_decision - Build and run PlayerDecision/decision_is_legal() tests"

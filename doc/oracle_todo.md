@@ -231,11 +231,14 @@ design; the rating is diagnostic, not a pass/fail bar.
   throughout). See `doc/changelog.md`'s 2026-09-25 entry and the plan
   file's own Step 7 bullet for the full record, including a real bug this
   work surfaced and fixed (`EventBuf`/`EVENT_BUF_CAP`, `game_event.h`).
-  **Still open** (not blocking, tracked in the plan file's "Next up:
-  rounding out GUI M1"): card art (text-only cards today), a visual
-  combat/dice panel (the log has a text summary only), runtime font/tile
-  swap, the legacy-fractal toggle, and the acceptance bar specifically
-  against A14 (played against `value` instead so far).
+  **Done 2026-09-28**: `[gui]` INI config (`font_path`, `legacy_fractal`,
+  `oracle_config.example.ini`) and fractal card art (`gui_config.c`,
+  `gui_art.c`; see `doc/changelog.md`). **Still open** (not blocking, tracked
+  in the plan file's "Next up: rounding out GUI M1"): champion portrait art
+  (needs `import_champion_art.sh`), a visual combat/dice panel (numbers in
+  n-gons, per Jonathan 2026-09-28; the log has a text summary only), tile
+  swap, and the acceptance bar specifically against A14 (played against
+  `value` instead so far).
 - [x] French/Spanish localization: mostly done as of Step 7 (2026-09-25) --
   status bar, action bar, per-seat info, card text, and the message log
   all go through `LOCALIZED_STRING_L` now. What's left is cosmetic: the

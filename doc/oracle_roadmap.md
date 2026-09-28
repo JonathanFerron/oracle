@@ -152,8 +152,9 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
    system-font-lookup plan for in-game text. Verified with a real human-vs-AI playtest and
    repeated valgrind passes (clean throughout); also found and fixed a real pre-existing
    bug this work surfaced (`EventBuf`'s 32-event cap silently dropping events during long
-   AI-only stretches, `game_event.h`). Still open: card art, a visual combat/dice panel,
-   runtime font/tile swap, the legacy-fractal toggle -- see the plan file's own "Next up:
+   AI-only stretches, `game_event.h`). **2026-09-28**: `[gui]` config reader
+   (`font_path`, `legacy_fractal`) and fractal card art landed. Still open: champion portrait
+   art, a visual combat/dice panel (numbers in n-gons), tile swap -- see the plan file's own "Next up:
    rounding out GUI M1" and `doc/changelog.md`'s 2026-09-25 entry for the full record.
 4. **`A14` PUCT + policy head** ("AlphaOracle Prime Plus I") -- ✅ done and
    **registered 2026-09-08/09** (see `doc/changelog.md`'s 2026-09-09 entry and

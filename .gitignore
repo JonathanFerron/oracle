@@ -9,6 +9,8 @@
 /bin/test_recall
 /bin/test_cash_exchange
 /bin/test_rating
+/bin/test_gui_config
+/bin/oracle_config.ini
 /bin/test_moves
 /bin/test_player_decision
 /bin/test_game_event

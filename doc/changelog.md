@@ -5,6 +5,35 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-28 — SDL3 GUI: `[gui]` config reader (`font_path`, `legacy_fractal`) + fractal card art
+
+Pieces of "rounding out GUI M1" (`~/.claude/plans/let-s-please-make-a-noble-neumann.md`, item 3
+plus the fractal half of item 2), all under `src/ui/gui/`:
+
+- **Assets first**: 102 fractal PNGs renamed to `fractale_<ID>.png` (3-digit `fullDeck`
+  `champion_id`, 001-102; orange 001-034, red 035-068, indigo 069-102), 45 Google Fonts
+  families imported and the 3 existing fonts moved to per-family folders
+  (`Comic_Neue/`, `Patrick_Hand/`, `Modern_Rifgo/`) -- see `assets/about.md`. The plan's
+  "fractal -> card mapping still open" loose end is closed by the naming itself.
+- **`gui_config.c/h`**: minimal INI reader, `[gui]` section only (ideas/7's `[section]` /
+  `key = value` / `#;` format; other sections skipped so the general config can share the
+  file). Read once at startup from `<executable dir>/oracle_config.ini` (`bin/`, gitignored;
+  template at `oracle_config.example.ini`). SDL-free, so unit-tested: `make test_gui_config`
+  (12/12).
+- **`font_path`**: overrides the status/log font AND the card font (the plan left "which
+  text" TBD; the wordmark keeps ModernRifgo). Absolute or project-root-relative; falls back
+  to the bundled ComicNeue/PatrickHand with a stderr warning if unreadable. Points at
+  system Comic Sans MS work without ever bundling it.
+- **`legacy_fractal`**: `gui_art.c/h` lazy-loads and caches `fractale_%03u.png` per champion;
+  `gui_card_draw()` draws it inside the border with a translucent strip behind the text
+  (draw/cash cards stay procedural). A missing file warns once and that card falls back to
+  text-only. Verified by rendering a card sheet off-screen to PNG (art off/on, highlight).
+- Not verified: a full interactive session with the config on (headless runs only), and
+  valgrind of the live GUI ended inconclusive (killed by timeout before clean shutdown); the
+  art cache itself was leak-free in the off-screen harness.
+
+---
+
 ## 2026-09-25 — SDL3 GUI: Step 7 (GUI M1) core done — `bin/oracle-gui` is genuinely playable
 
 Continuation of the SDL3 GUI work (`~/.claude/plans/let-s-please-make-a-noble-neumann.md`
