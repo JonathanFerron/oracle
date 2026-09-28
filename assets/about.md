@@ -30,7 +30,33 @@ provenance, corpus composition, measured results).
   pool (most of which is uncleared web reference material):
   - `champions/` -- champion portraits, one per `fullDeck[]` champion,
     556x839, imported from Jonathan's `<prefix><n>_<Species>_<Name>.jpg`
-    picks (`tools/assets/import_champion_art.sh`).
+    picks (`tools/assets/import_champion_art.sh`). This same 556x839 target
+    (47x71mm @ 300dpi, `../oracle outside git/dimensions image champion.txt`)
+    serves both the printed-card SVG and the GUI's rendered card art, so one
+    export pipeline covers both consumers.
+    **Preferred resize/pad approach** (confirmed available 2026-09-28:
+    ImageMagick 7.1.2 `magick`, also Python3/Pillow 12.1.1 and GIMP as
+    fallbacks): most source picks are already close to the target aspect
+    (e.g. 832x1248, aspect 0.667 vs the target's 0.663) and just need a
+    downscale; a few (scans, hand-coloured pieces, e.g.
+    `cen5_Centaure_Kentaur.png` at 1718x2483, aspect 0.692) are wider and
+    need genuine white padding on two sides rather than just a resize. One
+    command handles both cases without distortion or cropping:
+    ```
+    magick input.jpg -resize 556x839 -background white -gravity center -extent 556x839 output.png
+    ```
+    `-resize` fits the image within the box preserving aspect ratio;
+    `-extent` pads out to the exact target, centered, filling with
+    `-background`. Tested against `ave1_Aven_Sourlio.jpg` (near-zero
+    padding needed) and `cen5_Centaure_Kentaur.png` (visible left/right
+    bars) -- both produced clean 556x839 output.
+    **Scans/hand-coloured art need a sampled background, not hardcoded
+    white**: their paper background is typically off-white rather than
+    pure `#FFFFFF`, so a hardcoded white pad creates a visible seam where
+    padding meets the source's own background. Sample a corner pixel of
+    the source (e.g. `magick input.jpg -format "%[pixel:p{5,5}]" info:`)
+    and pass that as `-background` instead of a literal `white` for that
+    subset, rather than assuming pure white project-wide.
   - `fractals/` -- the legacy/fallback card-art toggle: 18 rendered
     fractal designs x 3 colour variants (54 PNGs, already 556x839; a
     further 16 designs exist only as GIMP Fractal Explorer recipes, not
