@@ -57,10 +57,44 @@ provenance, corpus composition, measured results).
     the source (e.g. `magick input.jpg -format "%[pixel:p{5,5}]" info:`)
     and pass that as `-background` instead of a literal `white` for that
     subset, rather than assuming pure white project-wide.
-  - `fractals/` -- the legacy/fallback card-art toggle: 18 rendered
-    fractal designs x 3 colour variants (54 PNGs, already 556x839; a
-    further 16 designs exist only as GIMP Fractal Explorer recipes, not
-    yet rendered -- see the fractal inventory note in the GUI plan file).
+  - `fractals/` -- the legacy/fallback card-art toggle, for a "fractales
+    champion art" GUI mode (art-style toggle, alternative to the champion
+    portraits above). **All 34 designs x 3 colour variants (rouge/horizon
+    2/yellow orange) rendered and imported, 102 PNGs, all 556x839, ready
+    to wire into the GUI's "fractales champion art" mode.** Copied
+    2026-09-28 from the NAS source (`fractale N <variant>.png`) with
+    filenames sanitized/zero-padded for asset use:
+    `fractale_<NN>_<variant>.png`, `NN` = `01`-`34`, `<variant>` =
+    `rouge`/`horizon_2`/`yellow_orange` -- no `import_fractal_art.sh`
+    script yet (this pass was a plain `cp`, not scripted), so a future
+    re-import from an updated source still needs one, same pattern as
+    `import_champion_art.sh` above. Originally 18 of 34 designs were
+    rendered by hand (54 PNGs); the remaining 16 (designs 17-25, 28-33;
+    design 16 was finished by hand separately) existed only as GIMP
+    Fractal Explorer recipes (`fractale N`, a plain-text shape/colour
+    spec -- fractal type, viewport bounds, iteration count, cx/cy) until
+    **2026-09-28**, when they were batch-rendered headlessly via GIMP
+    3.2.2's Python-Fu (`gimp -i --batch-interpreter=python-fu-eval`,
+    `plug-in-fractalexplorer`), each recipe's 3 named colour variants
+    reproduced as: `rouge` = the plugin's internal `colormap` mode
+    (red-invert on, matching the one colour-variant recipe that happened
+    to be saved, `fractale 1 rouge`); `horizon 2`/`yellow orange` = the
+    plugin's `gradient` mode with GIMP's built-in gradients of those
+    exact names set active (confirmed real stock gradient names via
+    `gimp-gradients-get-list`) -- verified by re-rendering an
+    already-shipped design (`fractale 2`) from its recipe alone and
+    diffing visually against the existing PNG (pixel-for-pixel match).
+    Matching `.xcf` project files were saved alongside all 15 newly
+    rendered designs' PNGs, and design 16's PNGs were exported from
+    Jonathan's own hand-made XCFs (already exactly 556x839, no rework
+    needed) -- no pre-existing `.png`/`.xcf` was overwritten by this pass.
+    GIMP 3's PDB signature for `plug-in-fractalexplorer` differs
+    substantially from the legacy 1997 recipe file format (drawables now
+    an array, `fractal-type`/`color-mode`/`red-mode`/etc. now string
+    nicks instead of integer codes, colour-stretch values now 0.0-1.0
+    instead of 0-255, no width/height args) -- worth knowing before
+    writing the eventual import script, since a naive port of the old
+    settings file won't work as-is.
   - `orders/` -- **done 2026-09-23**: the 5 Order glyphs (`order_a.svg`/
     `.png` .. `order_e.svg`/`.png`, matching `game_types.h`'s `ChampionOrder`
     enum order/index), Jonathan's "bubble" line-art versions of his printed
