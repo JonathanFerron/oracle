@@ -122,7 +122,7 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
    visually (window opened correctly) and under valgrind (0 definitely/indirectly/possibly
    lost). Assets already available were imported to `assets/` (top-level categories,
    matching the `ismctsnn/`/`puct/` convention, not a nested `gui/`): `assets/logo/
-   oracle_logo.png`, `assets/fonts/ModernRifgoRegular-MAvdP.otf` -- see `assets/about.md`.
+   oracle_logo.png`, `assets/fonts/Modern_Rifgo/ModernRifgoRegular-MAvdP.otf` -- see `assets/about.md`.
    **Polish pass, same date** (`c2072d8`/`8d1b385`/`ac8cc7c`/`45ecb25`, driven by Jonathan
    looking at the running window): Order glyphs extracted from his "bubble" line-art sheet
    (`tools/assets/extract_order_symbols.sh`, new) into `assets/orders/`; the Luna currency

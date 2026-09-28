@@ -158,7 +158,7 @@ provenance, corpus composition, measured results).
   - `backgrounds/` -- table background tiles.
   - `logo/` -- `oracle_logo.png` (from `logo base/choix final.png`,
     1024x1024).
-  - `fonts/` -- `ModernRifgoRegular-MAvdP.otf` (the base logo/UI font;
+  - `fonts/` -- one subfolder per family (`Modern_Rifgo/`, `Comic_Neue/`, `Patrick_Hand/`, plus the 45 Google Fonts families below; reorganised 2026-09-28 from a flat layout). `Modern_Rifgo/ModernRifgoRegular-MAvdP.otf` (the base logo/UI font;
     licence terms not yet verified -- check before any public distribution).
     **Comic Sans MS is NOT here** despite being one of Jonathan's requested
     runtime font options (it's what the printed cards use) -- Microsoft's
@@ -176,8 +176,19 @@ provenance, corpus composition, measured results).
     (its only weight), both downloaded from the `google/fonts` GitHub repo's
     `ofl/comicneue/` and `ofl/patrickhand/` directories, SIL Open Font
     License 1.1 (freely bundleable) -- licence text alongside as
-    `ComicNeue-OFL.txt`/`PatrickHand-OFL.txt`. Comic Neue is the closer
+    `Comic_Neue/OFL.txt`/`Patrick_Hand/OFL.txt`. Comic Neue is the closer
     match (explicitly designed as a Comic Sans redesign); Patrick Hand is a
     rougher handwriting-style alternative. Jonathan is also installing both
     as system fonts on this box manually. Neither is wired into the GUI's
     font-swap feature yet.
+    **45 more Google Fonts families added 2026-09-28** (Jonathan's picks,
+    downloaded as zips from Google Fonts, unzipped verbatim from the NAS
+    source `oracle/fonts/*.zip`): one subfolder per family
+    (`fonts/<Family_Name>/`, e.g. `Fredoka/`, `Sour_Gummy/`), keeping each
+    zip's own layout -- `OFL.txt`/`LICENSE.txt`, and for variable families a
+    `README.txt`, the variable `.ttf` and a `static/` folder of named
+    instances. All OFL, freely bundleable. The `Comic_Neue`/`Patrick_Hand`
+    zips were skipped: same version and glyph count as the flat files above
+    (only the zip packaging differs). Validated with fontTools: all
+    readable, and every font covers digits 0-9 plus the French/Spanish
+    accented set (`éèêàâçùûôîïœÉÀÇñáíóúü¿¡`). None wired into the GUI yet.

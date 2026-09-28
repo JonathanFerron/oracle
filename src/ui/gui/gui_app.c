@@ -35,9 +35,9 @@
 #define GUI_WINDOW_TITLE "Oracle: The Champions of Arcadia"
 #define GUI_LOGO_PATH "assets/logo/oracle_logo.png"
 #define GUI_ICON_PATH "assets/currency/luna.png"
-#define GUI_TITLE_FONT_PATH "assets/fonts/ModernRifgoRegular-MAvdP.otf"
-#define GUI_STATUS_FONT_PATH "assets/fonts/ComicNeue-Regular.ttf"
-#define GUI_CARD_FONT_PATH "assets/fonts/PatrickHand-Regular.ttf"
+#define GUI_TITLE_FONT_PATH "assets/fonts/Modern_Rifgo/ModernRifgoRegular-MAvdP.otf"
+#define GUI_STATUS_FONT_PATH "assets/fonts/Comic_Neue/ComicNeue-Regular.ttf"
+#define GUI_CARD_FONT_PATH "assets/fonts/Patrick_Hand/PatrickHand-Regular.ttf"
 #define GUI_TITLE_FONT_PT 48.0f
 #define GUI_STATUS_FONT_PT 16.0f
 #define GUI_CARD_FONT_PT 16.0f
