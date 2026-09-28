@@ -63,9 +63,15 @@ provenance, corpus composition, measured results).
     2/yellow orange) rendered and imported, 102 PNGs, all 556x839, ready
     to wire into the GUI's "fractales champion art" mode.** Copied
     2026-09-28 from the NAS source (`fractale N <variant>.png`) with
-    filenames sanitized/zero-padded for asset use:
-    `fractale_<NN>_<variant>.png`, `NN` = `01`-`34`, `<variant>` =
-    `rouge`/`horizon_2`/`yellow_orange` -- no `import_fractal_art.sh`
+    filenames sanitized for asset use, then renamed the same day to
+    `fractale_<ID>.png` where `ID` is the 3-digit zero-padded `fullDeck`
+    champion card ID (`001`-`102`), so the GUI can build the path with
+    `"%03d"` and no colour lookup: `yellow_orange` = orange = `NN`
+    (`001`-`034`), `rouge` = red = `34+NN` (`035`-`068`), `horizon_2`
+    (blue) = indigo = `68+NN` (`069`-`102`), matching `fullDeck`'s
+    orange/red/indigo block order (`src/core/game_constants.c`). The
+    design number `NN` and variant are recoverable from that
+    arithmetic; no `import_fractal_art.sh`
     script yet (this pass was a plain `cp`, not scripted), so a future
     re-import from an updated source still needs one, same pattern as
     `import_champion_art.sh` above. Originally 18 of 34 designs were
