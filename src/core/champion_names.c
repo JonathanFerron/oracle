@@ -57,7 +57,7 @@ static const char* const CHAMPION_NAMES[CHAMPION_COUNT][3] =
   { "Bobelin", "Bobelin", "Bobelín" }, // 48
   { "Zargoth", "Zargoth", "Zargoth" }, // 49
   { "Shami", "Shami", "Shami" }, // 50
-  { "Stone Eye", "Œil de Pierre", "Ojo de Piedra" }, // 51
+  { "Stone Eye", "Oeil de Pierre", "Ojo de Piedra" }, // 51
   { "Lezol", "Lezol", "Lezol" }, // 52
   { "Oakblade", "Lame de Chêne", "Hoja de Roble" }, // 53
   { "Skarn", "Skarn", "Skarn" }, // 54

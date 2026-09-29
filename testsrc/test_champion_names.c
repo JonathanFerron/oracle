@@ -28,6 +28,9 @@ int main(void)
   check("id 102 = Wolfly / Casilou", !strcmp(champion_name(102, LANG_EN), "Wolfly")
         && !strcmp(champion_name(102, LANG_FR), "Casilou"));
 
+  check("id 51 French is 'Oeil de Pierre' (no ligature)",
+        !strcmp(champion_name(51, LANG_FR), "Oeil de Pierre"));
+
   bool all_named = true;
   for(int i = 0; i < FULL_DECK_SIZE; i++)
   { const struct card* c = &fullDeck[i];
