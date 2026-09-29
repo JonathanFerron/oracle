@@ -6,8 +6,7 @@
 
 // Indexed [champion_id - 1][ui_language_t]: English, French, Spanish.
 static const char* const CHAMPION_NAMES[CHAMPION_COUNT][3] =
-{
-  { "Furial", "Furial", "Furial" }, // 1
+{ { "Furial", "Furial", "Furial" }, // 1
   { "Mimosa Cotton", "Mimosa Cotton", "Mimosa Algodón" }, // 2
   { "Demata", "Démata", "Démata" }, // 3
   { "Artemis", "Artémis", "Artemisa" }, // 4

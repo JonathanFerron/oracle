@@ -62,12 +62,15 @@ static void face_geometry(SDL_FRect rect, FaceGeom* g)
   g->text_px = g->inner.h * CF_TEXT_PX;
 } // face_geometry
 
-// Draws `text` centred on (cx, cy) at `px` size in the face font.
+// Draws `text` centred on (cx, cy) at `px` size in the face font. Size and
+// position are snapped to whole pixels: a fractional blit position makes the
+// renderer bilinear-resample the glyph texture, which reads as fuzzy text.
 static void draw_centered(SDL_Renderer* r, const char* text, float cx, float cy, float px)
 { int w = 0, h = 0;
-  TTF_SetFontSize(g_font, px);
+  TTF_SetFontSize(g_font, SDL_roundf(px));
   TTF_GetStringSize(g_font, text, 0, &w, &h);
-  gui_draw_text(r, g_font, text, cx - (float)w / 2.0f, cy - (float)h / 2.0f, CF_INK);
+  gui_draw_text(r, g_font, text, SDL_roundf(cx - (float)w / 2.0f), SDL_roundf(cy - (float)h / 2.0f),
+                CF_INK);
 } // draw_centered
 
 // Draws `tex` aspect-fitted and centred inside `box`.
@@ -140,7 +143,7 @@ static void draw_shield_cell(SDL_Renderer* r, const FaceGeom* g, const struct ca
 static void draw_name_bar(SDL_Renderer* r, const FaceGeom* g, const char* name)
 { float px = g->text_px * 1.1f;
   int w = 0, h = 0;
-  TTF_SetFontSize(g_font, px);
+  TTF_SetFontSize(g_font, SDL_roundf(px));
   TTF_GetStringSize(g_font, name, 0, &w, &h);
   float max_w = g->name_bar.w - 8.0f;
   if((float)w > max_w)

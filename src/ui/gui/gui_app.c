@@ -45,7 +45,7 @@
 #define GUI_CARD_FONT_PATH "assets/fonts/Patrick_Hand/PatrickHand-Regular.ttf"
 #define GUI_CONFIG_FILE "oracle_config.ini" // next to the executable
 #define GUI_ASSETS_DIR "assets"
-#define GUI_FACE_FONT_PATH "assets/fonts/Fredoka/static/Fredoka-Bold.ttf"
+#define GUI_FACE_FONT_PATH "assets/fonts/Fredoka/static/Fredoka-Medium.ttf"
 #define GUI_TITLE_FONT_PT 48.0f
 #define GUI_STATUS_FONT_PT 16.0f
 #define GUI_CARD_FONT_PT 16.0f

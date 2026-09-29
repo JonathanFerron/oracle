@@ -4,7 +4,7 @@
 // hexagon; attack die + base attack with a sword; species emblem with its
 // order glyph; shield with the defense die -- the art area to its right (the
 // fractal art when enabled, else blank), and a name bar along the bottom (the champion's name, champion_names.h).
-// Text uses Fredoka Bold (the printed cards' Fredoka One, static instance).
+// Text uses Fredoka Medium (the printed cards' Fredoka One is a heavier single weight).
 
 #ifndef GUI_CARD_FACE_H
 #define GUI_CARD_FACE_H
