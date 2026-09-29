@@ -134,6 +134,12 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
    `doc/oracle_todo.md` "GUI Mode" item); Comic Sans MS (wanted as a font option, matches
    the printed cards) is on this box via `ttf-mscorefonts-installer` but its EULA forbids
    bundling the `.ttf`, so it must be a runtime system-path lookup, not a committed asset.
+   **Status 2026-10-01 (supersedes the "Paused" note below)**: steps 0-7 are done and `bin/oracle-gui`
+   is playable end to end and being playtested -- printed-card-style champion/draw/cash faces, a
+   paced combat-dice reveal (n-gon dice, Continue, pre-roll preview), New game button, `[gui]` config
+   (fonts, `combat_delay_seconds`, `legacy_fractal`); see `doc/changelog.md` 2026-09-28..10-01. Next:
+   **manual hand ordering**, then champion portrait art, table pattern experiment, polish. The plan file's
+   "Status" and "Next up" sections are authoritative.
    **Paused here 2026-09-23** (Jonathan's call, work clean and committed at every step) --
    **the authoritative next-steps document is
    `~/.claude/plans/let-s-please-make-a-noble-neumann.md`** (Steps 3-10; step 3,
