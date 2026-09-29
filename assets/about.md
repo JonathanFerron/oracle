@@ -57,6 +57,13 @@ provenance, corpus composition, measured results).
     the source (e.g. `magick input.jpg -format "%[pixel:p{5,5}]" info:`)
     and pass that as `-background` instead of a literal `white` for that
     subset, rather than assuming pure white project-wide.
+  - `icons/` -- **added 2026-09-28**: `sword`, `shield`, `cost_hex` (`.svg` +
+    256 px-tall transparent `.png`), the card-face icons of the printed champion
+    cards, exported by object ID (`g5212`, `g5234`, `path5170`) from
+    `oracle/cartes/cartes champions pg1 - blank.svg` with
+    `inkscape --export-id=<id> --export-id-only --export-background-opacity=0`.
+    Used by `gui_card_face.c`; the cost digit and dice text are drawn over
+    `cost_hex` in Fredoka Bold.
   - `fractals/` -- the legacy/fallback card-art toggle, for a "fractales
     champion art" GUI mode (art-style toggle, alternative to the champion
     portraits above). **All 34 designs x 3 colour variants (rouge/horizon

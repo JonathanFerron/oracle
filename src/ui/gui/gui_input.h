@@ -74,13 +74,14 @@ uint8_t gui_input_active_buttons(const GuiInputState* st, const SessionUpdate* u
                                  bool* out_confirm_enabled);
 
 // Handles a left-click at (x,y) in render-output coordinates (matching
-// gui_render_frame()'s own SDL_GetRenderOutputSize()). Toggles a card,
+// gui_render_frame()'s own SDL_GetRenderOutputSize(); `log_open` must match what it
+// drew, since the side panel shifts every other region). Toggles a card,
 // switches attack_mode, or -- for a terminal action (Confirm/Pass/Decline/
 // Draw) -- fills `out_cmd` and returns true, meaning the caller should
 // session_client_send() it. Returns false if the click only changed staging
 // state (or hit nothing); `out_cmd` is untouched in that case.
 bool gui_input_handle_click(GuiInputState* st, const SessionUpdate* u,
-                            float x, float y, float win_w, float win_h,
+                            float x, float y, float win_w, float win_h, bool log_open,
                             SessionCommand* out_cmd);
 
 #endif // GUI_INPUT_H

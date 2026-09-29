@@ -9,6 +9,11 @@
 #define GUI_MARGIN 12.0f
 #define GUI_BUTTON_W 120.0f
 #define GUI_SIDE_W (2 * GUI_CARD_WIDTH + GUI_CARD_GAP) // deck + discard, side by side
+#define GUI_TOGGLE_W 56.0f
+#define GUI_TOGGLE_H 28.0f
+#define GUI_LOG_FRACTION 0.25f // log side panel width as a fraction of the window...
+#define GUI_LOG_MIN_W 260.0f   // ...clamped to this range
+#define GUI_LOG_MAX_W 380.0f
 
 // seat[1] (top/opponent): info label, then hand + deck/discard on the same
 // row, then that seat's combat-zone row just below it.
@@ -68,27 +73,46 @@ static void layout_bottom_seat(float win_w, float bottom_y, GuiLayout* out)
   };
 } // layout_bottom_seat
 
-void gui_layout_compute(float win_w, float win_h, GuiLayout* out)
-{ out->status_bar = (SDL_FRect)
-  { 0, 0, win_w, GUI_STATUS_BAR_H
+void gui_layout_compute(float win_w, float win_h, bool log_open, GuiLayout* out)
+{ float log_w = win_w * GUI_LOG_FRACTION;
+  if(log_w < GUI_LOG_MIN_W)
+    log_w = GUI_LOG_MIN_W;
+  if(log_w > GUI_LOG_MAX_W)
+    log_w = GUI_LOG_MAX_W;
+  float board_w = log_open ? win_w - log_w : win_w;
+
+  out->status_bar = (SDL_FRect)
+  { 0, 0, board_w, GUI_STATUS_BAR_H
   };
   out->action_bar = (SDL_FRect)
-  { 0, GUI_STATUS_BAR_H, win_w, GUI_ACTION_BAR_H
+  { 0, GUI_STATUS_BAR_H, board_w, GUI_ACTION_BAR_H
   };
 
-  layout_top_seat(win_w, GUI_STATUS_BAR_H + GUI_ACTION_BAR_H + GUI_MARGIN, out);
-  layout_bottom_seat(win_w, win_h - GUI_MARGIN, out);
+  layout_top_seat(board_w, GUI_STATUS_BAR_H + GUI_ACTION_BAR_H + GUI_MARGIN, out);
+  layout_bottom_seat(board_w, win_h - GUI_MARGIN, out);
 
   // The message log fills whatever's left between the two combat zones --
   // derived from their already-computed rects rather than a separate
   // hardcoded budget, so it grows for free on a taller window and shrinks
   // gracefully (toward nothing) on a short one, the same as every other
   // region here.
-  float log_top = out->combat_zone[1].y + GUI_CARD_HEIGHT + GUI_MARGIN;
-  float log_bottom = out->combat_zone[0].y - GUI_MARGIN;
-  out->log_panel = (SDL_FRect)
-  { GUI_MARGIN, log_top, win_w - 2 * GUI_MARGIN, log_bottom - log_top
-  };
+  out->log_open = log_open;
+  if(log_open)
+  { out->log_panel = (SDL_FRect)
+    { board_w, 0, win_w - board_w, win_h
+    };
+    out->log_toggle = (SDL_FRect)
+    { win_w - GUI_MARGIN / 2 - GUI_TOGGLE_H, GUI_MARGIN / 2, GUI_TOGGLE_H, GUI_TOGGLE_H
+    };
+  }
+  else
+  { out->log_panel = (SDL_FRect)
+    { win_w, 0, 0, win_h
+    };
+    out->log_toggle = (SDL_FRect)
+    { win_w - GUI_MARGIN / 2 - GUI_TOGGLE_W, GUI_MARGIN / 2, GUI_TOGGLE_W, GUI_TOGGLE_H
+    };
+  }
 } // gui_layout_compute
 
 uint8_t gui_layout_seat_for_player(PlayerID player, PlayerID viewer)
@@ -103,12 +127,17 @@ SDL_FRect gui_layout_card_slot(SDL_FRect row, uint8_t index, uint8_t count)
   { row.x, row.y, 0, 0
   };
 
-  float total_w = count * GUI_CARD_WIDTH + (count - 1) * GUI_CARD_GAP;
+  // Natural spacing, tightened (cards overlap, later ones on top) once the
+  // row is too narrow to hold `count` cards side by side.
+  float step = GUI_CARD_WIDTH + GUI_CARD_GAP;
+  if(count > 1 && (count - 1) * step + GUI_CARD_WIDTH > row.w)
+    step = (row.w - GUI_CARD_WIDTH) / (count - 1);
+  float total_w = (count - 1) * step + GUI_CARD_WIDTH;
   float start_x = row.x + (row.w - total_w) / 2.0f;
   float y = row.y + (row.h - GUI_CARD_HEIGHT) / 2.0f;
 
   return (SDL_FRect)
-  { start_x + index * (GUI_CARD_WIDTH + GUI_CARD_GAP), y, GUI_CARD_WIDTH, GUI_CARD_HEIGHT
+  { start_x + index * step, y, GUI_CARD_WIDTH, GUI_CARD_HEIGHT
   };
 } // gui_layout_card_slot
 

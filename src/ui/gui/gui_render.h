@@ -12,6 +12,7 @@
 #include <SDL3_ttf/SDL_ttf.h>
 #include "gui_input.h" // GuiInputState
 #include "gui_log.h" // GuiLog
+#include "gui_names.h" // GuiNames
 #include "../../core/game_types.h" // ui_language_t
 #include "../../structures/card_collection.h" // Discard
 #include "../../roles/stda/stda_session.h" // SessionUpdate
@@ -36,9 +37,11 @@ uint8_t gui_discard_champions(const Discard* d, uint8_t out[40]);
 // there's nothing for the viewer to stage right now (game over, or it's not
 // their move; gui_render_frame() shows a "game over"/"opponent is thinking"
 // label in the action bar instead of buttons). `log` is drawn in the
-// leftover space between the two combat zones (gui_layout.c's log_panel).
+// right-hand column when `log_open` (gui_layout.c's log_panel; a small "Log"
+// tab otherwise), and every other region shrinks to make room for it.
 void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
                       const SessionUpdate* u, const GuiInputState* input,
-                      const GuiLog* log, ui_language_t lang);
+                      const GuiLog* log, const GuiNames* names, bool log_open,
+                      ui_language_t lang);
 
 #endif // GUI_RENDER_H

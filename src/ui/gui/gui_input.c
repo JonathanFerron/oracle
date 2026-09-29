@@ -182,8 +182,8 @@ static void submit_cards(SessionCommand* out, DecisionKind kind, const uint8_t* 
 
 static int hit_test_row(SDL_FRect row, uint8_t count, float x, float y)
 { SDL_FPoint p = { x, y };
-  for(uint8_t i = 0; i < count; i++)
-  { SDL_FRect slot = gui_layout_card_slot(row, i, count);
+  for(int i = count - 1; i >= 0; i--) // later cards draw on top when a wide hand overlaps
+  { SDL_FRect slot = gui_layout_card_slot(row, (uint8_t)i, count);
     if(SDL_PointInRectFloat(&p, &slot)) return i;
   }
   return -1;
@@ -325,14 +325,14 @@ static void handle_hand_click(GuiInputState* st, const SessionUpdate* u, uint8_t
 } // handle_hand_click
 
 bool gui_input_handle_click(GuiInputState* st, const SessionUpdate* u,
-                            float x, float y, float win_w, float win_h,
+                            float x, float y, float win_w, float win_h, bool log_open,
                             SessionCommand* out_cmd)
 { if(u->pending.player != u->view.viewer || u->pending.kind != st->kind
      || u->pending.player != st->player)
     return false; // not our move, or staging is stale for a decision that's already gone
 
   GuiLayout layout;
-  gui_layout_compute(win_w, win_h, &layout);
+  gui_layout_compute(win_w, win_h, log_open, &layout);
 
   bool confirm_enabled = false;
   GuiButtonId btn = hit_test_buttons(st, u, layout.action_bar, x, y, &confirm_enabled);

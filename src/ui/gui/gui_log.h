@@ -15,9 +15,10 @@
 #include <SDL3_ttf/SDL_ttf.h>
 #include "../../core/game_types.h" // ui_language_t
 #include "../../roles/stda/stda_session.h" // SessionUpdate
+#include "gui_names.h"
 
 #define GUI_LOG_CAPACITY 200
-#define GUI_LOG_LINE_LEN 96
+#define GUI_LOG_LINE_LEN 192 // long enough for two "AI - <flavour> (Player B)" labels
 
 typedef struct
 { char lines[GUI_LOG_CAPACITY][GUI_LOG_LINE_LEN];
@@ -35,7 +36,8 @@ void gui_log_init(GuiLog* log);
 // around. `u->view.game_state` (not the EVT_GAME_OVER event's own `.player`,
 // which game_engine.c always sets to a real player even on a draw) is what
 // decides the game-over line's wording.
-void gui_log_append_events(GuiLog* log, const SessionUpdate* u, ui_language_t lang);
+void gui_log_append_events(GuiLog* log, const SessionUpdate* u, const GuiNames* names,
+                           ui_language_t lang);
 
 // Draws as many of the most recent lines as fit in `area` (oldest at top,
 // newest at bottom -- auto-scrolls, no manual scrollback yet), on a panel

@@ -5,6 +5,29 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-28 (later) — SDL3 GUI: printed-style champion cards, player names, log side panel
+
+- **Player names**: `gui_names.c/h` builds "Jonathan (Player A)" labels (plain "Player A" for the
+  untouched `Player1`/`Player2` defaults, "AI - <flavour> (Player B)" for AI seats via
+  `format_player_label()`), used by the status bar, seat info and every log line (localized
+  EN/FR/ES). Noted: the GUI never calls `apply_player_assignment()`, so names map straight to A/B.
+- **Champion card face** (`gui_card_face.c/h`), following the printed cards (`cartes champions
+  pg1 - blank.svg`): thick colour border, left column of cells (cost in a hexagon; attack die,
+  "+", base attack, sword; species emblem + order glyph; shield + defense die), art area (fractal
+  art when `legacy_fractal`, blank otherwise) and a name bar -- the text no longer sits on the art.
+  Fredoka Bold stands in for the printed Fredoka One. Card slot is now 126x167 (~0.755 aspect,
+  was 96x145). Icons/emblems/orders are cached and pre-shrunk by halving (`gui_art.c`) to avoid
+  aliasing. Draw/cash cards keep the old plain text style (not yet restyled). The name bar shows
+  the species: individual champion names ("Furial"...) only exist in
+  `oracle/Champion Names in 3 languages.xlsx`, not in code.
+- **Log side panel**: full-height right column (25% of the window, 260-380 px), wrapped text,
+  header with close button; a "Log" tab replaces it when closed; `L` toggles. All other regions
+  lay out in the remaining width, and wide hands now overlap instead of overflowing.
+- Default window 1600x900 (was 1280x920), sized for the 1080p W530 laptop.
+- Verified by off-screen frame renders (log open/closed, art on/off); not by a live session.
+
+---
+
 ## 2026-09-28 — SDL3 GUI: `[gui]` config reader (`font_path`, `legacy_fractal`) + fractal card art
 
 Pieces of "rounding out GUI M1" (`~/.claude/plans/let-s-please-make-a-noble-neumann.md`, item 3

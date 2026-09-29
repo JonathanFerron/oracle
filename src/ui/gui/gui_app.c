@@ -33,6 +33,9 @@
 #include "../../roles/stda/stda_session.h"
 #include "gui_config.h"
 #include "gui_art.h"
+#include "gui_card_face.h"
+#include "gui_names.h"
+#include "gui_layout.h"
 
 #define GUI_WINDOW_TITLE "Oracle: The Champions of Arcadia"
 #define GUI_LOGO_PATH "assets/logo/oracle_logo.png"
@@ -41,10 +44,15 @@
 #define GUI_STATUS_FONT_PATH "assets/fonts/Comic_Neue/ComicNeue-Regular.ttf"
 #define GUI_CARD_FONT_PATH "assets/fonts/Patrick_Hand/PatrickHand-Regular.ttf"
 #define GUI_CONFIG_FILE "oracle_config.ini" // next to the executable
-#define GUI_FRACTAL_DIR "assets/fractals"
+#define GUI_ASSETS_DIR "assets"
+#define GUI_FACE_FONT_PATH "assets/fonts/Fredoka/static/Fredoka-Bold.ttf"
 #define GUI_TITLE_FONT_PT 48.0f
 #define GUI_STATUS_FONT_PT 16.0f
 #define GUI_CARD_FONT_PT 16.0f
+// Sized for a 1080p laptop (Lenovo W530, the smallest screen this is played on)
+// with the log side panel open; resizable from there.
+#define GUI_DEFAULT_WIN_W 1600
+#define GUI_DEFAULT_WIN_H 900
 #define GUI_LOGO_DISPLAY_SIZE 256.0f
 #define GUI_LOGO_ALPHA 51 // 80% transparent (~20% opacity, 0.20 * 255)
 
@@ -79,6 +87,8 @@ typedef struct
   // splash on screen during the brief startup window before it
   GuiInputState input;   // viewer's own staging state (gui_input.c)
   GuiLog log;             // message log (gui_log.c)
+  bool log_open;          // message-log side panel shown (toggle: click/L)
+  GuiNames names;         // "Jonathan (Player A)"-style labels (gui_names.h)
   GuiConfig config;       // [gui] section of oracle_config.ini (gui_config.h)
 } GuiAppState;
 
@@ -222,7 +232,8 @@ static bool gui_load_card_font(GuiAppState* state)
 } // gui_load_card_font
 
 // Reads <executable dir>/oracle_config.ini's [gui] section (gui_config.h).
-// A missing file just means all defaults, and enables fractal art if asked.
+// A missing file just means all defaults. Also brings up the art cache and
+// card-face font, which need the config's fractal setting.
 static void gui_load_config(GuiAppState* state)
 { char path[512];
   const char* base = SDL_GetBasePath();
@@ -230,10 +241,12 @@ static void gui_load_config(GuiAppState* state)
   gui_config_defaults(&state->config);
   gui_config_load(&state->config, path);
 
-  if(state->config.legacy_fractal)
-  { gui_asset_path(path, sizeof(path), GUI_FRACTAL_DIR);
-    gui_art_init(state->renderer, path);
-  }
+  gui_asset_path(path, sizeof(path), GUI_ASSETS_DIR);
+  gui_art_init(state->renderer, path);
+  gui_art_set_fractal(state->config.legacy_fractal);
+
+  gui_asset_path(path, sizeof(path), GUI_FACE_FONT_PATH);
+  gui_card_face_init(path);
 } // gui_load_config
 
 static void gui_draw_logo(GuiAppState* state)
@@ -284,7 +297,7 @@ static SDL_AppResult gui_sdl_init(void** appstate, int argc, char** argv)
   // Taller than a plain "hello window" default -- leaves the message log
   // (gui_log.c, drawn in whatever's left between the two combat zones)
   // genuinely useful-sized out of the box instead of a sliver.
-  if(!SDL_CreateWindowAndRenderer(GUI_WINDOW_TITLE, 1280, 920, SDL_WINDOW_RESIZABLE,
+  if(!SDL_CreateWindowAndRenderer(GUI_WINDOW_TITLE, GUI_DEFAULT_WIN_W, GUI_DEFAULT_WIN_H, SDL_WINDOW_RESIZABLE,
                                   &state->window, &state->renderer))
   { fprintf(stderr, "SDL_CreateWindowAndRenderer failed: %s\n", SDL_GetError());
     return SDL_APP_FAILURE;
@@ -310,6 +323,8 @@ static SDL_AppResult gui_sdl_init(void** appstate, int argc, char** argv)
   gui_load_status_font(state);
   gui_load_card_font(state);
   gui_log_init(&state->log);
+  state->log_open = true;
+  gui_names_init(&state->names, g_boot_pconfig, g_boot_cfg->language);
 
   if(!gui_start_session(state, g_boot_cfg, g_boot_pconfig))
   { fprintf(stderr, "GUI: could not start game session\n");
@@ -333,7 +348,7 @@ static SDL_AppResult gui_sdl_iterate(void* appstate)
   if(session_client_poll(state->session, &state->update))
   { state->have_update = true;
     gui_trace_update(&state->update);
-    gui_log_append_events(&state->log, &state->update, g_boot_cfg->language);
+    gui_log_append_events(&state->log, &state->update, &state->names, g_boot_cfg->language);
 
     // A new decision to stage (kind/player changed) or a rejected submit --
     // either way, start staging fresh rather than carry stale selections
@@ -353,7 +368,7 @@ static SDL_AppResult gui_sdl_iterate(void* appstate)
                        .card_font = state->card_font
                      };
     gui_render_frame(state->renderer, &fonts, &state->update, &state->input,
-                     &state->log, g_boot_cfg->language);
+                     &state->log, &state->names, state->log_open, g_boot_cfg->language);
   }
   else
   { gui_draw_logo(state);
@@ -364,20 +379,36 @@ static SDL_AppResult gui_sdl_iterate(void* appstate)
   return SDL_APP_CONTINUE;
 } // gui_sdl_iterate
 
+// Log panel toggle: the `L` key, or a click on the header button/corner tab.
+static bool gui_log_toggle_hit(const GuiAppState* state, float x, float y)
+{ int win_w, win_h;
+  SDL_GetRenderOutputSize(state->renderer, &win_w, &win_h);
+  GuiLayout layout;
+  gui_layout_compute((float)win_w, (float)win_h, state->log_open, &layout);
+  SDL_FPoint p = { x, y };
+  return SDL_PointInRectFloat(&p, &layout.log_toggle);
+} // gui_log_toggle_hit
+
 static SDL_AppResult gui_sdl_event(void* appstate, SDL_Event* event)
 { GuiAppState* state = (GuiAppState*)appstate;
   if(event->type == SDL_EVENT_QUIT)
     return SDL_APP_SUCCESS;
 
-  if(event->type == SDL_EVENT_MOUSE_BUTTON_DOWN && event->button.button == SDL_BUTTON_LEFT
-     && state->have_update)
-  { int win_w, win_h;
-    SDL_GetRenderOutputSize(state->renderer, &win_w, &win_h);
+  if(event->type == SDL_EVENT_KEY_DOWN && event->key.key == SDLK_L && !event->key.repeat)
+    state->log_open = !state->log_open;
 
-    SessionCommand cmd;
-    if(gui_input_handle_click(&state->input, &state->update, event->button.x, event->button.y,
-                              (float)win_w, (float)win_h, &cmd))
-      session_client_send(state->session, &cmd);
+  if(event->type == SDL_EVENT_MOUSE_BUTTON_DOWN && event->button.button == SDL_BUTTON_LEFT)
+  { if(gui_log_toggle_hit(state, event->button.x, event->button.y))
+      state->log_open = !state->log_open;
+    else if(state->have_update)
+    { int win_w, win_h;
+      SDL_GetRenderOutputSize(state->renderer, &win_w, &win_h);
+
+      SessionCommand cmd;
+      if(gui_input_handle_click(&state->input, &state->update, event->button.x, event->button.y,
+                                (float)win_w, (float)win_h, state->log_open, &cmd))
+        session_client_send(state->session, &cmd);
+    }
   }
 
   return SDL_APP_CONTINUE;
@@ -408,6 +439,7 @@ static void gui_sdl_quit(void* appstate, SDL_AppResult result)
     TTF_CloseFont(state->font);
   if(state->logo)
     SDL_DestroyTexture(state->logo);
+  gui_card_face_shutdown();
   gui_art_shutdown();
   if(state->renderer)
     SDL_DestroyRenderer(state->renderer);

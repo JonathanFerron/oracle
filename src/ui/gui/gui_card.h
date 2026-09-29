@@ -22,6 +22,13 @@
 void gui_draw_text(SDL_Renderer* renderer, TTF_Font* font, const char* text,
                    float x, float y, SDL_Color colour);
 
+// Word-wrapped variant: wraps at `wrap_w` pixels, returns the drawn height
+// (0 if nothing was drawn). gui_text_height_wrapped() measures the same text
+// without drawing, so a caller can lay out from the bottom up.
+int gui_draw_text_wrapped(SDL_Renderer* renderer, TTF_Font* font, const char* text,
+                          float x, float y, int wrap_w, SDL_Color colour);
+int gui_text_height_wrapped(TTF_Font* font, const char* text, int wrap_w);
+
 // Card back (opponent's hand, deck) -- a plain filled+outlined rect, no
 // text or art.
 void gui_card_draw_back(SDL_Renderer* renderer, SDL_FRect rect);

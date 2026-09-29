@@ -10,11 +10,13 @@
 #ifndef GUI_LAYOUT_H
 #define GUI_LAYOUT_H
 
+#include <stdbool.h>
 #include <SDL3/SDL.h>
 #include "../../core/game_types.h"
 
-#define GUI_CARD_WIDTH 96.0f
-#define GUI_CARD_HEIGHT 145.0f
+// ~0.755 aspect like the printed cards (art area 47:71 + left column + name bar)
+#define GUI_CARD_WIDTH 126.0f
+#define GUI_CARD_HEIGHT 167.0f
 #define GUI_CARD_GAP 8.0f
 
 typedef struct
@@ -33,12 +35,16 @@ typedef struct
   SDL_FRect combat_zone[NUM_PLAYERS]; // center panel, one bounding row per
   // seat (seat[0]'s row nearer the bottom, seat[1]'s nearer the top) --
   // gui_layout_card_slot() subdivides each into up to 3 card slots
-  SDL_FRect log_panel; // between the two combat zones -- gui_log.c
+  bool log_open;         // side panel shown? (the other regions shrink to make room)
+  SDL_FRect log_panel;   // full-height right-hand column (zero width when closed)
+  SDL_FRect log_toggle;  // close button in the panel header when open, a "Log" tab
+  // in the top-right corner (over the status bar) when closed
 } GuiLayout;
 
-// Recomputes every rect for the current window size (call once per frame --
+// `log_open` reserves the right-hand log column; every other region then lays
+// out within the remaining width. Recomputes every rect for the current window size (call once per frame --
 // cheap, and keeps the GUI responsive to live resizing like the TUI is).
-void gui_layout_compute(float win_w, float win_h, GuiLayout* out);
+void gui_layout_compute(float win_w, float win_h, bool log_open, GuiLayout* out);
 
 // Maps `player` to a seat slot (0 = viewer's own seat) for the given
 // `viewer`. VIEWER_SPECTATOR (visible_state.h) has no seat-0 "own hand", so

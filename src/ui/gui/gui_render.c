@@ -17,6 +17,7 @@
 #define GUI_BUTTON_BG_DISABLED (SDL_Color){ 0x55, 0x55, 0x55, 255 }
 #define GUI_BUTTON_TEXT (SDL_Color){ 255, 255, 255, 255 }
 #define GUI_THINKING_TEXT (SDL_Color){ 0xC0, 0xC0, 0xC0, 255 }
+#define GUI_LOG_HEADER_H 40.0f // matches the status bar so the two line up
 #define GUI_OVERLAY_BG (SDL_Color){ 0x0A, 0x1F, 0x22, 235 }
 
 static bool arr_contains(const uint8_t* arr, uint8_t n, uint8_t val)
@@ -173,27 +174,28 @@ static void draw_recall_overlay(SDL_Renderer* r, TTF_Font* font, SDL_FRect area,
 } // draw_recall_overlay
 
 static void draw_status_bar(SDL_Renderer* r, TTF_Font* font, SDL_FRect bar,
-                            const SessionUpdate* u, ui_language_t lang)
+                            const SessionUpdate* u, const GuiNames* names, ui_language_t lang)
 { SDL_SetRenderDrawColor(r, GUI_STATUS_BG.r, GUI_STATUS_BG.g, GUI_STATUS_BG.b, 255);
   SDL_RenderFillRect(r, &bar);
 
-  char text[160];
+  char text[GUI_NAME_LEN + 96];
   if(u->pending.kind == DECISION_KIND_NONE)
-  { const char* outcome =
-      u->view.game_state == PLAYER_A_WINS ?
-      LOCALIZED_STRING_L(lang, "Player A wins", "Le joueur A gagne", "Gana el jugador A") :
-      u->view.game_state == PLAYER_B_WINS ?
-      LOCALIZED_STRING_L(lang, "Player B wins", "Le joueur B gagne", "Gana el jugador B") :
-      LOCALIZED_STRING_L(lang, "Draw", "Match nul", "Empate");
+  { char outcome[GUI_NAME_LEN + 24];
+    if(u->view.game_state == PLAYER_A_WINS || u->view.game_state == PLAYER_B_WINS)
+      snprintf(outcome, sizeof(outcome),
+               LOCALIZED_STRING_L(lang, "%s wins", "%s gagne", "Gana %s"),
+               names->label[u->view.game_state == PLAYER_A_WINS ? PLAYER_A : PLAYER_B]);
+    else
+      snprintf(outcome, sizeof(outcome), "%s",
+               LOCALIZED_STRING_L(lang, "Draw", "Match nul", "Empate"));
     snprintf(text, sizeof(text), "%s -- %s",
              LOCALIZED_STRING_L(lang, "Game over", "Partie terminee", "Partida terminada"),
              outcome);
   }
   else
-  { char letter = u->pending.player == PLAYER_A ? 'A' : 'B';
-    snprintf(text, sizeof(text), "%s %u -- %s %c: %s",
+  { snprintf(text, sizeof(text), "%s %u -- %s: %s",
              LOCALIZED_STRING_L(lang, "Turn", "Tour", "Turno"), u->view.turn,
-             LOCALIZED_STRING_L(lang, "Player", "Joueur", "Jugador"), letter,
+             names->label[u->pending.player],
              localized_decision_kind(u->pending.kind, lang));
   }
 
@@ -202,11 +204,10 @@ static void draw_status_bar(SDL_Renderer* r, TTF_Font* font, SDL_FRect bar,
 } // draw_status_bar
 
 static void draw_seat_info(SDL_Renderer* r, TTF_Font* font, SDL_FRect rect,
-                           PlayerID p, const VisibleGameState* v, ui_language_t lang)
-{ char text[96];
-  char letter = p == PLAYER_A ? 'A' : 'B';
-  snprintf(text, sizeof(text), "%s %c   %s %u   %s %u",
-           LOCALIZED_STRING_L(lang, "Player", "Joueur", "Jugador"), letter,
+                           PlayerID p, const VisibleGameState* v, const GuiNames* names,
+                           ui_language_t lang)
+{ char text[GUI_NAME_LEN + 64];
+  snprintf(text, sizeof(text), "%s   %s %u   %s %u", names->label[p],
            LOCALIZED_STRING_L(lang, "Energy", "Energie", "Energia"), v->energy[p],
            LOCALIZED_STRING_L(lang, "Cash", "Argent", "Dinero"), v->cash[p]);
   gui_draw_text(r, font, text, rect.x, rect.y, GUI_INFO_TEXT);
@@ -259,24 +260,56 @@ static void draw_combat_zone(SDL_Renderer* r, TTF_Font* font, SDL_FRect row,
   }
 } // draw_combat_zone
 
+static void draw_button_label(SDL_Renderer* r, TTF_Font* font, SDL_FRect rect, const char* label)
+{ SDL_SetRenderDrawColor(r, GUI_BUTTON_BG.r, GUI_BUTTON_BG.g, GUI_BUTTON_BG.b, 255);
+  SDL_RenderFillRect(r, &rect);
+  int tw = 0, th = 0;
+  TTF_GetStringSize(font, label, 0, &tw, &th);
+  gui_draw_text(r, font, label, rect.x + (rect.w - (float)tw) / 2.0f,
+                rect.y + (rect.h - (float)th) / 2.0f, GUI_BUTTON_TEXT);
+} // draw_button_label
+
+// Right-hand message log: header (title + close button) over the wrapped
+// log body when open, just a small "Log" tab in the corner when closed.
+static void draw_log_panel(SDL_Renderer* r, TTF_Font* font, const GuiLayout* layout,
+                           const GuiLog* log, ui_language_t lang)
+{ const char* title = LOCALIZED_STRING_L(lang, "Log", "Journal", "Registro");
+  if(!layout->log_open)
+  { draw_button_label(r, font, layout->log_toggle, title);
+    return;
+  }
+
+  SDL_FRect p = layout->log_panel;
+  SDL_FRect header = { p.x, p.y, p.w, GUI_LOG_HEADER_H };
+  SDL_SetRenderDrawColor(r, GUI_STATUS_BG.r, GUI_STATUS_BG.g, GUI_STATUS_BG.b, 255);
+  SDL_RenderFillRect(r, &header);
+  gui_draw_text(r, font, title, p.x + 10.0f,
+                p.y + (GUI_LOG_HEADER_H - (float)TTF_GetFontHeight(font)) / 2.0f, GUI_STATUS_TEXT);
+  draw_button_label(r, font, layout->log_toggle, "x");
+
+  SDL_FRect body = { p.x, p.y + GUI_LOG_HEADER_H, p.w, p.h - GUI_LOG_HEADER_H };
+  gui_log_draw(r, font, body, log);
+} // draw_log_panel
+
 void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
                       const SessionUpdate* u, const GuiInputState* input,
-                      const GuiLog* log, ui_language_t lang)
+                      const GuiLog* log, const GuiNames* names, bool log_open,
+                      ui_language_t lang)
 { int win_w, win_h;
   SDL_GetRenderOutputSize(renderer, &win_w, &win_h);
 
   GuiLayout layout;
-  gui_layout_compute((float)win_w, (float)win_h, &layout);
+  gui_layout_compute((float)win_w, (float)win_h, log_open, &layout);
 
-  draw_status_bar(renderer, fonts->status_font, layout.status_bar, u, lang);
+  draw_status_bar(renderer, fonts->status_font, layout.status_bar, u, names, lang);
   draw_action_bar(renderer, fonts->status_font, layout.action_bar, u, input, lang);
-  gui_log_draw(renderer, fonts->status_font, layout.log_panel, log);
+  draw_log_panel(renderer, fonts->status_font, &layout, log, lang);
 
   for(uint8_t p = 0; p < NUM_PLAYERS; p++)
   { uint8_t seat = gui_layout_seat_for_player((PlayerID)p, u->view.viewer);
     GuiSeatLayout* sl = &layout.seat[seat];
 
-    draw_seat_info(renderer, fonts->status_font, sl->info, (PlayerID)p, &u->view, lang);
+    draw_seat_info(renderer, fonts->status_font, sl->info, (PlayerID)p, &u->view, names, lang);
     draw_hand(renderer, fonts->card_font, sl->hand, (PlayerID)p, u->view.viewer, &u->view,
               input, lang);
     draw_deck(renderer, fonts->card_font, sl->deck, u->view.deck_count[p]);
