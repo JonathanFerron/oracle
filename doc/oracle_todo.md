@@ -239,6 +239,11 @@ design; the rating is diagnostic, not a pass/fail bar.
   n-gons, per Jonathan 2026-09-28; the log has a text summary only), tile
   swap, and the acceptance bar specifically against A14 (played against
   `value` instead so far).
+- [ ] **See the dice rolls when playing an AI** (Jonathan, 2026-09-28): today he sees only a log
+  line with attack/defense totals and damage -- no per-champion rolls. Figure out the right way to show
+  them (combat panel that persists after each combat with n-gon numbers, per-champion detail in the log,
+  and/or a brief roll-reveal pause on AI turns). Data is already there: `EVT_COMBAT_RESOLVED` carries
+  `CombatDetails` (per-champion roll/base/total, combo bonuses). Ties into the combat/dice panel item.
 - [ ] **Manual hand ordering** (Jonathan, 2026-09-28): let the player reorder the cards in
   their own hand (drag or move buttons), as with physical cards. Display-only ordering in
   the GUI layer -- `Hand`'s order is engine state, and staging/hit-testing already go by
