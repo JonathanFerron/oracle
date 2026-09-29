@@ -18,6 +18,7 @@
 #define GUI_BUTTON_BG_DISABLED (SDL_Color){ 0x55, 0x55, 0x55, 255 }
 #define GUI_BUTTON_TEXT (SDL_Color){ 255, 255, 255, 255 }
 #define GUI_THINKING_TEXT (SDL_Color){ 0xC0, 0xC0, 0xC0, 255 }
+#define GUI_SEED_TEXT (SDL_Color){ 0x6C, 0x8C, 0x91, 255 } // deliberately low-contrast on the status bar
 #define GUI_LOG_HEADER_H 40.0f // matches the status bar so the two line up
 #define GUI_OVERLAY_BG (SDL_Color){ 0x0A, 0x1F, 0x22, 235 }
 
@@ -293,9 +294,25 @@ static void draw_log_panel(SDL_Renderer* r, TTF_Font* font, const GuiLayout* lay
   gui_log_draw(r, font, body, log);
 } // draw_log_panel
 
+// Game seed, tucked into the status bar's right end in a muted colour so a
+// screenshot always says which game to reproduce (`-p <seed>` on the command
+// line). Stays clear of the corner "Log" tab when the log panel is closed.
+static void draw_seed_tag(SDL_Renderer* r, TTF_Font* font, const GuiLayout* layout,
+                          uint32_t seed, ui_language_t lang)
+{ char text[48];
+  snprintf(text, sizeof(text), "%s %u", LOCALIZED_STRING_L(lang, "Seed", "Graine", "Semilla"), seed);
+  int w = 0, h = 0;
+  TTF_GetStringSize(font, text, 0, &w, &h);
+  float right = layout->status_bar.x + layout->status_bar.w - 10.0f;
+  if(!layout->log_open)
+    right = layout->log_toggle.x - 10.0f;
+  gui_draw_text(r, font, text, right - (float)w,
+                layout->status_bar.y + (layout->status_bar.h - (float)h) / 2.0f, GUI_SEED_TEXT);
+} // draw_seed_tag
+
 void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
                       const SessionUpdate* u, const GuiInputState* input,
-                      const GuiLog* log, const GuiNames* names, bool log_open,
+                      const GuiLog* log, const GuiNames* names, bool log_open, uint32_t seed,
                       ui_language_t lang)
 { int win_w, win_h;
   SDL_GetRenderOutputSize(renderer, &win_w, &win_h);
@@ -304,6 +321,7 @@ void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
   gui_layout_compute((float)win_w, (float)win_h, log_open, &layout);
 
   draw_status_bar(renderer, fonts->status_font, layout.status_bar, u, names, lang);
+  draw_seed_tag(renderer, fonts->status_font, &layout, seed, lang);
   draw_action_bar(renderer, fonts->status_font, layout.action_bar, u, input, lang);
   draw_log_panel(renderer, fonts->status_font, &layout, log, lang);
 

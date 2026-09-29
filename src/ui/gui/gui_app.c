@@ -390,7 +390,8 @@ static SDL_AppResult gui_sdl_iterate(void* appstate)
                        .card_font = state->card_font
                      };
     gui_render_frame(state->renderer, &fonts, &state->update, &state->input,
-                     &state->log, &state->names, state->log_open, g_boot_cfg->language);
+                     &state->log, &state->names, state->log_open, g_boot_cfg->prng_seed,
+                     g_boot_cfg->language);
   }
   else
   { gui_draw_logo(state);

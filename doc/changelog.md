@@ -17,6 +17,9 @@ this file is where finished items go so the todo list doesn't keep growing.
   now 14/14.
 - Seat labels ("Jonathan (Player A)  Energy ...") are white with a dark 1px shadow for contrast on the
   light table. Log: a blank separator row before each new turn.
+- Game seed (`cfg->prng_seed`, the value `-p <seed>` reproduces) shown small and muted at the right
+  end of the status bar (`Seed 3141592653`, localized EN/FR/ES). When a "new game" button exists it
+  should pass its fresh seed to the same `gui_render_frame()` parameter.
 - To-dos noted: manual hand ordering, table background patterns, card icon polish (`doc/oracle_todo.md`).
 
 ---

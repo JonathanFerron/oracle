@@ -38,10 +38,11 @@ uint8_t gui_discard_champions(const Discard* d, uint8_t out[40]);
 // their move; gui_render_frame() shows a "game over"/"opponent is thinking"
 // label in the action bar instead of buttons). `log` is drawn in the
 // right-hand column when `log_open` (gui_layout.c's log_panel; a small "Log"
-// tab otherwise), and every other region shrinks to make room for it.
+// tab otherwise), and every other region shrinks to make room for it. `seed`
+// is the game's PRNG seed, shown small and muted in the status bar.
 void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
                       const SessionUpdate* u, const GuiInputState* input,
-                      const GuiLog* log, const GuiNames* names, bool log_open,
+                      const GuiLog* log, const GuiNames* names, bool log_open, uint32_t seed,
                       ui_language_t lang);
 
 #endif // GUI_RENDER_H
