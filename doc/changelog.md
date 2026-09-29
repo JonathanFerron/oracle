@@ -5,6 +5,20 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-29 (later) — GUI: seat status lines, staged draw/cash cards, "New game" button
+
+- Seat status lines (name, Energy, Cash) are 21 pt (was the 16 pt status font; `GUI_INFO_H` 24 -> 30) in dark
+  burnt orange `#9C4100`, no shadow -- contrast on the teal table.
+- A staged draw/recall or cash card now gets an inset ring in its own border colour (green / purple / grey)
+  instead of the champion cards' white ring, which vanished on their cream faces. Corner cost hexagon and
+  crest nudged inward to clear it.
+- `GUI_BTN_NEW_GAME`: after game over the action bar shows a "New game" button (EN/FR/ES). It joins the
+  finished session and starts another with the same player types/names/AI choices and a fresh random
+  seed (a `-p` fixed seed is not reused, it would replay the same game); log cleared (`gui_new_game()`).
+- Checked off-screen (cards) and by build only for the button; not yet exercised in the live window.
+
+---
+
 ## 2026-09-29 — GUI: draw/recall and cash cards restyled to match the printed cards
 
 - `gui_card_face.c` gained `gui_card_face_draw_draw()` (green draw-2 / purple draw-3: corner cost hexagon,

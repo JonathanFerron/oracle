@@ -167,12 +167,19 @@ static SDL_FRect draw_frame(SDL_Renderer* r, SDL_FRect rect, SDL_Color border)
   return inner;
 } // draw_frame
 
-static void draw_highlight(SDL_Renderer* r, SDL_FRect inner)
-{ SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
-  for(float i = 0; i < 2.0f; i++)
+// Staged-card ring, `inset` px inside the face and `thick` px wide.
+static void draw_ring(SDL_Renderer* r, SDL_FRect inner, SDL_Color c, float inset, float thick)
+{ SDL_SetRenderDrawColor(r, c.r, c.g, c.b, 255);
+  for(float i = inset; i < inset + thick; i++)
   { SDL_FRect ring = { inner.x + i, inner.y + i, inner.w - 2 * i, inner.h - 2 * i };
     SDL_RenderRect(r, &ring);
   }
+} // draw_ring
+
+// Draw/cash cards are cream inside their own coloured border, so a white ring
+// would vanish: ring them in the border colour instead, set in from the border.
+static void draw_highlight(SDL_Renderer* r, SDL_FRect inner, SDL_Color border)
+{ draw_ring(r, inner, border, 3.0f, 3.0f);
 } // draw_highlight
 
 // A face-down "?" card as printed on the draw cards: white, thin ink outline.
@@ -186,7 +193,7 @@ static void draw_mystery_card(SDL_Renderer* r, SDL_FRect box, float px)
 
 // Cost hexagon in the top-left corner, as on the champion cards.
 static void draw_corner_cost(SDL_Renderer* r, SDL_FRect inner, uint8_t cost, float px)
-{ SDL_FRect box = sub(inner, 0.03f, 0.02f, 0.20f, 0.12f);
+{ SDL_FRect box = sub(inner, 0.08f, 0.05f, 0.19f, 0.11f);
   char buf[8];
   draw_icon_fit(r, gui_art_icon(GUI_ICON_COST_HEX), box);
   snprintf(buf, sizeof(buf), "%u", cost);
@@ -239,7 +246,7 @@ bool gui_card_face_draw_draw(SDL_Renderer* r, SDL_FRect rect, const struct card*
   draw_draw_text(r, inner, c, px, three ? 0.575f : 0.47f, lang);
   draw_recall_shields(r, inner, c->choose_num, three ? 0.81f : 0.70f);
   if(highlighted)
-    draw_highlight(r, inner);
+    draw_highlight(r, inner, border);
   return true;
 } // gui_card_face_draw_draw
 
@@ -280,13 +287,13 @@ bool gui_card_face_draw_cash(SDL_Renderer* r, SDL_FRect rect, const struct card*
 { if(!g_font)
     return false;
   SDL_FRect inner = draw_frame(r, rect, border);
-  draw_icon_fit(r, gui_art_icon(GUI_ICON_SHIELD), sub(inner, 0.04f, 0.03f, 0.22f, 0.20f));
+  draw_icon_fit(r, gui_art_icon(GUI_ICON_SHIELD), sub(inner, 0.08f, 0.05f, 0.20f, 0.18f));
   draw_icon_fit(r, gui_art_icon(GUI_ICON_SWORD), sub(inner, 0.25f, 0.04f, 0.55f, 0.32f));
   draw_arrow(r, sub(inner, 0.36f, 0.40f, 0.28f, 0.16f));
   draw_hex_cluster(r, sub(inner, 0.16f, 0.60f, 0.68f, 0.36f), c->exchange_cash,
                    inner.h * CF_TEXT_PX);
   if(highlighted)
-    draw_highlight(r, inner);
+    draw_highlight(r, inner, border);
   return true;
 } // gui_card_face_draw_cash
 
@@ -315,11 +322,8 @@ bool gui_card_face_draw_champion(SDL_Renderer* r, SDL_FRect rect, const struct c
   draw_name_bar(r, &g, champion_name(c->champion_id, lang));
 
   if(highlighted)
-  { SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
-    for(float i = 0; i < 2.0f; i++)
-    { SDL_FRect ring = { g.inner.x + i, g.inner.y + i, g.inner.w - 2 * i, g.inner.h - 2 * i };
-      SDL_RenderRect(r, &ring);
-    }
-  }
+    draw_ring(r, g.inner, (SDL_Color)
+  { 255, 255, 255, 255
+  }, 0.0f, 2.0f);
   return true;
 } // gui_card_face_draw_champion

@@ -36,6 +36,7 @@
 #include "gui_card_face.h"
 #include "gui_names.h"
 #include "gui_layout.h"
+#include "../../util/prng_seed.h" // generate_random_seed()
 
 #define GUI_WINDOW_TITLE "Oracle: The Champions of Arcadia"
 #define GUI_LOGO_PATH "assets/logo/oracle_logo.png"
@@ -128,6 +129,28 @@ static bool gui_start_session(GuiAppState* state, config_t* cfg, PlayerConfig* p
   }
   return true;
 } // gui_start_session
+
+// "New game" after game over: joins the finished session, then starts another
+// with the same player types/names/AI choices (g_boot_pconfig) and a fresh
+// random seed -- replaying a `-p` fixed seed would just repeat the same game.
+// The seed shown in the status bar follows (g_boot_cfg->prng_seed).
+static void gui_new_game(GuiAppState* state)
+{ session_client_close(state->session);
+  state->session = NULL;
+  destroy_game_context(state->ctx);
+  state->ctx = NULL;
+
+  g_boot_cfg->prng_seed = generate_random_seed();
+  if(!gui_start_session(state, g_boot_cfg, g_boot_pconfig))
+  { fprintf(stderr, "GUI: could not start a new game\n");
+    SDL_Event quit = { .type = SDL_EVENT_QUIT };
+    SDL_PushEvent(&quit);
+    return;
+  }
+  gui_log_init(&state->log);
+  state->have_update = false;
+  state->input_submitted = true; // staging starts fresh with the first update
+} // gui_new_game
 
 // Builds "<executable dir>/../<relative>" into out -- asset paths resolve
 // relative to the executable, not the working directory, so bin/oracle-gui
@@ -426,6 +449,16 @@ static SDL_AppResult gui_sdl_event(void* appstate, SDL_Event* event)
     else if(state->have_update)
     { int win_w, win_h;
       SDL_GetRenderOutputSize(state->renderer, &win_w, &win_h);
+
+      if(state->update.pending.kind == DECISION_KIND_NONE)
+      { GuiLayout layout;
+        gui_layout_compute((float)win_w, (float)win_h, state->log_open, &layout);
+        SDL_FRect btn = gui_layout_button_rect(layout.action_bar, 0, 1);
+        SDL_FPoint p = { event->button.x, event->button.y };
+        if(SDL_PointInRectFloat(&p, &btn))
+          gui_new_game(state);
+        return SDL_APP_CONTINUE;
+      }
 
       SessionCommand cmd;
       if(gui_input_handle_click(&state->input, &state->update, event->button.x, event->button.y,

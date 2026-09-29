@@ -54,7 +54,8 @@ typedef enum
   GUI_BTN_DECLINE,
   GUI_BTN_DRAW,
   GUI_BTN_RECALL,
-  GUI_BTN_CANCEL
+  GUI_BTN_CANCEL,
+  GUI_BTN_NEW_GAME // game over only; handled by gui_app.c, not gui_input.c
 } GuiButtonId;
 
 #define GUI_MAX_BUTTONS 3

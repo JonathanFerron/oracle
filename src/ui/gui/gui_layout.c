@@ -5,7 +5,7 @@
 
 #define GUI_STATUS_BAR_H 40.0f
 #define GUI_ACTION_BAR_H 44.0f
-#define GUI_INFO_H 24.0f
+#define GUI_INFO_H 30.0f
 #define GUI_MARGIN 12.0f
 #define GUI_BUTTON_W 120.0f
 #define GUI_SIDE_W (2 * GUI_CARD_WIDTH + GUI_CARD_GAP) // deck + discard, side by side

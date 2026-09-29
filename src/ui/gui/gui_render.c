@@ -10,8 +10,8 @@
 
 #define GUI_STATUS_BG (SDL_Color){ 0x0F, 0x2B, 0x30, 255 }
 #define GUI_STATUS_TEXT (SDL_Color){ 255, 255, 255, 255 }
-#define GUI_INFO_TEXT (SDL_Color){ 255, 255, 255, 255 }
-#define GUI_INFO_SHADOW (SDL_Color){ 0x0F, 0x2B, 0x30, 255 } // keeps the label legible on the light table
+#define GUI_INFO_TEXT (SDL_Color){ 0x9C, 0x41, 0x00, 255 } // dark burnt orange: strong contrast on the teal table
+#define GUI_INFO_PT 21.0f
 #define GUI_BADGE_TEXT (SDL_Color){ 255, 255, 255, 255 }
 #define GUI_ACTION_BG (SDL_Color){ 0x14, 0x3A, 0x40, 255 }
 #define GUI_BUTTON_BG (SDL_Color){ 0x2E, 0x6B, 0x5E, 255 }
@@ -83,6 +83,8 @@ static const char* button_label(GuiButtonId btn, ui_language_t lang)
       return LOCALIZED_STRING_L(lang, "Recall", "Rappeler", "Recordar");
     case GUI_BTN_CANCEL:
       return LOCALIZED_STRING_L(lang, "Cancel", "Annuler", "Cancelar");
+    case GUI_BTN_NEW_GAME:
+      return LOCALIZED_STRING_L(lang, "New game", "Nouvelle partie", "Nueva partida");
     default:
       return "";
   }
@@ -103,8 +105,8 @@ static void draw_button(SDL_Renderer* r, TTF_Font* font, SDL_FRect rect,
   gui_draw_text(r, font, label, tx, ty, GUI_BUTTON_TEXT);
 } // draw_button
 
-// The action bar shows nothing once the game is over (the status bar
-// already says so), an "opponent is thinking" label when it isn't the
+// The action bar shows a "New game" button once the game is over (the status
+// bar already says who won), an "opponent is thinking" label when it isn't the
 // viewer's move (synthesis doc section 9.7), or the current buttons
 // (gui_input_active_buttons() -- the same list gui_input.c hit-tests).
 static void draw_action_bar(SDL_Renderer* r, TTF_Font* font, SDL_FRect bar,
@@ -113,7 +115,12 @@ static void draw_action_bar(SDL_Renderer* r, TTF_Font* font, SDL_FRect bar,
 { SDL_SetRenderDrawColor(r, GUI_ACTION_BG.r, GUI_ACTION_BG.g, GUI_ACTION_BG.b, 255);
   SDL_RenderFillRect(r, &bar);
 
-  if(!input || u->pending.kind == DECISION_KIND_NONE)
+  if(u->pending.kind == DECISION_KIND_NONE) // game over: offer a rematch
+  { draw_button(r, font, gui_layout_button_rect(bar, 0, 1), button_label(GUI_BTN_NEW_GAME, lang),
+                true);
+    return;
+  }
+  if(!input)
     return;
 
   if(u->pending.player != u->view.viewer)
@@ -212,8 +219,10 @@ static void draw_seat_info(SDL_Renderer* r, TTF_Font* font, SDL_FRect rect,
   snprintf(text, sizeof(text), "%s   %s %u   %s %u", names->label[p],
            LOCALIZED_STRING_L(lang, "Energy", "Energie", "Energia"), v->energy[p],
            LOCALIZED_STRING_L(lang, "Cash", "Argent", "Dinero"), v->cash[p]);
-  gui_draw_text(r, font, text, rect.x + 1.0f, rect.y + 1.0f, GUI_INFO_SHADOW);
+  float old_pt = TTF_GetFontSize(font); // the font is shared with the status bar
+  TTF_SetFontSize(font, GUI_INFO_PT);
   gui_draw_text(r, font, text, rect.x, rect.y, GUI_INFO_TEXT);
+  TTF_SetFontSize(font, old_pt);
 } // draw_seat_info
 
 static void draw_count_badge(SDL_Renderer* r, TTF_Font* font, SDL_FRect slot, uint8_t count)
