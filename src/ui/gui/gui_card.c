@@ -122,7 +122,7 @@ void gui_card_draw(SDL_Renderer* renderer, TTF_Font* font, SDL_FRect rect,
 { const struct card* c = &fullDeck[card_index];
   SDL_Color border = gui_card_border_colour(c);
   if(c->card_type == CHAMPION_CARD
-     && gui_card_face_draw_champion(renderer, rect, c, border, highlighted))
+     && gui_card_face_draw_champion(renderer, rect, c, border, highlighted, lang))
     return;
 
   // Draw/cash cards (and champions if the face font is unavailable): plain

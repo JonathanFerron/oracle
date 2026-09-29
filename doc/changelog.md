@@ -5,6 +5,19 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-28 (latest) — Champion names compiled into the engine
+
+All 102 champions' names in EN/FR/ES (`src/core/champion_names.c/h`, `champion_name(champion_id,
+lang)`), generated from Jonathan's `Champion Names in 3 languages.xlsx` by
+`tools/assets/gen_champion_names.py` (matches names to `champion_id` by (colour, species) group in
+sheet order vs ascending id, asserting every group count; cross-checked against the printed
+cards page 1). Compiled in rather than a runtime CSV: stable data, no file I/O in the engine, and
+every UI (incl. SDL-free CLI/TUI/`stda.auto`) can use it. `make test_champion_names` (8/8). The GUI
+card name bar now shows the champion's name in the UI language, shrunk to fit long ones. Not yet
+used by the message log/CLI/TUI, which still say species.
+
+---
+
 ## 2026-09-28 (later) — SDL3 GUI: printed-style champion cards, player names, log side panel
 
 - **Player names**: `gui_names.c/h` builds "Jonathan (Player A)" labels (plain "Player A" for the

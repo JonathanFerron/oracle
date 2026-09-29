@@ -1,12 +1,11 @@
 // gui_card_face.c -- see gui_card_face.h.
 
 #include <stdio.h>
-#include <ctype.h>
 
 #include "gui_card_face.h"
 #include "gui_card.h"  // gui_draw_text()
 #include "gui_art.h"
-#include "../../core/game_constants.h" // CHAMPION_SPECIES_NAMES
+#include "../../core/champion_names.h"
 
 // Proportions measured off the printed card (cartes champions pg1 - blank).
 #define CF_BORDER 0.046f   // border thickness, fraction of card width
@@ -136,16 +135,21 @@ static void draw_shield_cell(SDL_Renderer* r, const FaceGeom* g, const struct ca
   draw_centered(r, buf, cell.x + cell.w / 2, cell.y + cell.h * 0.80f, g->text_px);
 } // draw_shield_cell
 
-// "HUMAN" -> "Human" (species names are stored upper-case).
-static void title_case(const char* in, char* out, size_t n)
-{ size_t i = 0;
-  for(; in[i] && i + 1 < n; i++)
-    out[i] = (char)(i ? tolower((unsigned char)in[i]) : toupper((unsigned char)in[i]));
-  out[i] = '\0';
-} // title_case
+// Name bar text: the champion's name, shrunk to fit if it's wider than the bar
+// (the longest Spanish names, e.g. "Espuma de las Montanas", need it).
+static void draw_name_bar(SDL_Renderer* r, const FaceGeom* g, const char* name)
+{ float px = g->text_px * 1.1f;
+  int w = 0, h = 0;
+  TTF_SetFontSize(g_font, px);
+  TTF_GetStringSize(g_font, name, 0, &w, &h);
+  float max_w = g->name_bar.w - 8.0f;
+  if((float)w > max_w)
+    px *= max_w / (float)w;
+  draw_centered(r, name, g->name_bar.x + g->name_bar.w / 2, g->name_bar.y + g->name_bar.h / 2, px);
+} // draw_name_bar
 
 bool gui_card_face_draw_champion(SDL_Renderer* r, SDL_FRect rect, const struct card* c,
-                                 SDL_Color border, bool highlighted)
+                                 SDL_Color border, bool highlighted, ui_language_t lang)
 { if(!g_font)
     return false;
 
@@ -166,10 +170,7 @@ bool gui_card_face_draw_champion(SDL_Renderer* r, SDL_FRect rect, const struct c
   draw_species_cell(r, &g, c);
   draw_shield_cell(r, &g, c);
 
-  char name[24];
-  title_case(CHAMPION_SPECIES_NAMES[c->species], name, sizeof(name));
-  draw_centered(r, name, g.name_bar.x + g.name_bar.w / 2, g.name_bar.y + g.name_bar.h / 2,
-                g.text_px * 1.1f);
+  draw_name_bar(r, &g, champion_name(c->champion_id, lang));
 
   if(highlighted)
   { SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
