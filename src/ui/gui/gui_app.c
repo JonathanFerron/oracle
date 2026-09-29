@@ -426,6 +426,14 @@ static void gui_auto_decline_defense(GuiAppState* state)
   state->input_submitted = true;
 } // gui_auto_decline_defense
 
+// True when no champions are committed in either combat zone.
+static bool gui_live_zones_empty(const VisibleGameState* v)
+{ for(uint8_t p = 0; p < NUM_PLAYERS; p++)
+    if(v->combat_zone[p].size > 0)
+      return false;
+  return true;
+} // gui_live_zones_empty
+
 // Moves every event gui_reveal.c now allows (everything but a combat still
 // being revealed) into the message log.
 static void gui_release_log_events(GuiAppState* state)
@@ -462,8 +470,9 @@ static SDL_AppResult gui_sdl_iterate(void* appstate)
     }
   }
 
-  gui_auto_decline_defense(state);
   gui_release_log_events(state);
+  gui_reveal_settle(&state->reveal, gui_live_zones_empty(&state->update.view));
+  gui_auto_decline_defense(state);
 
   SDL_SetRenderDrawColor(state->renderer, GUI_TABLE_R, GUI_TABLE_G, GUI_TABLE_B, 255);
   SDL_RenderClear(state->renderer);
@@ -495,6 +504,19 @@ static bool gui_log_toggle_hit(const GuiAppState* state, float x, float y)
   return SDL_PointInRectFloat(&p, &layout.log_toggle);
 } // gui_log_toggle_hit
 
+// While a revealed combat waits to be taken in, the only live control is the
+// action bar's "Continue" button.
+static void gui_continue_click(GuiAppState* state, float x, float y)
+{ int win_w, win_h;
+  SDL_GetRenderOutputSize(state->renderer, &win_w, &win_h);
+  GuiLayout layout;
+  gui_layout_compute((float)win_w, (float)win_h, state->log_open, &layout);
+  SDL_FRect btn = gui_layout_button_rect(layout.action_bar, 0, 1);
+  SDL_FPoint p = { x, y };
+  if(SDL_PointInRectFloat(&p, &btn))
+    gui_reveal_ack(&state->reveal);
+} // gui_continue_click
+
 static SDL_AppResult gui_sdl_event(void* appstate, SDL_Event* event)
 { GuiAppState* state = (GuiAppState*)appstate;
   if(event->type == SDL_EVENT_QUIT)
@@ -503,13 +525,17 @@ static SDL_AppResult gui_sdl_event(void* appstate, SDL_Event* event)
   if(event->type == SDL_EVENT_KEY_DOWN && event->key.key == SDLK_L && !event->key.repeat)
     state->log_open = !state->log_open;
   else if(event->type == SDL_EVENT_KEY_DOWN && !event->key.repeat)
-    gui_reveal_skip(&state->reveal, (int64_t)SDL_GetTicks()); // any other key ends a reveal wait
+  { gui_reveal_skip(&state->reveal, (int64_t)SDL_GetTicks()); // any other key ends a reveal wait
+    gui_reveal_ack(&state->reveal);                            // ...or dismisses "Continue"
+  }
 
   if(event->type == SDL_EVENT_MOUSE_BUTTON_DOWN && event->button.button == SDL_BUTTON_LEFT)
   { if(gui_log_toggle_hit(state, event->button.x, event->button.y))
       state->log_open = !state->log_open;
     else if(gui_reveal_busy(&state->reveal))
       gui_reveal_skip(&state->reveal, (int64_t)SDL_GetTicks()); // input is locked meanwhile
+    else if(gui_reveal_needs_ack(&state->reveal))
+      gui_continue_click(state, event->button.x, event->button.y);
     else if(state->have_update)
     { int win_w, win_h;
       SDL_GetRenderOutputSize(state->renderer, &win_w, &win_h);

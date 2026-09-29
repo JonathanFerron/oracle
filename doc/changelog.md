@@ -5,6 +5,17 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-30 (night) -- GUI: "Continue" after a revealed combat, game-over text held
+
+- Playtest (Jonathan): as attacker, the dice panel vanished as soon as the AI staged its own attack cards. Now a
+  fully revealed combat that is about to be replaced by live cards stays up with a **Continue** button in the action
+  bar (any key also continues); input is locked meanwhile. When nothing live would replace it (the defender case) it
+  settles by itself as before. `gui_reveal_needs_ack/ack/settle()`; `make test_gui_reveal` 42/42.
+- The status bar's "Game over" text is held (shows "Turn N") until the final combat's reveal has reached it
+  (`gui_reveal_game_over_pending()`).
+
+---
+
 ## 2026-09-30 (evening) -- GUI: combat reveal wired in (dice rows, totals, paced log, input lock)
 
 - `CombatDetails` gained `attacker_card[3]`/`defender_card[3]` (fullDeck indices, filled by

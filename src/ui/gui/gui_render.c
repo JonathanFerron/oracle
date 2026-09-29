@@ -84,6 +84,8 @@ static const char* button_label(GuiButtonId btn, ui_language_t lang)
       return LOCALIZED_STRING_L(lang, "Recall", "Rappeler", "Recordar");
     case GUI_BTN_CANCEL:
       return LOCALIZED_STRING_L(lang, "Cancel", "Annuler", "Cancelar");
+    case GUI_BTN_CONTINUE:
+      return LOCALIZED_STRING_L(lang, "Continue", "Continuer", "Continuar");
     case GUI_BTN_NEW_GAME:
       return LOCALIZED_STRING_L(lang, "New game", "Nouvelle partie", "Nueva partida");
     default:
@@ -112,7 +114,7 @@ static void draw_button(SDL_Renderer* r, TTF_Font* font, SDL_FRect rect,
 // (gui_input_active_buttons() -- the same list gui_input.c hit-tests).
 static void draw_action_bar(SDL_Renderer* r, TTF_Font* font, SDL_FRect bar,
                             const SessionUpdate* u, const GuiInputState* input,
-                            bool combat_busy, ui_language_t lang)
+                            bool combat_busy, bool needs_ack, ui_language_t lang)
 { SDL_SetRenderDrawColor(r, GUI_ACTION_BG.r, GUI_ACTION_BG.g, GUI_ACTION_BG.b, 255);
   SDL_RenderFillRect(r, &bar);
 
@@ -122,6 +124,12 @@ static void draw_action_bar(SDL_Renderer* r, TTF_Font* font, SDL_FRect bar,
                                            "Combate... (clic para saltar)");
     float y = bar.y + (bar.h - (float)TTF_GetFontHeight(font)) / 2.0f;
     gui_draw_text(r, font, label, bar.x + 10.0f, y, GUI_THINKING_TEXT);
+    return;
+  }
+
+  if(needs_ack) // the revealed combat stays up until the player has taken it in
+  { draw_button(r, font, gui_layout_button_rect(bar, 0, 1),
+                button_label(GUI_BTN_CONTINUE, lang), true);
     return;
   }
 
@@ -193,12 +201,17 @@ static void draw_recall_overlay(SDL_Renderer* r, TTF_Font* font, SDL_FRect area,
 } // draw_recall_overlay
 
 static void draw_status_bar(SDL_Renderer* r, TTF_Font* font, SDL_FRect bar,
-                            const SessionUpdate* u, const GuiNames* names, ui_language_t lang)
+                            const SessionUpdate* u, const GuiNames* names,
+                            bool hide_game_over, ui_language_t lang)
 { SDL_SetRenderDrawColor(r, GUI_STATUS_BG.r, GUI_STATUS_BG.g, GUI_STATUS_BG.b, 255);
   SDL_RenderFillRect(r, &bar);
 
   char text[GUI_NAME_LEN + 96];
-  if(u->pending.kind == DECISION_KIND_NONE)
+  if(u->pending.kind == DECISION_KIND_NONE && hide_game_over)
+  { snprintf(text, sizeof(text), "%s %u", LOCALIZED_STRING_L(lang, "Turn", "Tour", "Turno"),
+             u->view.turn); // the final combat is still being revealed
+  }
+  else if(u->pending.kind == DECISION_KIND_NONE)
   { char outcome[GUI_NAME_LEN + 24];
     if(u->view.game_state == PLAYER_A_WINS || u->view.game_state == PLAYER_B_WINS)
       snprintf(outcome, sizeof(outcome),
@@ -348,17 +361,19 @@ void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
   GuiLayout layout;
   gui_layout_compute((float)win_w, (float)win_h, log_open, &layout);
 
-  draw_status_bar(renderer, fonts->status_font, layout.status_bar, u, names, lang);
+  draw_status_bar(renderer, fonts->status_font, layout.status_bar, u, names,
+                  reveal && gui_reveal_game_over_pending(reveal), lang);
   draw_seed_tag(renderer, fonts->status_font, &layout, seed, lang);
   bool busy = reveal && gui_reveal_busy(reveal);
-  draw_action_bar(renderer, fonts->status_font, layout.action_bar, u, input, busy, lang);
+  draw_action_bar(renderer, fonts->status_font, layout.action_bar, u, input, busy,
+                  reveal && gui_reveal_needs_ack(reveal), lang);
   draw_log_panel(renderer, fonts->status_font, fonts->log_font, &layout, log, lang);
 
   const CombatDetails* shown = NULL;
   PlayerID attacker = PLAYER_A;
   RevealStage stage = REVEAL_NONE;
   bool show_reveal = reveal && gui_reveal_current(reveal, &shown, &attacker, &stage)
-                     && (busy || zones_empty(&u->view));
+                     && (busy || gui_reveal_needs_ack(reveal) || zones_empty(&u->view));
 
   for(uint8_t p = 0; p < NUM_PLAYERS; p++)
   { uint8_t seat = gui_layout_seat_for_player((PlayerID)p, u->view.viewer);

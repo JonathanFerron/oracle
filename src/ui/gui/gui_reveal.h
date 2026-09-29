@@ -36,6 +36,7 @@ typedef struct
   uint16_t head, count;
   int64_t delay_ms;
   bool started;          // the head combat has begun its reveal
+  bool awaiting_ack;     // a combat finished revealing and the player hasn't continued yet
   RevealStage stage;
   int64_t stage_since_ms;
   CombatDetails shown;   // the combat on display (valid unless stage == REVEAL_NONE)
@@ -55,6 +56,21 @@ bool gui_reveal_pop(GuiReveal* rv, int64_t now_ms, GameEvent* out);
 // Skips the current wait (attack -> defense, or the hold before the next
 // combat): the next gui_reveal_pop() moves on.
 void gui_reveal_skip(GuiReveal* rv, int64_t now_ms);
+
+// After a combat has fully revealed the GUI may need to keep it on screen until
+// the player has taken it in (e.g. the attacker, once the opponent's own attack
+// is already on the table). True from that moment, once nothing is queued any
+// more, until gui_reveal_ack().
+bool gui_reveal_needs_ack(const GuiReveal* rv);
+void gui_reveal_ack(GuiReveal* rv);
+
+// Drops the need to acknowledge when there is nothing live to protect: call
+// every frame with "no champions are committed in either combat zone right now".
+void gui_reveal_settle(GuiReveal* rv, bool live_zones_empty);
+
+// True while an EVT_GAME_OVER is still queued behind a combat -- the GUI holds
+// its "game over" text until the reveal has reached it.
+bool gui_reveal_game_over_pending(const GuiReveal* rv);
 
 // True while events are still queued -- the GUI locks input meanwhile.
 bool gui_reveal_busy(const GuiReveal* rv);

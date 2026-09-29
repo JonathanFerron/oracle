@@ -59,6 +59,7 @@ bool gui_reveal_pop(GuiReveal* rv, int64_t now_ms, GameEvent* out)
     rv->stage_since_ms = now_ms;
   }
   rv->started = false;
+  rv->awaiting_ack = true;
   release_head(rv, out);
   return true;
 } // gui_reveal_pop
@@ -67,6 +68,26 @@ void gui_reveal_skip(GuiReveal* rv, int64_t now_ms)
 { if(rv->started || rv->stage == REVEAL_FULL)
     rv->stage_since_ms = now_ms - rv->delay_ms;
 } // gui_reveal_skip
+
+bool gui_reveal_needs_ack(const GuiReveal* rv)
+{ return rv->awaiting_ack && rv->count == 0;
+} // gui_reveal_needs_ack
+
+void gui_reveal_ack(GuiReveal* rv)
+{ rv->awaiting_ack = false;
+} // gui_reveal_ack
+
+void gui_reveal_settle(GuiReveal* rv, bool live_zones_empty)
+{ if(live_zones_empty && rv->count == 0)
+    rv->awaiting_ack = false;
+} // gui_reveal_settle
+
+bool gui_reveal_game_over_pending(const GuiReveal* rv)
+{ for(uint16_t i = 0; i < rv->count; i++)
+    if(rv->queue[(rv->head + i) % EVENT_BUF_CAP].type == EVT_GAME_OVER)
+      return true;
+  return false;
+} // gui_reveal_game_over_pending
 
 bool gui_reveal_busy(const GuiReveal* rv)
 { return rv->count > 0;

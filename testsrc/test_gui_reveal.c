@@ -122,6 +122,31 @@ static void test_skip_and_zero(void)
   check("negative delay clamped to 0", rv.delay_ms == 0);
 } // test_skip_and_zero
 
+static void test_ack_and_game_over(void)
+{ printf("acknowledge + held game over\n");
+  gui_reveal_init(&rv, 1);
+  GameEvent evs[] = { combat(PLAYER_A, 10, 10), plain(EVT_GAME_OVER) };
+  gui_reveal_push(&rv, buf_of(&eb, evs, 2));
+  check("game over is pending behind the combat", gui_reveal_game_over_pending(&rv));
+  check("no ack needed before a combat finishes", !gui_reveal_needs_ack(&rv));
+  gui_reveal_pop(&rv, 0, &out);
+  check("combat released after delay", gui_reveal_pop(&rv, 1000, &out));
+  check("game over still queued right after", gui_reveal_game_over_pending(&rv));
+  check("game over released next", gui_reveal_pop(&rv, 1000, &out) && out.type == EVT_GAME_OVER);
+  check("no longer pending", !gui_reveal_game_over_pending(&rv));
+  check("needs ack once drained", gui_reveal_needs_ack(&rv));
+  gui_reveal_settle(&rv, false);
+  check("live zones occupied: still needs ack", gui_reveal_needs_ack(&rv));
+  gui_reveal_settle(&rv, true);
+  check("live zones empty: settled", !gui_reveal_needs_ack(&rv));
+
+  GameEvent one[] = { combat(PLAYER_A, 10, 1) };
+  gui_reveal_push(&rv, buf_of(&eb, one, 1));
+  gui_reveal_pop(&rv, 5000, &out);
+  gui_reveal_pop(&rv, 6000, &out);
+  check("explicit ack clears it", gui_reveal_needs_ack(&rv) && (gui_reveal_ack(&rv), !gui_reveal_needs_ack(&rv)));
+} // test_ack_and_game_over
+
 static void test_wraparound(void)
 { printf("ring buffer wraparound\n");
   gui_reveal_init(&rv, 0);
@@ -145,6 +170,7 @@ int main(void)
   test_combat_two_steps();
   test_two_combats();
   test_skip_and_zero();
+  test_ack_and_game_over();
   test_wraparound();
   printf("\n%d passed, %d failed\n", passed, failed);
   return failed ? 1 : 0;
