@@ -50,9 +50,10 @@
 #define GUI_TITLE_FONT_PT 48.0f
 #define GUI_STATUS_FONT_PT 16.0f
 #define GUI_CARD_FONT_PT 16.0f
-// The only (near-)monospaced family bundled in assets/fonts; system monospace
-// fonts (DejaVu Sans Mono, Hack, ...) work too via [gui] log_font_path.
-#define GUI_LOG_FONT_PATH "assets/fonts/Yomogi/Yomogi-Regular.ttf"
+// Source Code Pro Regular (a static instance cut from the variable font, whose
+// own default weight is ExtraLight). Also bundled but not wired in: Anonymous
+// Pro, Fira Mono. System monospace fonts work too via [gui] log_font_path.
+#define GUI_LOG_FONT_PATH "assets/fonts/Source_Code_Pro/SourceCodePro-Regular.ttf"
 #define GUI_LOG_FONT_PT 16.0f
 // Sized for a 1080p laptop (Lenovo W530, the smallest screen this is played on)
 // with the log side panel open; resizable from there.

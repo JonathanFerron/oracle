@@ -188,6 +188,11 @@ provenance, corpus composition, measured results).
     rougher handwriting-style alternative. Jonathan is also installing both
     as system fonts on this box manually. Neither is wired into the GUI's
     font-swap feature yet.
+    **Monospaced log fonts added 2026-09-29** (from `google/fonts` `ofl/`, OFL): `Source_Code_Pro/`
+    (the GUI log's default; the upstream file is variable with default weight ExtraLight, so
+    `SourceCodePro-Regular.ttf` is a static wght=400 instance cut with fontTools' `instancer`; the
+    variable original is kept alongside), plus `Anonymous_Pro/` and `Fira_Mono/` (bundled, not wired in;
+    select via `[gui] log_font_path`).
     **45 more Google Fonts families added 2026-09-28** (Jonathan's picks,
     downloaded as zips from Google Fonts, unzipped verbatim from the NAS
     source `oracle/fonts/*.zip`): one subfolder per family

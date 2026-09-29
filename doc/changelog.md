@@ -9,7 +9,7 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 - Valgrind on a live `bin/oracle-gui` session (Jonathan played 2 games vs Showboat, clean window close): 0 errors,
   0 bytes definitely/indirectly lost (190 KB still reachable, SDL/driver).
-- `[gui] log_font_path` (default `assets/fonts/Yomogi/Yomogi-Regular.ttf`, the only monospaced family in
+- `[gui] log_font_path` (default was Yomogi, superseded the same evening by Source Code Pro Regular; Anonymous Pro and Fira Mono also bundled, not wired in. Yomogi was the only monospaced family in
   `assets/fonts` -- glyph-width audit of all 219 font files; system monospace fonts work via absolute path).
   `make test_gui_config` 15/15.
 - When the viewer is the defender and holds no champion (only legal move: decline), the GUI submits the decline

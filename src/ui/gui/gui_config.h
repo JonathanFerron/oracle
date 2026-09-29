@@ -16,7 +16,7 @@
 //   card_font_path = <path>   font for the numbers/name on champion cards
 //                              (default assets/fonts/Fredoka/static/Fredoka-Medium.ttf)
 //   log_font_path  = <path>   font for the message log, ideally monospaced (default
-//                              assets/fonts/Yomogi/Yomogi-Regular.ttf)
+//                              assets/fonts/Source_Code_Pro/SourceCodePro-Regular.ttf)
 //   legacy_fractal = <bool>   draw fractal art (assets/fractals/) on
 //                              champion cards; true/false/yes/no/on/off/1/0
 
