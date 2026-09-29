@@ -5,6 +5,17 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-10-01 -- GUI: pre-roll dice preview (increment 4, combat-dice feature complete)
+
+- `gui_combat_panel_draw_preview()`: before Confirm, an empty n-gon (die shape + champion colour, no number) appears
+  in the dice row for each champion the viewer has staged (attack or defense) and for every champion committed in a
+  combat zone (e.g. the opponent's attackers on a defense decision). Shown whenever no revealed combat is on screen.
+- Verified off-screen only (fabricated defense decision: 3 committed attackers, 2 staged defenders).
+- Off-screen harness gotcha: the software renderer batches draws -- call `SDL_FlushRenderer()` before saving the
+  surface, or trailing geometry is silently missing (cost a detour here).
+
+---
+
 ## 2026-09-30 (night) -- GUI: "Continue" after a revealed combat, game-over text held
 
 - Playtest (Jonathan): as attacker, the dice panel vanished as soon as the AI staged its own attack cards. Now a

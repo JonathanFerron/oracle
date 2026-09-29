@@ -33,6 +33,11 @@ static void draw_text_px(SDL_Renderer* r, TTF_Font* font, float px, const char* 
   gui_draw_text(r, font, text, SDL_roundf(x), SDL_roundf(y), GUI_PANEL_INK);
 } // draw_text_px
 
+// The die sits at the left end of its champion's slot, in the dice row.
+static float die_center_x(SDL_FRect slot)
+{ return slot.x + GUI_PANEL_DIE_RADIUS + 6.0f;
+} // die_center_x
+
 // Card `i` in the combat zone and its die (+ "+base = total") in the dice row.
 static void draw_champion(SDL_Renderer* r, TTF_Font* card_font, TTF_Font* text_font,
                           const GuiSeatRects* rects, const PanelSide* s, int i, ui_language_t lang)
@@ -40,7 +45,7 @@ static void draw_champion(SDL_Renderer* r, TTF_Font* card_font, TTF_Font* text_f
   gui_card_draw(r, card_font, slot, s->cards[i], false, lang);
 
   float cy = rects->dice.y + rects->dice.h / 2.0f;
-  float cx = slot.x + GUI_PANEL_DIE_RADIUS + 6.0f;
+  float cx = die_center_x(slot);
   int value = s->revealed ? s->rolls[i] : -1;
   gui_dice_draw(r, gui_card_face_font(), cx, cy, GUI_PANEL_DIE_RADIUS, s->dice[i],
                 gui_champion_colour(s->colors[i]), value);
@@ -119,3 +124,29 @@ void gui_combat_panel_draw(SDL_Renderer* r, TTF_Font* card_font, TTF_Font* text_
   }
   TTF_SetFontSize(text_font, old_pt);
 } // gui_combat_panel_draw
+
+// Empty n-gons for `n` champions about to fight (roll not thrown yet), laid out
+// on the slots the cards occupy / would occupy in the combat zone.
+static void draw_empty_dice(SDL_Renderer* r, const GuiSeatRects* rects, const uint8_t* cards,
+                            uint8_t n)
+{ float cy = rects->dice.y + rects->dice.h / 2.0f;
+  for(uint8_t i = 0; i < n; i++)
+  { const struct card* c = &fullDeck[cards[i]];
+    SDL_FRect slot = gui_layout_card_slot(rects->zone, i, n);
+    gui_dice_draw(r, gui_card_face_font(), die_center_x(slot), cy, GUI_PANEL_DIE_RADIUS,
+                  c->defense_dice, gui_champion_colour(c->color), -1);
+  }
+} // draw_empty_dice
+
+void gui_combat_panel_draw_preview(SDL_Renderer* r, const GuiLayout* layout,
+                                   const VisibleGameState* view, const uint8_t* staged,
+                                   uint8_t staged_count)
+{ for(uint8_t p = 0; p < NUM_PLAYERS; p++)
+  { GuiSeatRects rects = gui_layout_seat_rects(layout, gui_layout_seat_for_player(p, view->viewer));
+    const CombatZone* z = &view->combat_zone[p];
+    if(z->size > 0)
+      draw_empty_dice(r, &rects, z->cards, z->size);
+    else if(p == view->viewer && staged_count > 0)
+      draw_empty_dice(r, &rects, staged, staged_count);
+  }
+} // gui_combat_panel_draw_preview

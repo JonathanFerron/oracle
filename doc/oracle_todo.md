@@ -239,8 +239,9 @@ design; the rating is diagnostic, not a pass/fail bar.
   n-gons, per Jonathan 2026-09-28; the log has a text summary only), tile
   swap, and the acceptance bar specifically against A14 (played against
   `value` instead so far).
-- [ ] **See the dice rolls when playing an AI** (Jonathan, 2026-09-28) -- DESIGN SETTLED, NOT BUILT (he said
-  to record it only). A combat panel between the two combat zones (fallback: just right of them if the gap
+- [x] **See the dice rolls when playing an AI** (Jonathan, 2026-09-28) -- BUILT 2026-09-30/10-01 (reveal queue,
+  n-gon dice, panel, Continue button, pre-roll preview; see changelog); off-screen checked, live playtest ongoing.
+  Original spec: A combat panel between the two combat zones (fallback: just right of them if the gap
   is too tight) that stays up after each fight: per-champion rolls as numbers in n-gons (square d4, hexagon
   d6, ...), combo bonuses, totals, damage, energy before -> after. Reveal order: the attacker's dice + computed
   attack first, then after a delay the defender's dice + defense + damage (he lets the attacker roll first at

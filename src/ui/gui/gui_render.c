@@ -369,6 +369,16 @@ void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
                   reveal && gui_reveal_needs_ack(reveal), lang);
   draw_log_panel(renderer, fonts->status_font, fonts->log_font, &layout, log, lang);
 
+  // Champions the viewer has staged for this combat (not yet confirmed).
+  const uint8_t* staged = NULL;
+  uint8_t staged_count = 0;
+  if(input && u->pending.player == u->view.viewer
+     && (input->kind == DECISION_KIND_DEFENSE
+         || (input->kind == DECISION_KIND_ATTACK && input->attack_mode == ATTACK_INPUT_NONE)))
+  { staged = input->staged;
+    staged_count = input->staged_count;
+  }
+
   const CombatDetails* shown = NULL;
   PlayerID attacker = PLAYER_A;
   RevealStage stage = REVEAL_NONE;
@@ -392,6 +402,8 @@ void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
       draw_combat_zone(renderer, fonts->card_font, layout.combat_zone[seat],
                        &u->view.combat_zone[p], lang);
   }
+  if(!show_reveal)
+    gui_combat_panel_draw_preview(renderer, &layout, &u->view, staged, staged_count);
   if(show_reveal)
     gui_combat_panel_draw(renderer, fonts->card_font, fonts->status_font, &layout, shown, attacker,
                           u->view.viewer, stage, lang);
