@@ -36,6 +36,7 @@
 #include "gui_card_face.h"
 #include "gui_names.h"
 #include "gui_layout.h"
+#include "gui_reveal.h"
 #include "../../util/prng_seed.h" // generate_random_seed()
 
 #define GUI_WINDOW_TITLE "Oracle: The Champions of Arcadia"
@@ -95,6 +96,7 @@ typedef struct
   GuiInputState input;   // viewer's own staging state (gui_input.c)
   uint16_t input_turn;   // turn `input` was staged in (staging resets when it moves on)
   bool input_submitted;  // a command was sent; the next update starts staging fresh
+  GuiReveal reveal;       // paces combats + releases their log lines (gui_reveal.c)
   GuiLog log;             // message log (gui_log.c)
   bool log_open;          // message-log side panel shown (toggle: click/L)
   GuiNames names;         // "Jonathan (Player A)"-style labels (gui_names.h)
@@ -154,6 +156,7 @@ static void gui_new_game(GuiAppState* state)
     return;
   }
   gui_log_init(&state->log);
+  gui_reveal_init(&state->reveal, state->config.combat_delay_seconds);
   state->have_update = false;
   state->input_submitted = true; // staging starts fresh with the first update
 } // gui_new_game
@@ -377,6 +380,7 @@ static SDL_AppResult gui_sdl_init(void** appstate, int argc, char** argv)
     fprintf(stderr, "GUI: SDL_SetRenderVSync failed: %s\n", SDL_GetError());
 
   gui_load_config(state);
+  gui_reveal_init(&state->reveal, state->config.combat_delay_seconds);
   gui_load_window_icon(state);
   gui_load_logo(state);
   gui_load_title_text(state);
@@ -422,13 +426,22 @@ static void gui_auto_decline_defense(GuiAppState* state)
   state->input_submitted = true;
 } // gui_auto_decline_defense
 
+// Moves every event gui_reveal.c now allows (everything but a combat still
+// being revealed) into the message log.
+static void gui_release_log_events(GuiAppState* state)
+{ GameEvent ev;
+  while(gui_reveal_pop(&state->reveal, (int64_t)SDL_GetTicks(), &ev))
+    gui_log_append_event(&state->log, &ev, &state->update.view, &state->names,
+                         g_boot_cfg->language);
+} // gui_release_log_events
+
 static SDL_AppResult gui_sdl_iterate(void* appstate)
 { GuiAppState* state = (GuiAppState*)appstate;
 
   if(session_client_poll(state->session, &state->update))
   { state->have_update = true;
     gui_trace_update(&state->update);
-    gui_log_append_events(&state->log, &state->update, &state->names, g_boot_cfg->language);
+    gui_reveal_push(&state->reveal, &state->update.events);
 
     // Start staging fresh whenever this is a different decision than the one
     // the staged cards were picked for: kind/player changed, a rejected
@@ -450,6 +463,7 @@ static SDL_AppResult gui_sdl_iterate(void* appstate)
   }
 
   gui_auto_decline_defense(state);
+  gui_release_log_events(state);
 
   SDL_SetRenderDrawColor(state->renderer, GUI_TABLE_R, GUI_TABLE_G, GUI_TABLE_B, 255);
   SDL_RenderClear(state->renderer);
@@ -460,7 +474,7 @@ static SDL_AppResult gui_sdl_iterate(void* appstate)
                      };
     gui_render_frame(state->renderer, &fonts, &state->update, &state->input,
                      &state->log, &state->names, state->log_open, g_boot_cfg->prng_seed,
-                     g_boot_cfg->language);
+                     &state->reveal, g_boot_cfg->language);
   }
   else
   { gui_draw_logo(state);
@@ -488,10 +502,14 @@ static SDL_AppResult gui_sdl_event(void* appstate, SDL_Event* event)
 
   if(event->type == SDL_EVENT_KEY_DOWN && event->key.key == SDLK_L && !event->key.repeat)
     state->log_open = !state->log_open;
+  else if(event->type == SDL_EVENT_KEY_DOWN && !event->key.repeat)
+    gui_reveal_skip(&state->reveal, (int64_t)SDL_GetTicks()); // any other key ends a reveal wait
 
   if(event->type == SDL_EVENT_MOUSE_BUTTON_DOWN && event->button.button == SDL_BUTTON_LEFT)
   { if(gui_log_toggle_hit(state, event->button.x, event->button.y))
       state->log_open = !state->log_open;
+    else if(gui_reveal_busy(&state->reveal))
+      gui_reveal_skip(&state->reveal, (int64_t)SDL_GetTicks()); // input is locked meanwhile
     else if(state->have_update)
     { int win_w, win_h;
       SDL_GetRenderOutputSize(state->renderer, &win_w, &win_h);

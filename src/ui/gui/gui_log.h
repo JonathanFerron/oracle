@@ -36,6 +36,10 @@ void gui_log_init(GuiLog* log);
 // around. `u->view.game_state` (not the EVT_GAME_OVER event's own `.player`,
 // which game_engine.c always sets to a real player even on a draw) is what
 // decides the game-over line's wording.
+// One event at a time -- what gui_app.c calls as gui_reveal.c releases them.
+void gui_log_append_event(GuiLog* log, const GameEvent* e, const VisibleGameState* view,
+                          const GuiNames* names, ui_language_t lang);
+
 void gui_log_append_events(GuiLog* log, const SessionUpdate* u, const GuiNames* names,
                            ui_language_t lang);
 

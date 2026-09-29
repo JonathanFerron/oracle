@@ -5,6 +5,24 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-30 (evening) -- GUI: combat reveal wired in (dice rows, totals, paced log, input lock)
+
+- `CombatDetails` gained `attacker_card[3]`/`defender_card[3]` (fullDeck indices, filled by
+  `resolve_combat_with_details()`; no RNG/behaviour change): the engine clears the combat zones as soon as a fight
+  resolves, so the GUI needs them to redraw the champions being rolled for.
+- `gui_combat_panel.c/h`: draws a revealed combat in the combat zones -- the cards, a die per champion in the seat's
+  dice row (attackers: `+base = total` beside it), and beside the cards Combo / Attack (or Defense) and, once fully
+  revealed, Damage and Energy before -> after. Attack stage: attacker's dice/total shown, defender's dice are empty
+  n-gons. It is drawn while the reveal is busy, or while both live combat zones are empty (last combat stays up).
+- `gui_app.c`: events now go through `gui_reveal` (`gui_log_append_event()` per released event), so a combat's log
+  line appears only after its reveal; any click/key skips a wait, input is locked meanwhile (action bar says
+  "Combat... (click to skip)"); defender energy shows pre-damage until revealed. `combat_delay_seconds` applies.
+- Checked off-screen only (fabricated update, both stages, valgrind clean); not exercised in a live game. Known gap:
+  the status bar's "game over" text appears as soon as the update arrives, ahead of the final reveal.
+- Not done yet: increment 4 (empty n-gons for staged/committed champions before Confirm).
+
+---
+
 ## 2026-09-30 (later) -- GUI: n-gon dice drawing (increment 2)
 
 - `gui_dice.c/h`: `gui_dice_draw()` -- a die result as its number inside an n-gon (d4 square, d6 hexagon, d8

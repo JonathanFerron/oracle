@@ -141,6 +141,12 @@ void gui_layout_compute(float win_w, float win_h, bool log_open, GuiLayout* out)
   }
 } // gui_layout_compute
 
+GuiSeatRects gui_layout_seat_rects(const GuiLayout* layout, uint8_t seat)
+{ return (GuiSeatRects)
+  { layout->combat_zone[seat], layout->dice_row[seat], layout->combat_info[seat]
+  };
+} // gui_layout_seat_rects
+
 uint8_t gui_layout_seat_for_player(PlayerID player, PlayerID viewer)
 { if(viewer == VIEWER_SPECTATOR)
     return (uint8_t)player;

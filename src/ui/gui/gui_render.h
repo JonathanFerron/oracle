@@ -16,6 +16,7 @@
 #include "../../core/game_types.h" // ui_language_t
 #include "../../structures/card_collection.h" // Discard
 #include "../../roles/stda/stda_session.h" // SessionUpdate
+#include "gui_reveal.h"
 
 typedef struct
 { TTF_Font* title_font;  // M1 hello-window wordmark, kept for the pre-first-update splash
@@ -40,10 +41,13 @@ uint8_t gui_discard_champions(const Discard* d, uint8_t out[40]);
 // label in the action bar instead of buttons). `log` is drawn in the
 // right-hand column when `log_open` (gui_layout.c's log_panel; a small "Log"
 // tab otherwise), and every other region shrinks to make room for it. `seed`
-// is the game's PRNG seed, shown small and muted in the status bar.
+// is the game's PRNG seed, shown small and muted in the status bar. `reveal`
+// (gui_reveal.h) paces combat: while it is busy the action bar shows a wait
+// label and a defender's energy is the pre-damage value; the combat it shows is
+// drawn (gui_combat_panel.c) while it is busy or nothing live is in the combat zones.
 void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
                       const SessionUpdate* u, const GuiInputState* input,
                       const GuiLog* log, const GuiNames* names, bool log_open, uint32_t seed,
-                      ui_language_t lang);
+                      const GuiReveal* reveal, ui_language_t lang);
 
 #endif // GUI_RENDER_H

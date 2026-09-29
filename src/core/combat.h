@@ -21,6 +21,7 @@ void clear_combat_zones(struct gamestate* gstate, GameContext* ctx);
 // Mirrors the exact math/RNG order of resolve_combat() -- not used by stda_auto.
 typedef struct
 { int num_attackers;
+  uint8_t attacker_card[3];   // fullDeck[] index (lets a UI redraw the cards after the zone is cleared)
   ChampionSpecies attacker_species[3];
   ChampionColor attacker_color[3];
   uint8_t attacker_dice[3];
@@ -31,6 +32,7 @@ typedef struct
   int16_t total_attack;
 
   int num_defenders;
+  uint8_t defender_card[3];
   ChampionSpecies defender_species[3];
   ChampionColor defender_color[3];
   uint8_t defender_dice[3];

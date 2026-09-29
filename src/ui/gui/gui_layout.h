@@ -48,6 +48,14 @@ typedef struct
   // in the top-right corner (over the status bar) when closed
 } GuiLayout;
 
+// The three rects of a seat's combat presentation: the champion cards, the dice
+// row and the info area beside them (seat slot: 0 = the viewer).
+typedef struct
+{ SDL_FRect zone, dice, info;
+} GuiSeatRects;
+
+GuiSeatRects gui_layout_seat_rects(const GuiLayout* layout, uint8_t seat);
+
 // `log_open` reserves the right-hand log column; every other region then lays
 // out within the remaining width. Recomputes every rect for the current window size (call once per frame --
 // cheap, and keeps the GUI responsive to live resizing like the TUI is).

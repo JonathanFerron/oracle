@@ -164,16 +164,20 @@ static bool format_event(const GameEvent* e, const VisibleGameState* view,
   }
 } // format_event
 
+void gui_log_append_event(GuiLog* log, const GameEvent* e, const VisibleGameState* view,
+                          const GuiNames* names, ui_language_t lang)
+{ char text[GUI_LOG_LINE_LEN];
+  if(format_event(e, view, names, text, sizeof(text), lang))
+  { if(e->type == EVT_TURN_BEGAN && log->count > 0)
+      push_line(log, ""); // blank row so each new turn stands out
+    push_line(log, text);
+  }
+} // gui_log_append_event
+
 void gui_log_append_events(GuiLog* log, const SessionUpdate* u, const GuiNames* names,
                            ui_language_t lang)
 { for(uint16_t i = 0; i < u->events.count; i++)
-  { char text[GUI_LOG_LINE_LEN];
-    if(format_event(&u->events.ev[i], &u->view, names, text, sizeof(text), lang))
-    { if(u->events.ev[i].type == EVT_TURN_BEGAN && log->count > 0)
-        push_line(log, ""); // blank row so each new turn stands out
-      push_line(log, text);
-    }
-  }
+    gui_log_append_event(log, &u->events.ev[i], &u->view, names, lang);
 } // gui_log_append_events
 
 void gui_log_draw(SDL_Renderer* r, TTF_Font* font, SDL_FRect area, const GuiLog* log)

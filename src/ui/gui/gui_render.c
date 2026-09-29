@@ -5,6 +5,7 @@
 #include "gui_render.h"
 #include "gui_layout.h"
 #include "gui_card.h"
+#include "gui_combat_panel.h"
 #include "../../core/game_constants.h" // fullDeck[]
 #include "../shared/localization.h"
 
@@ -111,9 +112,18 @@ static void draw_button(SDL_Renderer* r, TTF_Font* font, SDL_FRect rect,
 // (gui_input_active_buttons() -- the same list gui_input.c hit-tests).
 static void draw_action_bar(SDL_Renderer* r, TTF_Font* font, SDL_FRect bar,
                             const SessionUpdate* u, const GuiInputState* input,
-                            ui_language_t lang)
+                            bool combat_busy, ui_language_t lang)
 { SDL_SetRenderDrawColor(r, GUI_ACTION_BG.r, GUI_ACTION_BG.g, GUI_ACTION_BG.b, 255);
   SDL_RenderFillRect(r, &bar);
+
+  if(combat_busy) // pacing a combat reveal: no input until it has played out
+  { const char* label = LOCALIZED_STRING_L(lang, "Combat... (click to skip)",
+                                           "Combat... (clic pour passer)",
+                                           "Combate... (clic para saltar)");
+    float y = bar.y + (bar.h - (float)TTF_GetFontHeight(font)) / 2.0f;
+    gui_draw_text(r, font, label, bar.x + 10.0f, y, GUI_THINKING_TEXT);
+    return;
+  }
 
   if(u->pending.kind == DECISION_KIND_NONE) // game over: offer a rematch
   { draw_button(r, font, gui_layout_button_rect(bar, 0, 1), button_label(GUI_BTN_NEW_GAME, lang),
@@ -213,11 +223,11 @@ static void draw_status_bar(SDL_Renderer* r, TTF_Font* font, SDL_FRect bar,
 } // draw_status_bar
 
 static void draw_seat_info(SDL_Renderer* r, TTF_Font* font, SDL_FRect rect,
-                           PlayerID p, const VisibleGameState* v, const GuiNames* names,
-                           ui_language_t lang)
+                           PlayerID p, uint8_t energy, const VisibleGameState* v,
+                           const GuiNames* names, ui_language_t lang)
 { char text[GUI_NAME_LEN + 64];
   snprintf(text, sizeof(text), "%s   %s %u   %s %u", names->label[p],
-           LOCALIZED_STRING_L(lang, "Energy", "Energie", "Energia"), v->energy[p],
+           LOCALIZED_STRING_L(lang, "Energy", "Energie", "Energia"), energy,
            LOCALIZED_STRING_L(lang, "Cash", "Argent", "Dinero"), v->cash[p]);
   float old_pt = TTF_GetFontSize(font); // the font is shared with the status bar
   TTF_SetFontSize(font, GUI_INFO_PT);
@@ -319,10 +329,19 @@ static void draw_seed_tag(SDL_Renderer* r, TTF_Font* font, const GuiLayout* layo
                 layout->status_bar.y + (layout->status_bar.h - (float)h) / 2.0f, GUI_SEED_TEXT);
 } // draw_seed_tag
 
+// Nothing live in either combat zone (no attack committed right now), so the
+// last revealed combat can stay on show.
+static bool zones_empty(const VisibleGameState* v)
+{ for(uint8_t p = 0; p < NUM_PLAYERS; p++)
+    if(v->combat_zone[p].size > 0)
+      return false;
+  return true;
+} // zones_empty
+
 void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
                       const SessionUpdate* u, const GuiInputState* input,
                       const GuiLog* log, const GuiNames* names, bool log_open, uint32_t seed,
-                      ui_language_t lang)
+                      const GuiReveal* reveal, ui_language_t lang)
 { int win_w, win_h;
   SDL_GetRenderOutputSize(renderer, &win_w, &win_h);
 
@@ -331,21 +350,36 @@ void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
 
   draw_status_bar(renderer, fonts->status_font, layout.status_bar, u, names, lang);
   draw_seed_tag(renderer, fonts->status_font, &layout, seed, lang);
-  draw_action_bar(renderer, fonts->status_font, layout.action_bar, u, input, lang);
+  bool busy = reveal && gui_reveal_busy(reveal);
+  draw_action_bar(renderer, fonts->status_font, layout.action_bar, u, input, busy, lang);
   draw_log_panel(renderer, fonts->status_font, fonts->log_font, &layout, log, lang);
+
+  const CombatDetails* shown = NULL;
+  PlayerID attacker = PLAYER_A;
+  RevealStage stage = REVEAL_NONE;
+  bool show_reveal = reveal && gui_reveal_current(reveal, &shown, &attacker, &stage)
+                     && (busy || zones_empty(&u->view));
 
   for(uint8_t p = 0; p < NUM_PLAYERS; p++)
   { uint8_t seat = gui_layout_seat_for_player((PlayerID)p, u->view.viewer);
     GuiSeatLayout* sl = &layout.seat[seat];
 
-    draw_seat_info(renderer, fonts->status_font, sl->info, (PlayerID)p, &u->view, names, lang);
+    uint8_t energy = u->view.energy[p];
+    if(reveal)
+      gui_reveal_energy_override(reveal, (PlayerID)p, &energy);
+    draw_seat_info(renderer, fonts->status_font, sl->info, (PlayerID)p, energy, &u->view, names,
+                   lang);
     draw_hand(renderer, fonts->card_font, sl->hand, (PlayerID)p, u->view.viewer, &u->view,
               input, lang);
     draw_deck(renderer, fonts->card_font, sl->deck, u->view.deck_count[p]);
     draw_discard(renderer, fonts->card_font, sl->discard, &u->view.discard[p], lang);
-    draw_combat_zone(renderer, fonts->card_font, layout.combat_zone[seat],
-                     &u->view.combat_zone[p], lang);
+    if(!show_reveal)
+      draw_combat_zone(renderer, fonts->card_font, layout.combat_zone[seat],
+                       &u->view.combat_zone[p], lang);
   }
+  if(show_reveal)
+    gui_combat_panel_draw(renderer, fonts->card_font, fonts->status_font, &layout, shown, attacker,
+                          u->view.viewer, stage, lang);
 
   if(input && input->kind == DECISION_KIND_ATTACK
      && input->attack_mode == ATTACK_INPUT_RECALL_PICK)
