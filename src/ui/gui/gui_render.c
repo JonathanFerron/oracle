@@ -11,7 +11,7 @@
 #define GUI_STATUS_BG (SDL_Color){ 0x0F, 0x2B, 0x30, 255 }
 #define GUI_STATUS_TEXT (SDL_Color){ 255, 255, 255, 255 }
 #define GUI_INFO_TEXT (SDL_Color){ 0x9C, 0x41, 0x00, 255 } // dark burnt orange: strong contrast on the teal table
-#define GUI_INFO_PT 21.0f
+#define GUI_INFO_PT 19.0f
 #define GUI_BADGE_TEXT (SDL_Color){ 255, 255, 255, 255 }
 #define GUI_ACTION_BG (SDL_Color){ 0x14, 0x3A, 0x40, 255 }
 #define GUI_BUTTON_BG (SDL_Color){ 0x2E, 0x6B, 0x5E, 255 }
@@ -283,8 +283,8 @@ static void draw_button_label(SDL_Renderer* r, TTF_Font* font, SDL_FRect rect, c
 
 // Right-hand message log: header (title + close button) over the wrapped
 // log body when open, just a small "Log" tab in the corner when closed.
-static void draw_log_panel(SDL_Renderer* r, TTF_Font* font, const GuiLayout* layout,
-                           const GuiLog* log, ui_language_t lang)
+static void draw_log_panel(SDL_Renderer* r, TTF_Font* font, TTF_Font* log_font,
+                           const GuiLayout* layout, const GuiLog* log, ui_language_t lang)
 { const char* title = LOCALIZED_STRING_L(lang, "Log", "Journal", "Registro");
   if(!layout->log_open)
   { draw_button_label(r, font, layout->log_toggle, title);
@@ -300,7 +300,7 @@ static void draw_log_panel(SDL_Renderer* r, TTF_Font* font, const GuiLayout* lay
   draw_button_label(r, font, layout->log_toggle, "x");
 
   SDL_FRect body = { p.x, p.y + GUI_LOG_HEADER_H, p.w, p.h - GUI_LOG_HEADER_H };
-  gui_log_draw(r, font, body, log);
+  gui_log_draw(r, log_font ? log_font : font, body, log);
 } // draw_log_panel
 
 // Game seed, tucked into the status bar's right end in a muted colour so a
@@ -332,7 +332,7 @@ void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
   draw_status_bar(renderer, fonts->status_font, layout.status_bar, u, names, lang);
   draw_seed_tag(renderer, fonts->status_font, &layout, seed, lang);
   draw_action_bar(renderer, fonts->status_font, layout.action_bar, u, input, lang);
-  draw_log_panel(renderer, fonts->status_font, &layout, log, lang);
+  draw_log_panel(renderer, fonts->status_font, fonts->log_font, &layout, log, lang);
 
   for(uint8_t p = 0; p < NUM_PLAYERS; p++)
   { uint8_t seat = gui_layout_seat_for_player((PlayerID)p, u->view.viewer);

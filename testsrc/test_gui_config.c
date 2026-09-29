@@ -67,6 +67,9 @@ int main(void)
   c = parse("[gui]\nbogus = 1\nnot a pair\nfont_path = ok.ttf\n");
   check("unknown key/malformed line skipped, later keys still read", !strcmp(c.font_path, "ok.ttf"));
 
+  c = parse("[gui]\nlog_font_path = /x/mono.ttf\n");
+  check("log_font_path parsed, default empty", !strcmp(c.log_font_path, "/x/mono.ttf"));
+
   c = parse("[gui]\r\nfont_path = crlf.ttf\r\nlegacy_fractal = true\r\n");
   check("CRLF line endings", !strcmp(c.font_path, "crlf.ttf") && c.legacy_fractal);
 

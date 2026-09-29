@@ -50,6 +50,10 @@
 #define GUI_TITLE_FONT_PT 48.0f
 #define GUI_STATUS_FONT_PT 16.0f
 #define GUI_CARD_FONT_PT 16.0f
+// The only (near-)monospaced family bundled in assets/fonts; system monospace
+// fonts (DejaVu Sans Mono, Hack, ...) work too via [gui] log_font_path.
+#define GUI_LOG_FONT_PATH "assets/fonts/Yomogi/Yomogi-Regular.ttf"
+#define GUI_LOG_FONT_PT 16.0f
 // Sized for a 1080p laptop (Lenovo W530, the smallest screen this is played on)
 // with the log side panel open; resizable from there.
 #define GUI_DEFAULT_WIN_W 1600
@@ -77,6 +81,7 @@ typedef struct
   SDL_Texture* logo;
   TTF_Font* font;         // M1 splash title (ModernRifgo)
   TTF_Font* status_font;  // status bar + seat energy/cash/name (ComicNeue-Regular)
+  TTF_Font* log_font;     // message log (monospaced; [gui] log_font_path)
   TTF_Font* card_font;    // card text + deck/discard count badges (PatrickHand-Regular)
   TTF_TextEngine* text_engine;
   TTF_Text* title_text;
@@ -260,6 +265,24 @@ static bool gui_load_card_font(GuiAppState* state)
   return state->card_font != NULL;
 } // gui_load_card_font
 
+// Message-log font: [gui] log_font_path if set and loadable, else the bundled
+// monospace one. May stay NULL; the renderer then falls back to the status font.
+static void gui_load_log_font(GuiAppState* state)
+{ char path[512];
+  if(state->config.log_font_path[0])
+  { gui_resolve_path(path, sizeof(path), state->config.log_font_path);
+    state->log_font = TTF_OpenFont(path, GUI_LOG_FONT_PT);
+    if(state->log_font)
+      return;
+    fprintf(stderr, "GUI: could not load configured log_font_path (%s): %s -- using default\n",
+            path, SDL_GetError());
+  }
+  gui_asset_path(path, sizeof(path), GUI_LOG_FONT_PATH);
+  state->log_font = TTF_OpenFont(path, GUI_LOG_FONT_PT);
+  if(!state->log_font)
+    fprintf(stderr, "GUI: could not load log font (%s): %s\n", path, SDL_GetError());
+} // gui_load_log_font
+
 // Reads <executable dir>/oracle_config.ini's [gui] section (gui_config.h).
 // A missing file just means all defaults. Also brings up the art cache and
 // card-face font, which need the config's fractal setting.
@@ -358,6 +381,7 @@ static SDL_AppResult gui_sdl_init(void** appstate, int argc, char** argv)
   gui_load_title_text(state);
   gui_load_status_font(state);
   gui_load_card_font(state);
+  gui_load_log_font(state);
   gui_log_init(&state->log);
   state->log_open = true;
   gui_names_init(&state->names, g_boot_pconfig, g_boot_cfg->language);
@@ -377,6 +401,25 @@ static void gui_trace_update(const SessionUpdate* u)
           u->view.turn, gui_decision_kind_debug_name(u->pending.kind),
           u->pending.player, u->rejected ? " [rejected]" : "");
 } // gui_trace_update
+
+// A defense with nothing to choose (no champion in hand, so the only legal
+// move is to decline) needs no click: submit the decline ourselves. The
+// combat still shows up in the log. Runs once per update: input_submitted
+// blocks a repeat until the next update has been polled.
+static void gui_auto_decline_defense(GuiAppState* state)
+{ const SessionUpdate* u = &state->update;
+  if(!state->have_update || state->input_submitted || u->rejected
+     || u->pending.kind != DECISION_KIND_DEFENSE || u->pending.player != u->view.viewer
+     || u->legal_count != 1 || u->legal[0].type != MOVE_PASS)
+    return;
+
+  SessionCommand cmd = { .type = CMD_SUBMIT };
+  cmd.decision = (PlayerDecision)
+  { .kind = DECISION_KIND_DEFENSE, .move = { .type = MOVE_PASS }
+  };
+  session_client_send(state->session, &cmd);
+  state->input_submitted = true;
+} // gui_auto_decline_defense
 
 static SDL_AppResult gui_sdl_iterate(void* appstate)
 { GuiAppState* state = (GuiAppState*)appstate;
@@ -405,12 +448,14 @@ static SDL_AppResult gui_sdl_iterate(void* appstate)
     }
   }
 
+  gui_auto_decline_defense(state);
+
   SDL_SetRenderDrawColor(state->renderer, GUI_TABLE_R, GUI_TABLE_G, GUI_TABLE_B, 255);
   SDL_RenderClear(state->renderer);
 
   if(state->have_update)
   { GuiFonts fonts = { .title_font = state->font, .status_font = state->status_font,
-                       .card_font = state->card_font
+                       .card_font = state->card_font, .log_font = state->log_font
                      };
     gui_render_frame(state->renderer, &fonts, &state->update, &state->input,
                      &state->log, &state->names, state->log_open, g_boot_cfg->prng_seed,
@@ -491,6 +536,8 @@ static void gui_sdl_quit(void* appstate, SDL_AppResult result)
     TTF_DestroyRendererTextEngine(state->text_engine);
   if(state->card_font)
     TTF_CloseFont(state->card_font);
+  if(state->log_font)
+    TTF_CloseFont(state->log_font);
   if(state->status_font)
     TTF_CloseFont(state->status_font);
   if(state->font)

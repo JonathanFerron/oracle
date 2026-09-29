@@ -11,6 +11,7 @@
 void gui_config_defaults(GuiConfig* cfg)
 { cfg->font_path[0] = '\0';
   cfg->card_font_path[0] = '\0';
+  cfg->log_font_path[0] = '\0';
   cfg->legacy_fractal = false;
 } // gui_config_defaults
 
@@ -50,6 +51,8 @@ static void apply_gui_key(GuiConfig* cfg, const char* key, const char* value)
     set_path(cfg->font_path, key, value);
   else if(!strcmp(key, "card_font_path"))
     set_path(cfg->card_font_path, key, value);
+  else if(!strcmp(key, "log_font_path"))
+    set_path(cfg->log_font_path, key, value);
   else if(!strcmp(key, "legacy_fractal"))
   { if(!parse_bool(value, &cfg->legacy_fractal))
       fprintf(stderr, "GUI config: legacy_fractal: expected true/false, got '%s'\n", value);

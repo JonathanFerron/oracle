@@ -20,6 +20,7 @@
 typedef struct
 { TTF_Font* title_font;  // M1 hello-window wordmark, kept for the pre-first-update splash
   TTF_Font* status_font; // status bar + per-seat energy/cash/name + message log (ComicNeue-Regular)
+  TTF_Font* log_font;    // message log body, monospaced; NULL = use status_font
   TTF_Font* card_font;   // card text + deck/discard count badges (PatrickHand-Regular)
 } GuiFonts;
 

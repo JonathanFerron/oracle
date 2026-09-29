@@ -15,6 +15,8 @@
 //                              (e.g. assets/fonts/Fredoka/static/Fredoka-Regular.ttf)
 //   card_font_path = <path>   font for the numbers/name on champion cards
 //                              (default assets/fonts/Fredoka/static/Fredoka-Medium.ttf)
+//   log_font_path  = <path>   font for the message log, ideally monospaced (default
+//                              assets/fonts/Yomogi/Yomogi-Regular.ttf)
 //   legacy_fractal = <bool>   draw fractal art (assets/fractals/) on
 //                              champion cards; true/false/yes/no/on/off/1/0
 
@@ -29,6 +31,7 @@
 typedef struct
 { char font_path[GUI_CONFIG_PATH_MAX]; // "" = use the bundled default fonts
   char card_font_path[GUI_CONFIG_PATH_MAX]; // "" = use the bundled card-face font
+  char log_font_path[GUI_CONFIG_PATH_MAX]; // "" = use the bundled monospace log font
   bool legacy_fractal;                 // default false: no fractal art on cards
 } GuiConfig;
 

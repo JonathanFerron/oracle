@@ -5,6 +5,19 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-29 (evening) — GUI: monospaced log font, auto-declined empty defense, seat text 19 pt
+
+- Valgrind on a live `bin/oracle-gui` session (Jonathan played 2 games vs Showboat, clean window close): 0 errors,
+  0 bytes definitely/indirectly lost (190 KB still reachable, SDL/driver).
+- `[gui] log_font_path` (default `assets/fonts/Yomogi/Yomogi-Regular.ttf`, the only monospaced family in
+  `assets/fonts` -- glyph-width audit of all 219 font files; system monospace fonts work via absolute path).
+  `make test_gui_config` 15/15.
+- When the viewer is the defender and holds no champion (only legal move: decline), the GUI submits the decline
+  itself (`gui_auto_decline_defense()`) instead of asking for a pointless Decline/Confirm click.
+- Seat status lines 21 -> 19 pt.
+
+---
+
 ## 2026-09-29 (later) — GUI: seat status lines, staged draw/cash cards, "New game" button
 
 - Seat status lines (name, Energy, Cash) are 21 pt (was the 16 pt status font; `GUI_INFO_H` 24 -> 30) in dark
