@@ -78,6 +78,13 @@ int main(void)
   c = parse(longpath);
   check("over-long font_path rejected, not truncated/overflowed", !c.font_path[0]);
 
+  c = parse("[gui]\ncard_font_path = assets/fonts/Fredoka/static/Fredoka-SemiBold.ttf\nfont_path = a.ttf\n");
+  check("card_font_path parsed independently of font_path",
+        !strcmp(c.card_font_path, "assets/fonts/Fredoka/static/Fredoka-SemiBold.ttf")
+        && !strcmp(c.font_path, "a.ttf"));
+  gui_config_defaults(&c);
+  check("card_font_path defaults to empty", !c.card_font_path[0]);
+
   gui_config_defaults(&c);
   check("missing file: load returns false, cfg untouched",
         !gui_config_load(&c, "/nonexistent/oracle_config.ini") && !c.font_path[0]);

@@ -239,6 +239,17 @@ design; the rating is diagnostic, not a pass/fail bar.
   n-gons, per Jonathan 2026-09-28; the log has a text summary only), tile
   swap, and the acceptance bar specifically against A14 (played against
   `value` instead so far).
+- [ ] **Manual hand ordering** (Jonathan, 2026-09-28): let the player reorder the cards in
+  their own hand (drag or move buttons), as with physical cards. Display-only ordering in
+  the GUI layer -- `Hand`'s order is engine state, and staging/hit-testing already go by
+  card index, not slot, so keep a per-viewer permutation.
+- [ ] **Table background patterns** (2026-09-28): Jonathan saved candidate tile patterns in
+  `oracle/Backgrounds/` (denim, double-bubble, interlaced, leaves, papyrus, pipes, repeated-square,
+  ripples, webb; light/dark variants). Try as the table tile behind the `legacy`/`[gui]` table
+  colour (`tile_path` key), but he suspects it will look too busy and hurt concentration --
+  evaluate low-contrast/dark variants and keep the flat teal as the default.
+- [ ] Champion card art polish: sword, shield and species emblems are small/thin at 126x167
+  (Jonathan, 2026-09-28) -- not urgent; options: wider left column, heavier line weight.
 - [x] French/Spanish localization: mostly done as of Step 7 (2026-09-25) --
   status bar, action bar, per-seat info, card text, and the message log
   all go through `LOCALIZED_STRING_L` now. What's left is cosmetic: the

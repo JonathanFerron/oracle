@@ -169,7 +169,10 @@ void gui_log_append_events(GuiLog* log, const SessionUpdate* u, const GuiNames* 
 { for(uint16_t i = 0; i < u->events.count; i++)
   { char text[GUI_LOG_LINE_LEN];
     if(format_event(&u->events.ev[i], &u->view, names, text, sizeof(text), lang))
+    { if(u->events.ev[i].type == EVT_TURN_BEGAN && log->count > 0)
+        push_line(log, ""); // blank row so each new turn stands out
       push_line(log, text);
+    }
   }
 } // gui_log_append_events
 
@@ -187,7 +190,8 @@ void gui_log_draw(SDL_Renderer* r, TTF_Font* font, SDL_FRect area, const GuiLog*
   float y_bottom = area.y + area.h - 4.0f;
   for(uint16_t i = 0; i < log->count; i++)
   { int idx = (log->next - 1 - i + 2 * GUI_LOG_CAPACITY) % GUI_LOG_CAPACITY;
-    int h = gui_text_height_wrapped(font, log->lines[idx], wrap_w);
+    int h = log->lines[idx][0] ? gui_text_height_wrapped(font, log->lines[idx], wrap_w)
+            : TTF_GetFontHeight(font) / 2; // blank separator row
     if(y_bottom - (float)h < area.y + 4.0f)
       break;
     y_bottom -= (float)h;

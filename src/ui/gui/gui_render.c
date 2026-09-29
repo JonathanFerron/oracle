@@ -10,7 +10,8 @@
 
 #define GUI_STATUS_BG (SDL_Color){ 0x0F, 0x2B, 0x30, 255 }
 #define GUI_STATUS_TEXT (SDL_Color){ 255, 255, 255, 255 }
-#define GUI_INFO_TEXT (SDL_Color){ 0xE0, 0xE0, 0xE0, 255 }
+#define GUI_INFO_TEXT (SDL_Color){ 255, 255, 255, 255 }
+#define GUI_INFO_SHADOW (SDL_Color){ 0x0F, 0x2B, 0x30, 255 } // keeps the label legible on the light table
 #define GUI_BADGE_TEXT (SDL_Color){ 255, 255, 255, 255 }
 #define GUI_ACTION_BG (SDL_Color){ 0x14, 0x3A, 0x40, 255 }
 #define GUI_BUTTON_BG (SDL_Color){ 0x2E, 0x6B, 0x5E, 255 }
@@ -210,6 +211,7 @@ static void draw_seat_info(SDL_Renderer* r, TTF_Font* font, SDL_FRect rect,
   snprintf(text, sizeof(text), "%s   %s %u   %s %u", names->label[p],
            LOCALIZED_STRING_L(lang, "Energy", "Energie", "Energia"), v->energy[p],
            LOCALIZED_STRING_L(lang, "Cash", "Argent", "Dinero"), v->cash[p]);
+  gui_draw_text(r, font, text, rect.x + 1.0f, rect.y + 1.0f, GUI_INFO_SHADOW);
   gui_draw_text(r, font, text, rect.x, rect.y, GUI_INFO_TEXT);
 } // draw_seat_info
 

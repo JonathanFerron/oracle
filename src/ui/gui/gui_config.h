@@ -9,9 +9,12 @@
 // testable without a display -- see testsrc/test_gui_config.c.
 //
 // Keys:
-//   font_path      = <path>   text font for the status bar/log and cards;
+//   font_path      = <path>   text font for the status bar, seat labels, log
+//                              and draw/cash card text;
 //                              absolute, or relative to the project root
-//                              (e.g. assets/fonts/Fredoka/Fredoka-Regular.ttf)
+//                              (e.g. assets/fonts/Fredoka/static/Fredoka-Regular.ttf)
+//   card_font_path = <path>   font for the numbers/name on champion cards
+//                              (default assets/fonts/Fredoka/static/Fredoka-Medium.ttf)
 //   legacy_fractal = <bool>   draw fractal art (assets/fractals/) on
 //                              champion cards; true/false/yes/no/on/off/1/0
 
@@ -25,7 +28,8 @@
 
 typedef struct
 { char font_path[GUI_CONFIG_PATH_MAX]; // "" = use the bundled default fonts
-  bool legacy_fractal;                 // default false: procedural text-only cards
+  char card_font_path[GUI_CONFIG_PATH_MAX]; // "" = use the bundled card-face font
+  bool legacy_fractal;                 // default false: no fractal art on cards
 } GuiConfig;
 
 // Fills `cfg` with the defaults (empty font_path, legacy_fractal off).

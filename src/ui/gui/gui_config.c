@@ -10,6 +10,7 @@
 
 void gui_config_defaults(GuiConfig* cfg)
 { cfg->font_path[0] = '\0';
+  cfg->card_font_path[0] = '\0';
   cfg->legacy_fractal = false;
 } // gui_config_defaults
 
@@ -36,13 +37,19 @@ static bool parse_bool(const char* v, bool* out)
   return false;
 } // parse_bool
 
+// Copies `value` into `dst` (a GUI_CONFIG_PATH_MAX buffer), rejecting over-long paths.
+static void set_path(char* dst, const char* key, const char* value)
+{ if(strlen(value) >= GUI_CONFIG_PATH_MAX)
+    fprintf(stderr, "GUI config: %s too long, ignored\n", key);
+  else
+    strcpy(dst, value);
+} // set_path
+
 static void apply_gui_key(GuiConfig* cfg, const char* key, const char* value)
 { if(!strcmp(key, "font_path"))
-  { if(strlen(value) >= sizeof(cfg->font_path))
-      fprintf(stderr, "GUI config: font_path too long, ignored\n");
-    else
-      strcpy(cfg->font_path, value);
-  }
+    set_path(cfg->font_path, key, value);
+  else if(!strcmp(key, "card_font_path"))
+    set_path(cfg->card_font_path, key, value);
   else if(!strcmp(key, "legacy_fractal"))
   { if(!parse_bool(value, &cfg->legacy_fractal))
       fprintf(stderr, "GUI config: legacy_fractal: expected true/false, got '%s'\n", value);

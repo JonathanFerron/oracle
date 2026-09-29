@@ -86,6 +86,8 @@ typedef struct
   bool have_update;      // false until the first poll -- keeps the M1 hello-window
   // splash on screen during the brief startup window before it
   GuiInputState input;   // viewer's own staging state (gui_input.c)
+  uint16_t input_turn;   // turn `input` was staged in (staging resets when it moves on)
+  bool input_submitted;  // a command was sent; the next update starts staging fresh
   GuiLog log;             // message log (gui_log.c)
   bool log_open;          // message-log side panel shown (toggle: click/L)
   GuiNames names;         // "Jonathan (Player A)"-style labels (gui_names.h)
@@ -194,14 +196,18 @@ static bool gui_load_title_text(GuiAppState* state)
 // loadable (absolute, or relative to the project root like every other
 // asset), else the bundled `default_rel`. Non-fatal like the other assets:
 // gui_draw_text() just draws nothing if font is NULL.
+static void gui_resolve_path(char* out, size_t n, const char* configured)
+{ if(configured[0] == '/')
+    snprintf(out, n, "%s", configured);
+  else
+    gui_asset_path(out, n, configured);
+} // gui_resolve_path
+
 static TTF_Font* gui_open_text_font(const GuiAppState* state, const char* default_rel,
                                     float pt, const char* what)
 { char path[512];
   if(state->config.font_path[0])
-  { if(state->config.font_path[0] == '/')
-      snprintf(path, sizeof(path), "%s", state->config.font_path);
-    else
-      gui_asset_path(path, sizeof(path), state->config.font_path);
+  { gui_resolve_path(path, sizeof(path), state->config.font_path);
     TTF_Font* font = TTF_OpenFont(path, pt);
     if(font)
       return font;
@@ -245,6 +251,13 @@ static void gui_load_config(GuiAppState* state)
   gui_art_init(state->renderer, path);
   gui_art_set_fractal(state->config.legacy_fractal);
 
+  // Card-face font: the configured card_font_path if it loads, else the bundled one.
+  if(state->config.card_font_path[0])
+  { gui_resolve_path(path, sizeof(path), state->config.card_font_path);
+    if(gui_card_face_init(path))
+      return;
+    fprintf(stderr, "GUI: using the default card font instead\n");
+  }
   gui_asset_path(path, sizeof(path), GUI_FACE_FONT_PATH);
   gui_card_face_init(path);
 } // gui_load_config
@@ -350,14 +363,23 @@ static SDL_AppResult gui_sdl_iterate(void* appstate)
     gui_trace_update(&state->update);
     gui_log_append_events(&state->log, &state->update, &state->names, g_boot_cfg->language);
 
-    // A new decision to stage (kind/player changed) or a rejected submit --
-    // either way, start staging fresh rather than carry stale selections
-    // over. Same pending decision republished for another reason (e.g. an
-    // AI move elsewhere while it's still not our turn) leaves staging alone.
+    // Start staging fresh whenever this is a different decision than the one
+    // the staged cards were picked for: kind/player changed, a rejected
+    // submit, we just submitted something, or the turn moved on. Kind/player
+    // alone is not enough -- when the opponent passes their attack the viewer
+    // gets no defense decision, so two consecutive attack decisions look
+    // identical and the previous turn's staged cards would carry over (which
+    // silently blocks staging once 3 stale cards fill the selection).
+    // Same pending decision republished for another reason (e.g. an AI move
+    // elsewhere while it's still not our turn) leaves staging alone.
     const PendingDecision* pending = &state->update.pending;
-    if(state->update.rejected || pending->kind != state->input.kind
-       || pending->player != state->input.player)
-      gui_input_reset(&state->input, pending->kind, pending->player);
+    if(state->update.rejected || state->input_submitted
+       || state->update.view.turn != state->input_turn
+       || pending->kind != state->input.kind || pending->player != state->input.player)
+    { gui_input_reset(&state->input, pending->kind, pending->player);
+      state->input_turn = state->update.view.turn;
+      state->input_submitted = false;
+    }
   }
 
   SDL_SetRenderDrawColor(state->renderer, GUI_TABLE_R, GUI_TABLE_G, GUI_TABLE_B, 255);
@@ -407,7 +429,9 @@ static SDL_AppResult gui_sdl_event(void* appstate, SDL_Event* event)
       SessionCommand cmd;
       if(gui_input_handle_click(&state->input, &state->update, event->button.x, event->button.y,
                                 (float)win_w, (float)win_h, state->log_open, &cmd))
-        session_client_send(state->session, &cmd);
+      { session_client_send(state->session, &cmd);
+        state->input_submitted = true;
+      }
     }
   }
 

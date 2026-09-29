@@ -5,6 +5,22 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-28 (evening) — GUI: staging-reset bug fix, `card_font_path`, seat label contrast, log spacing
+
+- **Bug (found by Jonathan's playtest, turn 7)**: attackers could not be selected, only Pass. Root cause:
+  the GUI reset its staged cards only when the pending decision's kind/player changed; when the AI
+  passes its attack the viewer gets no defense decision, so two consecutive attack decisions looked
+  identical and the previous turn's 3 staged cards carried over, filling the 3-card selection.
+  Fix (`gui_app.c`): also reset after any submit and whenever the turn number changes.
+  No automated regression test (the logic lives in the SDL app loop) -- worth extracting later.
+- `[gui] card_font_path` (card-face font, falls back to the bundled Fredoka Medium); `make test_gui_config`
+  now 14/14.
+- Seat labels ("Jonathan (Player A)  Energy ...") are white with a dark 1px shadow for contrast on the
+  light table. Log: a blank separator row before each new turn.
+- To-dos noted: manual hand ordering, table background patterns, card icon polish (`doc/oracle_todo.md`).
+
+---
+
 ## 2026-09-28 (latest) — Champion names compiled into the engine
 
 All 102 champions' names in EN/FR/ES (`src/core/champion_names.c/h`, `champion_name(champion_id,
