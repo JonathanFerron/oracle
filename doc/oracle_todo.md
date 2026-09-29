@@ -247,7 +247,9 @@ design; the rating is diagnostic, not a pass/fail bar.
   the table, for the kids). Applies whether the AI or the human attacks. Delay = `[gui] combat_delay_seconds`,
   integer clamped 0-10, default 2; click/key skips the wait. Every die is shown individually: up to 3 per side,
   so at most 6 dice per combat, each as its rolled number in an n-gon for its die type (attackers also show
-  "+base" and a per-champion total). Presentation-only (engine resolves instantly;
+  "+base" and a per-champion total).
+  Pre-roll preview: staged champions (before Confirm) already appear in the panel as empty n-gons in their
+  colour, no number yet; on a defense decision the attacker's committed champions show the same way. Presentation-only (engine resolves instantly;
   events arrive batched, so queue pending reveals). Also: show the defender's pre-damage energy until the
   defense half appears, and hold the update's log lines until the reveal finishes so the log doesn't spoil it.
   Data is already in `EVT_COMBAT_RESOLVED`'s `CombatDetails`. Full notes: plan file "Next up" item 2.
