@@ -5,6 +5,16 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-30 (later) -- GUI: n-gon dice drawing (increment 2)
+
+- `gui_dice.c/h`: `gui_dice_draw()` -- a die result as its number inside an n-gon (d4 square, d6 hexagon, d8
+  octagon, d12 12-gon, d20 20-gon), flat bottom edge, champion-colour fill (`gui_champion_colour()`, newly public
+  in `gui_palette`), ink outline drawn as a ring so a faded fill isn't darkened; `value < 0` = the empty,
+  faded die for the pre-roll preview. Number in the card-face font (`gui_card_face_font()`).
+  Checked off-screen (all 5 shapes x 3 colours, empty, two sizes); not drawn anywhere in the live GUI yet.
+
+---
+
 ## 2026-09-30 -- GUI: combat-reveal queue (increment 1), `combat_delay_seconds`, tighter status lines
 
 - `src/ui/gui/gui_reveal.c/h`: SDL-free reveal queue with an injected clock. Events go in per update; non-combat

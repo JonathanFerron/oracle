@@ -25,6 +25,10 @@ bool gui_card_face_init(const char* font_path)
   return g_font != NULL;
 } // gui_card_face_init
 
+TTF_Font* gui_card_face_font(void)
+{ return g_font;
+} // gui_card_face_font
+
 void gui_card_face_shutdown(void)
 { if(g_font)
     TTF_CloseFont(g_font);

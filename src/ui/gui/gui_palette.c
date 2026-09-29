@@ -13,7 +13,7 @@
 
 #include "gui_palette.h"
 
-static SDL_Color champion_colour(ChampionColor c)
+SDL_Color gui_champion_colour(ChampionColor c)
 { switch(c)
   { case COLOR_ORANGE:
       return (SDL_Color)
@@ -32,7 +32,7 @@ static SDL_Color champion_colour(ChampionColor c)
       { 0x4C, 0x4C, 0x4C, 255
       };
   }
-} // champion_colour
+} // gui_champion_colour
 
 static SDL_Color draw_card_colour(uint8_t draw_num)
 { if(draw_num >= 3)
@@ -47,7 +47,7 @@ static SDL_Color draw_card_colour(uint8_t draw_num)
 SDL_Color gui_card_border_colour(const struct card* c)
 { switch(c->card_type)
   { case CHAMPION_CARD:
-      return champion_colour(c->color);
+      return gui_champion_colour(c->color);
     case DRAW_CARD:
       return draw_card_colour(c->draw_num);
     case CASH_CARD:

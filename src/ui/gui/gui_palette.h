@@ -16,6 +16,9 @@
 // CHAMPION_CARD: by c->color. DRAW_CARD: by c->draw_num (2 -> green, 3 ->
 // purple). CASH_CARD: grey (the same "card text grey" hue as the printed
 // cash-exchange card's border).
+// The card/die colour of a champion colour (orange / red / indigo).
+SDL_Color gui_champion_colour(ChampionColor c);
+
 SDL_Color gui_card_border_colour(const struct card* c);
 
 #endif // GUI_PALETTE_H
