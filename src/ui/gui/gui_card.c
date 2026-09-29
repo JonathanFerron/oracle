@@ -121,12 +121,22 @@ void gui_card_draw(SDL_Renderer* renderer, TTF_Font* font, SDL_FRect rect,
                    uint8_t card_index, bool highlighted, ui_language_t lang)
 { const struct card* c = &fullDeck[card_index];
   SDL_Color border = gui_card_border_colour(c);
-  if(c->card_type == CHAMPION_CARD
-     && gui_card_face_draw_champion(renderer, rect, c, border, highlighted, lang))
+  bool done = false;
+  switch(c->card_type)
+  { case CHAMPION_CARD:
+      done = gui_card_face_draw_champion(renderer, rect, c, border, highlighted, lang);
+      break;
+    case DRAW_CARD:
+      done = gui_card_face_draw_draw(renderer, rect, c, border, highlighted, lang);
+      break;
+    case CASH_CARD:
+      done = gui_card_face_draw_cash(renderer, rect, c, border, highlighted);
+      break;
+  }
+  if(done)
     return;
 
-  // Draw/cash cards (and champions if the face font is unavailable): plain
-  // text card.
+  // Fallback if the face font is unavailable: plain text card.
   float bw = highlighted ? GUI_CARD_BORDER_HIGHLIGHT_PX : GUI_CARD_BORDER_PX;
   SDL_SetRenderDrawColor(renderer, GUI_CARD_FACE_R, GUI_CARD_FACE_G, GUI_CARD_FACE_B, 255);
   SDL_RenderFillRect(renderer, &rect);

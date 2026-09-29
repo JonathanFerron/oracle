@@ -5,6 +5,19 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-29 — GUI: draw/recall and cash cards restyled to match the printed cards
+
+- `gui_card_face.c` gained `gui_card_face_draw_draw()` (green draw-2 / purple draw-3: corner cost hexagon,
+  two or three "?" face-down cards, "Draw N cards or / Recall / M champion(s)" in EN/FR/ES, one or two
+  recall shields) and `gui_card_face_draw_cash()` (grey: crest shield, sword, down arrow, honeycomb of
+  hexagons with the luna amount). Same thick border, Fredoka Medium text and highlight ring as the
+  champion faces; `gui_card_draw()` dispatches by card type and keeps the old plain-text card only as the
+  no-font fallback. Layout proportions taken from the printed pages (`cartes pige2`/`pige3 et monnaie`).
+- Verified off-screen only (software renderer -> PNG); not yet looked at in the live window. The printed
+  "?" cards on draw-3 are tilted; the GUI draws them upright. `-a -p` regression unchanged.
+
+---
+
 ## 2026-09-28 (evening) — GUI: staging-reset bug fix, `card_font_path`, seat label contrast, log spacing
 
 - **Bug (found by Jonathan's playtest, turn 7)**: attackers could not be selected, only Pass. Root cause:

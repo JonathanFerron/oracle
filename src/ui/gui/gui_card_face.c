@@ -6,6 +6,7 @@
 #include "gui_card.h"  // gui_draw_text()
 #include "gui_art.h"
 #include "../../core/champion_names.h"
+#include "../shared/localization.h"
 
 // Proportions measured off the printed card (cartes champions pg1 - blank).
 #define CF_BORDER 0.046f   // border thickness, fraction of card width
@@ -138,18 +139,156 @@ static void draw_shield_cell(SDL_Renderer* r, const FaceGeom* g, const struct ca
   draw_centered(r, buf, cell.x + cell.w / 2, cell.y + cell.h * 0.80f, g->text_px);
 } // draw_shield_cell
 
-// Name bar text: the champion's name, shrunk to fit if it's wider than the bar
-// (the longest Spanish names, e.g. "Espuma de las Montanas", need it).
-static void draw_name_bar(SDL_Renderer* r, const FaceGeom* g, const char* name)
-{ float px = g->text_px * 1.1f;
-  int w = 0, h = 0;
+// Draws `text` centred on (cx, cy), shrunk from `px` if wider than `max_w`
+// (the longest Spanish champion names, e.g. "Espuma de las Montanas", need it).
+static void draw_centered_fit(SDL_Renderer* r, const char* text, float cx, float cy,
+                              float px, float max_w)
+{ int w = 0, h = 0;
   TTF_SetFontSize(g_font, SDL_roundf(px));
-  TTF_GetStringSize(g_font, name, 0, &w, &h);
-  float max_w = g->name_bar.w - 8.0f;
+  TTF_GetStringSize(g_font, text, 0, &w, &h);
   if((float)w > max_w)
     px *= max_w / (float)w;
-  draw_centered(r, name, g->name_bar.x + g->name_bar.w / 2, g->name_bar.y + g->name_bar.h / 2, px);
+  draw_centered(r, text, cx, cy, px);
+} // draw_centered_fit
+
+static void draw_name_bar(SDL_Renderer* r, const FaceGeom* g, const char* name)
+{ draw_centered_fit(r, name, g->name_bar.x + g->name_bar.w / 2, g->name_bar.y + g->name_bar.h / 2,
+                    g->text_px * 1.1f, g->name_bar.w - 8.0f);
 } // draw_name_bar
+
+// Fills `rect` with `border`, the face colour inside it; returns the inner rect.
+static SDL_FRect draw_frame(SDL_Renderer* r, SDL_FRect rect, SDL_Color border)
+{ float bt = rect.w * CF_BORDER;
+  SDL_FRect inner = { rect.x + bt, rect.y + bt, rect.w - 2 * bt, rect.h - 2 * bt };
+  SDL_SetRenderDrawColor(r, border.r, border.g, border.b, 255);
+  SDL_RenderFillRect(r, &rect);
+  SDL_SetRenderDrawColor(r, CF_FACE.r, CF_FACE.g, CF_FACE.b, 255);
+  SDL_RenderFillRect(r, &inner);
+  return inner;
+} // draw_frame
+
+static void draw_highlight(SDL_Renderer* r, SDL_FRect inner)
+{ SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
+  for(float i = 0; i < 2.0f; i++)
+  { SDL_FRect ring = { inner.x + i, inner.y + i, inner.w - 2 * i, inner.h - 2 * i };
+    SDL_RenderRect(r, &ring);
+  }
+} // draw_highlight
+
+// A face-down "?" card as printed on the draw cards: white, thin ink outline.
+static void draw_mystery_card(SDL_Renderer* r, SDL_FRect box, float px)
+{ SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
+  SDL_RenderFillRect(r, &box);
+  SDL_SetRenderDrawColor(r, CF_INK.r, CF_INK.g, CF_INK.b, 255);
+  SDL_RenderRect(r, &box);
+  draw_centered(r, "?", box.x + box.w / 2, box.y + box.h / 2, px);
+} // draw_mystery_card
+
+// Cost hexagon in the top-left corner, as on the champion cards.
+static void draw_corner_cost(SDL_Renderer* r, SDL_FRect inner, uint8_t cost, float px)
+{ SDL_FRect box = sub(inner, 0.03f, 0.02f, 0.20f, 0.12f);
+  char buf[8];
+  draw_icon_fit(r, gui_art_icon(GUI_ICON_COST_HEX), box);
+  snprintf(buf, sizeof(buf), "%u", cost);
+  draw_centered(r, buf, box.x + box.w / 2, box.y + box.h / 2, px);
+} // draw_corner_cost
+
+// The "?" cards: two side by side, or three (two over one) for a draw 3.
+static void draw_mystery_cards(SDL_Renderer* r, SDL_FRect inner, uint8_t n, float px)
+{ static const float POS2[2][2] = { { 0.20f, 0.13f }, { 0.56f, 0.13f } };
+  static const float POS3[3][2] = { { 0.13f, 0.13f }, { 0.63f, 0.13f }, { 0.38f, 0.30f } };
+  for(uint8_t i = 0; i < n; i++)
+  { const float* p = n >= 3 ? POS3[i] : POS2[i];
+    draw_mystery_card(r, sub(inner, p[0], p[1], 0.25f, 0.23f), px * 1.8f);
+  }
+} // draw_mystery_cards
+
+static void draw_recall_shields(SDL_Renderer* r, SDL_FRect inner, uint8_t n, float y)
+{ SDL_Texture* shield = gui_art_icon(GUI_ICON_SHIELD);
+  for(uint8_t i = 0; i < n; i++)
+  { float x = n == 1 ? 0.39f : 0.22f + 0.34f * (float)i;
+    draw_icon_fit(r, shield, sub(inner, x, y, 0.22f, 0.19f));
+  }
+} // draw_recall_shields
+
+// "Draw N cards or / Recall / M champion(s)" (3 lines) under the "?" cards.
+static void draw_draw_text(SDL_Renderer* r, SDL_FRect inner, const struct card* c, float px,
+                           float y, ui_language_t lang)
+{ char l1[48], l3[48];
+  snprintf(l1, sizeof(l1), LOCALIZED_STRING_L(lang, "Draw %u cards or", "Pige %u cartes ou",
+                                              "Roba %u cartas o"), c->draw_num);
+  snprintf(l3, sizeof(l3), "%u %s", c->choose_num,
+           c->choose_num == 1 ? LOCALIZED_STRING_L(lang, "champion", "champion", "campeon")
+           : LOCALIZED_STRING_L(lang, "champions", "champions", "campeones"));
+  float cx = inner.x + inner.w / 2, max_w = inner.w - 6.0f, step = inner.h * 0.078f;
+  draw_centered_fit(r, l1, cx, inner.y + inner.h * y, px, max_w);
+  draw_centered_fit(r, LOCALIZED_STRING_L(lang, "Recall", "Rappelle", "Recuerda"), cx,
+                    inner.y + inner.h * y + step, px, max_w);
+  draw_centered_fit(r, l3, cx, inner.y + inner.h * y + 2 * step, px, max_w);
+} // draw_draw_text
+
+bool gui_card_face_draw_draw(SDL_Renderer* r, SDL_FRect rect, const struct card* c,
+                             SDL_Color border, bool highlighted, ui_language_t lang)
+{ if(!g_font)
+    return false;
+  SDL_FRect inner = draw_frame(r, rect, border);
+  float px = inner.h * CF_TEXT_PX;
+  bool three = c->draw_num >= 3;
+  draw_corner_cost(r, inner, c->cost, px);
+  draw_mystery_cards(r, inner, c->draw_num, px);
+  draw_draw_text(r, inner, c, px, three ? 0.575f : 0.47f, lang);
+  draw_recall_shields(r, inner, c->choose_num, three ? 0.81f : 0.70f);
+  if(highlighted)
+    draw_highlight(r, inner);
+  return true;
+} // gui_card_face_draw_draw
+
+// Six flat-top hexagons in a honeycomb (three columns; the middle one is a row
+// higher) with the luna amount on the bottom-middle one, as on the printed cash
+// card. Sized in pixels so the hexagons keep their own aspect ratio.
+static void draw_hex_cluster(SDL_Renderer* r, SDL_FRect area, uint8_t amount, float px)
+{ static const float HEX_ASPECT = 256.0f / 293.0f;
+  static const float POS[6][2] = { { 0.0f, 0.5f }, { 0.0f, 1.5f }, { 0.75f, 0.0f },
+    { 0.75f, 1.0f }, { 1.5f, 0.5f }, { 1.5f, 1.5f }
+  };
+  float hw = SDL_min(area.w / 2.5f, area.h / (2.5f * HEX_ASPECT)), hh = hw * HEX_ASPECT;
+  float x0 = area.x + (area.w - 2.5f * hw) / 2.0f, y0 = area.y + (area.h - 2.5f * hh) / 2.0f;
+  SDL_Texture* hex = gui_art_icon(GUI_ICON_COST_HEX);
+  for(int i = 0; i < 6; i++)
+  { SDL_FRect box = { x0 + POS[i][0] * hw, y0 + POS[i][1] * hh, hw, hh };
+    draw_icon_fit(r, hex, box);
+  }
+  char buf[8];
+  snprintf(buf, sizeof(buf), "%u", amount);
+  draw_centered(r, buf, x0 + 1.25f * hw, y0 + 1.5f * hh, px * 1.3f);
+} // draw_hex_cluster
+
+// Down arrow between the sword and the hexagons, drawn as thick lines.
+static void draw_arrow(SDL_Renderer* r, SDL_FRect box)
+{ float cx = box.x + box.w / 2, t = SDL_max(2.0f, box.w * 0.10f), tip = box.y + box.h;
+  SDL_SetRenderDrawColor(r, CF_INK.r, CF_INK.g, CF_INK.b, 255);
+  SDL_FRect shaft = { cx - t / 2, box.y, t, box.h * 0.85f };
+  SDL_RenderFillRect(r, &shaft);
+  for(float d = -t / 2; d <= t / 2; d += 1.0f)
+  { SDL_RenderLine(r, cx - box.w * 0.30f + d, box.y + box.h * 0.55f, cx + d, tip);
+    SDL_RenderLine(r, cx + box.w * 0.30f + d, box.y + box.h * 0.55f, cx + d, tip);
+  }
+} // draw_arrow
+
+bool gui_card_face_draw_cash(SDL_Renderer* r, SDL_FRect rect, const struct card* c,
+                             SDL_Color border, bool highlighted)
+{ if(!g_font)
+    return false;
+  SDL_FRect inner = draw_frame(r, rect, border);
+  draw_icon_fit(r, gui_art_icon(GUI_ICON_SHIELD), sub(inner, 0.04f, 0.03f, 0.22f, 0.20f));
+  draw_icon_fit(r, gui_art_icon(GUI_ICON_SWORD), sub(inner, 0.25f, 0.04f, 0.55f, 0.32f));
+  draw_arrow(r, sub(inner, 0.36f, 0.40f, 0.28f, 0.16f));
+  draw_hex_cluster(r, sub(inner, 0.16f, 0.60f, 0.68f, 0.36f), c->exchange_cash,
+                   inner.h * CF_TEXT_PX);
+  if(highlighted)
+    draw_highlight(r, inner);
+  return true;
+} // gui_card_face_draw_cash
 
 bool gui_card_face_draw_champion(SDL_Renderer* r, SDL_FRect rect, const struct card* c,
                                  SDL_Color border, bool highlighted, ui_language_t lang)

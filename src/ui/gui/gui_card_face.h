@@ -25,4 +25,11 @@ void gui_card_face_shutdown(void);
 bool gui_card_face_draw_champion(SDL_Renderer* renderer, SDL_FRect rect, const struct card* c,
                                  SDL_Color border, bool highlighted, ui_language_t lang);
 
+// Draw/recall card (green draw-2, purple draw-3) and cash-exchange card (grey),
+// laid out like the printed ones. Same contract as above: false if no face font.
+bool gui_card_face_draw_draw(SDL_Renderer* renderer, SDL_FRect rect, const struct card* c,
+                             SDL_Color border, bool highlighted, ui_language_t lang);
+bool gui_card_face_draw_cash(SDL_Renderer* renderer, SDL_FRect rect, const struct card* c,
+                             SDL_Color border, bool highlighted);
+
 #endif // GUI_CARD_FACE_H
