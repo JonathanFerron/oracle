@@ -6,6 +6,7 @@
 #include "gui_dice.h"
 #include "gui_card.h" // gui_draw_text()
 
+#define GUI_PI 3.14159265358979f
 #define GUI_DICE_MAX_SIDES 20
 #define GUI_DICE_INK (SDL_Color){ 0x1A, 0x1A, 0x1A, 255 }
 #define GUI_DICE_EMPTY_ALPHA 110 // an unrolled die: same shape, faded fill
@@ -42,10 +43,10 @@ static void ring_polygon(SDL_Renderer* r, float cx, float cy, float inner, float
 { SDL_Vertex v[GUI_DICE_MAX_SIDES * 2];
   int idx[GUI_DICE_MAX_SIDES * 6];
   SDL_FColor fc = to_fcolor(c);
-  float a0 = -(float)M_PI / 2 + (float)M_PI / (float)n;
+  float a0 = -GUI_PI / 2 + GUI_PI / (float)n;
 
   for(int i = 0; i < n; i++)
-  { float a = a0 + 2.0f * (float)M_PI * (float)i / (float)n;
+  { float a = a0 + 2.0f * GUI_PI * (float)i / (float)n;
     v[i * 2] = vertex(cx + inner * cosf(a), cy + inner * sinf(a), fc);
     v[i * 2 + 1] = vertex(cx + outer * cosf(a), cy + outer * sinf(a), fc);
     int j = (i + 1) % n;
@@ -61,11 +62,11 @@ static void fill_polygon(SDL_Renderer* r, float cx, float cy, float radius, int 
 { SDL_Vertex v[GUI_DICE_MAX_SIDES + 1];
   int idx[GUI_DICE_MAX_SIDES * 3];
   SDL_FColor fc = to_fcolor(c);
-  float a0 = -(float)M_PI / 2 + (float)M_PI / (float)n;
+  float a0 = -GUI_PI / 2 + GUI_PI / (float)n;
 
   v[0] = vertex(cx, cy, fc);
   for(int i = 0; i < n; i++)
-  { float a = a0 + 2.0f * (float)M_PI * (float)i / (float)n;
+  { float a = a0 + 2.0f * GUI_PI * (float)i / (float)n;
     v[i + 1] = vertex(cx + radius * cosf(a), cy + radius * sinf(a), fc);
     idx[i * 3] = 0;
     idx[i * 3 + 1] = i + 1;
