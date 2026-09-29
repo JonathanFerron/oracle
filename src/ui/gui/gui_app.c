@@ -58,7 +58,7 @@
 // Sized for a 1080p laptop (Lenovo W530, the smallest screen this is played on)
 // with the log side panel open; resizable from there.
 #define GUI_DEFAULT_WIN_W 1600
-#define GUI_DEFAULT_WIN_H 900
+#define GUI_DEFAULT_WIN_H 1000 // two 56 px dice rows need >= ~960
 #define GUI_LOGO_DISPLAY_SIZE 256.0f
 #define GUI_LOGO_ALPHA 51 // 80% transparent (~20% opacity, 0.20 * 255)
 

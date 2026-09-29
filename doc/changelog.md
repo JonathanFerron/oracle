@@ -5,6 +5,14 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-29 (night) -- GUI: layout room for the combat dice (increment 0 of the reveal panel)
+
+- `gui_layout.c`: a 56 px dice row between each seat's hand and its combat zone (`dice_row[]`) plus a
+  `combat_info[]` rect right of the 3-card block; default window 1600x900 -> 1600x1000 (the two rows need
+  ~960). Nothing draws in them yet. Measured beforehand: the old middle gap was only 48 px at 900.
+
+---
+
 ## 2026-09-29 (evening) — GUI: monospaced log font, auto-declined empty defense, seat text 19 pt
 
 - Valgrind on a live `bin/oracle-gui` session (Jonathan played 2 games vs Showboat, clean window close): 0 errors,

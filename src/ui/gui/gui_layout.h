@@ -35,6 +35,13 @@ typedef struct
   SDL_FRect combat_zone[NUM_PLAYERS]; // center panel, one bounding row per
   // seat (seat[0]'s row nearer the bottom, seat[1]'s nearer the top) --
   // gui_layout_card_slot() subdivides each into up to 3 card slots
+  // Dice results, in a row between each seat's hand and its combat zone (outer
+  // side of the zone, like throwing dice on your own side of the table): same
+  // x-span as the combat zone, so a die lines up under/over its champion card.
+  SDL_FRect dice_row[NUM_PLAYERS];
+  // Right of the (up to 3) combat cards, spanning the dice row and the combat
+  // zone: combo bonus, side total, damage, energy change.
+  SDL_FRect combat_info[NUM_PLAYERS];
   bool log_open;         // side panel shown? (the other regions shrink to make room)
   SDL_FRect log_panel;   // full-height right-hand column (zero width when closed)
   SDL_FRect log_toggle;  // close button in the panel header when open, a "Log" tab

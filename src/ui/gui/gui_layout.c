@@ -7,6 +7,8 @@
 #define GUI_ACTION_BAR_H 44.0f
 #define GUI_INFO_H 30.0f
 #define GUI_MARGIN 12.0f
+#define GUI_DICE_ROW_H 56.0f  // n-gon die + base/total text, between hand and combat zone
+#define GUI_COMBAT_CARDS_W (3 * GUI_CARD_WIDTH + 2 * GUI_CARD_GAP) // widest combat row
 #define GUI_BUTTON_W 120.0f
 #define GUI_SIDE_W (2 * GUI_CARD_WIDTH + GUI_CARD_GAP) // deck + discard, side by side
 #define GUI_TOGGLE_W 56.0f
@@ -36,7 +38,12 @@ static void layout_top_seat(float win_w, float y, GuiLayout* out)
   { side_x + GUI_CARD_WIDTH + GUI_CARD_GAP, y,
     GUI_CARD_WIDTH, GUI_CARD_HEIGHT
   };
-  y += GUI_CARD_HEIGHT + GUI_CARD_GAP;
+  y += GUI_CARD_HEIGHT;
+
+  out->dice_row[1] = (SDL_FRect)
+  { GUI_MARGIN, y, hand_w, GUI_DICE_ROW_H
+  };
+  y += GUI_DICE_ROW_H;
 
   out->combat_zone[1] = (SDL_FRect)
   { GUI_MARGIN, y, hand_w, GUI_CARD_HEIGHT
@@ -67,11 +74,27 @@ static void layout_bottom_seat(float win_w, float bottom_y, GuiLayout* out)
     GUI_CARD_WIDTH, GUI_CARD_HEIGHT
   };
 
-  y -= GUI_CARD_GAP + GUI_CARD_HEIGHT;
+  y -= GUI_DICE_ROW_H;
+  out->dice_row[0] = (SDL_FRect)
+  { GUI_MARGIN, y, hand_w, GUI_DICE_ROW_H
+  };
+  y -= GUI_CARD_HEIGHT;
   out->combat_zone[0] = (SDL_FRect)
   { GUI_MARGIN, y, hand_w, GUI_CARD_HEIGHT
   };
 } // layout_bottom_seat
+
+// Info area to the right of the combat cards, spanning dice row + zone.
+static void layout_combat_info(GuiLayout* out)
+{ for(int s = 0; s < NUM_PLAYERS; s++)
+  { SDL_FRect z = out->combat_zone[s], d = out->dice_row[s];
+    float x = z.x + (z.w + GUI_COMBAT_CARDS_W) / 2.0f + GUI_CARD_GAP * 2;
+    float top = SDL_min(z.y, d.y), bottom = SDL_max(z.y + z.h, d.y + d.h);
+    out->combat_info[s] = (SDL_FRect)
+    { x, top, SDL_max(0.0f, z.x + z.w - x), bottom - top
+    };
+  }
+} // layout_combat_info
 
 void gui_layout_compute(float win_w, float win_h, bool log_open, GuiLayout* out)
 { float log_w = win_w * GUI_LOG_FRACTION;
@@ -90,6 +113,7 @@ void gui_layout_compute(float win_w, float win_h, bool log_open, GuiLayout* out)
 
   layout_top_seat(board_w, GUI_STATUS_BAR_H + GUI_ACTION_BAR_H + GUI_MARGIN, out);
   layout_bottom_seat(board_w, win_h - GUI_MARGIN, out);
+  layout_combat_info(out);
 
   // The message log fills whatever's left between the two combat zones --
   // derived from their already-computed rects rather than a separate
