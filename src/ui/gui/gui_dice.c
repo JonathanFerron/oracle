@@ -78,7 +78,7 @@ static void fill_polygon(SDL_Renderer* r, float cx, float cy, float radius, int 
 static void draw_value(SDL_Renderer* r, TTF_Font* font, float cx, float cy, float radius, int value)
 { if(!font || value < 0)
     return;
-  char buf[8];
+  char buf[16];
   int w = 0, h = 0;
   snprintf(buf, sizeof(buf), "%d", value);
   TTF_SetFontSize(font, SDL_roundf(radius * 1.15f));
