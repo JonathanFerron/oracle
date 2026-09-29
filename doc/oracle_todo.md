@@ -239,12 +239,16 @@ design; the rating is diagnostic, not a pass/fail bar.
   n-gons, per Jonathan 2026-09-28; the log has a text summary only), tile
   swap, and the acceptance bar specifically against A14 (played against
   `value` instead so far).
-- [ ] **See the dice rolls when playing an AI** (Jonathan, 2026-09-28) -- DECIDED: a combat panel that stays
-  up after each fight (per-champion rolls as numbers in n-gons, combo bonuses, totals, damage, energy
-  before -> after) PLUS a ~3 s roll-reveal pause on AI turns once both sides have thrown. Presentation-only
-  delay in the GUI (engine resolves combat instantly; events arrive batched, so keep a small queue of
-  pending reveals). Data already in `EVT_COMBAT_RESOLVED`'s `CombatDetails`. Open questions and the design
-  sketch are in the plan file's "Next up" item 2. Ties into the combat/dice panel item.
+- [ ] **See the dice rolls when playing an AI** (Jonathan, 2026-09-28) -- DESIGN SETTLED, NOT BUILT (he said
+  to record it only). A combat panel between the two combat zones (fallback: just right of them if the gap
+  is too tight) that stays up after each fight: per-champion rolls as numbers in n-gons (square d4, hexagon
+  d6, ...), combo bonuses, totals, damage, energy before -> after. Reveal order: the attacker's dice + computed
+  attack first, then after a delay the defender's dice + defense + damage (he lets the attacker roll first at
+  the table, for the kids). Applies whether the AI or the human attacks. Delay = `[gui] combat_delay_seconds`,
+  integer clamped 0-10, default 2; click/key skips the wait. Presentation-only (engine resolves instantly;
+  events arrive batched, so queue pending reveals). Also: show the defender's pre-damage energy until the
+  defense half appears, and hold the update's log lines until the reveal finishes so the log doesn't spoil it.
+  Data is already in `EVT_COMBAT_RESOLVED`'s `CombatDetails`. Full notes: plan file "Next up" item 2.
 - [ ] **Manual hand ordering** (Jonathan, 2026-09-28): let the player reorder the cards in
   their own hand (drag or move buttons), as with physical cards. Display-only ordering in
   the GUI layer -- `Hand`'s order is engine state, and staging/hit-testing already go by
