@@ -1,6 +1,7 @@
 // gui_config.c -- see gui_config.h.
 
 #include <ctype.h>
+#include <stdlib.h>
 #include <string.h>
 #include <strings.h> // strcasecmp
 
@@ -12,6 +13,7 @@ void gui_config_defaults(GuiConfig* cfg)
 { cfg->font_path[0] = '\0';
   cfg->card_font_path[0] = '\0';
   cfg->log_font_path[0] = '\0';
+  cfg->combat_delay_seconds = GUI_COMBAT_DELAY_DEFAULT;
   cfg->legacy_fractal = false;
 } // gui_config_defaults
 
@@ -46,6 +48,16 @@ static void set_path(char* dst, const char* key, const char* value)
     strcpy(dst, value);
 } // set_path
 
+// Whole-number value clamped into [lo, hi]; false if `v` isn't a number.
+static bool parse_int_clamped(const char* v, int lo, int hi, int* out)
+{ char* end;
+  long n = strtol(v, &end, 10);
+  if(end == v || *end != '\0')
+    return false;
+  *out = n < lo ? lo : n > hi ? hi : (int)n;
+  return true;
+} // parse_int_clamped
+
 static void apply_gui_key(GuiConfig* cfg, const char* key, const char* value)
 { if(!strcmp(key, "font_path"))
     set_path(cfg->font_path, key, value);
@@ -53,6 +65,10 @@ static void apply_gui_key(GuiConfig* cfg, const char* key, const char* value)
     set_path(cfg->card_font_path, key, value);
   else if(!strcmp(key, "log_font_path"))
     set_path(cfg->log_font_path, key, value);
+  else if(!strcmp(key, "combat_delay_seconds"))
+  { if(!parse_int_clamped(value, 0, GUI_COMBAT_DELAY_MAX, &cfg->combat_delay_seconds))
+      fprintf(stderr, "GUI config: combat_delay_seconds: expected a whole number, got '%s'\n", value);
+  }
   else if(!strcmp(key, "legacy_fractal"))
   { if(!parse_bool(value, &cfg->legacy_fractal))
       fprintf(stderr, "GUI config: legacy_fractal: expected true/false, got '%s'\n", value);

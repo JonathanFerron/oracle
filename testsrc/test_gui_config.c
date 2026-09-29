@@ -70,6 +70,17 @@ int main(void)
   c = parse("[gui]\nlog_font_path = /x/mono.ttf\n");
   check("log_font_path parsed, default empty", !strcmp(c.log_font_path, "/x/mono.ttf"));
 
+  c = parse("[gui]\n");
+  check("combat_delay_seconds defaults to 2", c.combat_delay_seconds == 2);
+  c = parse("[gui]\ncombat_delay_seconds = 5\n");
+  check("combat_delay_seconds parsed", c.combat_delay_seconds == 5);
+  c = parse("[gui]\ncombat_delay_seconds = 99\n");
+  check("combat_delay_seconds clamped high", c.combat_delay_seconds == 10);
+  c = parse("[gui]\ncombat_delay_seconds = -4\n");
+  check("combat_delay_seconds clamped low", c.combat_delay_seconds == 0);
+  c = parse("[gui]\ncombat_delay_seconds = soon\n");
+  check("combat_delay_seconds junk keeps default", c.combat_delay_seconds == 2);
+
   c = parse("[gui]\r\nfont_path = crlf.ttf\r\nlegacy_fractal = true\r\n");
   check("CRLF line endings", !strcmp(c.font_path, "crlf.ttf") && c.legacy_fractal);
 

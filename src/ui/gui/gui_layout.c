@@ -7,6 +7,8 @@
 #define GUI_ACTION_BAR_H 44.0f
 #define GUI_INFO_H 30.0f
 #define GUI_MARGIN 12.0f
+#define GUI_TOP_INFO_LIFT 9.0f      // opponent status text sits ~one x-height closer to the top
+#define GUI_BOTTOM_INFO_DROP 14.0f  // own status text sits ~one ascender closer to the bottom edge
 #define GUI_DICE_ROW_H 56.0f  // n-gon die + base/total text, between hand and combat zone
 #define GUI_COMBAT_CARDS_W (3 * GUI_CARD_WIDTH + 2 * GUI_CARD_GAP) // widest combat row
 #define GUI_BUTTON_W 120.0f
@@ -111,8 +113,8 @@ void gui_layout_compute(float win_w, float win_h, bool log_open, GuiLayout* out)
   { 0, GUI_STATUS_BAR_H, board_w, GUI_ACTION_BAR_H
   };
 
-  layout_top_seat(board_w, GUI_STATUS_BAR_H + GUI_ACTION_BAR_H + GUI_MARGIN, out);
-  layout_bottom_seat(board_w, win_h - GUI_MARGIN, out);
+  layout_top_seat(board_w, GUI_STATUS_BAR_H + GUI_ACTION_BAR_H + GUI_MARGIN - GUI_TOP_INFO_LIFT, out);
+  layout_bottom_seat(board_w, win_h - GUI_MARGIN + GUI_BOTTOM_INFO_DROP, out);
   layout_combat_info(out);
 
   // The message log fills whatever's left between the two combat zones --

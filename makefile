@@ -618,7 +618,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(GUI_BUILDDIR) $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_a15_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_gui_config $(BINDIR)/test_champion_names $(BINDIR)/test_moves $(BINDIR)/test_player_decision $(BINDIR)/test_game_event $(BINDIR)/test_game_engine $(BINDIR)/test_session $(BINDIR)/test_ismcts $(BINDIR)/test_puct_policy $(BINDIR)/test_puct $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan $(BINDIR)/gen_corpus $(BINDIR)/calib_ismctsnn $(BINDIR)/calib_ismctsnn_timing $(BINDIR)/gen_policy_corpus $(BINDIR)/calib_puct $(BINDIR)/calib_puct_timing $(BINDIR)/calib_daredevil
+	$(RM) -r $(BUILDDIR)/* $(GUI_BUILDDIR) $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_a15_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_gui_config $(BINDIR)/test_gui_reveal $(BINDIR)/test_champion_names $(BINDIR)/test_moves $(BINDIR)/test_player_decision $(BINDIR)/test_game_event $(BINDIR)/test_game_engine $(BINDIR)/test_session $(BINDIR)/test_ismcts $(BINDIR)/test_puct_policy $(BINDIR)/test_puct $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan $(BINDIR)/gen_corpus $(BINDIR)/calib_ismctsnn $(BINDIR)/calib_ismctsnn_timing $(BINDIR)/gen_policy_corpus $(BINDIR)/calib_puct $(BINDIR)/calib_puct_timing $(BINDIR)/calib_daredevil
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -869,6 +869,19 @@ $(TEST_GUI_CONFIG_TARGET): $(TEST_GUI_CONFIG_OBJS)
 	@echo "Linking test_gui_config..."
 	@mkdir -p $(BINDIR)
 	$(CC) $(TEST_GUI_CONFIG_OBJS) -o $(TEST_GUI_CONFIG_TARGET) $(LIBS)
+
+# Test the GUI combat-reveal queue (src/ui/gui/gui_reveal.c, SDL-free)
+TEST_GUI_REVEAL_TARGET := $(BINDIR)/test_gui_reveal
+TEST_GUI_REVEAL_OBJS := $(BUILDDIR)/testsrc/test_gui_reveal.o $(BUILDDIR)/ui/gui/gui_reveal.o
+
+.PHONY: test_gui_reveal
+test_gui_reveal: $(TEST_GUI_REVEAL_TARGET)
+	./$(TEST_GUI_REVEAL_TARGET)
+
+$(TEST_GUI_REVEAL_TARGET): $(TEST_GUI_REVEAL_OBJS)
+	@echo "Linking test_gui_reveal..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(TEST_GUI_REVEAL_OBJS) -o $(TEST_GUI_REVEAL_TARGET) $(LIBS)
 
 # Test the generated champion name table (src/core/champion_names.c)
 TEST_CHAMPION_NAMES_TARGET := $(BINDIR)/test_champion_names
@@ -1159,6 +1172,7 @@ help:
 	@echo "  test_cash_exchange - Build and run cash exchange tests"
 	@echo "  test_rating      - Build and run Bradley-Terry rating system tests"
 	@echo "  test_gui_config  - Build and run the GUI [gui] INI reader tests"
+	@echo "  test_gui_reveal  - Build and run the GUI combat-reveal queue tests"
 	@echo "  test_champion_names - Build and run the champion name table tests"
 	@echo "  test_visibility  - Build and run VisibleGameState filter tests"
 	@echo "  test_moves       - Build and run move enumeration (src/actions/) tests"

@@ -5,6 +5,19 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-09-30 -- GUI: combat-reveal queue (increment 1), `combat_delay_seconds`, tighter status lines
+
+- `src/ui/gui/gui_reveal.c/h`: SDL-free reveal queue with an injected clock. Events go in per update; non-combat
+  events come out at once, a combat only after attacker-half -> `combat_delay_seconds` -> defender-half (its log
+  line released at the second step); the last combat stays on show; back-to-back combats get their own beat;
+  skip; the defender's pre-damage energy override; busy flag for locking input. `make test_gui_reveal` 32/32,
+  valgrind clean. **Not wired into `gui_app.c` yet** -- that lands with the panel drawing (increment 3), otherwise
+  the log would just lag with nothing to look at.
+- `[gui] combat_delay_seconds` (int, clamped 0-10, default 2); `make test_gui_config` 20/20.
+- Status text rows moved closer to the table edges: opponent's up 9 px, own down 14 px (`gui_layout.c`).
+
+---
+
 ## 2026-09-29 (night) -- GUI: layout room for the combat dice (increment 0 of the reveal panel)
 
 - `gui_layout.c`: a 56 px dice row between each seat's hand and its combat zone (`dice_row[]`) plus a
