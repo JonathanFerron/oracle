@@ -55,7 +55,7 @@
 // own default weight is ExtraLight). Also bundled but not wired in: Anonymous
 // Pro, Fira Mono. System monospace fonts work too via [gui] log_font_path.
 #define GUI_LOG_FONT_PATH "assets/fonts/Source_Code_Pro/SourceCodePro-Regular.ttf"
-#define GUI_LOG_FONT_PT 16.0f
+#define GUI_LOG_FONT_PT 13.0f
 // Sized for a 1080p laptop (Lenovo W530, the smallest screen this is played on)
 // with the log side panel open; resizable from there.
 #define GUI_DEFAULT_WIN_W 1600
@@ -426,14 +426,6 @@ static void gui_auto_decline_defense(GuiAppState* state)
   state->input_submitted = true;
 } // gui_auto_decline_defense
 
-// True when no champions are committed in either combat zone.
-static bool gui_live_zones_empty(const VisibleGameState* v)
-{ for(uint8_t p = 0; p < NUM_PLAYERS; p++)
-    if(v->combat_zone[p].size > 0)
-      return false;
-  return true;
-} // gui_live_zones_empty
-
 // Moves every event gui_reveal.c now allows (everything but a combat still
 // being revealed) into the message log.
 static void gui_release_log_events(GuiAppState* state)
@@ -471,7 +463,6 @@ static SDL_AppResult gui_sdl_iterate(void* appstate)
   }
 
   gui_release_log_events(state);
-  gui_reveal_settle(&state->reveal, gui_live_zones_empty(&state->update.view));
   gui_auto_decline_defense(state);
 
   SDL_SetRenderDrawColor(state->renderer, GUI_TABLE_R, GUI_TABLE_G, GUI_TABLE_B, 255);
@@ -511,7 +502,7 @@ static void gui_continue_click(GuiAppState* state, float x, float y)
   SDL_GetRenderOutputSize(state->renderer, &win_w, &win_h);
   GuiLayout layout;
   gui_layout_compute((float)win_w, (float)win_h, state->log_open, &layout);
-  SDL_FRect btn = gui_layout_button_rect(layout.action_bar, 0, 1);
+  SDL_FRect btn = gui_layout_button_rect(layout.buttons, 0, 1);
   SDL_FPoint p = { x, y };
   if(SDL_PointInRectFloat(&p, &btn))
     gui_reveal_ack(&state->reveal);
@@ -543,7 +534,7 @@ static SDL_AppResult gui_sdl_event(void* appstate, SDL_Event* event)
       if(state->update.pending.kind == DECISION_KIND_NONE)
       { GuiLayout layout;
         gui_layout_compute((float)win_w, (float)win_h, state->log_open, &layout);
-        SDL_FRect btn = gui_layout_button_rect(layout.action_bar, 0, 1);
+        SDL_FRect btn = gui_layout_button_rect(layout.buttons, 0, 1);
         SDL_FPoint p = { event->button.x, event->button.y };
         if(SDL_PointInRectFloat(&p, &btn))
           gui_new_game(state);

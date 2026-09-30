@@ -11,8 +11,8 @@
 //   1. REVEAL_ATTACK: attacker's dice + attack shown, defender's still hidden;
 //   2. after `delay_ms` (or a skip): REVEAL_FULL, defender's dice, defense and
 //      damage shown, and only now is the combat's log line released.
-// The last combat's panel stays on show (REVEAL_FULL) until the next combat
-// starts; a following combat first waits `delay_ms` so back-to-back combats
+// The last combat's panel stays on show (REVEAL_FULL) until the player
+// acknowledges it or the next combat starts; a following combat first waits `delay_ms` so back-to-back combats
 // (own attack, then the AI's after my defense) don't blur together.
 // Time is passed in (ms, any monotonic origin); nothing here reads a clock.
 
@@ -57,16 +57,11 @@ bool gui_reveal_pop(GuiReveal* rv, int64_t now_ms, GameEvent* out);
 // combat): the next gui_reveal_pop() moves on.
 void gui_reveal_skip(GuiReveal* rv, int64_t now_ms);
 
-// After a combat has fully revealed the GUI may need to keep it on screen until
-// the player has taken it in (e.g. the attacker, once the opponent's own attack
-// is already on the table). True from that moment, once nothing is queued any
-// more, until gui_reveal_ack().
+// After a combat has fully revealed the GUI keeps it on screen until the player
+// has taken it in (Continue). True from that moment, once nothing is queued any
+// more, until gui_reveal_ack(); the combat is then cleared off the table.
 bool gui_reveal_needs_ack(const GuiReveal* rv);
 void gui_reveal_ack(GuiReveal* rv);
-
-// Drops the need to acknowledge when there is nothing live to protect: call
-// every frame with "no champions are committed in either combat zone right now".
-void gui_reveal_settle(GuiReveal* rv, bool live_zones_empty);
 
 // True while an EVT_GAME_OVER is still queued behind a combat -- the GUI holds
 // its "game over" text until the reveal has reached it.

@@ -201,13 +201,13 @@ static int hit_test_grid(SDL_FRect area, uint8_t count, float x, float y)
 // Returns the button hit (or GUI_BTN_NONE), given the same button list
 // gui_render.c drew this frame.
 static GuiButtonId hit_test_buttons(const GuiInputState* st, const SessionUpdate* u,
-                                    SDL_FRect action_bar, float x, float y,
+                                    SDL_FRect button_area, float x, float y,
                                     bool* confirm_enabled)
 { GuiButtonId buttons[GUI_MAX_BUTTONS];
   uint8_t n = gui_input_active_buttons(st, u, buttons, confirm_enabled);
   SDL_FPoint p = { x, y };
   for(uint8_t i = 0; i < n; i++)
-  { SDL_FRect r = gui_layout_button_rect(action_bar, i, n);
+  { SDL_FRect r = gui_layout_button_rect(button_area, i, n);
     if(SDL_PointInRectFloat(&p, &r)) return buttons[i];
   }
   return GUI_BTN_NONE;
@@ -335,7 +335,7 @@ bool gui_input_handle_click(GuiInputState* st, const SessionUpdate* u,
   gui_layout_compute(win_w, win_h, log_open, &layout);
 
   bool confirm_enabled = false;
-  GuiButtonId btn = hit_test_buttons(st, u, layout.action_bar, x, y, &confirm_enabled);
+  GuiButtonId btn = hit_test_buttons(st, u, layout.buttons, x, y, &confirm_enabled);
   if(btn != GUI_BTN_NONE)
     return handle_button(st, btn, confirm_enabled, out_cmd);
 

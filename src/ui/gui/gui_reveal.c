@@ -77,11 +77,6 @@ void gui_reveal_ack(GuiReveal* rv)
 { rv->awaiting_ack = false;
 } // gui_reveal_ack
 
-void gui_reveal_settle(GuiReveal* rv, bool live_zones_empty)
-{ if(live_zones_empty && rv->count == 0)
-    rv->awaiting_ack = false;
-} // gui_reveal_settle
-
 bool gui_reveal_game_over_pending(const GuiReveal* rv)
 { for(uint16_t i = 0; i < rv->count; i++)
     if(rv->queue[(rv->head + i) % EVENT_BUF_CAP].type == EVT_GAME_OVER)

@@ -135,10 +135,8 @@ static void test_ack_and_game_over(void)
   check("game over released next", gui_reveal_pop(&rv, 1000, &out) && out.type == EVT_GAME_OVER);
   check("no longer pending", !gui_reveal_game_over_pending(&rv));
   check("needs ack once drained", gui_reveal_needs_ack(&rv));
-  gui_reveal_settle(&rv, false);
-  check("live zones occupied: still needs ack", gui_reveal_needs_ack(&rv));
-  gui_reveal_settle(&rv, true);
-  check("live zones empty: settled", !gui_reveal_needs_ack(&rv));
+  gui_reveal_ack(&rv);
+  check("ack clears it", !gui_reveal_needs_ack(&rv));
 
   GameEvent one[] = { combat(PLAYER_A, 10, 1) };
   gui_reveal_push(&rv, buf_of(&eb, one, 1));

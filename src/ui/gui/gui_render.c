@@ -14,7 +14,6 @@
 #define GUI_INFO_TEXT (SDL_Color){ 0x9C, 0x41, 0x00, 255 } // dark burnt orange: strong contrast on the teal table
 #define GUI_INFO_PT 19.0f
 #define GUI_BADGE_TEXT (SDL_Color){ 255, 255, 255, 255 }
-#define GUI_ACTION_BG (SDL_Color){ 0x14, 0x3A, 0x40, 255 }
 #define GUI_BUTTON_BG (SDL_Color){ 0x2E, 0x6B, 0x5E, 255 }
 #define GUI_BUTTON_BG_DISABLED (SDL_Color){ 0x55, 0x55, 0x55, 255 }
 #define GUI_BUTTON_TEXT (SDL_Color){ 255, 255, 255, 255 }
@@ -108,22 +107,27 @@ static void draw_button(SDL_Renderer* r, TTF_Font* font, SDL_FRect rect,
   gui_draw_text(r, font, label, tx, ty, GUI_BUTTON_TEXT);
 } // draw_button
 
-// The action bar shows a "New game" button once the game is over (the status
-// bar already says who won), an "opponent is thinking" label when it isn't the
-// viewer's move (synthesis doc section 9.7), or the current buttons
-// (gui_input_active_buttons() -- the same list gui_input.c hit-tests).
+// Right-aligned label in the status bar's button area, ending at the same edge
+// as the buttons would.
+static void draw_area_label(SDL_Renderer* r, TTF_Font* font, SDL_FRect area, const char* label)
+{ int w = 0, h = 0;
+  TTF_GetStringSize(font, label, 0, &w, &h);
+  gui_draw_text(r, font, label, area.x + area.w - (float)w,
+                area.y + (area.h - (float)h) / 2.0f, GUI_THINKING_TEXT);
+} // draw_area_label
+
+// The status bar's button area shows a "New game" button once the game is over
+// (the text at the left already says who won), an "opponent is thinking" label
+// when it isn't the viewer's move (synthesis doc section 9.7), or the current
+// buttons (gui_input_active_buttons() -- the same list gui_input.c hit-tests).
 static void draw_action_bar(SDL_Renderer* r, TTF_Font* font, SDL_FRect bar,
                             const SessionUpdate* u, const GuiInputState* input,
                             bool combat_busy, bool needs_ack, ui_language_t lang)
-{ SDL_SetRenderDrawColor(r, GUI_ACTION_BG.r, GUI_ACTION_BG.g, GUI_ACTION_BG.b, 255);
-  SDL_RenderFillRect(r, &bar);
-
-  if(combat_busy) // pacing a combat reveal: no input until it has played out
+{ if(combat_busy) // pacing a combat reveal: no input until it has played out
   { const char* label = LOCALIZED_STRING_L(lang, "Combat... (click to skip)",
                                            "Combat... (clic pour passer)",
                                            "Combate... (clic para saltar)");
-    float y = bar.y + (bar.h - (float)TTF_GetFontHeight(font)) / 2.0f;
-    gui_draw_text(r, font, label, bar.x + 10.0f, y, GUI_THINKING_TEXT);
+    draw_area_label(r, font, bar, label);
     return;
   }
 
@@ -145,8 +149,7 @@ static void draw_action_bar(SDL_Renderer* r, TTF_Font* font, SDL_FRect bar,
   { const char* label = LOCALIZED_STRING_L(lang, "Opponent is thinking...",
                                            "L'adversaire reflechit...",
                                            "El oponente esta pensando...");
-    float y = bar.y + (bar.h - (float)TTF_GetFontHeight(font)) / 2.0f;
-    gui_draw_text(r, font, label, bar.x + 10.0f, y, GUI_THINKING_TEXT);
+    draw_area_label(r, font, bar, label);
     return;
   }
 
@@ -279,12 +282,24 @@ static void draw_deck(SDL_Renderer* r, TTF_Font* font, SDL_FRect slot, uint8_t c
   draw_count_badge(r, font, slot, count);
 } // draw_deck
 
-static void draw_discard(SDL_Renderer* r, TTF_Font* font, SDL_FRect slot,
+// Newest discards first, in reading order, as a 2x2 "4 in 1" block of mini-cards;
+// the pile size sits on a dark tag in the block's bottom-left corner.
+static void draw_discard(SDL_Renderer* r, TTF_Font* font, SDL_FRect area,
                          const Discard* d, ui_language_t lang)
 { if(d->size == 0)
     return;
-  gui_card_draw(r, font, slot, Discard_get(d, d->size - 1), false, lang);
-  draw_count_badge(r, font, slot, d->size);
+  uint8_t shown = d->size < GUI_DISCARD_SHOWN ? d->size : GUI_DISCARD_SHOWN;
+  for(uint8_t i = 0; i < shown; i++)
+    gui_card_draw_mini(r, gui_layout_discard_slot(area, i), Discard_get(d, d->size - 1 - i), lang);
+
+  char text[8];
+  snprintf(text, sizeof(text), "x%u", d->size);
+  int w = 0, h = 0;
+  TTF_GetStringSize(font, text, 0, &w, &h);
+  SDL_FRect tag = { area.x, area.y + area.h - (float)h - 6.0f, (float)w + 8.0f, (float)h + 4.0f };
+  SDL_SetRenderDrawColor(r, GUI_STATUS_BG.r, GUI_STATUS_BG.g, GUI_STATUS_BG.b, 230);
+  SDL_RenderFillRect(r, &tag);
+  gui_draw_text(r, font, text, tag.x + 4.0f, tag.y + 2.0f, GUI_BADGE_TEXT);
 } // draw_discard
 
 static void draw_combat_zone(SDL_Renderer* r, TTF_Font* font, SDL_FRect row,
@@ -335,21 +350,10 @@ static void draw_seed_tag(SDL_Renderer* r, TTF_Font* font, const GuiLayout* layo
   snprintf(text, sizeof(text), "%s %u", LOCALIZED_STRING_L(lang, "Seed", "Graine", "Semilla"), seed);
   int w = 0, h = 0;
   TTF_GetStringSize(font, text, 0, &w, &h);
-  float right = layout->status_bar.x + layout->status_bar.w - 10.0f;
-  if(!layout->log_open)
-    right = layout->log_toggle.x - 10.0f;
+  float right = layout->seed_tag.x + layout->seed_tag.w;
   gui_draw_text(r, font, text, right - (float)w,
                 layout->status_bar.y + (layout->status_bar.h - (float)h) / 2.0f, GUI_SEED_TEXT);
 } // draw_seed_tag
-
-// Nothing live in either combat zone (no attack committed right now), so the
-// last revealed combat can stay on show.
-static bool zones_empty(const VisibleGameState* v)
-{ for(uint8_t p = 0; p < NUM_PLAYERS; p++)
-    if(v->combat_zone[p].size > 0)
-      return false;
-  return true;
-} // zones_empty
 
 void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
                       const SessionUpdate* u, const GuiInputState* input,
@@ -365,7 +369,7 @@ void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
                   reveal && gui_reveal_game_over_pending(reveal), lang);
   draw_seed_tag(renderer, fonts->status_font, &layout, seed, lang);
   bool busy = reveal && gui_reveal_busy(reveal);
-  draw_action_bar(renderer, fonts->status_font, layout.action_bar, u, input, busy,
+  draw_action_bar(renderer, fonts->status_font, layout.buttons, u, input, busy,
                   reveal && gui_reveal_needs_ack(reveal), lang);
   draw_log_panel(renderer, fonts->status_font, fonts->log_font, &layout, log, lang);
 
@@ -383,7 +387,7 @@ void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
   PlayerID attacker = PLAYER_A;
   RevealStage stage = REVEAL_NONE;
   bool show_reveal = reveal && gui_reveal_current(reveal, &shown, &attacker, &stage)
-                     && (busy || gui_reveal_needs_ack(reveal) || zones_empty(&u->view));
+                     && (busy || gui_reveal_needs_ack(reveal));
 
   for(uint8_t p = 0; p < NUM_PLAYERS; p++)
   { uint8_t seat = gui_layout_seat_for_player((PlayerID)p, u->view.viewer);

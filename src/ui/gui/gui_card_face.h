@@ -30,6 +30,16 @@ TTF_Font* gui_card_face_font(void);
 bool gui_card_face_draw_champion(SDL_Renderer* renderer, SDL_FRect rect, const struct card* c,
                                  SDL_Color border, bool highlighted, ui_language_t lang);
 
+// Half-size champion for the discard pile: border, cost, "dN+base", species and
+// order icons -- no art, no name. Same contract: false if no face font.
+bool gui_card_face_draw_mini_champion(SDL_Renderer* renderer, SDL_FRect rect,
+                                      const struct card* c, SDL_Color border);
+
+// Half-size draw/recall or cash card: just the border colour and `text`
+// ("Draw 2", "Cash", ...) in the face font. Same contract: false if no face font.
+bool gui_card_face_draw_mini_label(SDL_Renderer* renderer, SDL_FRect rect, SDL_Color border,
+                                   const char* text);
+
 // Draw/recall card (green draw-2, purple draw-3) and cash-exchange card (grey),
 // laid out like the printed ones. Same contract as above: false if no face font.
 bool gui_card_face_draw_draw(SDL_Renderer* renderer, SDL_FRect rect, const struct card* c,

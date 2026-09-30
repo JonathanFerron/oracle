@@ -16,6 +16,26 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-10-01 -- GUI: playtest polish (log, buttons, table, card face)
+
+- Log font 16 -> 13 pt and panel width 0.19 of the window (220-300 px), widening the table.
+- The action bar is gone: buttons / "opponent is thinking" label now live at the right end of the status bar, left of
+  the seed (`GuiLayout.buttons`/`seed_tag`; `gui_layout_button_rect()` right-aligns). Frees 44 px of table height.
+- The two seats' dice-row + combat-card blocks are pulled together in the middle (`layout_tuck_combat()`, 4 px gap).
+- A revealed combat is now always cleared by **Continue** (or any key): `gui_reveal_settle()` and the "zones empty
+  keeps the last combat on show" rule are removed.
+- Champion card face: no sword/shield glyphs (just `dN + base`), wider left band and taller name bar, species icon in
+  the bottom-left corner beside the (re-centred) name, larger order icon in the left band above it.
+  Cards scaled 126x167 -> 139x180 so the champion art stays 90x138 px; order icon ~75% of its first size, species
+  icon ~120% (its box overhangs the name bar, so the border-coloured divider lines stop short of it).
+  Follow-up: order icon -10% again, species +15% again (card stays 139x180). The discard pile now stacks against
+  the deck (above it for the viewer, below it for the opponent), freeing ~150 px of hand width, and shows the newest
+  four discards as half-size "4 in 1" mini-cards (`gui_card_draw_mini()`, no art or name) with a count tag.
+  Then: species/order line art thickened at load time (`embolden()` in `gui_art.c`, alpha dilation by
+  `GUI_ART_ICON_BOLD_PX` = 3 px of a 512 px source; 5 blobbed the fine detail), and mini draw/cash cards reduced to
+  their border colour plus "Draw 2"/"Draw 3"/"Cash".
+  Checked off-screen (layout numbers + card faces without art); not yet seen in the live window.
+
 ## 2026-09-30 (night) -- GUI: "Continue" after a revealed combat, game-over text held
 
 - Playtest (Jonathan): as attacker, the dice panel vanished as soon as the AI staged its own attack cards. Now a

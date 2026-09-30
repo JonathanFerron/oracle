@@ -4,20 +4,23 @@
 #include "../../visibility/visible_state.h" // VIEWER_SPECTATOR
 
 #define GUI_STATUS_BAR_H 40.0f
-#define GUI_ACTION_BAR_H 44.0f
 #define GUI_INFO_H 30.0f
 #define GUI_MARGIN 12.0f
 #define GUI_TOP_INFO_LIFT 9.0f      // opponent status text sits ~one x-height closer to the top
 #define GUI_BOTTOM_INFO_DROP 14.0f  // own status text sits ~one ascender closer to the bottom edge
 #define GUI_DICE_ROW_H 56.0f  // n-gon die + base/total text, between hand and combat zone
 #define GUI_COMBAT_CARDS_W (3 * GUI_CARD_WIDTH + 2 * GUI_CARD_GAP) // widest combat row
-#define GUI_BUTTON_W 120.0f
-#define GUI_SIDE_W (2 * GUI_CARD_WIDTH + GUI_CARD_GAP) // deck + discard, side by side
+#define GUI_BUTTON_W 110.0f
+#define GUI_BUTTON_H 28.0f
+#define GUI_BUTTON_GAP 8.0f
+#define GUI_SEED_W 170.0f     // room reserved for the "Seed n" tag at the status bar's right end
+#define GUI_COMBAT_TUCK_GAP 4.0f // vertical gap between the two seats' combat-card rows
+#define GUI_SIDE_W GUI_CARD_WIDTH // deck with the discard pile stacked against it
 #define GUI_TOGGLE_W 56.0f
 #define GUI_TOGGLE_H 28.0f
-#define GUI_LOG_FRACTION 0.25f // log side panel width as a fraction of the window...
-#define GUI_LOG_MIN_W 260.0f   // ...clamped to this range
-#define GUI_LOG_MAX_W 380.0f
+#define GUI_LOG_FRACTION 0.19f // log side panel width as a fraction of the window...
+#define GUI_LOG_MIN_W 220.0f   // ...clamped to this range
+#define GUI_LOG_MAX_W 300.0f
 
 // seat[1] (top/opponent): info label, then hand + deck/discard on the same
 // row, then that seat's combat-zone row just below it.
@@ -36,9 +39,8 @@ static void layout_top_seat(float win_w, float y, GuiLayout* out)
   out->seat[1].deck = (SDL_FRect)
   { side_x, y, GUI_CARD_WIDTH, GUI_CARD_HEIGHT
   };
-  out->seat[1].discard = (SDL_FRect)
-  { side_x + GUI_CARD_WIDTH + GUI_CARD_GAP, y,
-    GUI_CARD_WIDTH, GUI_CARD_HEIGHT
+  out->seat[1].discard = (SDL_FRect) // below the deck (toward the table centre)
+  { side_x, y + GUI_CARD_HEIGHT, GUI_CARD_WIDTH, GUI_CARD_HEIGHT
   };
   y += GUI_CARD_HEIGHT;
 
@@ -71,9 +73,8 @@ static void layout_bottom_seat(float win_w, float bottom_y, GuiLayout* out)
   out->seat[0].deck = (SDL_FRect)
   { side_x, y, GUI_CARD_WIDTH, GUI_CARD_HEIGHT
   };
-  out->seat[0].discard = (SDL_FRect)
-  { side_x + GUI_CARD_WIDTH + GUI_CARD_GAP, y,
-    GUI_CARD_WIDTH, GUI_CARD_HEIGHT
+  out->seat[0].discard = (SDL_FRect) // above the deck (toward the table centre)
+  { side_x, y - GUI_CARD_HEIGHT, GUI_CARD_WIDTH, GUI_CARD_HEIGHT
   };
 
   y -= GUI_DICE_ROW_H;
@@ -85,6 +86,27 @@ static void layout_bottom_seat(float win_w, float bottom_y, GuiLayout* out)
   { GUI_MARGIN, y, hand_w, GUI_CARD_HEIGHT
   };
 } // layout_bottom_seat
+
+// Pulls the two seats' dice-row + combat-zone blocks together, centred in the
+// space between the hands (top block: dice row over cards; bottom block: cards
+// over dice row), so the two rows of combat cards sit nearly against each other.
+// Skipped when the window is too short to hold both blocks.
+static void layout_tuck_combat(GuiLayout* out)
+{ float top = out->seat[1].hand.y + out->seat[1].hand.h;
+  float avail = out->seat[0].hand.y - top;
+  float block_h = 2 * (GUI_DICE_ROW_H + GUI_CARD_HEIGHT) + GUI_COMBAT_TUCK_GAP;
+  if(avail <= block_h)
+    return;
+
+  float y = top + (avail - block_h) / 2.0f;
+  out->dice_row[1].y = y;
+  y += GUI_DICE_ROW_H;
+  out->combat_zone[1].y = y;
+  y += GUI_CARD_HEIGHT + GUI_COMBAT_TUCK_GAP;
+  out->combat_zone[0].y = y;
+  y += GUI_CARD_HEIGHT;
+  out->dice_row[0].y = y;
+} // layout_tuck_combat
 
 // Info area to the right of the combat cards, spanning dice row + zone.
 static void layout_combat_info(GuiLayout* out)
@@ -109,12 +131,21 @@ void gui_layout_compute(float win_w, float win_h, bool log_open, GuiLayout* out)
   out->status_bar = (SDL_FRect)
   { 0, 0, board_w, GUI_STATUS_BAR_H
   };
-  out->action_bar = (SDL_FRect)
-  { 0, GUI_STATUS_BAR_H, board_w, GUI_ACTION_BAR_H
+
+  // Status bar, right to left: [log tab when closed] seed tag, then the input
+  // buttons (or a status label) just left of the seed.
+  float right = board_w - (log_open ? 10.0f : GUI_TOGGLE_W + GUI_MARGIN);
+  out->seed_tag = (SDL_FRect)
+  { right - GUI_SEED_W, 0, GUI_SEED_W, GUI_STATUS_BAR_H
+  };
+  float buttons_w = GUI_MAX_BUTTON_SLOTS * (GUI_BUTTON_W + GUI_BUTTON_GAP) - GUI_BUTTON_GAP;
+  out->buttons = (SDL_FRect)
+  { out->seed_tag.x - GUI_MARGIN - buttons_w, 0, buttons_w, GUI_STATUS_BAR_H
   };
 
-  layout_top_seat(board_w, GUI_STATUS_BAR_H + GUI_ACTION_BAR_H + GUI_MARGIN - GUI_TOP_INFO_LIFT, out);
+  layout_top_seat(board_w, GUI_STATUS_BAR_H + GUI_MARGIN - GUI_TOP_INFO_LIFT, out);
   layout_bottom_seat(board_w, win_h - GUI_MARGIN + GUI_BOTTOM_INFO_DROP, out);
+  layout_tuck_combat(out);
   layout_combat_info(out);
 
   // The message log fills whatever's left between the two combat zones --
@@ -173,16 +204,17 @@ SDL_FRect gui_layout_card_slot(SDL_FRect row, uint8_t index, uint8_t count)
   };
 } // gui_layout_card_slot
 
-SDL_FRect gui_layout_button_rect(SDL_FRect bar, uint8_t index, uint8_t total)
+SDL_FRect gui_layout_button_rect(SDL_FRect area, uint8_t index, uint8_t total)
 { if(total == 0)
     return (SDL_FRect)
-  { bar.x, bar.y, 0, 0
+  { area.x, area.y, 0, 0
   };
 
-  float y = bar.y + (bar.h - (GUI_ACTION_BAR_H - 2 * GUI_MARGIN)) / 2.0f;
-  float h = GUI_ACTION_BAR_H - 2 * GUI_MARGIN;
+  // Right-aligned: the last button ends at the area's right edge.
+  uint8_t from_right = (uint8_t)(total - 1 - index);
+  float x = area.x + area.w - GUI_BUTTON_W - from_right * (GUI_BUTTON_W + GUI_BUTTON_GAP);
   return (SDL_FRect)
-  { bar.x + GUI_MARGIN + index * (GUI_BUTTON_W + GUI_MARGIN), y, GUI_BUTTON_W, h
+  { x, area.y + (area.h - GUI_BUTTON_H) / 2.0f, GUI_BUTTON_W, GUI_BUTTON_H
   };
 } // gui_layout_button_rect
 
@@ -208,3 +240,10 @@ SDL_FRect gui_layout_grid_slot(SDL_FRect area, uint8_t index, uint8_t count)
     GUI_CARD_WIDTH, GUI_CARD_HEIGHT
   };
 } // gui_layout_grid_slot
+
+SDL_FRect gui_layout_discard_slot(SDL_FRect area, uint8_t index)
+{ float w = area.w / 2.0f, h = area.h / 2.0f;
+  return (SDL_FRect)
+  { area.x + (index % 2) * w, area.y + (index / 2) * h, w, h
+  };
+} // gui_layout_discard_slot

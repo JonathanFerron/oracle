@@ -14,23 +14,30 @@
 #include <SDL3/SDL.h>
 #include "../../core/game_types.h"
 
-// ~0.755 aspect like the printed cards (art area 47:71 + left column + name bar)
-#define GUI_CARD_WIDTH 126.0f
-#define GUI_CARD_HEIGHT 167.0f
+// Sized so the champion art area stays 90x138 px with the wide left column and
+// tall name bar of gui_card_face.c (aspect ~0.77, a bit wider than the print).
+#define GUI_CARD_WIDTH 139.0f
+#define GUI_CARD_HEIGHT 180.0f
 #define GUI_CARD_GAP 8.0f
+#define GUI_DISCARD_SHOWN 4 // mini-cards (half width and height) shown per discard pile
+#define GUI_MAX_BUTTON_SLOTS 3 // widest button list (gui_input.h GUI_MAX_BUTTONS)
 
 typedef struct
 { SDL_FRect info;   // name/energy/cash label
   SDL_FRect hand;   // bounding row -- gui_layout_card_slot() subdivides it
   SDL_FRect deck;   // single face-down slot + count label
-  SDL_FRect discard; // single face-up slot (top card) + count label
+  SDL_FRect discard; // one full-card footprint, stacked against the deck on the side
+  // nearer the table centre; holds up to GUI_DISCARD_SHOWN mini-cards
+  // (gui_layout_discard_slot()) + count label
 } GuiSeatLayout;
 
 typedef struct
-{ SDL_FRect status_bar;             // full width, top: turn/phase/pending
-  SDL_FRect action_bar;             // full width, just below status_bar:
-  // input buttons (gui_input.c) when it's the viewer's move, an "opponent
-  // is thinking" label otherwise
+{ SDL_FRect status_bar;             // board width, top: turn/phase/pending text at
+  // the left, then (right end) the input buttons and the seed tag
+  SDL_FRect buttons;                // inside status_bar, left of seed_tag: input buttons
+  // (gui_input.c) when it's the viewer's move, an "opponent is thinking" label
+  // otherwise; gui_layout_button_rect() right-aligns within it
+  SDL_FRect seed_tag;               // inside status_bar: the "Seed n" tag (right-aligned)
   GuiSeatLayout seat[NUM_PLAYERS];
   SDL_FRect combat_zone[NUM_PLAYERS]; // center panel, one bounding row per
   // seat (seat[0]'s row nearer the bottom, seat[1]'s nearer the top) --
@@ -72,11 +79,15 @@ uint8_t gui_layout_seat_for_player(PlayerID player, PlayerID viewer);
 // (0-based). Used for hand rows and the up-to-3-card combat zone rows alike.
 SDL_FRect gui_layout_card_slot(SDL_FRect row, uint8_t index, uint8_t count);
 
-// Divides `bar` into `total` equal-width, left-aligned buttons with a small
+// Lays out `total` buttons right-aligned in `area` (GuiLayout.buttons) with a small
 // gap between them; `index` selects which one (0-based). gui_input.c and
 // gui_render.c both call this against the same `total`/order (from
 // gui_input_active_buttons()), so hit-testing and drawing always agree.
-SDL_FRect gui_layout_button_rect(SDL_FRect bar, uint8_t index, uint8_t total);
+SDL_FRect gui_layout_button_rect(SDL_FRect area, uint8_t index, uint8_t total);
+
+// Mini-card slot `index` (0-3, reading order) inside a discard footprint: a 2x2
+// "4 in 1" grid of half-width, half-height cards.
+SDL_FRect gui_layout_discard_slot(SDL_FRect area, uint8_t index);
 
 // A large centered panel for the recall discard-picker overlay.
 SDL_FRect gui_layout_overlay_area(float win_w, float win_h);

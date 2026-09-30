@@ -117,6 +117,28 @@ static void card_fill_lines(const struct card* c, char lines[][40], uint8_t* cou
   }
 } // card_fill_lines
 
+void gui_card_draw_mini(SDL_Renderer* renderer, SDL_FRect rect, uint8_t card_index,
+                        ui_language_t lang)
+{ const struct card* c = &fullDeck[card_index];
+  SDL_Color border = gui_card_border_colour(c);
+  switch(c->card_type)
+  { case CHAMPION_CARD:
+      gui_card_face_draw_mini_champion(renderer, rect, c, border);
+      break;
+    case DRAW_CARD:
+    { char text[24];
+      snprintf(text, sizeof(text), "%s %u", LOCALIZED_STRING_L(lang, "Draw", "Pige", "Roba"),
+               c->draw_num);
+      gui_card_face_draw_mini_label(renderer, rect, border, text);
+      break;
+    }
+    case CASH_CARD:
+      gui_card_face_draw_mini_label(renderer, rect, border,
+                                    LOCALIZED_STRING_L(lang, "Cash", "Argent", "Dinero"));
+      break;
+  }
+} // gui_card_draw_mini
+
 void gui_card_draw(SDL_Renderer* renderer, TTF_Font* font, SDL_FRect rect,
                    uint8_t card_index, bool highlighted, ui_language_t lang)
 { const struct card* c = &fullDeck[card_index];
