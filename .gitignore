@@ -10,6 +10,8 @@
 /bin/test_cash_exchange
 /bin/test_rating
 /bin/test_gui_config
+/bin/test_gui_reveal
+/bin/test_gui_discard
 /bin/test_champion_names
 /bin/oracle_config.ini
 /bin/test_moves
