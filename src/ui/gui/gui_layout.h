@@ -19,16 +19,20 @@
 #define GUI_CARD_WIDTH 139.0f
 #define GUI_CARD_HEIGHT 180.0f
 #define GUI_CARD_GAP 8.0f
-#define GUI_DISCARD_SHOWN 4 // mini-cards (half width and height) shown per discard pile
+#define GUI_DISCARD_MIN_COLS 2 // the grid is sized from the window within these bounds
+#define GUI_DISCARD_MAX_COLS 8
+#define GUI_DISCARD_MIN_ROWS 2
+#define GUI_DISCARD_MAX_ROWS 4
 #define GUI_MAX_BUTTON_SLOTS 3 // widest button list (gui_input.h GUI_MAX_BUTTONS)
 
 typedef struct
 { SDL_FRect info;   // name/energy/cash label
   SDL_FRect hand;   // bounding row -- gui_layout_card_slot() subdivides it
   SDL_FRect deck;   // single face-down slot + count label
-  SDL_FRect discard; // one full-card footprint, stacked against the deck on the side
-  // nearer the table centre; holds up to GUI_DISCARD_SHOWN mini-cards
-  // (gui_layout_discard_slot()) + count label
+  SDL_FRect discard; // mini-card grid (cols x rows of half-size cards) at the table's
+  // left edge, under the top hand / over the bottom hand; cell 0 is the count tile
+  // (gui_layout_discard_slot())
+  uint8_t discard_cols, discard_rows;
 } GuiSeatLayout;
 
 typedef struct
@@ -85,9 +89,9 @@ SDL_FRect gui_layout_card_slot(SDL_FRect row, uint8_t index, uint8_t count);
 // gui_input_active_buttons()), so hit-testing and drawing always agree.
 SDL_FRect gui_layout_button_rect(SDL_FRect area, uint8_t index, uint8_t total);
 
-// Mini-card slot `index` (0-3, reading order) inside a discard footprint: a 2x2
-// "4 in 1" grid of half-width, half-height cards.
-SDL_FRect gui_layout_discard_slot(SDL_FRect area, uint8_t index);
+// Cell `index` (reading order, `cols` per row) of a discard grid: a half-width,
+// half-height card.
+SDL_FRect gui_layout_discard_slot(SDL_FRect area, uint8_t cols, uint8_t index);
 
 // A large centered panel for the recall discard-picker overlay.
 SDL_FRect gui_layout_overlay_area(float win_w, float win_h);

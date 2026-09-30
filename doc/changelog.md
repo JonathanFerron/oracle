@@ -16,6 +16,19 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-10-01 (later) -- GUI: window-sized discard grids
+
+- Discard piles moved to the table's left edge (under the top hand / over the bottom hand): a grid of mini-cards
+  sized from the window -- columns fill the space left of the (up to 3) combat cards, rows are half the gap between
+  the hands (`layout_discards()`), so it can never reach the combat text on the right. Cell 0 is a count tile
+  (`xN`, plus `+H` when H cards are hidden), then the newest cards first in reading order.
+- When the pile outgrows the grid, draw/cash cards are hidden before any champion (`gui_discard.c`,
+  `make test_gui_discard` 9/9).
+- Default window height 1000 -> 1020 (3-row grids need >= 1001). Cards shown (excluding the tile) at 1600x1000 log
+  open: 7; 1600x1020 log open: 11 (log closed: 17); 1920x1080 log open: 20.
+
+---
+
 ## 2026-10-01 -- GUI: playtest polish (log, buttons, table, card face)
 
 - Log font 16 -> 13 pt and panel width 0.19 of the window (220-300 px), widening the table.

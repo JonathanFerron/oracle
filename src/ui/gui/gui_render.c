@@ -6,6 +6,7 @@
 #include "gui_layout.h"
 #include "gui_card.h"
 #include "gui_combat_panel.h"
+#include "gui_discard.h"
 #include "../../core/game_constants.h" // fullDeck[]
 #include "../shared/localization.h"
 
@@ -282,24 +283,41 @@ static void draw_deck(SDL_Renderer* r, TTF_Font* font, SDL_FRect slot, uint8_t c
   draw_count_badge(r, font, slot, count);
 } // draw_deck
 
-// Newest discards first, in reading order, as a 2x2 "4 in 1" block of mini-cards;
-// the pile size sits on a dark tag in the block's bottom-left corner.
-static void draw_discard(SDL_Renderer* r, TTF_Font* font, SDL_FRect area,
+// Cell 0: the pile size (and how many draw/cash cards are hidden, if any).
+static void draw_discard_tile(SDL_Renderer* r, TTF_Font* font, SDL_FRect cell, uint8_t total,
+                              uint8_t hidden)
+{ SDL_SetRenderDrawColor(r, GUI_STATUS_BG.r, GUI_STATUS_BG.g, GUI_STATUS_BG.b, 255);
+  SDL_RenderFillRect(r, &cell);
+  char text[16];
+  snprintf(text, sizeof(text), "x%u", total);
+  int w = 0, h = 0;
+  TTF_GetStringSize(font, text, 0, &w, &h);
+  float y = cell.y + (cell.h - (float)h * (hidden ? 2.0f : 1.0f)) / 2.0f;
+  gui_draw_text(r, font, text, cell.x + (cell.w - (float)w) / 2.0f, y, GUI_BADGE_TEXT);
+  if(hidden)
+  { snprintf(text, sizeof(text), "+%u", hidden);
+    TTF_GetStringSize(font, text, 0, &w, &h);
+    gui_draw_text(r, font, text, cell.x + (cell.w - (float)w) / 2.0f, y + (float)h,
+                  GUI_SEED_TEXT);
+  }
+} // draw_discard_tile
+
+// A grid of mini-cards, newest first in reading order after a count tile in cell
+// 0. When the pile outgrows the grid, draw/cash cards are hidden before any
+// champion (gui_discard.h) and the tile says how many cards aren't shown.
+static void draw_discard(SDL_Renderer* r, TTF_Font* font, const GuiSeatLayout* sl,
                          const Discard* d, ui_language_t lang)
 { if(d->size == 0)
     return;
-  uint8_t shown = d->size < GUI_DISCARD_SHOWN ? d->size : GUI_DISCARD_SHOWN;
-  for(uint8_t i = 0; i < shown; i++)
-    gui_card_draw_mini(r, gui_layout_discard_slot(area, i), Discard_get(d, d->size - 1 - i), lang);
+  uint8_t cells = (uint8_t)(sl->discard_cols * sl->discard_rows);
+  uint8_t cards[GUI_DISCARD_MAX];
+  uint8_t shown = gui_discard_select(d, (uint8_t)(cells - 1), cards);
 
-  char text[8];
-  snprintf(text, sizeof(text), "x%u", d->size);
-  int w = 0, h = 0;
-  TTF_GetStringSize(font, text, 0, &w, &h);
-  SDL_FRect tag = { area.x, area.y + area.h - (float)h - 6.0f, (float)w + 8.0f, (float)h + 4.0f };
-  SDL_SetRenderDrawColor(r, GUI_STATUS_BG.r, GUI_STATUS_BG.g, GUI_STATUS_BG.b, 230);
-  SDL_RenderFillRect(r, &tag);
-  gui_draw_text(r, font, text, tag.x + 4.0f, tag.y + 2.0f, GUI_BADGE_TEXT);
+  draw_discard_tile(r, font, gui_layout_discard_slot(sl->discard, sl->discard_cols, 0), d->size,
+                    (uint8_t)(d->size - shown));
+  for(uint8_t i = 0; i < shown; i++)
+    gui_card_draw_mini(r, gui_layout_discard_slot(sl->discard, sl->discard_cols, (uint8_t)(i + 1)),
+                       cards[i], lang);
 } // draw_discard
 
 static void draw_combat_zone(SDL_Renderer* r, TTF_Font* font, SDL_FRect row,
@@ -401,7 +419,7 @@ void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
     draw_hand(renderer, fonts->card_font, sl->hand, (PlayerID)p, u->view.viewer, &u->view,
               input, lang);
     draw_deck(renderer, fonts->card_font, sl->deck, u->view.deck_count[p]);
-    draw_discard(renderer, fonts->card_font, sl->discard, &u->view.discard[p], lang);
+    draw_discard(renderer, fonts->card_font, sl, &u->view.discard[p], lang);
     if(!show_reveal)
       draw_combat_zone(renderer, fonts->card_font, layout.combat_zone[seat],
                        &u->view.combat_zone[p], lang);
