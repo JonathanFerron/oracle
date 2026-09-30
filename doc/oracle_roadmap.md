@@ -138,7 +138,7 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
    is playable end to end and being playtested -- printed-card-style champion/draw/cash faces, a
    paced combat-dice reveal (n-gon dice, Continue, pre-roll preview), New game button, `[gui]` config
    (fonts, `combat_delay_seconds`, `legacy_fractal`); see `doc/changelog.md` 2026-09-28..10-01. Next:
-   **manual hand ordering**, then champion portrait art, table pattern experiment, polish. The plan file's
+   champion portrait art (manual hand ordering was dropped 2026-10-01), table pattern experiment, polish. The plan file's
    "Status" and "Next up" sections are authoritative.
    **Paused here 2026-09-23** (Jonathan's call, work clean and committed at every step) --
    **the authoritative next-steps document is

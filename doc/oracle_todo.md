@@ -254,7 +254,7 @@ design; the rating is diagnostic, not a pass/fail bar.
   events arrive batched, so queue pending reveals). Also: show the defender's pre-damage energy until the
   defense half appears, and hold the update's log lines until the reveal finishes so the log doesn't spoil it.
   Data is already in `EVT_COMBAT_RESOLVED`'s `CombatDetails`. Full notes: plan file "Next up" item 2.
-- [ ] **Manual hand ordering** -- NEXT GUI ITEM (Jonathan, 2026-09-28, confirmed next 2026-10-01): let the player reorder the cards in
+- [x] **Manual hand ordering** -- DROPPED (Jonathan, 2026-10-01: hand churn is high and 7 cards scan fine on screen). Was: let the player reorder the cards in
   their own hand (drag or move buttons), as with physical cards. Display-only ordering in
   the GUI layer -- `Hand`'s order is engine state, and staging/hit-testing already go by
   card index, not slot, so keep a per-viewer permutation.
