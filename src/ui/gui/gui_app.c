@@ -56,10 +56,22 @@
 // Pro, Fira Mono. System monospace fonts work too via [gui] log_font_path.
 #define GUI_LOG_FONT_PATH "assets/fonts/Source_Code_Pro/SourceCodePro-Regular.ttf"
 #define GUI_LOG_FONT_PT 13.0f
-// Sized for a 1080p laptop (Lenovo W530, the smallest screen this is played on)
-// with the log side panel open; resizable from there.
-#define GUI_DEFAULT_WIN_W 1600
-#define GUI_DEFAULT_WIN_H 1020 // 3-row discard grids need >= ~1001; two 56 px dice rows >= ~960
+// Opening size: 1080p (Lenovo W530, the smallest screen this is played on),
+// shrunk to the display's usable area when it doesn't fit there -- see
+// gui_create_window(). On the 1440p desktop monitors it opens at exactly this.
+#define GUI_DEFAULT_WIN_W 1920
+#define GUI_DEFAULT_WIN_H 1080 // 3-row discard grids need >= ~1001
+// Smallest the window can be resized to. Width is generous since hands and
+// combat rows overlap cards sideways as needed; height is not, since every
+// row (cards, dice, info lines) is fixed-height -- the two combat zones start
+// colliding below ~940 (gui_layout.c). Fits inside the W530's usable area.
+#define GUI_MIN_WIN_W 1280
+#define GUI_MIN_WIN_H 960
+// Room the window manager's title bar needs above the window (KWin/Breeze is
+// ~30 px). Usable display bounds don't include it -- and with an auto-hidden
+// panel they're the whole screen -- so a 1080p screen must count as too short
+// for a 1080 px window.
+#define GUI_TITLE_BAR_ALLOWANCE 40
 #define GUI_LOGO_DISPLAY_SIZE 256.0f
 #define GUI_LOGO_ALPHA 51 // 80% transparent (~20% opacity, 0.20 * 255)
 
@@ -346,6 +358,32 @@ static void gui_draw_title(GuiAppState* state)
   TTF_DrawRendererText(state->title_text, x, y);
 } // gui_draw_title
 
+// Opens the window at GUI_DEFAULT_WIN_W x GUI_DEFAULT_WIN_H, or -- when that
+// plus its title bar doesn't fit the primary display's usable area (the
+// screen minus any non-auto-hidden panels) -- maximized, so the window
+// manager fits it exactly, title bar included (clamping the size alone would
+// still overflow by the title bar). The un-maximized size is then the usable
+// area itself. Also sets the GUI_MIN_WIN_W x GUI_MIN_WIN_H resize floor.
+static bool gui_create_window(GuiAppState* state)
+{ int w = GUI_DEFAULT_WIN_W, h = GUI_DEFAULT_WIN_H;
+  SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE;
+  SDL_Rect usable;
+  if(SDL_GetDisplayUsableBounds(SDL_GetPrimaryDisplay(), &usable)
+     && (usable.w < w || usable.h < h + GUI_TITLE_BAR_ALLOWANCE))
+  { w = SDL_min(w, usable.w);
+    h = SDL_min(h, usable.h);
+    flags |= SDL_WINDOW_MAXIMIZED;
+  }
+
+  if(!SDL_CreateWindowAndRenderer(GUI_WINDOW_TITLE, w, h, flags, &state->window, &state->renderer))
+  { fprintf(stderr, "SDL_CreateWindowAndRenderer failed: %s\n", SDL_GetError());
+    return false;
+  }
+  if(!SDL_SetWindowMinimumSize(state->window, GUI_MIN_WIN_W, GUI_MIN_WIN_H))
+    fprintf(stderr, "GUI: SDL_SetWindowMinimumSize failed: %s\n", SDL_GetError());
+  return true;
+} // gui_create_window
+
 static SDL_AppResult gui_sdl_init(void** appstate, int argc, char** argv)
 { (void)argc;
   (void)argv;
@@ -364,14 +402,8 @@ static SDL_AppResult gui_sdl_init(void** appstate, int argc, char** argv)
     return SDL_APP_FAILURE;
   *appstate = state;
 
-  // Taller than a plain "hello window" default -- leaves the message log
-  // (gui_log.c, drawn in whatever's left between the two combat zones)
-  // genuinely useful-sized out of the box instead of a sliver.
-  if(!SDL_CreateWindowAndRenderer(GUI_WINDOW_TITLE, GUI_DEFAULT_WIN_W, GUI_DEFAULT_WIN_H, SDL_WINDOW_RESIZABLE,
-                                  &state->window, &state->renderer))
-  { fprintf(stderr, "SDL_CreateWindowAndRenderer failed: %s\n", SDL_GetError());
+  if(!gui_create_window(state))
     return SDL_APP_FAILURE;
-  }
 
   // Caps gui_sdl_iterate() to the display's refresh rate. Without this,
   // SDL_RenderPresent() doesn't block at all on some platforms/compositors
