@@ -36,8 +36,8 @@
    comma-separated agent shorthand list (see stda_rating.c) -- mainly to
    exclude expensive tree-search agents (A10 ismcts/A11 ismctsnn/A14 puct)
    from a quick fit. --ai.weights: path override for A11's value-net
-   weights (default ISMCTSNN_DEFAULT_WEIGHTS_PATH, loaded once at startup
-   in main.c). --ai.puct-weights: same idea, A14's own two-head net weights
+   weights (default ISMCTSNN_DEFAULT_WEIGHTS_PATH, resolved against the
+   executable's own location and loaded once at startup in main.c). --ai.puct-weights: same idea, A14's own two-head net weights
    (default PUCT_DEFAULT_WEIGHTS_PATH) -- a separate flag/file, not shared
    with --ai.weights. */
 #define OPT_RATING_AGENTS 1007
@@ -124,9 +124,9 @@ void print_usage(const char* prog)
   printf("                                the round-robin to [default: every implemented\n");
   printf("                                agent]\n\n");
   printf("  -Aw, --ai.weights=PATH        Weights file for A11 AlphaOracle Prime\n");
-  printf("                                [default: %s]\n\n", ISMCTSNN_DEFAULT_WEIGHTS_PATH);
+  printf("                                [default: <install dir>/%s]\n\n", ISMCTSNN_DEFAULT_WEIGHTS_PATH);
   printf("       --ai.puct-weights=PATH   Weights file for A14 AlphaOracle Prime Plus I\n");
-  printf("                                [default: %s]\n\n", PUCT_DEFAULT_WEIGHTS_PATH);
+  printf("                                [default: <install dir>/%s]\n\n", PUCT_DEFAULT_WEIGHTS_PATH);
   printf("Examples:\n");
   printf("  %s -a -p                      Automated AI vs AI, fixed default seed\n", prog);
   printf("  %s -a -p --ai.a=value --ai.b=rand   Value Based vs Random\n", prog);

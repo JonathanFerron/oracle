@@ -16,6 +16,7 @@ make clean                        # remove obj/ and bin/oracle*
 make debug                        # rebuild with -O0 -DDEBUG -DDEBUG_ENABLED=1
 make release                      # rebuild with -O2, no debug symbols (added for A11; long sim runs/tree-search agents)
 make gui                          # build bin/oracle-gui (SDL3 GUI, MODE_STDA_GUI); needs libsdl3-dev/libsdl3-ttf-dev/libsdl3-image-dev, separate obj-gui/ tree
+make gui-release                  # same at -O2, no debug symbols (play / copy to another box); wipes obj-gui/ first -- `make gui-clean` before going back to `make gui`
 make format                       # format all .c/.h via astyle (uses .astylerc — see below; excludes ideas/)
 make help                         # list targets
 ```

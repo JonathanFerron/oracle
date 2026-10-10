@@ -656,6 +656,21 @@ gui-debug: LIBS := $(LIBS) $(SDL_LIBS)
 gui-debug: $(GUI_TARGET)
 	@echo "GUI debug build complete: $(GUI_TARGET)"
 
+# Optimized GUI build, same idea as `release` above: -O2, no debug symbols,
+# for actually playing (the tree-search agents A10/A11/A14 think noticeably
+# faster) and for copying bin/oracle-gui to another machine. Wipes obj-gui/
+# first since make doesn't track flag changes -- and so, likewise, run
+# `make gui-clean` (or `make clean`) before going back to `make gui`.
+.PHONY: gui-release
+gui-release: CFLAGS := -O2 -Wall -std=c23 -MMD -MP -DHAVE_SDL3 $(SDL_CFLAGS)
+gui-release: LIBS := $(LIBS) $(SDL_LIBS)
+gui-release: gui-clean $(GUI_TARGET)
+	@echo "GUI release build complete: $(GUI_TARGET)"
+
+.PHONY: gui-clean
+gui-clean:
+	$(RM) -r $(GUI_BUILDDIR) $(GUI_TARGET)
+
 $(GUI_TARGET): $(GUI_OBJECTS)
 	@echo "Linking $(GUI_TARGET)..."
 	@mkdir -p $(BINDIR)
@@ -1178,6 +1193,8 @@ help:
 	@echo "  release          - Build optimized (-O2), no debug symbols"
 	@echo "  gui              - Build bin/oracle-gui (SDL3 GUI, MODE_STDA_GUI); needs libsdl3-dev/libsdl3-ttf-dev/libsdl3-image-dev"
 	@echo "  gui-debug        - Same, with debug symbols and -DDEBUG"
+	@echo "  gui-release      - Same, -O2 without debug symbols (play / copy to another machine)"
+	@echo "  gui-clean        - Remove obj-gui/ and bin/oracle-gui (before switching gui flavours)"
 	@echo "  release_tools    - Build every GEN_*/CALIB_* tool optimized (-O2); removes bin/oracle (its own clean step, same as release/debug) -- run 'make' afterward to restore it"
 	@echo "  release_tools_native - Same, at -O3 -march=native (NOT portable, generation-only)"
 	@echo "  test_combo       - Build and run combo bonus tests"

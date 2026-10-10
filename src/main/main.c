@@ -1,9 +1,13 @@
 // main.c
 // Oracle: The Champions of Arcadia - Main entry point
 
+#define _DEFAULT_SOURCE // readlink()/PATH_MAX under strict -std=c23 (exe_relative_path())
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
+#include <unistd.h>
 #include "main.h"
 #include "cmdline.h"
 #include "../core/game_constants.h"
@@ -19,6 +23,29 @@
 #include "../roles/stda/stda_tui.h"
 #include "../roles/stda/stda_gui.h"
 #include "../roles/stda/stda_rating.h"
+
+/* Resolves a default, repo-relative asset path (e.g. the NN weights under
+   "assets/") against the executable's own location, <exe dir>/../<path> --
+   the same convention the GUI uses for its own assets (gui_app.c's
+   gui_asset_path()) -- so the defaults load whatever directory the binary
+   is launched from. Returns `relative` unchanged (CWD-relative, the old
+   behaviour) if /proc/self/exe can't be read. Explicit --ai.weights/
+   --ai.puct-weights paths don't go through this: those stay as typed. */
+static const char* exe_relative_path(const char* relative, char* out, size_t n)
+{ char exe[PATH_MAX];
+  ssize_t len = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
+  if(len <= 0)
+    return relative;
+  exe[len] = '\0';
+
+  char* slash = strrchr(exe, '/');
+  if(!slash)
+    return relative;
+  *slash = '\0';
+
+  int written = snprintf(out, n, "%s/../%s", exe, relative);
+  return (written > 0 && (size_t)written < n) ? out : relative;
+} // exe_relative_path
 
 /* Main entry point */
 int main(int argc, char** argv)
@@ -61,8 +88,10 @@ int main(int argc, char** argv)
      nn_value_trust=0 (plain A10) via decide_and_apply()'s own guard, never
      worse, just not real AlphaOracle Prime play. See
      ai_strat_ismctsnn.h's header comment. */
-  { const char* nn_weights = cfg.nn_weights ? cfg.nn_weights
-                             : ISMCTSNN_DEFAULT_WEIGHTS_PATH;
+  { char default_path[PATH_MAX + 64];
+    const char* nn_weights = cfg.nn_weights ? cfg.nn_weights
+                             : exe_relative_path(ISMCTSNN_DEFAULT_WEIGHTS_PATH,
+                                                 default_path, sizeof(default_path));
     if(!ismctsnn_load_weights(nn_weights))
       fprintf(stderr, "Warning: could not load %s; ismctsnn falls back to plain IS-MCTS.\n",
               nn_weights);
@@ -73,8 +102,10 @@ int main(int argc, char** argv)
      fully degraded to plain A10 (decide_and_apply()'s own guard,
      ai_strat_puct.c), never worse, just not real PUCT play. See
      ai_strat_puct.h's puct_load_weights() comment. */
-  { const char* puct_weights = cfg.puct_weights ? cfg.puct_weights
-                               : PUCT_DEFAULT_WEIGHTS_PATH;
+  { char default_path[PATH_MAX + 64];
+    const char* puct_weights = cfg.puct_weights ? cfg.puct_weights
+                               : exe_relative_path(PUCT_DEFAULT_WEIGHTS_PATH,
+                                                   default_path, sizeof(default_path));
     if(!puct_load_weights(puct_weights))
       fprintf(stderr, "Warning: could not load %s; puct falls back to plain IS-MCTS.\n",
               puct_weights);
