@@ -116,17 +116,24 @@ static PlayerConfig* g_boot_pconfig;
 // is freed right after session_local_start() returns. `ctx` is NOT copied:
 // the session thread owns it exclusively from this call onward, and
 // gui_sdl_quit() destroys it only after session_client_close() has joined
-// that thread.
+// that thread. The seat assignment (Direct/Inverted/Random) is applied to a
+// per-game copy of `pconfig`, never to `pconfig` itself, so every game starts
+// from the same as-entered config and Random re-rolls each time; the seat
+// labels are rebuilt from that copy so they follow any swap.
 static bool gui_start_session(GuiAppState* state, config_t* cfg, PlayerConfig* pconfig)
 { state->ctx = create_game_context(cfg);
   if(!state->ctx)
     return false;
 
-  StrategySet* strategies = create_strategy_set();
-  set_player_strategy_by_type(strategies, PLAYER_A, pconfig->ai_strategies[PLAYER_A]);
-  set_player_strategy_by_type(strategies, PLAYER_B, pconfig->ai_strategies[PLAYER_B]);
+  PlayerConfig game_pconfig = *pconfig;
+  apply_player_assignment(&game_pconfig, cfg, state->ctx);
+  gui_names_init(&state->names, &game_pconfig, cfg->language);
 
-  state->session = session_local_start(pconfig->player_types, strategies,
+  StrategySet* strategies = create_strategy_set();
+  set_player_strategy_by_type(strategies, PLAYER_A, game_pconfig.ai_strategies[PLAYER_A]);
+  set_player_strategy_by_type(strategies, PLAYER_B, game_pconfig.ai_strategies[PLAYER_B]);
+
+  state->session = session_local_start(game_pconfig.player_types, strategies,
                                        INITIAL_CASH_DEFAULT, state->ctx);
   free_strategy_set(strategies);
 
@@ -389,7 +396,6 @@ static SDL_AppResult gui_sdl_init(void** appstate, int argc, char** argv)
   gui_load_log_font(state);
   gui_log_init(&state->log);
   state->log_open = true;
-  gui_names_init(&state->names, g_boot_pconfig, g_boot_cfg->language);
 
   if(!gui_start_session(state, g_boot_cfg, g_boot_pconfig))
   { fprintf(stderr, "GUI: could not start game session\n");

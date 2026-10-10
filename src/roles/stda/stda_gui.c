@@ -33,6 +33,10 @@ static void gui_setup_player_configuration(config_t* cfg, PlayerConfig* pconfig)
 
   get_player_names(cfg, pconfig);
   get_ai_strategies(cfg, pconfig);
+
+  // Only the choice is made here; gui_app.c's gui_start_session() applies it
+  // per game (so "Random" re-rolls on every New game).
+  get_player_assignment(pconfig, cfg);
 } // gui_setup_player_configuration
 #endif
 

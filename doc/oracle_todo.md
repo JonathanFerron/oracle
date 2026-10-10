@@ -260,11 +260,14 @@ design; the rating is diagnostic, not a pass/fail bar.
   card index, not slot, so keep a per-viewer permutation.
 - [ ] **In-window player setup** (Jonathan, 2026-10-01; after the A14 playtest, before the config-file work): move
   the player configuration that still happens as CLI prompts before the SDL3 window opens (game mode, player
-  names, AI strategies -- `ui/shared/player_config.c`/`player_selection.c`) into a few in-window prompts.
+  names, AI strategies, player assignment Direct/Inverted/Random -- `ui/shared/player_config.c`/
+  `player_selection.c`) into a few in-window prompts. Assignment was added to the CLI-prompt flow 2026-10-09:
+  only the *choice* is asked up front, and `gui_start_session()` applies it to a per-game copy of the config
+  (so Random re-rolls on every New game) -- keep that split when moving it in-window.
   Flow: the window opens on a blank table with the Oracle logo and a **New game** button (no game started, no CLI
   questions first). Pressing it runs the setup prompts. After a finished game, **New game** instead offers
   "play again with the same players" or "change setup"; choosing change opens the same prompts with game mode,
-  player names and AI strategy defaulted to the previous game's choices. Not persisted: no config-file
+  player names, AI strategy and assignment defaulted to the previous game's choices. Not persisted: no config-file
   or game-results-file storage yet (that is the separate "beef up the config file" item). Notes: today
   `gui_app_run()` takes an already-built `PlayerConfig` and `gui_new_game()` replays `g_boot_pconfig`, so the
   work is a setup-screen state in `gui_app.c` (splash -> setup -> game) plus reusing the existing menu option
