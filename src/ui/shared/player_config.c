@@ -94,9 +94,9 @@ void get_player_names(config_t* cfg, PlayerConfig* pconfig)
 // (shown alongside each label) is no longer hardcoded here -- it comes from
 // ai_strategy_is_implemented(), the same registry set_player_strategy_by_type()
 // consults, so this menu can never drift from what actually plays. The
-// bracketed flavour name (e.g. "[The Showboat]") is *not* part of this
-// label -- format_menu_name() appends get_strategy_display_name() to it, so
-// keep flavour names out of the literals below.
+// flavour name (e.g. "The Showboat") is *not* part of this label --
+// format_menu_name() prepends get_strategy_display_name() to it, so keep
+// flavour names out of the literals below.
 static const char* strategy_menu_label(AIStrategyType type, ui_language_t lang)
 { switch(type)
   { case AI_STRATEGY_RANDOM:
@@ -303,8 +303,8 @@ static const AIStrategyRating AI_STRATEGY_RATINGS[AI_STRATEGY_COUNT] =
   [AI_STRATEGY_EXPERIMENTER]     = { 57, true },
 };
 
-// "Random [The Gambler]", or just "Borealis" when the technical label and
-// the flavour name (get_strategy_display_name()) are identical strings.
+// "The Gambler _ Random", or just "Borealis" when the flavour name
+// (get_strategy_display_name()) and the technical label are identical strings.
 static void format_menu_name(AIStrategyType type, ui_language_t lang,
                              char* buf, size_t n)
 { const char* label = strategy_menu_label(type, lang);
@@ -313,7 +313,7 @@ static void format_menu_name(AIStrategyType type, ui_language_t lang,
   if(strcmp(label, flavour) == 0)
     snprintf(buf, n, "%s", label);
   else
-    snprintf(buf, n, "%s [%s]", label, flavour);
+    snprintf(buf, n, "%s _ %s", flavour, label);
 }
 
 // "50" for a measured rating, "~62" for a design-intent estimate.
@@ -331,16 +331,19 @@ static void display_ai_strategy_menu(ui_language_t lang)
                             "Estrategias IA disponibles"));
 
   for(AIStrategyType type = 0; type < AI_STRATEGY_COUNT; type++)
-  { const char* availability = ai_strategy_is_implemented(type)
-                               ? LOCALIZED_STRING_L(lang, "available", "disponible", "disponible")
-                               : LOCALIZED_STRING_L(lang, "not yet implemented",
-                                                    "pas encore implemente", "no implementado");
-    char name[80], rating[8];
+  { char name[80], rating[8];
     format_menu_name(type, lang, name, sizeof(name));
     format_menu_rating(type, rating, sizeof(rating));
 
-    printf("  [%d] %s (%s) [%s] (%s)\n", type + 1, name, availability,
-           rating, get_ai_strategy_shorthand(type));
+    // Every registered agent is playable, so only flag the exception.
+    printf("  [%d] %s _ %s : %s", type + 1, name,
+           get_ai_strategy_shorthand(type), rating);
+
+    if(!ai_strategy_is_implemented(type))
+      printf(" (%s)", LOCALIZED_STRING_L(lang, "not yet implemented",
+                                         "pas encore implemente", "no implementado"));
+
+    printf("\n");
   }
 }
 
