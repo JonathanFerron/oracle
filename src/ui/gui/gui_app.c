@@ -96,9 +96,9 @@
 // finalists of font_gallery_shortlist2.png (numbers are the full gallery's),
 // one picked per launch from the seed -- see gui_pick_title_font(). Sizes are
 // set so the title is ~710 px wide in each, ModernRifgo's width at 48 pt.
-// Temporary: ModernRifgo is a personal-use demo font, kept only while
-// permission to bundle it is sought (doc/oracle_todo.md); once one font is
-// chosen this goes back to a single path.
+// All five stay (Jonathan, 2026-10-17), but ModernRifgo is a personal-use
+// demo font, kept only while permission to bundle it is sought
+// (doc/oracle_todo.md) -- drop its entry if that's refused.
 typedef struct
 { const char* path;
   float pt;

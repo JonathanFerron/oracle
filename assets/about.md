@@ -165,7 +165,7 @@ provenance, corpus composition, measured results).
   - `backgrounds/` -- table background tiles.
   - `logo/` -- `oracle_logo.png` (from `logo base/choix final.png`,
     1024x1024).
-  - `fonts/` -- one subfolder per family (`Modern_Rifgo/`, `Comic_Neue/`, `Patrick_Hand/`, plus the Google Fonts families below; reorganised 2026-09-28 from a flat layout -- 51 family folders in all as of 2026-10-16: ModernRifgo + 50 SIL OFL families; `font_gallery.png` at the repo root shows them all). `Modern_Rifgo/ModernRifgoRegular-MAvdP.otf` (the base logo/UI font).
+  - `fonts/` -- one subfolder per family (`Modern_Rifgo/`, `Comic_Neue/`, `Patrick_Hand/`, plus the Google Fonts families below; reorganised 2026-09-28 from a flat layout -- 51 family folders in all as of 2026-10-16: ModernRifgo + 50 SIL OFL families; `font_gallery.png` at the repo root shows them all). `Modern_Rifgo/ModernRifgoRegular-MAvdP.otf` (the base logo/UI font). Since 2026-10-17 the splash wordmark rotates by seed among ModernRifgo, `Indie_Flower/`, `Autour_One/`, `Gluten/` (`static/Gluten-Regular.ttf`) and `Yomogi/` (`GUI_TITLE_FONTS[]`, `src/ui/gui/gui_app.c`).
     **Licence checked 2026-10-16: NOT redistributable as is.** The font's own name table says ©2025 Nirmana
     Visual (designer Sigit Dwipa Raharjo, nirmanavisual.com); its FontSpace listing
     (https://www.fontspace.com/modern-rifgo-font-f147816) labels it "Demo", "free for just Personal use /

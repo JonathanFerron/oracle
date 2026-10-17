@@ -11,8 +11,9 @@ this file is where finished items go so the todo list doesn't keep growing.
   finalists from shortlist 1 -- 22 Indie Flower, 3 Autour One, 19 Gluten, 51 Yomogi (full-gallery numbers).
 - `gui_app.c`: the splash wordmark now uses one of `GUI_TITLE_FONTS[]` (ModernRifgo + those four), chosen at
   launch as the seed mod 5, so a given `-p` seed always shows the same font. Point sizes are per font, set so the
-  title is ~710 px wide in each (ModernRifgo's width at 48 pt). Temporary until one is chosen; ModernRifgo stays
-  only while permission to bundle it is sought (todo, "Replace the ModernRifgo wordmark font").
+  title is ~710 px wide in each (ModernRifgo's width at 48 pt). Jonathan's call: all five stay, rather than
+  cutting back to one -- ModernRifgo only while permission to bundle it is sought (todo, "Replace the
+  ModernRifgo wordmark font").
 
 ---
 

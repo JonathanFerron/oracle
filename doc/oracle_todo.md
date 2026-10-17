@@ -276,10 +276,10 @@ design; the rating is diagnostic, not a pass/fail bar.
   3 Autour One, 19 Gluten, 51 Yomogi. All four plus ModernRifgo are now wired into the splash wordmark
   (`GUI_TITLE_FONTS[]`, `gui_app.c`), picked at launch by seed mod 5 (`--prng.seed=` 10/11/12/13/14 shows
   ModernRifgo/Indie Flower/Autour One/Gluten/Yomogi; plain `-p` = 1337 shows Autour One), each sized to the
-  same ~710 px title width, so he can live with them before choosing. He is also emailing the designer to ask
-  whether ModernRifgo may be bundled in this open-source game. **Next:** he picks one (ModernRifgo only if
-  permission comes through) -> `GUI_TITLE_FONTS[]` back to a single path/size, delete
-  `assets/fonts/Modern_Rifgo/` unless it's the pick, update `assets/about.md` (and check the logo artwork,
+  same ~710 px title width. **Decided 2026-10-17: keep all five** rather than cut back to one. He is also emailing
+  the designer to ask whether ModernRifgo may be bundled in this open-source game. **Next:** if permission is
+  refused, drop ModernRifgo's `GUI_TITLE_FONTS[]` entry (four fonts, seed mod 4), delete
+  `assets/fonts/Modern_Rifgo/`, update `assets/about.md` (and check the logo artwork,
   which may also use ModernRifgo). It stays in git history unless history is rewritten -- usually acceptable
   for a demo font; Jonathan's call. Alternative: buy a licence that explicitly allows embedding in a public
   open-source app.
