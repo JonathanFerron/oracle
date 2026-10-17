@@ -247,6 +247,12 @@ SDL_FRect gui_layout_overlay_area(float win_w, float win_h)
   };
 } // gui_layout_overlay_area
 
+SDL_FRect gui_layout_overlay_grid(SDL_FRect area)
+{ return (SDL_FRect)
+  { area.x + 10.0f, area.y + 36.0f, area.w - 20.0f, area.h - 46.0f
+  };
+} // gui_layout_overlay_grid
+
 SDL_FRect gui_layout_grid_slot(SDL_FRect area, uint8_t index, uint8_t count)
 { (void)count;
   int cols = (int)((area.w + GUI_CARD_GAP) / (GUI_CARD_WIDTH + GUI_CARD_GAP));

@@ -201,7 +201,7 @@ static void draw_recall_overlay(SDL_Renderer* r, TTF_Font* font, SDL_FRect area,
 
   uint8_t champs[40];
   uint8_t n = gui_discard_champions(d, champs);
-  SDL_FRect grid = { area.x + 10.0f, area.y + 36.0f, area.w - 20.0f, area.h - 46.0f };
+  SDL_FRect grid = gui_layout_overlay_grid(area);
   for(uint8_t i = 0; i < n; i++)
   { SDL_FRect slot = gui_layout_grid_slot(grid, i, n);
     bool hl = arr_contains(input->recall_staged, input->recall_staged_count, champs[i]);

@@ -53,15 +53,14 @@ static bool cash_target_is_legal(const SessionUpdate* u, uint8_t cash_card, uint
   return false;
 } // cash_target_is_legal
 
-static bool recall_selection_is_legal(const SessionUpdate* u, uint8_t recall_card,
-                                      const uint8_t* staged, uint8_t count)
-{ for(uint8_t i = 0; i < u->legal_count; i++)
-  { const GameMove* m = &u->legal[i];
-    if(m->type == MOVE_RECALL && m->card == recall_card
-       && sets_match(m->recall, m->count, staged, count))
-      return true;
-  }
-  return false;
+// Not matched against legal[]: move_gen.c only enumerates recall variants
+// from the top RECALL_POOL_CAP champions by power (a search-budget cap), so
+// legal[] doesn't hold every legal pick. This mirrors player_decision.c's
+// recall_variant_is_legal() instead -- exactly choose_num distinct discard
+// champions, which the overlay (discard champions only) and toggle_card()
+// (no duplicates) already guarantee except for the count.
+static bool recall_selection_is_legal(uint8_t recall_card, uint8_t count)
+{ return count == fullDeck[recall_card].choose_num;
 } // recall_selection_is_legal
 
 // Whether `card` is worth letting the player click at all (doc: "clicking
@@ -124,8 +123,8 @@ uint8_t gui_input_active_buttons(const GuiInputState* st, const SessionUpdate* u
           out[0] = GUI_BTN_CANCEL;
           out[1] = GUI_BTN_CONFIRM;
           if(out_confirm_enabled)
-            *out_confirm_enabled = recall_selection_is_legal(u, st->special_card,
-                                                             st->recall_staged, st->recall_staged_count);
+            *out_confirm_enabled = recall_selection_is_legal(st->special_card,
+                                                             st->recall_staged_count);
           return 2;
       }
       return 0;
@@ -324,6 +323,24 @@ static void handle_hand_click(GuiInputState* st, const SessionUpdate* u, uint8_t
   }
 } // handle_hand_click
 
+// ATTACK, mode CASH_TARGET: clicking the cash card again unstages it (back
+// to mode NONE); clicking a champion stages it as the single exchange target
+// (clicking the staged one again unstages it); anything else is ignored.
+static void handle_cash_target_click(GuiInputState* st, uint8_t card)
+{ if(card == st->special_card)
+  { reset_attack_substate(st);
+    return;
+  }
+  if(fullDeck[card].card_type != CHAMPION_CARD) return;
+
+  if(st->staged_count == 1 && st->staged[0] == card)
+    st->staged_count = 0;
+  else
+  { st->staged[0] = card;
+    st->staged_count = 1;
+  }
+} // handle_cash_target_click
+
 bool gui_input_handle_click(GuiInputState* st, const SessionUpdate* u,
                             float x, float y, float win_w, float win_h, bool log_open,
                             SessionCommand* out_cmd)
@@ -342,7 +359,7 @@ bool gui_input_handle_click(GuiInputState* st, const SessionUpdate* u,
   if(st->kind == DECISION_KIND_ATTACK && st->attack_mode == ATTACK_INPUT_RECALL_PICK)
   { uint8_t champs[40];
     uint8_t n = gui_discard_champions(&u->view.discard[st->player], champs);
-    SDL_FRect area = gui_layout_overlay_area(win_w, win_h);
+    SDL_FRect area = gui_layout_overlay_grid(gui_layout_overlay_area(win_w, win_h));
     int idx = hit_test_grid(area, n, x, y);
     if(idx >= 0)
       toggle_card(st->recall_staged, &st->recall_staged_count,
@@ -357,10 +374,7 @@ bool gui_input_handle_click(GuiInputState* st, const SessionUpdate* u,
 
   uint8_t card = Hand_get(&u->view.my_hand, (uint8_t)idx);
   if(st->kind == DECISION_KIND_ATTACK && st->attack_mode == ATTACK_INPUT_CASH_TARGET)
-  { if(card != st->special_card)
-    { st->staged[0] = card;
-      st->staged_count = 1;
-    }
+  { handle_cash_target_click(st, card);
     return false;
   }
 

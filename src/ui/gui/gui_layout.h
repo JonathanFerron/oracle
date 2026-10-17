@@ -96,6 +96,10 @@ SDL_FRect gui_layout_discard_slot(SDL_FRect area, uint8_t cols, uint8_t index);
 // A large centered panel for the recall discard-picker overlay.
 SDL_FRect gui_layout_overlay_area(float win_w, float win_h);
 
+// The champion grid inside `area` (the overlay panel), below its title line --
+// gui_render.c draws into it and gui_input.c hit-tests against it.
+SDL_FRect gui_layout_overlay_grid(SDL_FRect area);
+
 // Wraps `count` GUI_CARD_WIDTH x GUI_CARD_HEIGHT slots left-to-right,
 // top-to-bottom within `area` (as many columns as fit `area`'s width);
 // `index` selects which one. Used for the recall overlay's discard grid,
