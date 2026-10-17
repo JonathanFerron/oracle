@@ -72,6 +72,11 @@ int main(void)
 
   c = parse("[gui]\n");
   check("combat_delay_seconds defaults to 2", c.combat_delay_seconds == 2);
+  check("default_agent defaults to junior", !strcmp(c.default_agent, "junior"));
+  c = parse("[gui]\ndefault_agent = borealis\n");
+  check("default_agent parsed", !strcmp(c.default_agent, "borealis"));
+  c = parse("[gui]\ndefault_agent = waytoolongforanyagentcode\n");
+  check("default_agent too long keeps default", !strcmp(c.default_agent, "junior"));
   c = parse("[gui]\ncombat_delay_seconds = 5\n");
   check("combat_delay_seconds parsed", c.combat_delay_seconds == 5);
   c = parse("[gui]\ncombat_delay_seconds = 99\n");

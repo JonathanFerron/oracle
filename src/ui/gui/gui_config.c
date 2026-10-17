@@ -15,6 +15,7 @@ void gui_config_defaults(GuiConfig* cfg)
   cfg->log_font_path[0] = '\0';
   cfg->combat_delay_seconds = GUI_COMBAT_DELAY_DEFAULT;
   cfg->legacy_fractal = false;
+  strcpy(cfg->default_agent, GUI_DEFAULT_AGENT_DEFAULT);
 } // gui_config_defaults
 
 // Trims leading/trailing whitespace in place; returns the (possibly
@@ -68,6 +69,12 @@ static void apply_gui_key(GuiConfig* cfg, const char* key, const char* value)
   else if(!strcmp(key, "combat_delay_seconds"))
   { if(!parse_int_clamped(value, 0, GUI_COMBAT_DELAY_MAX, &cfg->combat_delay_seconds))
       fprintf(stderr, "GUI config: combat_delay_seconds: expected a whole number, got '%s'\n", value);
+  }
+  else if(!strcmp(key, "default_agent"))
+  { if(strlen(value) == 0 || strlen(value) >= GUI_DEFAULT_AGENT_MAX)
+      fprintf(stderr, "GUI config: default_agent: '%s' is not an agent code, ignored\n", value);
+    else
+      strcpy(cfg->default_agent, value);
   }
   else if(!strcmp(key, "legacy_fractal"))
   { if(!parse_bool(value, &cfg->legacy_fractal))

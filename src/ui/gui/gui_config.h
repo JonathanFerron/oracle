@@ -21,6 +21,11 @@
 //                              revealing the attacker's dice and the defender's
 //   legacy_fractal = <bool>   draw fractal art (assets/fractals/) on
 //                              champion cards; true/false/yes/no/on/off/1/0
+//   default_agent  = <code>   AI agent preselected on the setup screen when
+//                              -Aa/-Ab don't name one: a -A shorthand
+//                              (rand, junior, borealis, ...; default junior).
+//                              Stored as text here; gui_app.c resolves it, so
+//                              this file stays free of the agent registry.
 
 #ifndef GUI_CONFIG_H
 #define GUI_CONFIG_H
@@ -31,6 +36,8 @@
 #define GUI_CONFIG_PATH_MAX 512
 #define GUI_COMBAT_DELAY_DEFAULT 2
 #define GUI_COMBAT_DELAY_MAX 10
+#define GUI_DEFAULT_AGENT_MAX 16 // longest -A shorthand ("experimenter") + nul, with room
+#define GUI_DEFAULT_AGENT_DEFAULT "junior"
 
 typedef struct
 { char font_path[GUI_CONFIG_PATH_MAX]; // "" = use the bundled default fonts
@@ -38,6 +45,7 @@ typedef struct
   char log_font_path[GUI_CONFIG_PATH_MAX]; // "" = use the bundled monospace log font
   int combat_delay_seconds;            // pause between the attacker's and defender's dice; 0-10, default 2
   bool legacy_fractal;                 // default false: no fractal art on cards
+  char default_agent[GUI_DEFAULT_AGENT_MAX]; // -A shorthand, default GUI_DEFAULT_AGENT_DEFAULT
 } GuiConfig;
 
 // Fills `cfg` with the defaults (empty font_path, legacy_fractal off).
