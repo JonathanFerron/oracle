@@ -151,7 +151,7 @@ design; the rating is diagnostic, not a pass/fail bar.
 
 
 
-### GUI Mode (`stda_gui.c`, `ui/gui/`) — M1 core playable (2026-09-25), rounding out in progress, see `doc/oracle_roadmap.md`'s "SDL3 GUI" item
+### GUI Mode (`stda_gui.c`, `ui/gui/`) — playable, playtested; open GUI work is tracked here (see also `doc/oracle_roadmap.md`'s "SDL3 GUI" item)
 
 - [x] Step 3 (`ideas/9 gui/gui_architecture_synthesis.md` section 4/§10):
   `PlayerDecision` + `decision_is_legal()` (`src/actions/player_decision.h/.c`),
@@ -160,8 +160,8 @@ design; the rating is diagnostic, not a pass/fail bar.
   `get_available_moves()` built with limits `{1,1}`; the recall/cash
   sub-choice is checked structurally against the real discard/hand instead
   (a human may pick any variant, not just the one `move_gen.c`'s
-  `RECALL_POOL_CAP`-capped template samples) -- see the correction #1 note
-  in the plan file.
+  `RECALL_POOL_CAP`-capped template samples; the variant count would also
+  overflow `MOVE_GEN_MAX_MOVES`).
 - [x] Step 4 (`ideas/9 gui/gui_architecture_synthesis.md` section 6/§10):
   `GameEvent` + `event_filter_for_viewer()` (`src/visibility/game_event.h/.c`)
   and the generic `cards_added()`/`cards_removed()` before/after diff
@@ -228,17 +228,14 @@ design; the rating is diagnostic, not a pass/fail bar.
   happened (`gui_log.c`, fed from `SessionUpdate.events`). Verified with a
   real human-vs-AI playtest (mulligan through a won game against `value`,
   no crashes) plus repeated valgrind passes (0 errors, 0 leaked bytes
-  throughout). See `doc/changelog.md`'s 2026-09-25 entry and the plan
-  file's own Step 7 bullet for the full record, including a real bug this
+  throughout). See `doc/changelog.md`'s 2026-09-25 entry for the full record, including a real bug this
   work surfaced and fixed (`EventBuf`/`EVENT_BUF_CAP`, `game_event.h`).
   **Done 2026-09-28**: `[gui]` INI config (`font_path`, `legacy_fractal`,
   `oracle_config.example.ini`) and fractal card art (`gui_config.c`,
-  `gui_art.c`; see `doc/changelog.md`). **Still open** (not blocking, tracked
-  in the plan file's "Next up: rounding out GUI M1"): champion portrait art
-  (needs `import_champion_art.sh`), a visual combat/dice panel (numbers in
-  n-gons, per Jonathan 2026-09-28; the log has a text summary only), tile
-  swap, and the acceptance bar specifically against A14 (played against
-  `value` instead so far).
+  `gui_art.c`; see `doc/changelog.md`). Since done: the combat/dice panel
+  (2026-10-01), the A14 acceptance playtest (Jonathan, by 2026-10-16:
+  responsive, AI wait "very acceptable"), in-window setup (2026-10-16).
+  Still open: the items below.
 - [x] **See the dice rolls when playing an AI** (Jonathan, 2026-09-28) -- BUILT 2026-09-30/10-01 (reveal queue,
   n-gon dice, panel, Continue button, pre-roll preview; see changelog); off-screen checked, live playtest ongoing.
   Original spec: A combat panel between the two combat zones (fallback: just right of them if the gap
@@ -253,7 +250,7 @@ design; the rating is diagnostic, not a pass/fail bar.
   colour, no number yet; on a defense decision the attacker's committed champions show the same way. Presentation-only (engine resolves instantly;
   events arrive batched, so queue pending reveals). Also: show the defender's pre-damage energy until the
   defense half appears, and hold the update's log lines until the reveal finishes so the log doesn't spoil it.
-  Data is already in `EVT_COMBAT_RESOLVED`'s `CombatDetails`. Full notes: plan file "Next up" item 2.
+  Data is already in `EVT_COMBAT_RESOLVED`'s `CombatDetails`. Full record: `doc/changelog.md` 2026-09-30/10-01.
 - [x] **Manual hand ordering** -- DROPPED (Jonathan, 2026-10-01: hand churn is high and 7 cards scan fine on screen). Was: let the player reorder the cards in
   their own hand (drag or move buttons), as with physical cards. Display-only ordering in
   the GUI layer -- `Hand`'s order is engine state, and staging/hit-testing already go by
@@ -265,6 +262,35 @@ design; the rating is diagnostic, not a pass/fail bar.
   `pending.kind` is `DECISION_KIND_NONE` while an AI thinks, and the status bar / action bar treat that as game
   over (outcome text + Rematch / Setup... buttons mid-game). Use `view.game_over` instead; part of the M2
   "AI-vs-AI spectating with a delay" item.
+
+**Order from here (Jonathan, 2026-10-16): champion portraits (once his picks are done) -> draft formats
+(`ideas/10`, roadmap item 6) -> Android.** The rest of this section is optional polish, in no set order.
+
+- [ ] **Champion portrait art** -- next GUI item, but **wait until Jonathan says his picks are finished**
+  (2026-10-16: not yet). Picks live in `/mnt/nougatoctet/oracle/images champions/<Species>/` as
+  `<pre><n>_<Species>_<Name>.<jpg|png>` (20 files, 18 champions so far); everything else in those folders is
+  reference material. **Only his own or cleared picks get committed** (the repo is public; see `assets/about.md`).
+  - Matching: the `<n>` in the prefix is *not* the champion_id (`ave1` = Sourlio = id 6), and species words
+    vary (`cyclops`/`Cyclope`, `Minotaur`/`Minotaure`). Match on `<Name>` instead -- accent/case/space-
+    insensitive against `champion_names.c`'s EN/FR/ES names, after stripping suffixes like `_v1`,
+    `_hand_coloured`, `_ColouredOnPC` -- and cross-check the species. All 20 current files resolve to exactly
+    one id that way. Fail loudly on no match or two matches.
+  - Two champions have two versions (Aero: plain / hand-coloured; Kafur: png / coloured on PC): needs his pick
+    or a rule.
+  - Resize/pad to 556x839 without stretching (`magick in -resize 556x839 -background <bg> -gravity center
+    -extent 556x839 out.png`); for scans/hand-coloured art sample a corner pixel for `<bg>` instead of pure
+    white (see `assets/about.md`). Sources range 832x1248 .. 3277x4950.
+  - Runtime: the card's art area is only ~90x138 px, so downscale quality matters (multi-step/box filter on
+    load, or also ship a pre-shrunk GUI copy). Display rule from the plan: a portrait when one exists, else
+    the fractal; `legacy_fractal = true` shows fractals on every card. Only 18 of the 34 fractal designs are
+    rendered (the other 16 are GIMP Fractal Explorer recipes he can render later).
+- [ ] **Champion names in the log** (and CLI/TUI): the log still says species ("played: HUMAN, ORC").
+- [ ] **M2 polish**: keyboard shortcuts; tooltips; `--rating.track` in the GUI; AI-vs-AI spectating with a
+  per-move delay (see the "game over" bug above); hot-seat mode for Human vs Human; the redraw-only-on-change
+  optimization (deferred, see the roadmap's settled decisions); tilt the draw-3 "?" cards like the printed ones.
+- [ ] **Known gaps**: no small-window fallback for the dice rows (the layout overlaps below ~960 px tall);
+  "any key continues" after a combat may be too easy to trigger; Continue / Rematch / auto-decline have no
+  automated tests (their logic sits in the SDL loop -- extract the staging-reset logic into a testable function).
 - [ ] **Table background patterns** (2026-09-28): Jonathan saved candidate tile patterns in
   `oracle/Backgrounds/` (denim, double-bubble, interlaced, leaves, papyrus, pipes, repeated-square,
   ripples, webb; light/dark variants). Try as the table tile behind the `legacy`/`[gui]` table

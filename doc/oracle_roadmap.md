@@ -86,8 +86,10 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
    `ideas/9 gui/gui_architecture_synthesis.md` -- library choice (SDL3, Linux +
    Android), the `VisibleGameState`/`PlayerDecision`/event/step-driver/session-thread
    layering that keeps the GUI responsive and client/server-ready, and a step-by-step
-   implementation roadmap. Start there. **Implementation plan (2026-09-23)**:
-   `~/.claude/plans/let-s-please-make-a-noble-neumann.md` reorders that roadmap slightly
+   implementation roadmap. Start there. **Implementation plan (2026-09-23)**: a Claude Code
+   plan file outside git (`~/.claude/plans/let-s-please-make-a-noble-neumann.md`; everything
+   still relevant was folded into this item and `doc/oracle_todo.md`'s "GUI Mode" section on
+   2026-10-16, so the tracked docs are authoritative now) reorders that roadmap slightly
    (SDL3 toolchain/hello-window moved up to right after `VisibleGameState`; save/load and
    the config file pushed to after GUI M1) and records corrections found while scanning
    the synthesis doc against current code (recall/cash legality can't be a
@@ -138,16 +140,48 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
    setup panel -> game, Rematch / Setup..., `[gui] default_agent`), and the A14 acceptance playtest is done
    (Jonathan: responsive, AI wait "very acceptable"). Order from here (Jonathan, 2026-10-16): champion
    portrait art once his picks are finished -> draft formats (item 6 below) -> Android. The combat/dice
-   panel listed as "still open" further down was finished 2026-10-01.
+   panel listed as "still open" further down was finished 2026-10-01. **Open GUI work lives in
+   `doc/oracle_todo.md`'s "GUI Mode" section** (authoritative since 2026-10-16; the plan file
+   referenced in the older notes below is historical).
+   **Settled GUI decisions** (from the implementation plan; don't reopen without a reason):
+   - Threading: C11 `<threads.h>` for the session thread (`stda_session.c`), not SDL threads --
+     possible once Windows/MSYS2 was descoped. TSan doesn't work with glibc `<threads.h>` on this
+     toolchain, so helgrind is the concurrency checker.
+   - The GUI wakes up by plain polling (`session_client_poll()` every frame), not
+     `SDL_PushEvent()`, which keeps `stda_session.c` SDL-free for good.
+   - Events are published in batches (everything since the last human-facing decision), not per
+     engine step -- needed for correctness with a single-slot update (and why `EVENT_BUF_CAP`
+     is 512: a whole AI-only stretch can land in one batch, up to ~189 events measured).
+   - `play_turn()` stays: every search agent's rollouts (A8-A14) use it; only the real game
+     loops run on the step driver (`game_engine.c`). Recall/cash legality is checked
+     structurally (`decision_is_legal()`), not by membership in `get_available_moves()`
+     (`RECALL_POOL_CAP` = 6, and recall variants would overflow `MOVE_GEN_MAX_MOVES`).
+   - `main.c` keeps owning `main()`: `gui_app_run()` calls `SDL_EnterAppMainCallbacks()`
+     rather than using `SDL_MAIN_USE_CALLBACKS`. Android will need `SDL_main` handling later.
+   - Redraw-every-frame stays for now (vsync caps it; ~2% CPU idle measured). The "only redraw
+     on change" optimization is deferred until the render surface stops growing -- its main
+     payoff is Android battery life, and an incomplete trigger list causes stale frames.
+   - Fonts: ComicNeue / PatrickHand / Fredoka / Source Code Pro from Google Fonts (SIL OFL,
+     bundled). Comic Sans MS is never bundled (its EULA forbids redistribution); the idea of a
+     runtime system-font lookup for it is dropped.
+   - Art formats: SVG is the source of truth for glyphs/emblems, rasterised to PNG ahead of time
+     (SDL3_image's nanosvg handles filters/text/gradients poorly). Champion art target size is
+     556x839 (47x71 mm at 300 dpi), shared with the printed cards.
+   **How GUI work is verified** (no mouse automation here): off-screen render harnesses in the
+   session scratchpad -- the software renderer to PNG (call `SDL_FlushRenderer()` before saving,
+   or trailing geometry is missing), or `#include "ui/gui/gui_app.c"` into a driver run with
+   `SDL_VIDEO_DRIVER=offscreen` (symlink `assets/` next to the binary) to feed the callbacks
+   synthetic events -- plus `make gui`, `make test_*`, the `-a -p` regression diff, and valgrind.
+   Never report a visual result as checked in the live window; say what was checked off-screen.
    **Status 2026-10-01 (supersedes the "Paused" note below)**: steps 0-7 are done and `bin/oracle-gui`
    is playable end to end and being playtested -- printed-card-style champion/draw/cash faces, a
    paced combat-dice reveal (n-gon dice, Continue, pre-roll preview), New game button, `[gui]` config
    (fonts, `combat_delay_seconds`, `legacy_fractal`); see `doc/changelog.md` 2026-09-28..10-01. Next:
-   champion portrait art (manual hand ordering was dropped 2026-10-01), table pattern experiment, polish. The plan file's
-   "Status" and "Next up" sections are authoritative.
+   champion portrait art (manual hand ordering was dropped 2026-10-01), table pattern experiment, polish. (At the
+   time the plan file's "Status"/"Next up" sections were authoritative; superseded 2026-10-16, see above.)
    **Paused here 2026-09-23** (Jonathan's call, work clean and committed at every step) --
-   **the authoritative next-steps document is
-   `~/.claude/plans/let-s-please-make-a-noble-neumann.md`** (Steps 3-10; step 3,
+   the next-steps document was then
+   `~/.claude/plans/let-s-please-make-a-noble-neumann.md` (superseded 2026-10-16; Steps 3-10; step 3,
    `PlayerDecision` + `decision_is_legal()` in `src/actions/`, is pure engine code with no
    SDL3/art dependency and is safe to pick up cold in a new session). Full dated writeup:
    `doc/changelog.md`'s 2026-09-23 entry. **Steps 3-6 done 2026-09-24** (engine side
@@ -165,8 +199,8 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
    bug this work surfaced (`EventBuf`'s 32-event cap silently dropping events during long
    AI-only stretches, `game_event.h`). **2026-09-28**: `[gui]` config reader
    (`font_path`, `legacy_fractal`) and fractal card art landed. Still open: champion portrait
-   art, a visual combat/dice panel (numbers in n-gons), tile swap -- see the plan file's own "Next up:
-   rounding out GUI M1" and `doc/changelog.md`'s 2026-09-25 entry for the full record.
+   art, a visual combat/dice panel (numbers in n-gons, since done), tile swap -- now tracked in
+   `doc/oracle_todo.md`'s "GUI Mode" section; `doc/changelog.md`'s 2026-09-25 entry has the full record.
 4. **`A14` PUCT + policy head** ("AlphaOracle Prime Plus I") -- ✅ done and
    **registered 2026-09-08/09** (see `doc/changelog.md`'s 2026-09-09 entry and
    `doc/ai_agents.md`'s A14 section). PUCT (Predictor + UCT) selection
