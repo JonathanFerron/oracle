@@ -5,6 +5,17 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-10-17 -- Splash wordmark: five candidate fonts, picked by seed
+
+- `font_gallery_shortlist2.png` (repo root): the full "Oracle: The Champions of Arcadia" title in Jonathan's four
+  finalists from shortlist 1 -- 22 Indie Flower, 3 Autour One, 19 Gluten, 51 Yomogi (full-gallery numbers).
+- `gui_app.c`: the splash wordmark now uses one of `GUI_TITLE_FONTS[]` (ModernRifgo + those four), chosen at
+  launch as the seed mod 5, so a given `-p` seed always shows the same font. Point sizes are per font, set so the
+  title is ~710 px wide in each (ModernRifgo's width at 48 pt). Temporary until one is chosen; ModernRifgo stays
+  only while permission to bundle it is sought (todo, "Replace the ModernRifgo wordmark font").
+
+---
+
 ## 2026-10-16 (later) -- Font gallery, ModernRifgo licence check, provenance note
 
 - `src/ui/gui/gui_font_gallery.{h,c}`: an "easter egg" screen showing "Oracle" in every font family under

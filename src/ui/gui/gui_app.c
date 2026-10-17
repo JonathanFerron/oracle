@@ -1,7 +1,7 @@
 // gui_app.c
 // SDL3 main-callbacks GUI application (MODE_STDA_GUI). Owns the window/
 // renderer lifecycle and the GameContext/SessionClient session; the M1
-// hello-window splash (table colour, Oracle logo, ModernRifgo wordmark)
+// hello-window splash (table colour, Oracle logo, title wordmark)
 // opens with a New game button that leads to the player setup screen
 // (gui_setup.c); once a game's first SessionUpdate arrives,
 // gui_render_frame() (gui_render.c) takes over every frame. See
@@ -47,13 +47,11 @@
 #define GUI_WINDOW_TITLE "Oracle: The Champions of Arcadia"
 #define GUI_LOGO_PATH "assets/logo/oracle_logo.png"
 #define GUI_ICON_PATH "assets/currency/luna.png"
-#define GUI_TITLE_FONT_PATH "assets/fonts/Modern_Rifgo/ModernRifgoRegular-MAvdP.otf"
 #define GUI_STATUS_FONT_PATH "assets/fonts/Comic_Neue/ComicNeue-Regular.ttf"
 #define GUI_CARD_FONT_PATH "assets/fonts/Patrick_Hand/PatrickHand-Regular.ttf"
 #define GUI_CONFIG_FILE "oracle_config.ini" // next to the executable
 #define GUI_ASSETS_DIR "assets"
 #define GUI_FACE_FONT_PATH "assets/fonts/Fredoka/static/Fredoka-Medium.ttf"
-#define GUI_TITLE_FONT_PT 48.0f
 #define GUI_STATUS_FONT_PT 16.0f
 #define GUI_CARD_FONT_PT 16.0f
 // Source Code Pro Regular (a static instance cut from the variable font, whose
@@ -94,6 +92,27 @@
 #define GUI_TITLE_B 0x78
 #define GUI_TITLE_A 128
 
+// Splash wordmark font candidates (2026-10-17): ModernRifgo plus the four
+// finalists of font_gallery_shortlist2.png (numbers are the full gallery's),
+// one picked per launch from the seed -- see gui_pick_title_font(). Sizes are
+// set so the title is ~710 px wide in each, ModernRifgo's width at 48 pt.
+// Temporary: ModernRifgo is a personal-use demo font, kept only while
+// permission to bundle it is sought (doc/oracle_todo.md); once one font is
+// chosen this goes back to a single path.
+typedef struct
+{ const char* path;
+  float pt;
+} GuiTitleFont;
+
+static const GuiTitleFont GUI_TITLE_FONTS[] =
+{ { "assets/fonts/Modern_Rifgo/ModernRifgoRegular-MAvdP.otf", 48.0f }, // 31
+  { "assets/fonts/Indie_Flower/IndieFlower-Regular.ttf", 51.0f },      // 22
+  { "assets/fonts/Autour_One/AutourOne-Regular.ttf", 35.0f },          // 3
+  { "assets/fonts/Gluten/static/Gluten-Regular.ttf", 42.0f },          // 19
+  { "assets/fonts/Yomogi/Yomogi-Regular.ttf", 43.0f }                  // 51
+};
+#define GUI_TITLE_FONT_COUNT (sizeof(GUI_TITLE_FONTS) / sizeof(GUI_TITLE_FONTS[0]))
+
 // Splash "New game" button, centred under the wordmark.
 #define GUI_SPLASH_BUTTON_W 200.0f
 #define GUI_SPLASH_BUTTON_H 44.0f
@@ -116,7 +135,7 @@ typedef struct
   SDL_Window* window;
   SDL_Renderer* renderer;
   SDL_Texture* logo;
-  TTF_Font* font;         // M1 splash title (ModernRifgo)
+  TTF_Font* font;         // M1 splash title (one of GUI_TITLE_FONTS)
   TTF_Font* status_font;  // status bar + seat energy/cash/name (ComicNeue-Regular)
   TTF_Font* log_font;     // message log (monospaced; [gui] log_font_path)
   TTF_Font* card_font;    // card text + deck/discard count badges (PatrickHand-Regular)
@@ -281,10 +300,17 @@ static void gui_load_window_icon(GuiAppState* state)
   SDL_DestroySurface(icon);
 } // gui_load_window_icon
 
+// The splash wordmark font for this launch: the configured seed (-p, or the
+// random one) mod the candidate count, so a given seed always shows the same one.
+static const GuiTitleFont* gui_pick_title_font(void)
+{ return &GUI_TITLE_FONTS[g_boot_cfg->prng_seed % GUI_TITLE_FONT_COUNT];
+} // gui_pick_title_font
+
 static bool gui_load_title_text(GuiAppState* state)
 { char path[512];
-  gui_asset_path(path, sizeof(path), GUI_TITLE_FONT_PATH);
-  state->font = TTF_OpenFont(path, GUI_TITLE_FONT_PT);
+  const GuiTitleFont* title = gui_pick_title_font();
+  gui_asset_path(path, sizeof(path), title->path);
+  state->font = TTF_OpenFont(path, title->pt);
   if(!state->font)
   { fprintf(stderr, "GUI: could not load font (%s): %s\n", path, SDL_GetError());
     return false;
