@@ -14,11 +14,19 @@ void gui_reveal_init(GuiReveal* rv, int delay_seconds)
   rv->stage = REVEAL_NONE;
 } // gui_reveal_init
 
-void gui_reveal_push(GuiReveal* rv, const EventBuf* events)
-{ for(uint16_t i = 0; i < events->count; i++)
+void gui_reveal_push(GuiReveal* rv, const EventBuf* events, const VisibleGameState* views,
+                     uint8_t view_count)
+{ uint8_t combats = 0;
+  for(uint16_t i = 0; i < events->count; i++)
   { if(rv->count >= EVENT_BUF_CAP)
       return;
-    rv->queue[(rv->head + rv->count) % EVENT_BUF_CAP] = events->ev[i];
+    uint16_t slot = (uint16_t)((rv->head + rv->count) % EVENT_BUF_CAP);
+    rv->queue[slot] = events->ev[i];
+    rv->queue_has_view[slot] = false;
+    if(events->ev[i].type == EVT_COMBAT_RESOLVED && combats++ < view_count)
+    { rv->queue_view[slot] = views[combats - 1];
+      rv->queue_has_view[slot] = true;
+    }
     rv->count++;
   }
 } // gui_reveal_push
@@ -33,13 +41,39 @@ static void start_head_combat(GuiReveal* rv, int64_t now_ms)
 { const GameEvent* e = &rv->queue[rv->head];
   rv->shown = e->u.combat;
   rv->shown_attacker = e->player;
+  rv->shown_has_view = rv->queue_has_view[rv->head];
+  if(rv->shown_has_view)
+    rv->shown_view = rv->queue_view[rv->head];
   rv->started = true;
   rv->stage = REVEAL_ATTACK;
   rv->stage_since_ms = now_ms;
 } // start_head_combat
 
+// Releases the oldest held-back draw.
+static void release_held(GuiReveal* rv, GameEvent* out)
+{ *out = rv->held[0];
+  rv->held_count--;
+  memmove(rv->held, rv->held + 1, rv->held_count * sizeof(GameEvent));
+} // release_held
+
+// A draw arriving while a combat awaits its ack goes into `held` instead of
+// the log. Returns false (release it now) if `held` is full.
+static bool hold_head_draw(GuiReveal* rv)
+{ if(!rv->awaiting_ack || rv->queue[rv->head].type != EVT_CARD_DRAWN
+     || rv->held_count >= GUI_REVEAL_HELD_CAP)
+    return false;
+  release_head(rv, &rv->held[rv->held_count++]);
+  return true;
+} // hold_head_draw
+
 bool gui_reveal_pop(GuiReveal* rv, int64_t now_ms, GameEvent* out)
-{ if(rv->count == 0)
+{ if(rv->held_count > 0 && !rv->awaiting_ack)
+  { release_held(rv, out);
+    return true;
+  }
+  while(rv->count > 0 && hold_head_draw(rv))
+    ;
+  if(rv->count == 0)
     return false;
   if(rv->queue[rv->head].type != EVT_COMBAT_RESOLVED)
   { release_head(rv, out);
@@ -50,6 +84,10 @@ bool gui_reveal_pop(GuiReveal* rv, int64_t now_ms, GameEvent* out)
   { // The previous combat is still on show: give it its own beat first.
     if(rv->stage == REVEAL_FULL && now_ms - rv->stage_since_ms < rv->delay_ms)
       return false;
+    if(rv->held_count > 0) // the previous combat is done with: its draws go first
+    { release_held(rv, out);
+      return true;
+    }
     start_head_combat(rv, now_ms);
   }
   if(rv->stage == REVEAL_ATTACK)
@@ -57,6 +95,8 @@ bool gui_reveal_pop(GuiReveal* rv, int64_t now_ms, GameEvent* out)
       return false;
     rv->stage = REVEAL_FULL;
     rv->stage_since_ms = now_ms;
+    PlayerID defender = (PlayerID)((rv->shown_attacker + 1) % NUM_PLAYERS);
+    rv->shown_view.energy[defender] = rv->shown.defender_energy_after;
   }
   rv->started = false;
   rv->awaiting_ack = true;
@@ -108,3 +148,10 @@ bool gui_reveal_energy_override(const GuiReveal* rv, PlayerID p, uint8_t* energy
   }
   return false;
 } // gui_reveal_energy_override
+
+bool gui_reveal_view(const GuiReveal* rv, const VisibleGameState** view)
+{ if(rv->stage == REVEAL_NONE || !rv->shown_has_view)
+    return false;
+  *view = &rv->shown_view;
+  return true;
+} // gui_reveal_view

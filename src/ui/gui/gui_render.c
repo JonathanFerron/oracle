@@ -210,16 +210,14 @@ static void draw_recall_overlay(SDL_Renderer* r, TTF_Font* font, SDL_FRect area,
 } // draw_recall_overlay
 
 static void draw_status_bar(SDL_Renderer* r, TTF_Font* font, SDL_FRect bar,
-                            const SessionUpdate* u, const GuiNames* names,
-                            bool hide_game_over, ui_language_t lang)
+                            const SessionUpdate* u, uint16_t turn, const GuiNames* names,
+                            bool turn_only, ui_language_t lang)
 { SDL_SetRenderDrawColor(r, GUI_STATUS_BG.r, GUI_STATUS_BG.g, GUI_STATUS_BG.b, 255);
   SDL_RenderFillRect(r, &bar);
 
   char text[GUI_NAME_LEN + 96];
-  if(u->pending.kind == DECISION_KIND_NONE && hide_game_over)
-  { snprintf(text, sizeof(text), "%s %u", LOCALIZED_STRING_L(lang, "Turn", "Tour", "Turno"),
-             u->view.turn); // the final combat is still being revealed
-  }
+  if(turn_only) // a combat is on show: its turn, no decision / game over yet
+    snprintf(text, sizeof(text), "%s %u", LOCALIZED_STRING_L(lang, "Turn", "Tour", "Turno"), turn);
   else if(u->pending.kind == DECISION_KIND_NONE)
   { char outcome[GUI_NAME_LEN + 24];
     if(u->view.game_state == PLAYER_A_WINS || u->view.game_state == PLAYER_B_WINS)
@@ -378,6 +376,30 @@ static void draw_seed_tag(SDL_Renderer* r, TTF_Font* font, const GuiLayout* layo
                 layout->status_bar.y + (layout->status_bar.h - (float)h) / 2.0f, GUI_SEED_TEXT);
 } // draw_seed_tag
 
+// Each seat's info line, hand, deck and discard, as table `v` has them (the live
+// view, or the snapshot of a combat still on show -- gui_reveal_view()), plus
+// the combat zones when no combat is on show.
+static void draw_seats(SDL_Renderer* renderer, const GuiFonts* fonts, const GuiLayout* layout,
+                       const SessionUpdate* u, const VisibleGameState* v,
+                       const GuiInputState* input, const GuiNames* names,
+                       const GuiReveal* reveal, bool show_reveal, ui_language_t lang)
+{ for(uint8_t p = 0; p < NUM_PLAYERS; p++)
+  { uint8_t seat = gui_layout_seat_for_player((PlayerID)p, u->view.viewer);
+    const GuiSeatLayout* sl = &layout->seat[seat];
+
+    uint8_t energy = v->energy[p];
+    if(reveal && v == &u->view)
+      gui_reveal_energy_override(reveal, (PlayerID)p, &energy);
+    draw_seat_info(renderer, fonts->status_font, sl->info, (PlayerID)p, energy, v, names, lang);
+    draw_hand(renderer, fonts->card_font, sl->hand, (PlayerID)p, u->view.viewer, v, input, lang);
+    draw_deck(renderer, fonts->card_font, sl->deck, v->deck_count[p]);
+    draw_discard(renderer, fonts->card_font, sl, &v->discard[p], lang);
+    if(!show_reveal)
+      draw_combat_zone(renderer, fonts->card_font, layout->combat_zone[seat],
+                       &u->view.combat_zone[p], lang);
+  }
+} // draw_seats
+
 void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
                       const SessionUpdate* u, const GuiInputState* input,
                       const GuiLog* log, const GuiNames* names, bool log_open, uint32_t seed,
@@ -388,10 +410,19 @@ void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
   GuiLayout layout;
   gui_layout_compute((float)win_w, (float)win_h, log_open, &layout);
 
-  draw_status_bar(renderer, fonts->status_font, layout.status_bar, u, names,
-                  reveal && gui_reveal_game_over_pending(reveal), lang);
-  draw_seed_tag(renderer, fonts->status_font, &layout, seed, lang);
   bool busy = reveal && gui_reveal_busy(reveal);
+  const CombatDetails* shown = NULL;
+  PlayerID attacker = PLAYER_A;
+  RevealStage stage = REVEAL_NONE;
+  bool show_reveal = reveal && gui_reveal_current(reveal, &shown, &attacker, &stage)
+                     && (busy || gui_reveal_needs_ack(reveal));
+  const VisibleGameState* v = &u->view; // the table as the combat on show left it
+  if(show_reveal)
+    gui_reveal_view(reveal, &v);
+
+  draw_status_bar(renderer, fonts->status_font, layout.status_bar, u, v->turn, names,
+                  show_reveal || (reveal && gui_reveal_game_over_pending(reveal)), lang);
+  draw_seed_tag(renderer, fonts->status_font, &layout, seed, lang);
   draw_action_bar(renderer, fonts->status_font, layout.buttons, u, input, busy,
                   reveal && gui_reveal_needs_ack(reveal), lang);
   draw_log_panel(renderer, fonts->status_font, fonts->log_font, &layout, log, lang);
@@ -406,29 +437,7 @@ void gui_render_frame(SDL_Renderer* renderer, const GuiFonts* fonts,
     staged_count = input->staged_count;
   }
 
-  const CombatDetails* shown = NULL;
-  PlayerID attacker = PLAYER_A;
-  RevealStage stage = REVEAL_NONE;
-  bool show_reveal = reveal && gui_reveal_current(reveal, &shown, &attacker, &stage)
-                     && (busy || gui_reveal_needs_ack(reveal));
-
-  for(uint8_t p = 0; p < NUM_PLAYERS; p++)
-  { uint8_t seat = gui_layout_seat_for_player((PlayerID)p, u->view.viewer);
-    GuiSeatLayout* sl = &layout.seat[seat];
-
-    uint8_t energy = u->view.energy[p];
-    if(reveal)
-      gui_reveal_energy_override(reveal, (PlayerID)p, &energy);
-    draw_seat_info(renderer, fonts->status_font, sl->info, (PlayerID)p, energy, &u->view, names,
-                   lang);
-    draw_hand(renderer, fonts->card_font, sl->hand, (PlayerID)p, u->view.viewer, &u->view,
-              input, lang);
-    draw_deck(renderer, fonts->card_font, sl->deck, u->view.deck_count[p]);
-    draw_discard(renderer, fonts->card_font, sl, &u->view.discard[p], lang);
-    if(!show_reveal)
-      draw_combat_zone(renderer, fonts->card_font, layout.combat_zone[seat],
-                       &u->view.combat_zone[p], lang);
-  }
+  draw_seats(renderer, fonts, &layout, u, v, input, names, reveal, show_reveal, lang);
   if(!show_reveal)
     gui_combat_panel_draw_preview(renderer, &layout, &u->view, staged, staged_count);
   if(show_reveal)

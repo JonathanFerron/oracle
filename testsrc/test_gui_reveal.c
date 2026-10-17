@@ -45,7 +45,7 @@ static void test_plain_events(void)
 { printf("plain events\n");
   gui_reveal_init(&rv, 2);
   GameEvent evs[] = { plain(EVT_TURN_BEGAN), plain(EVT_LUNA_COLLECTED) };
-  gui_reveal_push(&rv, buf_of(&eb, evs, 2));
+  gui_reveal_push(&rv, buf_of(&eb, evs, 2), NULL, 0);
   check("busy after push", gui_reveal_busy(&rv));
   check("first released at once", gui_reveal_pop(&rv, 0, &out) && out.type == EVT_TURN_BEGAN);
   check("second released at once", gui_reveal_pop(&rv, 0, &out) && out.type == EVT_LUNA_COLLECTED);
@@ -56,7 +56,7 @@ static void test_combat_two_steps(void)
 { printf("one combat, 2 s delay\n");
   gui_reveal_init(&rv, 2);
   GameEvent evs[] = { plain(EVT_MOVE_PLAYED), combat(PLAYER_A, 50, 7), plain(EVT_LUNA_COLLECTED) };
-  gui_reveal_push(&rv, buf_of(&eb, evs, 3));
+  gui_reveal_push(&rv, buf_of(&eb, evs, 3), NULL, 0);
   const CombatDetails* d;
   PlayerID att;
   RevealStage st;
@@ -81,7 +81,7 @@ static void test_two_combats(void)
 { printf("two combats in one update\n");
   gui_reveal_init(&rv, 2);
   GameEvent evs[] = { combat(PLAYER_A, 50, 5), combat(PLAYER_B, 40, 3) };
-  gui_reveal_push(&rv, buf_of(&eb, evs, 2));
+  gui_reveal_push(&rv, buf_of(&eb, evs, 2), NULL, 0);
   check("first waits", !gui_reveal_pop(&rv, 0, &out));
   check("first released", gui_reveal_pop(&rv, 2000, &out));
   check("second waits its own beat", !gui_reveal_pop(&rv, 2001, &out));
@@ -102,7 +102,7 @@ static void test_skip_and_zero(void)
 { printf("skip and zero delay\n");
   gui_reveal_init(&rv, 5);
   GameEvent evs[] = { combat(PLAYER_A, 10, 1), combat(PLAYER_A, 9, 1) };
-  gui_reveal_push(&rv, buf_of(&eb, evs, 2));
+  gui_reveal_push(&rv, buf_of(&eb, evs, 2), NULL, 0);
   check("held", !gui_reveal_pop(&rv, 0, &out));
   gui_reveal_skip(&rv, 100);
   check("skip releases the attack wait", gui_reveal_pop(&rv, 100, &out));
@@ -113,7 +113,7 @@ static void test_skip_and_zero(void)
   check("skip again releases it", gui_reveal_pop(&rv, 103, &out));
 
   gui_reveal_init(&rv, 0);
-  gui_reveal_push(&rv, buf_of(&eb, evs, 2));
+  gui_reveal_push(&rv, buf_of(&eb, evs, 2), NULL, 0);
   check("delay 0: both at once", gui_reveal_pop(&rv, 0, &out) && gui_reveal_pop(&rv, 0, &out)
         && !gui_reveal_busy(&rv));
   gui_reveal_init(&rv, 99);
@@ -126,7 +126,7 @@ static void test_ack_and_game_over(void)
 { printf("acknowledge + held game over\n");
   gui_reveal_init(&rv, 1);
   GameEvent evs[] = { combat(PLAYER_A, 10, 10), plain(EVT_GAME_OVER) };
-  gui_reveal_push(&rv, buf_of(&eb, evs, 2));
+  gui_reveal_push(&rv, buf_of(&eb, evs, 2), NULL, 0);
   check("game over is pending behind the combat", gui_reveal_game_over_pending(&rv));
   check("no ack needed before a combat finishes", !gui_reveal_needs_ack(&rv));
   gui_reveal_pop(&rv, 0, &out);
@@ -139,7 +139,7 @@ static void test_ack_and_game_over(void)
   check("ack clears it", !gui_reveal_needs_ack(&rv));
 
   GameEvent one[] = { combat(PLAYER_A, 10, 1) };
-  gui_reveal_push(&rv, buf_of(&eb, one, 1));
+  gui_reveal_push(&rv, buf_of(&eb, one, 1), NULL, 0);
   gui_reveal_pop(&rv, 5000, &out);
   gui_reveal_pop(&rv, 6000, &out);
   check("explicit ack clears it", gui_reveal_needs_ack(&rv) && (gui_reveal_ack(&rv), !gui_reveal_needs_ack(&rv)));
@@ -154,7 +154,7 @@ static void test_wraparound(void)
   { memset(&eb, 0, sizeof(eb));
     for(int i = 0; i < 400; i++)
       eb.ev[eb.count++] = e;
-    gui_reveal_push(&rv, &eb);
+    gui_reveal_push(&rv, &eb, NULL, 0);
     int n = 0;
     while(gui_reveal_pop(&rv, 0, &out))
       n++;
@@ -163,6 +163,65 @@ static void test_wraparound(void)
   check("3 x 400 events pass through a 512 ring", ok);
 } // test_wraparound
 
+static GameEvent drawn(PlayerID p, uint8_t card)
+{ GameEvent e = { .type = EVT_CARD_DRAWN, .player = p };
+  e.u.card = card;
+  return e;
+} // drawn
+
+static void test_draw_held_behind_combat(void)
+{ printf("draw held back until the combat is acknowledged\n");
+  gui_reveal_init(&rv, 2);
+  GameEvent evs[] = { combat(PLAYER_A, 50, 7), plain(EVT_TURN_BEGAN), drawn(PLAYER_B, 42) };
+  gui_reveal_push(&rv, buf_of(&eb, evs, 3), NULL, 0);
+  check("combat released after delay", !gui_reveal_pop(&rv, 0, &out)
+        && gui_reveal_pop(&rv, 2000, &out) && out.type == EVT_COMBAT_RESOLVED);
+  check("turn-began released", gui_reveal_pop(&rv, 2000, &out) && out.type == EVT_TURN_BEGAN);
+  check("draw held during ack", !gui_reveal_pop(&rv, 2000, &out) && gui_reveal_needs_ack(&rv));
+  gui_reveal_ack(&rv);
+  check("draw released after ack", gui_reveal_pop(&rv, 2000, &out) && out.type == EVT_CARD_DRAWN
+        && out.u.card == 42);
+  check("nothing left afterwards", !gui_reveal_pop(&rv, 2000, &out));
+} // test_draw_held_behind_combat
+
+static void test_draw_held_until_next_combat(void)
+{ printf("held draw released when the next combat starts\n");
+  gui_reveal_init(&rv, 2);
+  GameEvent evs[] = { combat(PLAYER_A, 50, 7), drawn(PLAYER_B, 42), combat(PLAYER_B, 60, 3) };
+  gui_reveal_push(&rv, buf_of(&eb, evs, 3), NULL, 0);
+  check("first combat", !gui_reveal_pop(&rv, 0, &out) && gui_reveal_pop(&rv, 2000, &out)
+        && out.type == EVT_COMBAT_RESOLVED);
+  check("draw held while first combat on show", !gui_reveal_pop(&rv, 3000, &out));
+  check("draw released before second combat", gui_reveal_pop(&rv, 4000, &out)
+        && out.type == EVT_CARD_DRAWN);
+  check("second combat follows", !gui_reveal_pop(&rv, 4000, &out) && gui_reveal_pop(&rv, 6000, &out)
+        && out.type == EVT_COMBAT_RESOLVED);
+} // test_draw_held_until_next_combat
+
+static void test_combat_views(void)
+{ printf("pre-combat table snapshots\n");
+  gui_reveal_init(&rv, 2);
+  const VisibleGameState* v = NULL;
+  check("none before any combat", !gui_reveal_view(&rv, &v));
+  VisibleGameState views[2] = { 0 };
+  views[0].turn = 3;
+  views[0].energy[PLAYER_B] = 50;
+  views[1].turn = 4;
+  GameEvent evs[] = { combat(PLAYER_A, 50, 7), combat(PLAYER_B, 60, 3), combat(PLAYER_A, 43, 1) };
+  gui_reveal_push(&rv, buf_of(&eb, evs, 3), views, 2);
+  gui_reveal_pop(&rv, 0, &out); // first combat starts revealing
+  check("first combat's table", gui_reveal_view(&rv, &v) && v->turn == 3
+        && v->energy[PLAYER_B] == 50);
+  gui_reveal_pop(&rv, 2000, &out);
+  check("defender's energy drops on full reveal", gui_reveal_view(&rv, &v)
+        && v->energy[PLAYER_B] == 43);
+  gui_reveal_pop(&rv, 4000, &out); // second combat starts
+  check("second combat's table", gui_reveal_view(&rv, &v) && v->turn == 4);
+  gui_reveal_pop(&rv, 6000, &out);
+  gui_reveal_pop(&rv, 8000, &out); // third combat: past view_count
+  check("no snapshot past view_count", !gui_reveal_view(&rv, &v));
+} // test_combat_views
+
 int main(void)
 { test_plain_events();
   test_combat_two_steps();
@@ -170,6 +229,9 @@ int main(void)
   test_skip_and_zero();
   test_ack_and_game_over();
   test_wraparound();
+  test_draw_held_behind_combat();
+  test_draw_held_until_next_combat();
+  test_combat_views();
   printf("\n%d passed, %d failed\n", passed, failed);
   return failed ? 1 : 0;
 } // main

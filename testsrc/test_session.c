@@ -184,6 +184,51 @@ static void test_resign_path(TestSuite* suite)
   destroy_game_context(ctx);
 } // test_resign_path
 
+// AI-vs-AI: the whole game is one update, so each combat must come with its
+// own pre-combat table (combat_views[]) for the GUI to replay it at pace.
+static void test_ai_vs_ai_combat_views(TestSuite* suite)
+{ printf("\n=== AI vs AI: one pre-combat snapshot per combat ===\n");
+
+  config_t cfg = {0};
+  cfg.prng_seed = 7;
+  GameContext* ctx = create_game_context(&cfg);
+  PlayerType types[NUM_PLAYERS] = { AI_PLAYER, AI_PLAYER };
+  StrategySet strategies = {0};
+  set_player_strategy_by_type(&strategies, PLAYER_A, AI_STRATEGY_RANDOM);
+  set_player_strategy_by_type(&strategies, PLAYER_B, AI_STRATEGY_RANDOM);
+  SessionClient* c = session_local_start(types, &strategies, INITIAL_CASH_DEFAULT, ctx);
+
+  static SessionUpdate u; // large; keep it off the stack
+  bool over = false;
+  time_t dl = deadline();
+  while(time(NULL) < dl && !over)
+  { over = session_client_poll(c, &u) && u.pending.kind == DECISION_KIND_NONE;
+    thrd_yield();
+  }
+  check(suite, "game finished", over);
+
+  uint16_t combats = 0;
+  bool energy_ok = true;
+  for(uint16_t i = 0; i < u.events.count; i++)
+  { const GameEvent* e = &u.events.ev[i];
+    if(e->type != EVT_COMBAT_RESOLVED) continue;
+    if(combats < u.combat_view_count)
+    { PlayerID defender = (PlayerID)((e->player + 1) % NUM_PLAYERS);
+      energy_ok = energy_ok
+                  && u.combat_views[combats].energy[defender] == e->u.combat.defender_energy_before;
+    }
+    combats++;
+  }
+  check(suite, "at least one combat", combats > 0);
+  check(suite, "one snapshot per combat (up to the cap)",
+        u.combat_view_count == (combats < SESSION_COMBAT_VIEWS_CAP ? combats
+                                : SESSION_COMBAT_VIEWS_CAP));
+  check(suite, "each snapshot is the table before its combat", energy_ok);
+
+  session_client_close(c);
+  destroy_game_context(ctx);
+} // test_ai_vs_ai_combat_views
+
 static void test_rejected_submission_then_retry(TestSuite* suite)
 { printf("\n=== illegal submission: rejected, session keeps waiting; a real "
            "decision then still succeeds ===\n");
@@ -256,6 +301,7 @@ int main(void)
   test_several_full_games(&suite);
   test_resign_path(&suite);
   test_rejected_submission_then_retry(&suite);
+  test_ai_vs_ai_combat_views(&suite);
 
   printf("\n%d passed, %d failed\n", suite.passed, suite.failed);
   return suite.failed == 0 ? 0 : 1;

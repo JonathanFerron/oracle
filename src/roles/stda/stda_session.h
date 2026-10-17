@@ -38,6 +38,11 @@
 #include "../../visibility/visible_state.h"
 #include "../../visibility/game_event.h"
 
+// Most combats one update carries a pre-combat snapshot for (a whole AI-vs-AI
+// game is one update -- 200 seeded games peaked at 39 turns, see
+// game_event.h's EVENT_BUF_CAP note); a combat past the cap has none.
+#define SESSION_COMBAT_VIEWS_CAP 128
+
 typedef struct
 { VisibleGameState view;
   PendingDecision pending;
@@ -47,6 +52,11 @@ typedef struct
   EventBuf events;                  // every event since the previous publish, filtered
   // for this client's viewer (event_filter_for_viewer())
   bool rejected;                    // the last CMD_SUBMIT was illegal; pending unchanged
+  // The table just before each EVT_COMBAT_RESOLVED in `events`, in order (the
+  // first combat_view_count of them) -- `view` is already past every event, so
+  // a UI pacing the events out shows these while each combat is on screen.
+  VisibleGameState combat_views[SESSION_COMBAT_VIEWS_CAP];
+  uint8_t combat_view_count;
 } SessionUpdate;
 
 typedef enum

@@ -14,6 +14,13 @@
 // The last combat's panel stays on show (REVEAL_FULL) until the player
 // acknowledges it or the next combat starts; a following combat first waits `delay_ms` so back-to-back combats
 // (own attack, then the AI's after my defense) don't blur together.
+// A card drawn after a combat (the start of the viewer's next turn) is held
+// back out of the log until that combat is acknowledged or the next combat
+// starts, so the draw only shows once the combat results have been taken in.
+// The table itself (turn, hands, discards, energy...) follows the same pace:
+// each combat carries a pre-combat snapshot of it (SessionUpdate's
+// combat_views[]) that gui_reveal_view() hands out while it is on screen --
+// the live view is already past every queued event (a whole AI-vs-AI game).
 // Time is passed in (ms, any monotonic origin); nothing here reads a clock.
 
 #ifndef GUI_REVEAL_H
@@ -22,8 +29,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "../../visibility/game_event.h"
+#include "../../visibility/visible_state.h"
 
 #define GUI_REVEAL_DELAY_MAX_S 10
+#define GUI_REVEAL_HELD_CAP 8 // EVT_CARD_DRAWN events held back behind a combat
 
 typedef enum
 { REVEAL_NONE,   // no combat shown yet
@@ -33,6 +42,8 @@ typedef enum
 
 typedef struct
 { GameEvent queue[EVENT_BUF_CAP]; // unreleased events, oldest first at `head`
+  VisibleGameState queue_view[EVENT_BUF_CAP]; // a queued combat's pre-combat table...
+  bool queue_has_view[EVENT_BUF_CAP];         // ...if the session sent one
   uint16_t head, count;
   int64_t delay_ms;
   bool started;          // the head combat has begun its reveal
@@ -41,13 +52,19 @@ typedef struct
   int64_t stage_since_ms;
   CombatDetails shown;   // the combat on display (valid unless stage == REVEAL_NONE)
   PlayerID shown_attacker;
+  VisibleGameState shown_view; // the shown combat's table (valid if shown_has_view)
+  bool shown_has_view;
+  GameEvent held[GUI_REVEAL_HELD_CAP]; // draws released after the ack, oldest first
+  uint8_t held_count;
 } GuiReveal;
 
 // `delay_seconds` is clamped to 0..GUI_REVEAL_DELAY_MAX_S; 0 reveals everything at once.
 void gui_reveal_init(GuiReveal* rv, int delay_seconds);
 
-// Queues every event of an update (drops what doesn't fit, like EventBuf).
-void gui_reveal_push(GuiReveal* rv, const EventBuf* events);
+// Queues every event of an update (drops what doesn't fit, like EventBuf),
+// pairing the k-th EVT_COMBAT_RESOLVED with views[k] for k < view_count.
+void gui_reveal_push(GuiReveal* rv, const EventBuf* events, const VisibleGameState* views,
+                     uint8_t view_count);
 
 // Releases the next event that may now be logged, or returns false if none
 // can be yet. Call repeatedly each frame until it returns false.
@@ -77,5 +94,10 @@ bool gui_reveal_current(const GuiReveal* rv, const CombatDetails** details,
 // While a queued combat hasn't been fully revealed, its defender's energy is
 // shown as the pre-damage value. Returns true and sets `*energy` for `p` if so.
 bool gui_reveal_energy_override(const GuiReveal* rv, PlayerID p, uint8_t* energy);
+
+// The table as the combat on display left it -- its pre-combat snapshot, with
+// the defender's energy dropped once the damage is shown. False before the
+// first combat, or when the session sent no snapshot for it (live view then).
+bool gui_reveal_view(const GuiReveal* rv, const VisibleGameState** view);
 
 #endif // GUI_REVEAL_H

@@ -3,7 +3,8 @@
 // rationale (poll not push, batched publish cadence, C11 <threads.h>).
 // `update`/`published_version`/`cmd`/`has_cmd` are the only fields ever
 // touched by more than one thread (guarded by `lock`); everything else
-// (`engine`, `ctx`, `strategies`, `player_types`, `viewer`, `initial_cash`)
+// (`engine`, `ctx`, `strategies`, `player_types`, `viewer`, `initial_cash`,
+// `combat_views`/`combat_view_count`)
 // belongs to the session thread alone from session_local_start() onward.
 
 #include <stdlib.h>
@@ -20,6 +21,8 @@ struct SessionClient
   PlayerType player_types[NUM_PLAYERS];
   PlayerID viewer;
   uint16_t initial_cash;
+  VisibleGameState combat_views[SESSION_COMBAT_VIEWS_CAP]; // since the last publish
+  uint8_t combat_view_count;
 
   mtx_t lock;
   cnd_t cond;
@@ -65,6 +68,10 @@ static void publish(SessionClient* c, PendingDecision pending, EventBuf events, 
   fill_legal(&u, &c->engine.state, pending);
   u.events = events;
   u.rejected = rejected;
+  for(uint8_t i = 0; i < c->combat_view_count; i++)
+    u.combat_views[i] = c->combat_views[i];
+  u.combat_view_count = c->combat_view_count;
+  c->combat_view_count = 0;
 
   mtx_lock(&c->lock);
   c->update = u;
@@ -75,11 +82,15 @@ static void publish(SessionClient* c, PendingDecision pending, EventBuf events, 
 // Silently runs automatic steps and AI decisions, accumulating every event
 // into `events` (which may already hold events carried over from a just-
 // applied human decision -- see session_thread_main()), until a decision is
-// pending on a non-AI seat or the game ends.
+// pending on a non-AI seat or the game ends. Snapshots the table before each
+// combat (one engine_advance() resolves at most one) for publish().
 static PendingDecision advance_until_human_or_over(SessionClient* c, EventBuf* events)
 { PendingDecision pending;
   for(;;)
-  { EventBuf step = {0};
+  { if(c->engine.phase == ENG_COMBAT && c->combat_view_count < SESSION_COMBAT_VIEWS_CAP)
+      visibility_filter(&c->engine.state, c->viewer, &c->combat_views[c->combat_view_count++]);
+
+    EventBuf step = {0};
     pending = engine_advance(&c->engine, c->ctx, &step);
     event_buf_append(events, &step);
 

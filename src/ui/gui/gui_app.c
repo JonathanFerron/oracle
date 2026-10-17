@@ -591,7 +591,8 @@ static void gui_poll_session(GuiAppState* state)
   if(session_client_poll(state->session, &state->update))
   { state->have_update = true;
     gui_trace_update(&state->update);
-    gui_reveal_push(&state->reveal, &state->update.events);
+    gui_reveal_push(&state->reveal, &state->update.events, state->update.combat_views,
+                    state->update.combat_view_count);
 
     // Start staging fresh whenever this is a different decision than the one
     // the staged cards were picked for: kind/player changed, a rejected
