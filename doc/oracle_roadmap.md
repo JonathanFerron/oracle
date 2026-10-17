@@ -134,6 +134,11 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
    `doc/oracle_todo.md` "GUI Mode" item); Comic Sans MS (wanted as a font option, matches
    the printed cards) is on this box via `ttf-mscorefonts-installer` but its EULA forbids
    bundling the `.ttf`, so it must be a runtime system-path lookup, not a committed asset.
+   **Status 2026-10-16 (supersedes the 2026-10-01 note below)**: in-window player setup done (splash ->
+   setup panel -> game, Rematch / Setup..., `[gui] default_agent`), and the A14 acceptance playtest is done
+   (Jonathan: responsive, AI wait "very acceptable"). Order from here (Jonathan, 2026-10-16): champion
+   portrait art once his picks are finished -> draft formats (item 6 below) -> Android. The combat/dice
+   panel listed as "still open" further down was finished 2026-10-01.
    **Status 2026-10-01 (supersedes the "Paused" note below)**: steps 0-7 are done and `bin/oracle-gui`
    is playable end to end and being playtested -- printed-card-style champion/draw/cash faces, a
    paced combat-dice reveal (n-gon dice, Continue, pre-roll preview), New game button, `[gui]` config
