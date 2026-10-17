@@ -53,6 +53,12 @@ const char* get_strategy_display_name(AIStrategyType strategy,
                                       ui_language_t lang);
 const char* get_player_display_name(PlayerID player, PlayerConfig* pconfig);
 
+// Agent name as the setup menus show it: "The Gambler _ Random", or just
+// "Borealis" when the flavour and technical names are the same string.
+// Shared by the CLI/TUI menu and the GUI setup screen.
+void format_strategy_menu_name(AIStrategyType type, ui_language_t lang,
+                               char* buf, size_t n);
+
 // Writes the label used in place of a player's raw name wherever the CLI
 // (or TUI, if it adopts this too) wants to show at a glance whether a side
 // is AI-controlled and which agent: the interactive player's own name
