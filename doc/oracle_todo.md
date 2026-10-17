@@ -266,6 +266,33 @@ design; the rating is diagnostic, not a pass/fail bar.
 **Order from here (Jonathan, 2026-10-16): champion portraits (once his picks are done) -> draft formats
 (`ideas/10`, roadmap item 6) -> Android.** The rest of this section is optional polish, in no set order.
 
+- [ ] **Replace the ModernRifgo wordmark font** (2026-10-16, in progress): ModernRifgo is a personal-use "Demo"
+  font and can't stay in the public repo (details and sources: `assets/about.md`'s fonts entry). Pass 1 done:
+  `font_gallery.png` (repo root) shows "Oracle" in all 51 bundled families, numbered 1-51 alphabetically (#31 is
+  ModernRifgo). **Next:** Jonathan gives a shortlist by number -> render a second pass with just those, larger
+  (and maybe the full "Oracle: The Champions of Arcadia" title) -> he picks one -> switch `GUI_TITLE_FONT_PATH`
+  (`gui_app.c`), delete `assets/fonts/Modern_Rifgo/`, update `assets/about.md` (and check the logo artwork,
+  which may also use ModernRifgo). It stays in git history unless history is rewritten -- usually acceptable
+  for a demo font; Jonathan's call. Alternative: buy a licence that explicitly allows embedding in a public
+  open-source app.
+- [ ] **Font gallery easter egg: wire it to a hotkey** (suggested: **Ctrl+Alt+Shift+G**, "G" for Gallery).
+  The screen already exists and is built into `bin/oracle-gui` (`src/ui/gui/gui_font_gallery.{h,c}`) but nothing
+  opens it yet. Wiring, all in `gui_app.c`:
+  - add `GUI_SCREEN_FONTS` to `GuiScreen`, plus `GuiFontGallery gallery`, `bool gallery_open` and
+    `GuiScreen gallery_return` (screen to go back to) in `GuiAppState`;
+  - in `gui_sdl_event()`, before the per-screen switch: on `SDL_EVENT_KEY_DOWN` with `key.key == SDLK_G` and
+    `(key.mod & SDL_KMOD_CTRL) && (key.mod & SDL_KMOD_ALT) && (key.mod & SDL_KMOD_SHIFT)` and not a repeat,
+    open it (lazily, the first time: `gui_font_gallery_open(&state->gallery, <assets>/fonts)` via
+    `gui_asset_path(..., "assets/fonts")`) and remember the current screen; Esc, a click, or the same combo
+    returns to it. Swallow other input while it's shown (the game keeps running behind it -- keep polling the
+    session in `gui_sdl_iterate()`);
+  - in `gui_sdl_iterate()`: when on `GUI_SCREEN_FONTS`, clear to the table colour and call
+    `gui_font_gallery_draw(renderer, &gallery, status_font, win_w, win_h, (SDL_Color){ GUI_TITLE_R, GUI_TITLE_G,
+    GUI_TITLE_B, GUI_TITLE_A }, "<current title font folder>")`;
+  - `gui_font_gallery_close()` in `gui_sdl_quit()` (before `TTF_Quit()`).
+  Off-screen check: the `flow.c`-style harness (roadmap "How GUI work is verified") can send the key event and
+  save a frame. Not in `--help` or any menu (easter egg); maybe mention it in `doc/`.
+
 - [ ] **Champion portrait art** -- next GUI item, but **wait until Jonathan says his picks are finished**
   (2026-10-16: not yet). Picks live in `/mnt/nougatoctet/oracle/images champions/<Species>/` as
   `<pre><n>_<Species>_<Name>.<jpg|png>` (20 files, 18 champions so far); everything else in those folders is
@@ -280,6 +307,15 @@ design; the rating is diagnostic, not a pass/fail bar.
   - Resize/pad to 556x839 without stretching (`magick in -resize 556x839 -background <bg> -gravity center
     -extent 556x839 out.png`); for scans/hand-coloured art sample a corner pixel for `<bg>` instead of pure
     white (see `assets/about.md`). Sources range 832x1248 .. 3277x4950.
+  - **Preserve provenance marks** (Jonathan, 2026-10-16): Bing Image Creator's terms forbid removing or
+    altering "content credentials or other provenance methods, marks, or signals". Its images can carry C2PA
+    Content Credentials (embedded metadata) plus an invisible watermark, and a plain ImageMagick resize to PNG
+    drops embedded metadata. The import script must (1) detect which picks carry credentials or other
+    provenance metadata (e.g. `c2patool <file>`, `exiftool -a -G1 <file>`), (2) carry it over to the resized
+    file -- with C2PA the normal way is a new manifest that lists the original as an ingredient
+    (`c2patool`), since the original signature can't be kept on changed pixels -- and keep the original file's
+    credentials in a sidecar at minimum, and (3) record generator and source file per champion in the import
+    manifest. Verify tool behaviour before relying on it; no editing that targets the invisible watermark.
   - Runtime: the card's art area is only ~90x138 px, so downscale quality matters (multi-step/box filter on
     load, or also ship a pre-shrunk GUI copy). Display rule from the plan: a portrait when one exists, else
     the fractal; `legacy_fractal = true` shows fractals on every card. Only 18 of the 34 fractal designs are

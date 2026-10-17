@@ -165,8 +165,13 @@ provenance, corpus composition, measured results).
   - `backgrounds/` -- table background tiles.
   - `logo/` -- `oracle_logo.png` (from `logo base/choix final.png`,
     1024x1024).
-  - `fonts/` -- one subfolder per family (`Modern_Rifgo/`, `Comic_Neue/`, `Patrick_Hand/`, plus the 45 Google Fonts families below; reorganised 2026-09-28 from a flat layout). `Modern_Rifgo/ModernRifgoRegular-MAvdP.otf` (the base logo/UI font;
-    licence terms not yet verified -- check before any public distribution).
+  - `fonts/` -- one subfolder per family (`Modern_Rifgo/`, `Comic_Neue/`, `Patrick_Hand/`, plus the Google Fonts families below; reorganised 2026-09-28 from a flat layout -- 51 family folders in all as of 2026-10-16: ModernRifgo + 50 SIL OFL families; `font_gallery.png` at the repo root shows them all). `Modern_Rifgo/ModernRifgoRegular-MAvdP.otf` (the base logo/UI font).
+    **Licence checked 2026-10-16: NOT redistributable as is.** The font's own name table says ©2025 Nirmana
+    Visual (designer Sigit Dwipa Raharjo, nirmanavisual.com); its FontSpace listing
+    (https://www.fontspace.com/modern-rifgo-font-f147816) labels it "Demo", "free for just Personal use /
+    Demo Version", commercial licence by contacting the designer (nirmanavisual@gmail.com). Shipping the
+    file in this public repo is redistribution -- to be replaced by an OFL font (pick from the gallery) or
+    covered by a licence that allows embedding in a public open-source app; see `doc/oracle_todo.md`.
     **Comic Sans MS is NOT here** despite being one of Jonathan's requested
     runtime font options (it's what the printed cards use) -- Microsoft's
     EULA for the `ttf-mscorefonts-installer` package (already installed on

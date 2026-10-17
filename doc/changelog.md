@@ -5,6 +5,24 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-10-16 (later) -- Font gallery, ModernRifgo licence check, provenance note
+
+- `src/ui/gui/gui_font_gallery.{h,c}`: an "easter egg" screen showing "Oracle" in every font family under
+  `assets/fonts/` (found at run time, alphabetical, numbered), scaled to a grid that fits the window, on the table
+  colour in the wordmark colour. Built into `bin/oracle-gui` but not reachable yet -- hotkey wiring
+  (Ctrl+Alt+Shift+G suggested) is a todo item. A 2560x1380 render is committed as `font_gallery.png`.
+- ModernRifgo (the splash wordmark font) turns out to be a personal-use "Demo" font (Nirmana Visual, via
+  FontSpace) -- not redistributable in this public repo. Replacement under way via the gallery; see
+  `assets/about.md` and the todo.
+- Bing Image Creator terms (last updated March 2026) checked for the future champion portraits: no
+  personal/non-commercial restriction in the current text, Microsoft claims no ownership, outputs may not be
+  unique, and provenance marks must not be removed -- so the portrait import script must preserve them
+  (todo, "Champion portrait art").
+- Doc housekeeping: the out-of-git GUI plan file's still-relevant content moved into `doc/oracle_todo.md`
+  ("GUI Mode", now authoritative) and `doc/oracle_roadmap.md` ("SDL3 GUI": settled decisions, verification).
+
+---
+
 ## 2026-10-16 -- GUI: in-window player setup
 
 - The GUI no longer asks setup questions in the terminal. The window opens on the logo with a **New game** button
