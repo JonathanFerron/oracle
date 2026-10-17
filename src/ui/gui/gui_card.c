@@ -97,7 +97,7 @@ static void draw_card_lines(const struct card* c, char lines[][40], uint8_t* cou
 
 static void cash_card_lines(const struct card* c, char lines[][40], uint8_t* count,
                             ui_language_t lang)
-{ snprintf(lines[0], 40, "%s", LOCALIZED_STRING_L(lang, "Cash", "Argent", "Dinero"));
+{ snprintf(lines[0], 40, "%s", LOCALIZED_STRING_L(lang, "Luna", "Luna", "Luna"));
   snprintf(lines[1], 40, "+%u", c->exchange_cash);
   *count = 2;
 } // cash_card_lines
@@ -134,7 +134,7 @@ void gui_card_draw_mini(SDL_Renderer* renderer, SDL_FRect rect, uint8_t card_ind
     }
     case CASH_CARD:
       gui_card_face_draw_mini_label(renderer, rect, border,
-                                    LOCALIZED_STRING_L(lang, "Cash", "Argent", "Dinero"));
+                                    LOCALIZED_STRING_L(lang, "Luna", "Luna", "Luna"));
       break;
   }
 } // gui_card_draw_mini

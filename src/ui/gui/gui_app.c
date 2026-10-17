@@ -2,7 +2,8 @@
 // SDL3 main-callbacks GUI application (MODE_STDA_GUI). Owns the window/
 // renderer lifecycle and the GameContext/SessionClient session; the M1
 // hello-window splash (table colour, Oracle logo, ModernRifgo wordmark)
-// shows only until the session's first SessionUpdate arrives, then
+// opens with a New game button that leads to the player setup screen
+// (gui_setup.c); once a game's first SessionUpdate arrives,
 // gui_render_frame() (gui_render.c) takes over every frame. See
 // ideas/9 gui/gui_architecture_synthesis.md and the implementation plan
 // (doc/oracle_roadmap.md's "SDL3 GUI" item) for what's still missing:
@@ -37,6 +38,10 @@
 #include "gui_names.h"
 #include "gui_layout.h"
 #include "gui_reveal.h"
+#include "gui_setup.h"
+#include "gui_card.h" // gui_draw_text()
+#include "../shared/localization.h"
+#include "../shared/player_config.h"
 #include "../../util/prng_seed.h" // generate_random_seed()
 
 #define GUI_WINDOW_TITLE "Oracle: The Champions of Arcadia"
@@ -89,8 +94,26 @@
 #define GUI_TITLE_B 0x78
 #define GUI_TITLE_A 128
 
+// Splash "New game" button, centred under the wordmark.
+#define GUI_SPLASH_BUTTON_W 200.0f
+#define GUI_SPLASH_BUTTON_H 44.0f
+#define GUI_SPLASH_BUTTON_BG (SDL_Color){ 0x2E, 0x6B, 0x5E, 255 } // gui_render.c's button green
+
+// Which screen the window shows: the splash (logo + New game) at launch, the
+// player setup panel (gui_setup.c), or the game itself.
+typedef enum
+{ GUI_SCREEN_SPLASH = 0,
+  GUI_SCREEN_SETUP,
+  GUI_SCREEN_GAME
+} GuiScreen;
+
 typedef struct
-{ SDL_Window* window;
+{ GuiScreen screen;
+  GuiSetupState setup;   // setup panel state while screen == GUI_SCREEN_SETUP
+  PlayerConfig pconfig;  // current players: the defaults until the first Start,
+  // then the last setup's choices (Rematch replays them, Setup... edits them)
+  uint32_t games_started; // the first game uses the configured seed, later ones a fresh one
+  SDL_Window* window;
   SDL_Renderer* renderer;
   SDL_Texture* logo;
   TTF_Font* font;         // M1 splash title (ModernRifgo)
@@ -117,11 +140,10 @@ typedef struct
 
 // SDL_EnterAppMainCallbacks() offers no user-data slot besides argc/argv, so
 // gui_app_run() stashes the caller's config here for gui_sdl_init() (the
-// callback SDL actually invokes) to pick up. Both pointers are only ever
-// read between gui_app_run()'s call and the matching gui_sdl_quit() return,
-// so this is a handoff, not shared mutable state.
+// callback SDL actually invokes) to pick up. Only ever read between
+// gui_app_run()'s call and the matching gui_sdl_quit() return, so this is a
+// handoff, not shared mutable state.
 static config_t* g_boot_cfg;
-static PlayerConfig* g_boot_pconfig;
 
 // Builds a StrategySet from pconfig and starts the session -- the session
 // thread copies the StrategySet by value (stda_session.h), so the local one
@@ -157,28 +179,65 @@ static bool gui_start_session(GuiAppState* state, config_t* cfg, PlayerConfig* p
   return true;
 } // gui_start_session
 
-// "New game" after game over: joins the finished session, then starts another
-// with the same player types/names/AI choices (g_boot_pconfig) and a fresh
-// random seed -- replaying a `-p` fixed seed would just repeat the same game.
-// The seed shown in the status bar follows (g_boot_cfg->prng_seed).
-static void gui_new_game(GuiAppState* state)
-{ session_client_close(state->session);
+// Joins the current session (if any) and frees its GameContext.
+static void gui_end_session(GuiAppState* state)
+{ if(state->session)
+    session_client_close(state->session);
   state->session = NULL;
-  destroy_game_context(state->ctx);
+  if(state->ctx)
+    destroy_game_context(state->ctx);
   state->ctx = NULL;
+} // gui_end_session
 
-  g_boot_cfg->prng_seed = generate_random_seed();
-  if(!gui_start_session(state, g_boot_cfg, g_boot_pconfig))
+// Starts a game with state->pconfig, ending any previous one. The first game
+// uses the configured seed (so `-p` still reproduces it); every later one gets
+// a fresh random seed -- replaying a fixed seed would just repeat the same
+// game. The seed shown in the status bar follows (g_boot_cfg->prng_seed).
+static void gui_begin_game(GuiAppState* state)
+{ gui_end_session(state);
+  if(state->games_started > 0)
+    g_boot_cfg->prng_seed = generate_random_seed();
+
+  if(!gui_start_session(state, g_boot_cfg, &state->pconfig))
   { fprintf(stderr, "GUI: could not start a new game\n");
     SDL_Event quit = { .type = SDL_EVENT_QUIT };
     SDL_PushEvent(&quit);
     return;
   }
+  state->games_started++;
   gui_log_init(&state->log);
   gui_reveal_init(&state->reveal, state->config.combat_delay_seconds);
   state->have_update = false;
   state->input_submitted = true; // staging starts fresh with the first update
-} // gui_new_game
+  state->screen = GUI_SCREEN_GAME;
+} // gui_begin_game
+
+// [gui] default_agent as an agent. An unknown or unplayable code falls back
+// to GUI_DEFAULT_AGENT_DEFAULT (gui_config.h) with a warning.
+static AIStrategyType gui_default_agent(const GuiConfig* config)
+{ AIStrategyType t = parse_ai_strategy_shorthand(config->default_agent);
+  if(t != AI_STRATEGY_COUNT && ai_strategy_is_implemented(t))
+    return t;
+
+  fprintf(stderr, "GUI config: default_agent '%s' is not a playable agent; using %s\n",
+          config->default_agent, GUI_DEFAULT_AGENT_DEFAULT);
+  return parse_ai_strategy_shorthand(GUI_DEFAULT_AGENT_DEFAULT);
+} // gui_default_agent
+
+// The setup screen's first defaults: init_player_config(), the [gui]
+// default_agent on both seats, then -Aa/-Ab on top for this session.
+static void gui_default_pconfig(const GuiAppState* state, PlayerConfig* out)
+{ init_player_config(out);
+  AIStrategyType agent = gui_default_agent(&state->config);
+  out->ai_strategies[PLAYER_A] = agent;
+  out->ai_strategies[PLAYER_B] = agent;
+  gui_setup_apply_cmdline_agents(out, g_boot_cfg->agent, g_boot_cfg->agent_set);
+} // gui_default_pconfig
+
+static void gui_open_setup(GuiAppState* state)
+{ gui_setup_open(&state->setup, &state->pconfig);
+  state->screen = GUI_SCREEN_SETUP;
+} // gui_open_setup
 
 // Builds "<executable dir>/../<relative>" into out -- asset paths resolve
 // relative to the executable, not the working directory, so bin/oracle-gui
@@ -358,6 +417,33 @@ static void gui_draw_title(GuiAppState* state)
   TTF_DrawRendererText(state->title_text, x, y);
 } // gui_draw_title
 
+static SDL_FRect gui_splash_button_rect(const GuiAppState* state)
+{ int win_w, win_h;
+  SDL_GetRenderOutputSize(state->renderer, &win_w, &win_h);
+  return (SDL_FRect)
+  { (win_w - GUI_SPLASH_BUTTON_W) / 2.0f, win_h / 2.0f + GUI_LOGO_DISPLAY_SIZE / 2.0f + 60.0f,
+    GUI_SPLASH_BUTTON_W, GUI_SPLASH_BUTTON_H
+  };
+} // gui_splash_button_rect
+
+static void gui_draw_splash_button(GuiAppState* state)
+{ SDL_FRect b = gui_splash_button_rect(state);
+  SDL_Color bg = GUI_SPLASH_BUTTON_BG;
+  SDL_SetRenderDrawColor(state->renderer, bg.r, bg.g, bg.b, bg.a);
+  SDL_RenderFillRect(state->renderer, &b);
+  SDL_SetRenderDrawColor(state->renderer, 255, 255, 255, 220);
+  SDL_RenderRect(state->renderer, &b);
+
+  const char* label = LOCALIZED_STRING_L(g_boot_cfg->language, "New game", "Nouvelle partie",
+                                         "Nueva partida");
+  int tw = 0, th = 0;
+  TTF_GetStringSize(state->status_font, label, 0, &tw, &th);
+  gui_draw_text(state->renderer, state->status_font, label, SDL_roundf(b.x + (b.w - tw) / 2.0f),
+                SDL_roundf(b.y + (b.h - th) / 2.0f), (SDL_Color)
+  { 255, 255, 255, 255
+  });
+} // gui_draw_splash_button
+
 // Opens the window at GUI_DEFAULT_WIN_W x GUI_DEFAULT_WIN_H, or -- when that
 // plus its title bar doesn't fit the primary display's usable area (the
 // screen minus any non-auto-hidden panels) -- maximized, so the window
@@ -429,11 +515,9 @@ static SDL_AppResult gui_sdl_init(void** appstate, int argc, char** argv)
   gui_log_init(&state->log);
   state->log_open = true;
 
-  if(!gui_start_session(state, g_boot_cfg, g_boot_pconfig))
-  { fprintf(stderr, "GUI: could not start game session\n");
-    return SDL_APP_FAILURE;
-  }
-
+  // No game yet: the splash's New game button opens the setup screen.
+  gui_default_pconfig(state, &state->pconfig);
+  state->screen = GUI_SCREEN_SPLASH;
   return SDL_APP_CONTINUE;
 } // gui_sdl_init
 
@@ -473,8 +557,10 @@ static void gui_release_log_events(GuiAppState* state)
                          g_boot_cfg->language);
 } // gui_release_log_events
 
-static SDL_AppResult gui_sdl_iterate(void* appstate)
-{ GuiAppState* state = (GuiAppState*)appstate;
+// Polls the session and moves revealed events into the log (game screen only).
+static void gui_poll_session(GuiAppState* state)
+{ if(state->screen != GUI_SCREEN_GAME || !state->session)
+    return;
 
   if(session_client_poll(state->session, &state->update))
   { state->have_update = true;
@@ -502,11 +588,22 @@ static SDL_AppResult gui_sdl_iterate(void* appstate)
 
   gui_release_log_events(state);
   gui_auto_decline_defense(state);
+} // gui_poll_session
+
+static SDL_AppResult gui_sdl_iterate(void* appstate)
+{ GuiAppState* state = (GuiAppState*)appstate;
+  gui_poll_session(state);
 
   SDL_SetRenderDrawColor(state->renderer, GUI_TABLE_R, GUI_TABLE_G, GUI_TABLE_B, 255);
   SDL_RenderClear(state->renderer);
 
-  if(state->have_update)
+  if(state->screen == GUI_SCREEN_SETUP)
+  { int win_w, win_h;
+    SDL_GetRenderOutputSize(state->renderer, &win_w, &win_h);
+    gui_setup_draw(state->renderer, state->status_font, &state->setup, (float)win_w,
+                   (float)win_h, g_boot_cfg->language);
+  }
+  else if(state->screen == GUI_SCREEN_GAME && state->have_update)
   { GuiFonts fonts = { .title_font = state->font, .status_font = state->status_font,
                        .card_font = state->card_font, .log_font = state->log_font
                      };
@@ -517,6 +614,8 @@ static SDL_AppResult gui_sdl_iterate(void* appstate)
   else
   { gui_draw_logo(state);
     gui_draw_title(state);
+    if(state->screen == GUI_SCREEN_SPLASH)
+      gui_draw_splash_button(state);
   }
 
   SDL_RenderPresent(state->renderer);
@@ -546,12 +645,48 @@ static void gui_continue_click(GuiAppState* state, float x, float y)
     gui_reveal_ack(&state->reveal);
 } // gui_continue_click
 
-static SDL_AppResult gui_sdl_event(void* appstate, SDL_Event* event)
-{ GuiAppState* state = (GuiAppState*)appstate;
-  if(event->type == SDL_EVENT_QUIT)
-    return SDL_APP_SUCCESS;
+// Game over: the action bar's Rematch (same players, fresh seed) and Setup...
+// (back to the setup screen, previous choices preselected) buttons --
+// drawn in this order by gui_render.c's draw_action_bar().
+static void gui_game_over_click(GuiAppState* state, float x, float y, float win_w, float win_h)
+{ GuiLayout layout;
+  gui_layout_compute(win_w, win_h, state->log_open, &layout);
+  SDL_FPoint p = { x, y };
+  SDL_FRect rematch = gui_layout_button_rect(layout.buttons, 0, 2);
+  SDL_FRect setup = gui_layout_button_rect(layout.buttons, 1, 2);
+  if(SDL_PointInRectFloat(&p, &rematch))
+    gui_begin_game(state);
+  else if(SDL_PointInRectFloat(&p, &setup))
+    gui_open_setup(state);
+} // gui_game_over_click
 
-  if(event->type == SDL_EVENT_KEY_DOWN && event->key.key == SDLK_L && !event->key.repeat)
+static void gui_game_click(GuiAppState* state, float x, float y)
+{ if(gui_log_toggle_hit(state, x, y))
+    state->log_open = !state->log_open;
+  else if(gui_reveal_busy(&state->reveal))
+    gui_reveal_skip(&state->reveal, (int64_t)SDL_GetTicks()); // input is locked meanwhile
+  else if(gui_reveal_needs_ack(&state->reveal))
+    gui_continue_click(state, x, y);
+  else if(state->have_update)
+  { int win_w, win_h;
+    SDL_GetRenderOutputSize(state->renderer, &win_w, &win_h);
+
+    if(state->update.pending.kind == DECISION_KIND_NONE)
+    { gui_game_over_click(state, x, y, (float)win_w, (float)win_h);
+      return;
+    }
+
+    SessionCommand cmd;
+    if(gui_input_handle_click(&state->input, &state->update, x, y, (float)win_w, (float)win_h,
+                              state->log_open, &cmd))
+    { session_client_send(state->session, &cmd);
+      state->input_submitted = true;
+    }
+  }
+} // gui_game_click
+
+static void gui_game_event(GuiAppState* state, const SDL_Event* event)
+{ if(event->type == SDL_EVENT_KEY_DOWN && event->key.key == SDLK_L && !event->key.repeat)
     state->log_open = !state->log_open;
   else if(event->type == SDL_EVENT_KEY_DOWN && !event->key.repeat)
   { gui_reveal_skip(&state->reveal, (int64_t)SDL_GetTicks()); // any other key ends a reveal wait
@@ -559,35 +694,70 @@ static SDL_AppResult gui_sdl_event(void* appstate, SDL_Event* event)
   }
 
   if(event->type == SDL_EVENT_MOUSE_BUTTON_DOWN && event->button.button == SDL_BUTTON_LEFT)
-  { if(gui_log_toggle_hit(state, event->button.x, event->button.y))
-      state->log_open = !state->log_open;
-    else if(gui_reveal_busy(&state->reveal))
-      gui_reveal_skip(&state->reveal, (int64_t)SDL_GetTicks()); // input is locked meanwhile
-    else if(gui_reveal_needs_ack(&state->reveal))
-      gui_continue_click(state, event->button.x, event->button.y);
-    else if(state->have_update)
-    { int win_w, win_h;
-      SDL_GetRenderOutputSize(state->renderer, &win_w, &win_h);
+    gui_game_click(state, event->button.x, event->button.y);
+} // gui_game_event
 
-      if(state->update.pending.kind == DECISION_KIND_NONE)
-      { GuiLayout layout;
-        gui_layout_compute((float)win_w, (float)win_h, state->log_open, &layout);
-        SDL_FRect btn = gui_layout_button_rect(layout.buttons, 0, 1);
-        SDL_FPoint p = { event->button.x, event->button.y };
-        if(SDL_PointInRectFloat(&p, &btn))
-          gui_new_game(state);
-        return SDL_APP_CONTINUE;
-      }
-
-      SessionCommand cmd;
-      if(gui_input_handle_click(&state->input, &state->update, event->button.x, event->button.y,
-                                (float)win_w, (float)win_h, state->log_open, &cmd))
-      { session_client_send(state->session, &cmd);
-        state->input_submitted = true;
-      }
-    }
+static void gui_splash_event(GuiAppState* state, const SDL_Event* event)
+{ bool enter = event->type == SDL_EVENT_KEY_DOWN && !event->key.repeat
+               && (event->key.key == SDLK_RETURN || event->key.key == SDLK_KP_ENTER);
+  bool click = false;
+  if(event->type == SDL_EVENT_MOUSE_BUTTON_DOWN && event->button.button == SDL_BUTTON_LEFT)
+  { SDL_FRect b = gui_splash_button_rect(state);
+    SDL_FPoint p = { event->button.x, event->button.y };
+    click = SDL_PointInRectFloat(&p, &b);
   }
+  if(enter || click)
+    gui_open_setup(state);
+} // gui_splash_event
 
+static void gui_setup_event(GuiAppState* state, const SDL_Event* event)
+{ GuiSetupResult res = GUI_SETUP_CONTINUE;
+  if(event->type == SDL_EVENT_MOUSE_BUTTON_DOWN && event->button.button == SDL_BUTTON_LEFT)
+  { int win_w, win_h;
+    SDL_GetRenderOutputSize(state->renderer, &win_w, &win_h);
+    res = gui_setup_click(&state->setup, (float)win_w, (float)win_h, event->button.x,
+                          event->button.y);
+  }
+  else if(event->type == SDL_EVENT_KEY_DOWN) // repeats too, so a held Backspace keeps erasing
+    res = gui_setup_key(&state->setup, event->key.key);
+  else if(event->type == SDL_EVENT_TEXT_INPUT)
+    gui_setup_text(&state->setup, event->text.text);
+
+  if(res == GUI_SETUP_START)
+  { state->pconfig = state->setup.pconfig;
+    gui_begin_game(state);
+  }
+} // gui_setup_event
+
+// SDL text input (SDL_EVENT_TEXT_INPUT, and the on-screen keyboard on touch
+// devices) is on exactly while a setup name field has focus.
+static void gui_sync_text_input(GuiAppState* state)
+{ bool want = state->screen == GUI_SCREEN_SETUP && gui_setup_wants_text(&state->setup);
+  if(want == SDL_TextInputActive(state->window))
+    return;
+  if(want)
+    SDL_StartTextInput(state->window);
+  else
+    SDL_StopTextInput(state->window);
+} // gui_sync_text_input
+
+static SDL_AppResult gui_sdl_event(void* appstate, SDL_Event* event)
+{ GuiAppState* state = (GuiAppState*)appstate;
+  if(event->type == SDL_EVENT_QUIT)
+    return SDL_APP_SUCCESS;
+
+  switch(state->screen)
+  { case GUI_SCREEN_SPLASH:
+      gui_splash_event(state, event);
+      break;
+    case GUI_SCREEN_SETUP:
+      gui_setup_event(state, event);
+      break;
+    default:
+      gui_game_event(state, event);
+      break;
+  }
+  gui_sync_text_input(state);
   return SDL_APP_CONTINUE;
 } // gui_sdl_event
 
@@ -599,10 +769,7 @@ static void gui_sdl_quit(void* appstate, SDL_AppResult result)
 
   // Joins the session thread before ctx is destroyed -- session_client_close()
   // guarantees the thread is no longer touching ctx once it returns.
-  if(state->session)
-    session_client_close(state->session);
-  if(state->ctx)
-    destroy_game_context(state->ctx);
+  gui_end_session(state);
 
   if(state->title_text)
     TTF_DestroyText(state->title_text);
@@ -630,9 +797,8 @@ static void gui_sdl_quit(void* appstate, SDL_AppResult result)
   SDL_Quit();
 } // gui_sdl_quit
 
-int gui_app_run(config_t* cfg, PlayerConfig* pconfig)
+int gui_app_run(config_t* cfg)
 { g_boot_cfg = cfg;
-  g_boot_pconfig = pconfig;
   int result = SDL_EnterAppMainCallbacks(0, NULL, gui_sdl_init, gui_sdl_iterate,
                                          gui_sdl_event, gui_sdl_quit);
   return result == 0 ? EXIT_SUCCESS : EXIT_FAILURE;

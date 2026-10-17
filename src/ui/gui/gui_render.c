@@ -87,7 +87,9 @@ static const char* button_label(GuiButtonId btn, ui_language_t lang)
     case GUI_BTN_CONTINUE:
       return LOCALIZED_STRING_L(lang, "Continue", "Continuer", "Continuar");
     case GUI_BTN_NEW_GAME:
-      return LOCALIZED_STRING_L(lang, "New game", "Nouvelle partie", "Nueva partida");
+      return LOCALIZED_STRING_L(lang, "Rematch", "Revanche", "Revancha");
+    case GUI_BTN_CHANGE_SETUP:
+      return LOCALIZED_STRING_L(lang, "Setup...", "Reglages...", "Ajustes...");
     default:
       return "";
   }
@@ -117,8 +119,9 @@ static void draw_area_label(SDL_Renderer* r, TTF_Font* font, SDL_FRect area, con
                 area.y + (area.h - (float)h) / 2.0f, GUI_THINKING_TEXT);
 } // draw_area_label
 
-// The status bar's button area shows a "New game" button once the game is over
-// (the text at the left already says who won), an "opponent is thinking" label
+// The status bar's button area shows "Rematch" (same players) and "Setup..."
+// (back to the setup screen) once the game is over (the text at the left
+// already says who won; gui_app.c hit-tests the two in this order), an "opponent is thinking" label
 // when it isn't the viewer's move (synthesis doc section 9.7), or the current
 // buttons (gui_input_active_buttons() -- the same list gui_input.c hit-tests).
 static void draw_action_bar(SDL_Renderer* r, TTF_Font* font, SDL_FRect bar,
@@ -138,9 +141,11 @@ static void draw_action_bar(SDL_Renderer* r, TTF_Font* font, SDL_FRect bar,
     return;
   }
 
-  if(u->pending.kind == DECISION_KIND_NONE) // game over: offer a rematch
-  { draw_button(r, font, gui_layout_button_rect(bar, 0, 1), button_label(GUI_BTN_NEW_GAME, lang),
+  if(u->pending.kind == DECISION_KIND_NONE) // game over: rematch or change the players
+  { draw_button(r, font, gui_layout_button_rect(bar, 0, 2), button_label(GUI_BTN_NEW_GAME, lang),
                 true);
+    draw_button(r, font, gui_layout_button_rect(bar, 1, 2),
+                button_label(GUI_BTN_CHANGE_SETUP, lang), true);
     return;
   }
   if(!input)
@@ -245,7 +250,7 @@ static void draw_seat_info(SDL_Renderer* r, TTF_Font* font, SDL_FRect rect,
 { char text[GUI_NAME_LEN + 64];
   snprintf(text, sizeof(text), "%s   %s %u   %s %u", names->label[p],
            LOCALIZED_STRING_L(lang, "Energy", "Energie", "Energia"), energy,
-           LOCALIZED_STRING_L(lang, "Cash", "Argent", "Dinero"), v->cash[p]);
+           LOCALIZED_STRING_L(lang, "Luna", "Luna", "Luna"), v->cash[p]);
   float old_pt = TTF_GetFontSize(font); // the font is shared with the status bar
   TTF_SetFontSize(font, GUI_INFO_PT);
   gui_draw_text(r, font, text, rect.x, rect.y, GUI_INFO_TEXT);

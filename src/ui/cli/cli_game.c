@@ -154,7 +154,7 @@ static void report_ai_no_combat_action(struct gamestate* gstate, PlayerID attack
                             "robo/recupero cartas en lugar de atacar"));
   else if(hand_after < hand_before)
     printf("%s %s.\n", label,
-           LOCALIZED_STRING("exchanged a champion for cash instead of attacking",
+           LOCALIZED_STRING("exchanged a champion for lunas instead of attacking",
                             "a echange un champion contre des lunas au lieu d'attaquer",
                             "cambio un campeon por lunas en lugar de atacar"));
   else

@@ -5,6 +5,34 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-10-16 -- GUI: in-window player setup
+
+- The GUI no longer asks setup questions in the terminal. The window opens on the logo with a **New game** button
+  (Enter works too), which opens the setup panel; **Start** begins the game. After a game, the status bar offers
+  **Rematch** (same players, fresh seed) and **Setup...** (the panel again, previous choices preselected). The
+  first game still uses the configured seed, so `-p` reproduces it.
+- Setup panel (`src/ui/gui/gui_setup.c`): game mode buttons; a name field per human seat (default name cleared on
+  the first keystroke, an emptied field falls back to it; UTF-8-aware Backspace; Tab/Enter/Esc); in AI vs AI a
+  Player 1 / Player 2 radio choosing which seat the agent list edits; the agent list in two columns, easiest first
+  (sorted by Borealis rating at run time), each row with a rating-coloured dot (hue 310 deg at the lowest rating
+  in use down to 0 deg at the highest, HSL 100%/50%), a faint band behind Borealis; seat assignment Direct /
+  Inverted / Random with a one-line hint ("X plays A (starts), Y plays B").
+- Rules in SDL-free `src/ui/gui/gui_setup_model.c`, `make test_gui_setup` (30/30).
+- Defaults: new `[gui] default_agent` key (a `-A` shorthand, default `junior`; unknown/unplayable codes warn and
+  fall back), then `-Aa`/`-Ab` on top -- `main.c` no longer warns that those are ignored in `--stda.gui`.
+- GUI cash labels (cash card, mini discard card, seat balance, log) read "Luna" in all three languages instead of
+  "Cash"/"Argent"/"Dinero"; the log's exchange line says "for lunas"/"contre des lunas"/"por lunas". Same in
+  the CLI's discard summary ("Luna" count) and AI cash-exchange line ("for lunas"); the typed command stays
+  `cash <index>`.
+- `format_strategy_menu_name()` (`player_config.c`) is now public, shared by the CLI menu and the panel. CLI menu
+  lines now read `[1] The Gambler _ Random _ rand : 2` (no "(available)" tag).
+- Verified off-screen: software-renderer PNGs of the panel (1920x1080, 1280x960, French), and a harness driving
+  `gui_app.c`'s callbacks on the offscreen video driver through splash -> setup -> AI-vs-AI game -> game over ->
+  Setup... -> second game, also under valgrind (0 errors, 0 bytes definitely lost). Jonathan playtested the setup
+  screen live the same day: works as intended.
+
+---
+
 ## 2026-10-01 -- GUI: pre-roll dice preview (increment 4, combat-dice feature complete)
 
 - `gui_combat_panel_draw_preview()`: before Confirm, an empty n-gon (die shape + champion colour, no number) appears

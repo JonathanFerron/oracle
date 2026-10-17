@@ -45,7 +45,7 @@ void gui_card_draw(SDL_Renderer* renderer, TTF_Font* font, SDL_FRect rect,
 
 // Half-width, half-height face-up card for the discard pile: champions without
 // art or name (cost, dN+base, species, order); draw/cash cards as just their
-// border colour with "Draw 2"/"Draw 3"/"Cash".
+// border colour with "Draw 2"/"Draw 3"/"Luna".
 void gui_card_draw_mini(SDL_Renderer* renderer, SDL_FRect rect, uint8_t card_index,
                         ui_language_t lang);
 

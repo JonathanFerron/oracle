@@ -191,7 +191,7 @@ void display_player_discard(PlayerID player, struct gamestate* gstate, config_t*
          discard->size,
          LOCALIZED_STRING("Champions", "Champions", "Campeones"), champion_count,
          LOCALIZED_STRING("Draw", "Piocher", "Robar"), draw_count,
-         LOCALIZED_STRING("Cash", "Echange", "Intercambio"), cash_count);
+         LOCALIZED_STRING("Luna", "Luna", "Luna"), cash_count);
 }
 
 // Detailed discard pile contents: champions sorted by descending power,

@@ -35,7 +35,7 @@ static void card_label(uint8_t card, char* buf, size_t n, ui_language_t lang)
       snprintf(buf, n, "%s %u", LOCALIZED_STRING_L(lang, "Draw", "Pige", "Roba"), c->draw_num);
       return;
     case CASH_CARD:
-      snprintf(buf, n, "%s", LOCALIZED_STRING_L(lang, "Cash", "Argent", "Dinero"));
+      snprintf(buf, n, "%s", LOCALIZED_STRING_L(lang, "Luna", "Luna", "Luna"));
       return;
   }
 } // card_label
@@ -82,7 +82,7 @@ static void format_move_played(const GameEvent* e, const GuiNames* names, char* 
       snprintf(text, n, "%s %s %s %s (+%u).",
                who,
                LOCALIZED_STRING_L(lang, "exchanged", "a echange", "cambio"), list,
-               LOCALIZED_STRING_L(lang, "for cash", "contre argent", "por dinero"),
+               LOCALIZED_STRING_L(lang, "for lunas", "contre des lunas", "por lunas"),
                fullDeck[m->card].exchange_cash);
       return;
   }

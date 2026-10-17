@@ -36,7 +36,7 @@ bool gui_card_face_draw_mini_champion(SDL_Renderer* renderer, SDL_FRect rect,
                                       const struct card* c, SDL_Color border);
 
 // Half-size draw/recall or cash card: just the border colour and `text`
-// ("Draw 2", "Cash", ...) in the face font. Same contract: false if no face font.
+// ("Draw 2", "Luna", ...) in the face font. Same contract: false if no face font.
 bool gui_card_face_draw_mini_label(SDL_Renderer* renderer, SDL_FRect rect, SDL_Color border,
                                    const char* text);
 

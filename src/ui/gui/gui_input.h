@@ -55,7 +55,8 @@ typedef enum
   GUI_BTN_DRAW,
   GUI_BTN_RECALL,
   GUI_BTN_CANCEL,
-  GUI_BTN_NEW_GAME, // game over only; handled by gui_app.c, not gui_input.c
+  GUI_BTN_NEW_GAME, // game over only ("Rematch"); handled by gui_app.c, not gui_input.c
+  GUI_BTN_CHANGE_SETUP, // game over only ("Setup..."), next to GUI_BTN_NEW_GAME; gui_app.c
   GUI_BTN_CONTINUE  // after a revealed combat; also handled by gui_app.c
 } GuiButtonId;
 
