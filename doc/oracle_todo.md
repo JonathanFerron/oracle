@@ -269,8 +269,11 @@ design; the rating is diagnostic, not a pass/fail bar.
 - [ ] **Replace the ModernRifgo wordmark font** (2026-10-16, in progress): ModernRifgo is a personal-use "Demo"
   font and can't stay in the public repo (details and sources: `assets/about.md`'s fonts entry). Pass 1 done:
   `font_gallery.png` (repo root) shows "Oracle" in all 51 bundled families, numbered 1-51 alphabetically (#31 is
-  ModernRifgo). **Next:** Jonathan gives a shortlist by number -> render a second pass with just those, larger
-  (and maybe the full "Oracle: The Champions of Arcadia" title) -> he picks one -> switch `GUI_TITLE_FONT_PATH`
+  ModernRifgo). Pass 2 done: `font_gallery_shortlist1.png` (repo root) shows his 33-font shortlist (2, 3, 5, 6, 7,
+  9, 11, 12, 13, 16, 18, 19, 21, 22, 23, 25, 26, 30, 32, 33, 35, 36, 37, 38, 39, 40, 41, 44, 46, 47, 49, 50, 51),
+  original numbers kept (`gui_font_gallery_keep()`). He is also emailing the designer to ask whether ModernRifgo
+  may be bundled in this open-source game. **Next:** narrow further (maybe render the full "Oracle: The Champions
+  of Arcadia" title) or use ModernRifgo if permission comes through -> he picks one -> switch `GUI_TITLE_FONT_PATH`
   (`gui_app.c`), delete `assets/fonts/Modern_Rifgo/`, update `assets/about.md` (and check the logo artwork,
   which may also use ModernRifgo). It stays in git history unless history is rewritten -- usually acceptable
   for a demo font; Jonathan's call. Alternative: buy a licence that explicitly allows embedding in a public

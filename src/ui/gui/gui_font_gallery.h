@@ -20,6 +20,7 @@ typedef struct
   char name[64];           // display name: folder name with '_' -> ' '
   TTF_Font* font;          // NULL if no usable file was found in the folder
   float pt;                // size the font is currently set to
+  int number;              // 1-based position in the full alphabetical list (kept by _keep())
 } GuiGalleryFont;
 
 typedef struct
@@ -39,6 +40,11 @@ bool gui_font_gallery_open(GuiFontGallery* g, const char* fonts_dir);
 // `current` (may be NULL) is the folder name of the font in use, marked as such.
 void gui_font_gallery_draw(SDL_Renderer* renderer, GuiFontGallery* g, TTF_Font* label_font,
                            float win_w, float win_h, SDL_Color ink, const char* current);
+
+// Keeps only the fonts whose number (as shown in the full gallery) is in
+// `numbers`, closing the rest; the kept ones keep their original numbers, so a
+// shortlist render can be compared against the full one.
+void gui_font_gallery_keep(GuiFontGallery* g, const int* numbers, int n);
 
 void gui_font_gallery_close(GuiFontGallery* g);
 

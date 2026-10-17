@@ -88,8 +88,24 @@ bool gui_font_gallery_open(GuiFontGallery* g, const char* fonts_dir)
   SDL_free(entries);
 
   qsort(g->fonts, (size_t)g->count, sizeof(g->fonts[0]), compare_fonts);
+  for(int i = 0; i < g->count; i++)
+    g->fonts[i].number = i + 1;
   return true;
 } // gui_font_gallery_open
+
+void gui_font_gallery_keep(GuiFontGallery* g, const int* numbers, int n)
+{ int kept = 0;
+  for(int i = 0; i < g->count; i++)
+  { bool wanted = false;
+    for(int k = 0; k < n && !wanted; k++)
+      wanted = numbers[k] == g->fonts[i].number;
+    if(wanted)
+      g->fonts[kept++] = g->fonts[i];
+    else if(g->fonts[i].font)
+      TTF_CloseFont(g->fonts[i].font);
+  }
+  g->count = kept;
+} // gui_font_gallery_keep
 
 void gui_font_gallery_close(GuiFontGallery* g)
 { for(int i = 0; i < g->count; i++)
@@ -138,14 +154,14 @@ static void draw_centred(SDL_Renderer* r, TTF_Font* font, const char* text, floa
 } // draw_centred
 
 static void draw_cell(SDL_Renderer* r, GuiGalleryFont* f, TTF_Font* label_font, SDL_FRect cell,
-                      int number, SDL_Color ink, bool is_current)
+                      SDL_Color ink, bool is_current)
 { int lw = 0, lh = 0;
   TTF_GetStringSize(label_font, "Ag", 0, &lw, &lh);
   float word_h_max = (cell.h - (float)lh - GALLERY_LABEL_GAP) * GALLERY_WORD_H_FRAC;
   float cx = cell.x + cell.w / 2.0f;
 
   char label[96];
-  snprintf(label, sizeof(label), "%d  %s%s", number, f->name, is_current ? "  (current)" : "");
+  snprintf(label, sizeof(label), "%d  %s%s", f->number, f->name, is_current ? "  (current)" : "");
   SDL_Color label_ink = { ink.r, ink.g, ink.b, 255 };
 
   if(!f->font)
@@ -181,6 +197,6 @@ void gui_font_gallery_draw(SDL_Renderer* r, GuiFontGallery* g, TTF_Font* label_f
   for(int i = 0; i < g->count; i++)
   { SDL_FRect cell = { GALLERY_MARGIN + (float)(i % cols) * cw, GALLERY_MARGIN + (float)(i / cols) * ch, cw, ch };
     bool is_current = current && strcmp(current, g->fonts[i].folder) == 0;
-    draw_cell(r, &g->fonts[i], label_font, cell, i + 1, ink, is_current);
+    draw_cell(r, &g->fonts[i], label_font, cell, ink, is_current);
   }
 } // gui_font_gallery_draw
