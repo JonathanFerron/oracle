@@ -72,12 +72,29 @@ static SDL_Surface* embolden(SDL_Surface* surf, int radius)
   return src;
 } // embolden
 
+// Turns every pixel white, keeping its alpha, so a colour mod can tint the
+// shape any shade (multiplying a black or grey source can't brighten it).
+// Same return contract as embolden(). Only the in-memory copy changes; the
+// files on disk (luna.png is also the window icon) stay as they are.
+static SDL_Surface* whiten(SDL_Surface* surf)
+{ SDL_Surface* out = SDL_ConvertSurface(surf, SDL_PIXELFORMAT_RGBA32);
+  if(!out)
+    return surf;
+  SDL_DestroySurface(surf);
+  for(int y = 0; y < out->h; y++)
+  { uint8_t* px = (uint8_t*)out->pixels + (size_t)y * out->pitch;
+    for(int x = 0; x < out->w; x++)
+      px[4 * x] = px[4 * x + 1] = px[4 * x + 2] = 255;
+  }
+  return out;
+} // whiten
+
 // Loads <assets>/<rel>, pre-shrunk by repeated halving until its longest side
 // is under 2x `max_side`. The line-art icons are hundreds of pixels wide and
 // get drawn ~20x smaller; a single linear-filtered minification aliases badly
 // (no mipmaps in SDL_Renderer), while halving steps act as a box filter.
 // A failure is warned about once by the caller's cache and remembered.
-static SDL_Texture* load_texture(const char* rel, int max_side, int bold_px)
+static SDL_Texture* load_texture(const char* rel, int max_side, int bold_px, bool white)
 { char path[640];
   snprintf(path, sizeof(path), "%s/%s", g_art.dir, rel);
   SDL_Surface* surf = IMG_Load(path);
@@ -86,6 +103,8 @@ static SDL_Texture* load_texture(const char* rel, int max_side, int bold_px)
     return NULL;
   }
 
+  if(white)
+    surf = whiten(surf);
   if(bold_px > 0)
     surf = embolden(surf, bold_px * SDL_max(surf->w, surf->h) / 512);
   while(SDL_max(surf->w, surf->h) >= 2 * max_side)
@@ -109,7 +128,7 @@ SDL_Texture* gui_art_fractal(uint8_t champion_id)
   { char rel[64];
     snprintf(rel, sizeof(rel), "fractals/fractale_%03u.png", champion_id);
     g_art.tried[champion_id] = true;
-    g_art.tex[champion_id] = load_texture(rel, GUI_ART_FRACTAL_MAX_SIDE, 0);
+    g_art.tex[champion_id] = load_texture(rel, GUI_ART_FRACTAL_MAX_SIDE, 0, false);
   }
   return g_art.tex[champion_id];
 } // gui_art_fractal
@@ -119,6 +138,9 @@ static void icon_path(GuiIcon icon, char* rel, size_t n)
     snprintf(rel, n, "species/%s.png", SPECIES_FILES[icon - GUI_ICON_SPECIES_FIRST]);
   else if(icon >= GUI_ICON_ORDER_FIRST)
     snprintf(rel, n, "orders/order_%c.png", 'a' + (icon - GUI_ICON_ORDER_FIRST));
+  else if(icon >= GUI_ICON_COIN_LUNA)
+    snprintf(rel, n, "currency/%s.png",
+             icon == GUI_ICON_COIN_LUNA ? "luna" : icon == GUI_ICON_COIN_AUREUS ? "aureus" : "opale");
   else
     snprintf(rel, n, "icons/%s.png",
              icon == GUI_ICON_SWORD ? "sword" : icon == GUI_ICON_SHIELD ? "shield" : "cost_hex");
@@ -132,7 +154,8 @@ SDL_Texture* gui_art_icon(GuiIcon icon)
     icon_path(icon, rel, sizeof(rel));
     g_art.icon_tried[icon] = true;
     g_art.icon[icon] = load_texture(rel, GUI_ART_ICON_MAX_SIDE,
-                                    icon >= GUI_ICON_ORDER_FIRST ? GUI_ART_ICON_BOLD_PX : 0);
+                                    icon >= GUI_ICON_ORDER_FIRST ? GUI_ART_ICON_BOLD_PX : 0,
+                                    icon >= GUI_ICON_COIN_LUNA && icon <= GUI_ICON_COIN_OPAL);
   }
   return g_art.icon[icon];
 } // gui_art_icon

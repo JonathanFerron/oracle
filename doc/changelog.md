@@ -5,6 +5,23 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-10-19 -- GUI: coin piles and seat layout
+
+Replaces each seat's "Luna 30" text with the player's coins (see the coin wallet entry below).
+
+- Layout (`gui_layout.c`'s `layout_seat_rows()`, shared by both seats): the info row splits into `energy`
+  (left, room for a future colour-coded energy bar) and `name` (centred over/under the hand); a 60 px
+  `coins` column sits left of the hand; the deck shrinks to a half-size "xN" count tile. Dice/combat rows
+  follow the hand's x/width. `VisibleGameState` gains `coins[NUM_PLAYERS]` (public -- coins sit on the table).
+- `gui_coins.{c,h}`: three piles stacked Luna/Aureus/Opal, each a flower of up to 7 flat-top hexagons
+  (`SDL_RenderGeometry`) -- centre first with the currency symbol, then clockwise from the top, bottom
+  last, which reads "+n" past 7. Darker fill, lighter symbol (Luna grey around luna.png's 172, Aureus
+  golden, Opal blue-green). An empty pile shows its centre hexagon and symbol faded, so piles never move.
+- `gui_art.c`: the three currency PNGs load as icons, turned white in memory (alpha kept) so
+  `SDL_SetTextureColorMod` can tint them; the files on disk and the window icon are unchanged.
+- Verified off-screen only (software renderer): counts match the engine at turns 1/13/19 of seed 1,
+  including "+10" and empty piles; valgrind clean. Open tweaks (size, Opal contrast) in `doc/oracle_todo.md`.
+
 ## 2026-10-19 -- Coin wallet: Luna/Aureus/Opal breakdown of each player's lunas
 
 Groundwork for drawing coin piles in the GUI instead of "Luna 30". From a spec Jonathan worked out on

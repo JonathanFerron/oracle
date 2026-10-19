@@ -7,6 +7,7 @@
 #include "gui_card.h"
 #include "gui_combat_panel.h"
 #include "gui_discard.h"
+#include "gui_coins.h"
 #include "../../core/game_constants.h" // fullDeck[]
 #include "../shared/localization.h"
 
@@ -395,6 +396,7 @@ static void draw_seats(SDL_Renderer* renderer, const GuiFonts* fonts, const GuiL
     if(reveal && v == &u->view)
       gui_reveal_energy_override(reveal, (PlayerID)p, &energy);
     draw_seat_info(renderer, fonts->status_font, sl, (PlayerID)p, energy, names, lang);
+    gui_coins_draw(renderer, fonts->card_font, sl->coins, &v->coins[p]);
     draw_hand(renderer, fonts->card_font, sl->hand, (PlayerID)p, u->view.viewer, v, input, lang);
     draw_deck(renderer, fonts->card_font, sl->deck, v->deck_count[p]);
     draw_discard(renderer, fonts->card_font, sl, &v->discard[p], lang);

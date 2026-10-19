@@ -3,7 +3,8 @@
 // fractale_<ID>.png, ID = the champion's 3-digit zero-padded fullDeck
 // champion_id, 001-102 -- see assets/about.md), shown when `legacy_fractal =
 // true` in the [gui] config, plus the small icons the champion card face uses
-// (sword, shield, cost hexagon, species emblems, order glyphs). Module-level
+// (sword, shield, cost hexagon, species emblems, order glyphs) and the
+// Luna/Aureus/Opal symbols the coin piles use. Module-level
 // state (one renderer, one cache) rather than a passed-around handle: the GUI
 // has exactly one renderer and draws from one thread, and this keeps
 // gui_card_draw()'s signature (7 call sites) unchanged.
@@ -20,6 +21,9 @@ typedef enum
 { GUI_ICON_SWORD,
   GUI_ICON_SHIELD,
   GUI_ICON_COST_HEX,
+  GUI_ICON_COIN_LUNA,                                    // currency symbols, loaded white
+  GUI_ICON_COIN_AUREUS,                                  // (alpha only) so SDL_SetTextureColorMod
+  GUI_ICON_COIN_OPAL,                                    // can tint them -- see gui_coins.c
   GUI_ICON_ORDER_FIRST,                                  // + ChampionOrder (5)
   GUI_ICON_SPECIES_FIRST = GUI_ICON_ORDER_FIRST + 5,     // + ChampionSpecies (15)
   GUI_ICON_COUNT = GUI_ICON_SPECIES_FIRST + 15
