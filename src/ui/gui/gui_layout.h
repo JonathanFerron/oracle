@@ -26,9 +26,11 @@
 #define GUI_MAX_BUTTON_SLOTS 3 // widest button list (gui_input.h GUI_MAX_BUTTONS)
 
 typedef struct
-{ SDL_FRect info;   // name/energy/cash label
+{ SDL_FRect energy; // info row, left end: energy (a future colour-coded bar)
+  SDL_FRect name;   // info row, over (top seat) / under (bottom seat) the hand: player name
+  SDL_FRect coins;  // left of the hand, card height: Luna/Aureus/Opal piles, stacked
   SDL_FRect hand;   // bounding row -- gui_layout_card_slot() subdivides it
-  SDL_FRect deck;   // single face-down slot + count label
+  SDL_FRect deck;   // half-size count tile right of the hand
   SDL_FRect discard; // mini-card grid (cols x rows of half-size cards) at the table's
   // left edge, under the top hand / over the bottom hand; cell 0 is the count tile
   // (gui_layout_discard_slot())

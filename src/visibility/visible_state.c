@@ -11,6 +11,7 @@ static void fill_public_fields(const struct gamestate* gs, VisibleGameState* out
 { for(uint8_t p = 0; p < NUM_PLAYERS; p++)
   { out->energy[p] = gs->current_energy[p];
     out->cash[p] = gs->current_cash_balance[p];
+    out->coins[p] = gs->wallet[p];
     out->hand_count[p] = gs->hand[p].size;
     out->deck_count[p] = (uint8_t)(gs->deck[p].top + 1);
     out->discard[p] = gs->discard[p];

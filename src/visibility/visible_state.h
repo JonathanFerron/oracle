@@ -28,6 +28,8 @@ typedef struct
   // Public, per player
   uint8_t energy[NUM_PLAYERS];
   uint16_t cash[NUM_PLAYERS];
+  CoinSet coins[NUM_PLAYERS];         // cash as Luna/Aureus/Opal coins -- on the
+  // table, so public (gamestate.wallet, coin_wallet.h)
   uint8_t hand_count[NUM_PLAYERS];
   uint8_t deck_count[NUM_PLAYERS];    // deck[p].top + 1
   Discard discard[NUM_PLAYERS];       // full contents -- discard piles are

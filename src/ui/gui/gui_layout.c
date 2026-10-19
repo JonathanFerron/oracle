@@ -15,69 +15,75 @@
 #define GUI_BUTTON_GAP 8.0f
 #define GUI_SEED_W 170.0f     // room reserved for the "Seed n" tag at the status bar's right end
 #define GUI_COMBAT_TUCK_GAP 4.0f // vertical gap between the two seats' combat-card rows
-#define GUI_SIDE_W GUI_CARD_WIDTH // the deck
+#define GUI_SIDE_W (GUI_CARD_WIDTH / 2.0f) // the deck: a half-size count tile
+#define GUI_COINS_W 60.0f     // three stacked hexagon flowers (gui_coins.c)
+#define GUI_ENERGY_W 220.0f   // room for a future energy bar
 #define GUI_TOGGLE_W 56.0f
 #define GUI_TOGGLE_H 28.0f
 #define GUI_LOG_FRACTION 0.19f // log side panel width as a fraction of the window...
 #define GUI_LOG_MIN_W 220.0f   // ...clamped to this range
 #define GUI_LOG_MAX_W 300.0f
 
-// seat[1] (top/opponent): info label, then hand + deck/discard on the same
-// row, then that seat's combat-zone row just below it.
+// One seat's info row (energy at the left, name centred over the hand) and
+// hand row (coins column, hand, deck tile) -- shared by both seats, which
+// differ only in where those two rows sit. The dice row and combat zone take
+// the hand row's x-span, so combat cards stay centred under/over the hand.
+static void layout_seat_rows(float win_w, float info_y, float hand_y, GuiSeatLayout* seat)
+{ float side_x = win_w - GUI_MARGIN - GUI_SIDE_W;
+  float hand_x = GUI_MARGIN + GUI_COINS_W + GUI_MARGIN;
+
+  seat->coins = (SDL_FRect)
+  { GUI_MARGIN, hand_y, GUI_COINS_W, GUI_CARD_HEIGHT
+  };
+  seat->hand = (SDL_FRect)
+  { hand_x, hand_y, side_x - GUI_MARGIN - hand_x, GUI_CARD_HEIGHT
+  };
+  seat->deck = (SDL_FRect)
+  { side_x, hand_y + (GUI_CARD_HEIGHT - GUI_CARD_HEIGHT / 2.0f) / 2.0f,
+    GUI_SIDE_W, GUI_CARD_HEIGHT / 2.0f
+  };
+  seat->energy = (SDL_FRect)
+  { GUI_MARGIN, info_y, GUI_ENERGY_W, GUI_INFO_H
+  };
+  // Centred on the hand, narrowed symmetrically to stay clear of the energy area.
+  float centre = seat->hand.x + seat->hand.w / 2.0f;
+  float half = centre - (seat->energy.x + seat->energy.w + GUI_MARGIN);
+  seat->name = (SDL_FRect)
+  { centre - half, info_y, 2.0f * half, GUI_INFO_H
+  };
+} // layout_seat_rows
+
+// seat[1] (top/opponent): info row, then hand row, then that seat's dice row
+// and combat-zone row just below it.
 static void layout_top_seat(float win_w, float y, GuiLayout* out)
-{ out->seat[1].info = (SDL_FRect)
-  { GUI_MARGIN, y, win_w - 2 * GUI_MARGIN, GUI_INFO_H
-  };
-  y += GUI_INFO_H;
-
-  float hand_w = win_w - 2 * GUI_MARGIN - GUI_SIDE_W - GUI_MARGIN;
-  out->seat[1].hand = (SDL_FRect)
-  { GUI_MARGIN, y, hand_w, GUI_CARD_HEIGHT
-  };
-
-  float side_x = win_w - GUI_MARGIN - GUI_SIDE_W;
-  out->seat[1].deck = (SDL_FRect)
-  { side_x, y, GUI_CARD_WIDTH, GUI_CARD_HEIGHT
-  };
-  y += GUI_CARD_HEIGHT;
+{ layout_seat_rows(win_w, y, y + GUI_INFO_H, &out->seat[1]);
+  SDL_FRect hand = out->seat[1].hand;
+  y += GUI_INFO_H + GUI_CARD_HEIGHT;
 
   out->dice_row[1] = (SDL_FRect)
-  { GUI_MARGIN, y, hand_w, GUI_DICE_ROW_H
+  { hand.x, y, hand.w, GUI_DICE_ROW_H
   };
   y += GUI_DICE_ROW_H;
 
   out->combat_zone[1] = (SDL_FRect)
-  { GUI_MARGIN, y, hand_w, GUI_CARD_HEIGHT
+  { hand.x, y, hand.w, GUI_CARD_HEIGHT
   };
 } // layout_top_seat
 
 // seat[0] (bottom/viewer): mirror of the top seat, built upward from
-// `bottom_y` (the window's bottom edge) so both seats share the same
-// hand/deck/discard geometry.
+// `bottom_y` (the window's bottom edge).
 static void layout_bottom_seat(float win_w, float bottom_y, GuiLayout* out)
-{ float y = bottom_y - GUI_INFO_H;
-  out->seat[0].info = (SDL_FRect)
-  { GUI_MARGIN, y, win_w - 2 * GUI_MARGIN, GUI_INFO_H
-  };
-
-  y -= GUI_CARD_HEIGHT;
-  float hand_w = win_w - 2 * GUI_MARGIN - GUI_SIDE_W - GUI_MARGIN;
-  out->seat[0].hand = (SDL_FRect)
-  { GUI_MARGIN, y, hand_w, GUI_CARD_HEIGHT
-  };
-
-  float side_x = win_w - GUI_MARGIN - GUI_SIDE_W;
-  out->seat[0].deck = (SDL_FRect)
-  { side_x, y, GUI_CARD_WIDTH, GUI_CARD_HEIGHT
-  };
+{ float y = bottom_y - GUI_INFO_H - GUI_CARD_HEIGHT;
+  layout_seat_rows(win_w, bottom_y - GUI_INFO_H, y, &out->seat[0]);
+  SDL_FRect hand = out->seat[0].hand;
 
   y -= GUI_DICE_ROW_H;
   out->dice_row[0] = (SDL_FRect)
-  { GUI_MARGIN, y, hand_w, GUI_DICE_ROW_H
+  { hand.x, y, hand.w, GUI_DICE_ROW_H
   };
   y -= GUI_CARD_HEIGHT;
   out->combat_zone[0] = (SDL_FRect)
-  { GUI_MARGIN, y, hand_w, GUI_CARD_HEIGHT
+  { hand.x, y, hand.w, GUI_CARD_HEIGHT
   };
 } // layout_bottom_seat
 
@@ -88,7 +94,8 @@ static void layout_bottom_seat(float win_w, float bottom_y, GuiLayout* out)
 // cards. Reading order: top-left first, growing toward the centre only as needed.
 static void layout_discards(GuiLayout* out)
 { float mini_w = GUI_CARD_WIDTH / 2.0f, mini_h = GUI_CARD_HEIGHT / 2.0f;
-  float cards_x = out->seat[1].hand.x + (out->seat[1].hand.w - GUI_COMBAT_CARDS_W) / 2.0f;
+  SDL_FRect zone = out->combat_zone[1];
+  float cards_x = zone.x + (zone.w - GUI_COMBAT_CARDS_W) / 2.0f;
   int cols = (int)((cards_x - 2 * GUI_MARGIN) / mini_w);
   float top = out->seat[1].hand.y + out->seat[1].hand.h;
   int rows = (int)((out->seat[0].hand.y - top) / 2.0f / mini_h);

@@ -41,6 +41,12 @@ static void build_fixture(struct gamestate* gs)
   gs->current_energy[PLAYER_B] = 88;
   gs->current_cash_balance[PLAYER_A] = 3;
   gs->current_cash_balance[PLAYER_B] = 5;
+  gs->wallet[PLAYER_A] = (CoinSet)
+  { 1, 1, 0
+  };
+  gs->wallet[PLAYER_B] = (CoinSet)
+  { 2, 0, 1
+  };
   gs->someone_has_zero_energy = false;
   gs->turn = 12;
   gs->turn_phase = DEFENSE;
@@ -120,6 +126,9 @@ static void test_public_fields_copied(TestSuite* suite)
         v.energy[PLAYER_A] == 77 && v.energy[PLAYER_B] == 88);
   check(suite, "cash copied for both players",
         v.cash[PLAYER_A] == 3 && v.cash[PLAYER_B] == 5);
+  check(suite, "coins copied for both players",
+        v.coins[PLAYER_A].luna == 1 && v.coins[PLAYER_A].aureus == 1 && v.coins[PLAYER_A].opal == 0
+        && v.coins[PLAYER_B].luna == 2 && v.coins[PLAYER_B].aureus == 0 && v.coins[PLAYER_B].opal == 1);
   check(suite, "discard[A] fully copied (2 cards, face-up)",
         v.discard[PLAYER_A].size == 2 &&
         v.discard[PLAYER_A].cards[0] == 30 &&

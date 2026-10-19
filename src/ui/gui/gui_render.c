@@ -242,25 +242,24 @@ static void draw_status_bar(SDL_Renderer* r, TTF_Font* font, SDL_FRect bar,
   gui_draw_text(r, font, text, bar.x + 10.0f, text_y, GUI_STATUS_TEXT);
 } // draw_status_bar
 
-static void draw_seat_info(SDL_Renderer* r, TTF_Font* font, SDL_FRect rect,
-                           PlayerID p, uint8_t energy, const VisibleGameState* v,
-                           const GuiNames* names, ui_language_t lang)
-{ char text[GUI_NAME_LEN + 64];
-  snprintf(text, sizeof(text), "%s   %s %u   %s %u", names->label[p],
-           LOCALIZED_STRING_L(lang, "Energy", "Energie", "Energia"), energy,
-           LOCALIZED_STRING_L(lang, "Luna", "Luna", "Luna"), v->cash[p]);
+// Energy at the info row's left end (`energy_rect`), the player name centred
+// in `name_rect` (over/under the hand). The coins are drawn by gui_coins.c.
+static void draw_seat_info(SDL_Renderer* r, TTF_Font* font, const GuiSeatLayout* sl,
+                           PlayerID p, uint8_t energy, const GuiNames* names,
+                           ui_language_t lang)
+{ char text[64];
+  snprintf(text, sizeof(text), "%s %u",
+           LOCALIZED_STRING_L(lang, "Energy", "Energie", "Energia"), energy);
   float old_pt = TTF_GetFontSize(font); // the font is shared with the status bar
   TTF_SetFontSize(font, GUI_INFO_PT);
-  gui_draw_text(r, font, text, rect.x, rect.y, GUI_INFO_TEXT);
+  gui_draw_text(r, font, text, sl->energy.x, sl->energy.y, GUI_INFO_TEXT);
+
+  int w = 0, h = 0;
+  TTF_GetStringSize(font, names->label[p], 0, &w, &h);
+  gui_draw_text(r, font, names->label[p], sl->name.x + (sl->name.w - (float)w) / 2.0f,
+                sl->name.y, GUI_INFO_TEXT);
   TTF_SetFontSize(font, old_pt);
 } // draw_seat_info
-
-static void draw_count_badge(SDL_Renderer* r, TTF_Font* font, SDL_FRect slot, uint8_t count)
-{ char text[8];
-  snprintf(text, sizeof(text), "x%u", count);
-  float y = slot.y + slot.h - (float)TTF_GetFontHeight(font) - 4.0f;
-  gui_draw_text(r, font, text, slot.x + 4.0f, y, GUI_BADGE_TEXT);
-} // draw_count_badge
 
 static void draw_hand(SDL_Renderer* r, TTF_Font* font, SDL_FRect row, PlayerID p,
                       PlayerID viewer, const VisibleGameState* v,
@@ -279,11 +278,16 @@ static void draw_hand(SDL_Renderer* r, TTF_Font* font, SDL_FRect row, PlayerID p
   }
 } // draw_hand
 
-static void draw_deck(SDL_Renderer* r, TTF_Font* font, SDL_FRect slot, uint8_t count)
-{ if(count == 0)
-    return;
-  gui_card_draw_back(r, slot);
-  draw_count_badge(r, font, slot, count);
+// Half-size tile with the deck size, styled like the discard pile's count tile.
+static void draw_deck(SDL_Renderer* r, TTF_Font* font, SDL_FRect tile, uint8_t count)
+{ SDL_SetRenderDrawColor(r, GUI_STATUS_BG.r, GUI_STATUS_BG.g, GUI_STATUS_BG.b, 255);
+  SDL_RenderFillRect(r, &tile);
+  char text[8];
+  snprintf(text, sizeof(text), "x%u", count);
+  int w = 0, h = 0;
+  TTF_GetStringSize(font, text, 0, &w, &h);
+  gui_draw_text(r, font, text, tile.x + (tile.w - (float)w) / 2.0f,
+                tile.y + (tile.h - (float)h) / 2.0f, GUI_BADGE_TEXT);
 } // draw_deck
 
 // Cell 0: the pile size (and how many draw/cash cards are hidden, if any).
@@ -390,7 +394,7 @@ static void draw_seats(SDL_Renderer* renderer, const GuiFonts* fonts, const GuiL
     uint8_t energy = v->energy[p];
     if(reveal && v == &u->view)
       gui_reveal_energy_override(reveal, (PlayerID)p, &energy);
-    draw_seat_info(renderer, fonts->status_font, sl->info, (PlayerID)p, energy, v, names, lang);
+    draw_seat_info(renderer, fonts->status_font, sl, (PlayerID)p, energy, names, lang);
     draw_hand(renderer, fonts->card_font, sl->hand, (PlayerID)p, u->view.viewer, v, input, lang);
     draw_deck(renderer, fonts->card_font, sl->deck, v->deck_count[p]);
     draw_discard(renderer, fonts->card_font, sl, &v->discard[p], lang);
