@@ -301,10 +301,9 @@ design; the rating is diagnostic, not a pass/fail bar.
   Off-screen check: the `flow.c`-style harness (roadmap "How GUI work is verified") can send the key event and
   save a frame. Not in `--help` or any menu (easter egg); maybe mention it in `doc/`.
 
-- [ ] **Coin piles: possible tweaks** (2026-10-19; piles done, see changelog): hexagons are ~20 px tall
+- [ ] **Coin piles: possible size tweak** (2026-10-19; piles done, see changelog): hexagons are ~20 px tall
   (three flowers share the 180 px coins column) -- bigger needs a layout change, e.g. piles side by side
-  somewhere wider. The Opal fill is the lowest-contrast on the teal table and its faded empty pile nearly
-  vanishes -- a thin light hexagon outline or a deeper blue would fix it. Not checked in a live window yet.
+  somewhere wider. Opal contrast on the teal table checked and fine (Jonathan, 2026-10-19).
 
 - [ ] **Champion portrait art** -- next GUI item, but **wait until Jonathan says his picks are finished**
   (2026-10-16: not yet). Picks live in `/mnt/nougatoctet/oracle/images champions/<Species>/` as

@@ -5,6 +5,19 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-10-19 -- GUI: colour-coded energy bar
+
+Replaces each seat's "Energy N" text.
+
+- `gui_energy.{c,h}`: a 25 x 175 px bar (7x its height), centred in the gap between the coin flowers and
+  the status bar (top seat) / window bottom (bottom seat) by `gui_layout.c`'s `layout_energy()`. The
+  coloured part is energy/99 of the width; its hue runs from magenta (300) at 99 down to red (0) at 1,
+  through blue, green, yellow and orange, at HSL saturation 60% / lightness 60% -- picked by Jonathan from
+  a 3x3 preview sheet. The empty part is a darker teal (`#1E5C61`); the number sits in dark grey
+  (`#262626`) just past the full bar's right end, at the same place for every value.
+- Player names darkened to `#6B2C00` (from `#9C4100`, already 100% saturated, so only darker).
+- Verified off-screen only (software renderer); valgrind clean, `-a -p` unchanged.
+
 ## 2026-10-19 -- GUI: coin piles and seat layout
 
 Replaces each seat's "Luna 30" text with the player's coins (see the coin wallet entry below).

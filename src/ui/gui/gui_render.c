@@ -8,12 +8,13 @@
 #include "gui_combat_panel.h"
 #include "gui_discard.h"
 #include "gui_coins.h"
+#include "gui_energy.h"
 #include "../../core/game_constants.h" // fullDeck[]
 #include "../shared/localization.h"
 
 #define GUI_STATUS_BG (SDL_Color){ 0x0F, 0x2B, 0x30, 255 }
 #define GUI_STATUS_TEXT (SDL_Color){ 255, 255, 255, 255 }
-#define GUI_INFO_TEXT (SDL_Color){ 0x9C, 0x41, 0x00, 255 } // dark burnt orange: strong contrast on the teal table
+#define GUI_NAME_TEXT (SDL_Color){ 0x6B, 0x2C, 0x00, 255 } // dark burnt orange (was 9C4100; already 100% saturated, so only darker)
 #define GUI_INFO_PT 19.0f
 #define GUI_BADGE_TEXT (SDL_Color){ 255, 255, 255, 255 }
 #define GUI_BUTTON_BG (SDL_Color){ 0x2E, 0x6B, 0x5E, 255 }
@@ -243,22 +244,18 @@ static void draw_status_bar(SDL_Renderer* r, TTF_Font* font, SDL_FRect bar,
   gui_draw_text(r, font, text, bar.x + 10.0f, text_y, GUI_STATUS_TEXT);
 } // draw_status_bar
 
-// Energy at the info row's left end (`energy_rect`), the player name centred
-// in `name_rect` (over/under the hand). The coins are drawn by gui_coins.c.
+// The energy bar in `sl->energy`, the player name centred in `sl->name`
+// (over/under the hand). The coins are drawn by gui_coins.c.
 static void draw_seat_info(SDL_Renderer* r, TTF_Font* font, const GuiSeatLayout* sl,
-                           PlayerID p, uint8_t energy, const GuiNames* names,
-                           ui_language_t lang)
-{ char text[64];
-  snprintf(text, sizeof(text), "%s %u",
-           LOCALIZED_STRING_L(lang, "Energy", "Energie", "Energia"), energy);
+                           PlayerID p, uint8_t energy, const GuiNames* names)
+{ gui_energy_draw(r, font, sl->energy, energy);
+
   float old_pt = TTF_GetFontSize(font); // the font is shared with the status bar
   TTF_SetFontSize(font, GUI_INFO_PT);
-  gui_draw_text(r, font, text, sl->energy.x, sl->energy.y, GUI_INFO_TEXT);
-
   int w = 0, h = 0;
   TTF_GetStringSize(font, names->label[p], 0, &w, &h);
   gui_draw_text(r, font, names->label[p], sl->name.x + (sl->name.w - (float)w) / 2.0f,
-                sl->name.y, GUI_INFO_TEXT);
+                sl->name.y, GUI_NAME_TEXT);
   TTF_SetFontSize(font, old_pt);
 } // draw_seat_info
 
@@ -395,7 +392,7 @@ static void draw_seats(SDL_Renderer* renderer, const GuiFonts* fonts, const GuiL
     uint8_t energy = v->energy[p];
     if(reveal && v == &u->view)
       gui_reveal_energy_override(reveal, (PlayerID)p, &energy);
-    draw_seat_info(renderer, fonts->status_font, sl, (PlayerID)p, energy, names, lang);
+    draw_seat_info(renderer, fonts->status_font, sl, (PlayerID)p, energy, names);
     gui_coins_draw(renderer, fonts->card_font, sl->coins, &v->coins[p]);
     draw_hand(renderer, fonts->card_font, sl->hand, (PlayerID)p, u->view.viewer, v, input, lang);
     draw_deck(renderer, fonts->card_font, sl->deck, v->deck_count[p]);

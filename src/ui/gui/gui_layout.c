@@ -1,6 +1,7 @@
 // gui_layout.c -- see gui_layout.h.
 
 #include "gui_layout.h"
+#include "gui_energy.h" // GUI_ENERGY_BAR_H
 #include "../../visibility/visible_state.h" // VIEWER_SPECTATOR
 
 #define GUI_STATUS_BAR_H 40.0f
@@ -17,7 +18,7 @@
 #define GUI_COMBAT_TUCK_GAP 4.0f // vertical gap between the two seats' combat-card rows
 #define GUI_SIDE_W (GUI_CARD_WIDTH / 2.0f) // the deck: a half-size count tile
 #define GUI_COINS_W 60.0f     // three stacked hexagon flowers (gui_coins.c)
-#define GUI_ENERGY_W 220.0f   // room for a future energy bar
+#define GUI_ENERGY_W 220.0f   // energy bar + number (gui_energy.h) -- also keeps the name clear of it
 #define GUI_TOGGLE_W 56.0f
 #define GUI_TOGGLE_H 28.0f
 #define GUI_LOG_FRACTION 0.19f // log side panel width as a fraction of the window...
@@ -43,7 +44,7 @@ static void layout_seat_rows(float win_w, float info_y, float hand_y, GuiSeatLay
     GUI_SIDE_W, GUI_CARD_HEIGHT / 2.0f
   };
   seat->energy = (SDL_FRect)
-  { GUI_MARGIN, info_y, GUI_ENERGY_W, GUI_INFO_H
+  { GUI_MARGIN, info_y, GUI_ENERGY_W, GUI_ENERGY_BAR_H // y set by layout_energy()
   };
   // Centred on the hand, narrowed symmetrically to stay clear of the energy area.
   float centre = seat->hand.x + seat->hand.w / 2.0f;
@@ -52,6 +53,11 @@ static void layout_seat_rows(float win_w, float info_y, float hand_y, GuiSeatLay
   { centre - half, info_y, 2.0f * half, GUI_INFO_H
   };
 } // layout_seat_rows
+
+// Centres a seat's energy rect vertically between `top` and `bottom`.
+static void layout_energy(float top, float bottom, SDL_FRect* energy)
+{ energy->y = (top + bottom - energy->h) / 2.0f;
+} // layout_energy
 
 // seat[1] (top/opponent): info row, then hand row, then that seat's dice row
 // and combat-zone row just below it.
@@ -172,6 +178,8 @@ void gui_layout_compute(float win_w, float win_h, bool log_open, GuiLayout* out)
 
   layout_top_seat(board_w, GUI_STATUS_BAR_H + GUI_MARGIN - GUI_TOP_INFO_LIFT, out);
   layout_bottom_seat(board_w, win_h - GUI_MARGIN + GUI_BOTTOM_INFO_DROP, out);
+  layout_energy(GUI_STATUS_BAR_H, out->seat[1].coins.y, &out->seat[1].energy);
+  layout_energy(out->seat[0].coins.y + out->seat[0].coins.h, win_h, &out->seat[0].energy);
   layout_discards(out);
   layout_tuck_combat(out);
   layout_combat_info(out);
