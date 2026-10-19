@@ -5,6 +5,32 @@ this file is where finished items go so the todo list doesn't keep growing.
 
 ---
 
+## 2026-10-19 -- Coin wallet: Luna/Aureus/Opal breakdown of each player's lunas
+
+Groundwork for drawing coin piles in the GUI instead of "Luna 30". From a spec Jonathan worked out on
+claude.ai (pay exactly if possible, Opals first, else the smallest overpay; change returned in Lunas).
+
+- `src/core/coin_wallet.{h,c}` (libc only): `CoinSet {luna, aureus, opal}`, `coin_select_payment()` and
+  helpers. `testsrc/test_coin_wallet.c` / `make test_coin_wallet` (20/20): every wallet 0..30 per coin x
+  every cost 0..9 (297,774 cases), checked against a brute-force reachable-sum set -- payment fits, value ==
+  cost + overpay, overpay is the true minimum and never above 2 (2 only for an Opals-only wallet paying
+  1/4/7). Also reproduces the spec's Python port exactly over 0..14 (33,614 cases, 403 needing change).
+- `struct gamestate` gains `CoinSet wallet[2]`, display-only: `current_cash_balance` stays authoritative,
+  so no agent, rollout or affordability check changed and `-a -p` is byte-identical. Incoming lunas (stipend,
+  exchange card -- paid as 5 Lunas, Jonathan's call) go straight into the wallet; spending only lowers the
+  balance until `settle_coin_payment()` (`game_state.c`) pays `coin_value(wallet) - balance` in coins. The
+  engine settles once per decision (`game_engine.c`'s `after_attack_applied()`/`after_defense_applied()`,
+  i.e. the decision's total cost, not card by card) and counts `GameEngine.change_events[]`. `play_turn()`
+  rollouts and the CLI/TUI loops never settle; nothing displays their wallets.
+- `test_game_engine.c`: the two engine-vs-`play_turn()` bit-for-bit checks now ignore the wallets; new
+  4,500-game check (random/A4/A7, all pairings) that the wallet always adds up to the balance. **Change
+  events: 37 in 4,500 games -- 36 random-vs-random, 1 random-vs-A4, 0 in every other pairing.** Random plays
+  long games (~42 settlements vs ~12-21) of mostly cost-1/2 spends that Opals can never pay exactly, so the
+  Lunas/Aureus run dry. The spec's "~0 in real play" holds for real agents. A gap-free tie-break among exact
+  payments was tried and changed nothing (no exact choice exists in those wallets), so not kept.
+
+---
+
 ## 2026-10-17 -- Splash wordmark: five candidate fonts, picked by seed
 
 - `font_gallery_shortlist2.png` (repo root): the full "Oracle: The Champions of Arcadia" title in Jonathan's four

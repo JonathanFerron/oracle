@@ -175,7 +175,7 @@ void play_cash_card_ai(struct gamestate* gstate, PlayerID player, uint8_t card_i
     // Collect cash
     uint8_t cash_received = fullDeck[card_idx].exchange_cash;
     gstate->current_cash_balance[player] += cash_received;
-
+    gstate->wallet[player].luna += cash_received; // the bank pays in Lunas
 
     DEBUG_PRINT(" Exchanged champion card %u for %u lunas\n", champion_to_exchange, cash_received);
 
@@ -201,6 +201,7 @@ void play_cash_card_interactive(struct gamestate* gstate, PlayerID player,
   // Collect cash
   uint8_t cash_received = fullDeck[card_idx].exchange_cash;
   gstate->current_cash_balance[player] += cash_received;
+  gstate->wallet[player].luna += cash_received; // the bank pays in Lunas
 
   DEBUG_PRINT(" Exchanged champion card %u for %u lunas\n", champion_idx, cash_received);
 

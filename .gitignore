@@ -9,6 +9,7 @@
 /bin/test_recall
 /bin/test_cash_exchange
 /bin/test_rating
+/bin/test_coin_wallet
 /bin/test_gui_config
 /bin/test_gui_reveal
 /bin/test_gui_discard

@@ -301,6 +301,12 @@ design; the rating is diagnostic, not a pass/fail bar.
   Off-screen check: the `flow.c`-style harness (roadmap "How GUI work is verified") can send the key event and
   save a frame. Not in `--help` or any menu (easter egg); maybe mention it in `doc/`.
 
+- [ ] **Coin piles instead of "Luna 30"** (2026-10-19; engine side done, see changelog): draw each seat's
+  `CoinSet` (to be exposed via `VisibleGameState`) as three flowers of up to 7 flat-top hexagons (Luna,
+  Aureus, Opal), symbol on the centre hexagon, "+n" on the bottom one past 7; darker hexagon fill, lighter
+  symbol (Luna = the silver grey of `assets/currency/luna.png`, Aureus golden, Opal blue with a hint of
+  green). Layout under discussion (name/energy/coin placement, the deck display).
+
 - [ ] **Champion portrait art** -- next GUI item, but **wait until Jonathan says his picks are finished**
   (2026-10-16: not yet). Picks live in `/mnt/nougatoctet/oracle/images champions/<Species>/` as
   `<pre><n>_<Species>_<Name>.<jpg|png>` (20 files, 18 champions so far); everything else in those folders is

@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include "../structures/deckstack.h"
 #include "../structures/card_collection.h"
+#include "coin_wallet.h"
 
 // Player identification
 typedef enum
@@ -127,7 +128,12 @@ struct card
 // Game state structure
 struct gamestate
 { PlayerID current_player;
-  uint16_t current_cash_balance[2];
+  uint16_t current_cash_balance[2];  // authoritative luna count
+  // Display-only coin breakdown (coin_wallet.h). Incoming lunas are added
+  // here at once; spending only lowers current_cash_balance until
+  // settle_coin_payment() picks the coins, so between settlements
+  // coin_value(&wallet[p]) - current_cash_balance[p] is the unpaid spend.
+  CoinSet wallet[2];
   uint8_t current_energy[2];
   bool someone_has_zero_energy;
 

@@ -86,6 +86,16 @@ static struct gamestate run_engine_game(GameContext* ctx, StrategySet* strats)
   return e.state;
 } // run_engine_game
 
+// memcmp() of two final states, ignoring the coin wallets: only the engine
+// settles coin payments (settle_coin_payment()), play_turn() never does, so
+// the display-only wallets legitimately differ. The authoritative
+// current_cash_balance is still compared.
+static bool same_except_wallet(struct gamestate a, struct gamestate b)
+{ memset(a.wallet, 0, sizeof(a.wallet));
+  memset(b.wallet, 0, sizeof(b.wallet));
+  return memcmp(&a, &b, sizeof(struct gamestate)) == 0;
+} // same_except_wallet
+
 static void test_engine_matches_reference_full_game(TestSuite* suite)
 { printf("\n=== full AI-vs-AI game: engine matches play_stda_auto_game()'s "
            "primitives bit-for-bit ===\n");
@@ -104,8 +114,8 @@ static void test_engine_matches_reference_full_game(TestSuite* suite)
   GameContext eng_ctx = mc_fork_context(ctx, 777);
   struct gamestate eng = run_engine_game(&eng_ctx, &strats);
 
-  check(suite, "final gamestate matches bit-for-bit",
-        memcmp(&ref, &eng, sizeof(struct gamestate)) == 0);
+  check(suite, "final gamestate matches bit-for-bit (coin wallets aside)",
+        same_except_wallet(ref, eng));
   check(suite, "sanity: game actually ended (not both 0-turn no-ops)", ref.turn > 0);
 
   destroy_game_context(ctx);
@@ -130,12 +140,80 @@ static void test_engine_matches_reference_several_seeds(TestSuite* suite)
     GameContext eng_ctx = mc_fork_context(ctx, seed);
     struct gamestate eng = run_engine_game(&eng_ctx, &strats);
 
-    if(memcmp(&ref, &eng, sizeof(struct gamestate)) != 0) all_matched = 0;
+    if(!same_except_wallet(ref, eng)) all_matched = 0;
   }
   check(suite, "20/20 seeds match bit-for-bit", all_matched);
 
   destroy_game_context(ctx);
 } // test_engine_matches_reference_several_seeds
+
+/* ========================================================================
+   Coin wallet: after every settlement the coins add up to the luna count,
+   and change events (the bank returning coins) stay rare in real games.
+   ======================================================================== */
+
+static bool wallets_match_cash(const struct gamestate* gs)
+{ for(int p = 0; p < NUM_PLAYERS; p++)
+    if(coin_value(&gs->wallet[p]) != gs->current_cash_balance[p]) return false;
+  return true;
+} // wallets_match_cash
+
+// Plays one engine game, checking the wallet invariant at every decision
+// point (every spend has been settled by then). Adds the game's change
+// events to *changes; returns false if the invariant ever broke.
+static bool run_wallet_game(GameContext* ctx, StrategySet* strats, long* changes)
+{ GameEngine e = {0};
+  EventBuf events = {0};
+  engine_init(&e, INITIAL_CASH_DEFAULT, ctx, &events);
+  bool ok = wallets_match_cash(&e.state);
+
+  for(;;)
+  { events.count = 0;
+    PendingDecision pending = engine_advance(&e, ctx, &events);
+    if(!wallets_match_cash(&e.state)) ok = false;
+    if(pending.kind == DECISION_KIND_NONE) break;
+    engine_run_ai(&e, strats, ctx, &events);
+  }
+  *changes += e.change_events[PLAYER_A] + e.change_events[PLAYER_B];
+  return ok;
+} // run_wallet_game
+
+static void test_coin_wallet_tracks_cash(TestSuite* suite)
+{ printf("\n=== coin wallet: matches the luna count, change events rare ===\n");
+  static const AIStrategyType AGENTS[] = { AI_STRATEGY_RANDOM, AI_STRATEGY_BALANCED,
+                                           AI_STRATEGY_HYBRID_HBT
+                                         };
+  const int n_agents = (int)(sizeof(AGENTS) / sizeof(AGENTS[0]));
+  const int games_per_pair = 500;
+
+  config_t cfg = {0};
+  cfg.prng_seed = 2026;
+  GameContext* ctx = create_game_context(&cfg);
+
+  bool all_ok = true;
+  long games = 0, changes = 0;
+  for(int a = 0; a < n_agents; a++)
+    for(int b = 0; b < n_agents; b++)
+    { StrategySet strats = {0};
+      set_player_strategy_by_type(&strats, PLAYER_A, AGENTS[a]);
+      set_player_strategy_by_type(&strats, PLAYER_B, AGENTS[b]);
+      for(int g = 0; g < games_per_pair; g++)
+      { GameContext game_ctx = mc_fork_context(ctx, (uint32_t)(++games));
+        if(!run_wallet_game(&game_ctx, &strats, &changes)) all_ok = false;
+      }
+    }
+  printf("  %ld games, %ld change events\n", games, changes);
+  check(suite, "wallet value == luna count at every decision point", all_ok);
+  // Measured 37 in 4500 games (2026-10-19): 36 random-vs-random, 1 random-
+  // vs-A4, 0 in every other pairing. Random plays long games (~42
+  // settlements vs ~12-21 for the others) of mostly cost-1/2 spends, which
+  // Opals can never pay exactly, so the Lunas/Aureus run dry. A gap-free
+  // tie-break among exact payments was tried and changed nothing. This
+  // bound only catches a gross regression.
+  check(suite, "change events in under 2% of games", changes * 50 < games);
+
+  destroy_game_context(ctx);
+} // test_coin_wallet_tracks_cash
 
 /* ========================================================================
    Hand-built states: engine_submit() legality gate, DISCARD_WAIT,
@@ -398,6 +476,7 @@ int main(void)
   test_max_turns_cap_ends_in_draw(&suite);
   test_card_drawn_event_and_redaction(&suite);
   test_engine_resign(&suite);
+  test_coin_wallet_tracks_cash(&suite);
 
   printf("\n%d passed, %d failed\n", suite.passed, suite.failed);
   return suite.failed == 0 ? 0 : 1;

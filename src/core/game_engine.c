@@ -147,6 +147,8 @@ static void advance_end_turn(GameEngine* e, EventBuf* out)
 static void after_attack_applied(GameEngine* e, GameEvent mv, EventBuf* out)
 { event_buf_push(out, mv);
   PlayerID attacker = e->state.current_player;
+  if(settle_coin_payment(&e->state, attacker) > 0)
+    e->change_events[attacker]++;
   e->state.turn_phase = DEFENSE;
   e->state.player_to_move = (PlayerID)(1 - attacker);
 
@@ -162,11 +164,16 @@ static void after_attack_applied(GameEngine* e, GameEvent mv, EventBuf* out)
 
 static void after_defense_applied(GameEngine* e, GameEvent mv, EventBuf* out)
 { event_buf_push(out, mv);
+  PlayerID defender = (PlayerID)(1 - e->state.current_player);
+  if(settle_coin_payment(&e->state, defender) > 0)
+    e->change_events[defender]++;
   e->phase = ENG_COMBAT;
 } // after_defense_applied
 
 void engine_init(GameEngine* e, uint16_t initial_cash, GameContext* ctx, EventBuf* out)
 { setup_game(initial_cash, &e->state, ctx);
+  for(int p = 0; p < NUM_PLAYERS; p++)
+    e->change_events[p] = 0;
 
   // setup_game() doesn't initialize turn/turn_phase/player_to_move -- see
   // CLAUDE.md's "known architectural gaps" -- set them before the mulligan

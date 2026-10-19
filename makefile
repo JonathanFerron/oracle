@@ -51,6 +51,7 @@ ENGINE_SRCS := $(SRCDIR)/core/card_actions.c \
                $(SRCDIR)/core/game_constants.c \
                $(SRCDIR)/core/game_context.c \
                $(SRCDIR)/core/game_state.c \
+               $(SRCDIR)/core/coin_wallet.c \
                $(SRCDIR)/core/turn_logic.c \
                $(SRCDIR)/core/game_engine.c \
                $(SRCDIR)/structures/card_collection.c \
@@ -184,6 +185,7 @@ TEST_COMBAT_SRCS := $(TESTSRCDIR)/test_combat.c \
                     $(SRCDIR)/core/game_constants.c \
                     $(SRCDIR)/core/game_context.c \
                     $(SRCDIR)/core/game_state.c \
+                    $(SRCDIR)/core/coin_wallet.c \
                     $(SRCDIR)/structures/card_collection.c \
                     $(SRCDIR)/structures/deckstack.c \
                     $(SRCDIR)/util/mtwister.c \
@@ -286,6 +288,13 @@ TEST_PUCT_SRCS := $(TESTSRCDIR)/test_puct.c \
                   $(AGENT_SRCS)
 TEST_PUCT_OBJS := $(BUILDDIR)/testsrc/test_puct.o \
                   $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(filter $(SRCDIR)/%,$(TEST_PUCT_SRCS)))
+
+# src/core/coin_wallet.c is libc-only, so this test links nothing else.
+TEST_COIN_WALLET_TARGET := $(BINDIR)/test_coin_wallet
+TEST_COIN_WALLET_SRCS := $(TESTSRCDIR)/test_coin_wallet.c \
+                         $(SRCDIR)/core/coin_wallet.c
+TEST_COIN_WALLET_OBJS := $(BUILDDIR)/testsrc/test_coin_wallet.o \
+                         $(BUILDDIR)/core/coin_wallet.o
 
 # src/rating/ is dependency-free (game_types.h + libc only -- see rating.h),
 # so this test needs no engine objects beyond the rating module itself.
@@ -618,7 +627,7 @@ $(BUILDDIR)/aicalibsrc/%.o: $(AICALIBDIR)/%.$(SRCEXT)
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(RM) -r $(BUILDDIR)/* $(GUI_BUILDDIR) $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_a15_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_gui_config $(BINDIR)/test_gui_reveal $(BINDIR)/test_gui_discard $(BINDIR)/test_gui_setup $(BINDIR)/test_champion_names $(BINDIR)/test_moves $(BINDIR)/test_player_decision $(BINDIR)/test_game_event $(BINDIR)/test_game_engine $(BINDIR)/test_session $(BINDIR)/test_ismcts $(BINDIR)/test_puct_policy $(BINDIR)/test_puct $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan $(BINDIR)/gen_corpus $(BINDIR)/calib_ismctsnn $(BINDIR)/calib_ismctsnn_timing $(BINDIR)/gen_policy_corpus $(BINDIR)/calib_puct $(BINDIR)/calib_puct_timing $(BINDIR)/calib_daredevil
+	$(RM) -r $(BUILDDIR)/* $(GUI_BUILDDIR) $(BINDIR)/oracle* $(BINDIR)/test_combo $(BINDIR)/test_a15_combo $(BINDIR)/test_recall $(BINDIR)/test_cash_exchange $(BINDIR)/test_rating $(BINDIR)/test_coin_wallet $(BINDIR)/test_gui_config $(BINDIR)/test_gui_reveal $(BINDIR)/test_gui_discard $(BINDIR)/test_gui_setup $(BINDIR)/test_champion_names $(BINDIR)/test_moves $(BINDIR)/test_player_decision $(BINDIR)/test_game_event $(BINDIR)/test_game_engine $(BINDIR)/test_session $(BINDIR)/test_ismcts $(BINDIR)/test_puct_policy $(BINDIR)/test_puct $(BINDIR)/test_hbt2ply_reply $(BINDIR)/test_combat $(BINDIR)/calib_valuebased $(BINDIR)/calib_combo_threshold $(BINDIR)/calib_borealis $(BINDIR)/calib_balanced $(BINDIR)/calib_heuristic $(BINDIR)/calib_tactical $(BINDIR)/calib_hbt $(BINDIR)/calib_hbt2ply $(BINDIR)/calib_simplemc $(BINDIR)/calib_a13 $(BINDIR)/calib_ismcts_timing $(BINDIR)/calib_ismcts_efficiency $(BINDIR)/calib_ismcts_rollout_policy $(BINDIR)/calib_mulligan $(BINDIR)/gen_corpus $(BINDIR)/calib_ismctsnn $(BINDIR)/calib_ismctsnn_timing $(BINDIR)/gen_policy_corpus $(BINDIR)/calib_puct $(BINDIR)/calib_puct_timing $(BINDIR)/calib_daredevil
 	$(RM) $(SRCDIR)/*.o $(SRCDIR)/*/*.o $(SRCDIR)/*/*/*.o $(SRCDIR)/*/*/*/*.o $(TESTSRCDIR)/*.o $(AICALIBDIR)/*.o
 	@echo "Clean complete"
 
@@ -939,6 +948,17 @@ $(TEST_CHAMPION_NAMES_TARGET): $(TEST_CHAMPION_NAMES_OBJS)
 	@mkdir -p $(BINDIR)
 	$(CC) $(TEST_CHAMPION_NAMES_OBJS) -o $(TEST_CHAMPION_NAMES_TARGET) $(LIBS)
 
+# Test coin payment selection (src/core/coin_wallet.c)
+.PHONY: test_coin_wallet
+test_coin_wallet: $(TEST_COIN_WALLET_TARGET)
+	./$(TEST_COIN_WALLET_TARGET)
+
+$(TEST_COIN_WALLET_TARGET): $(TEST_COIN_WALLET_OBJS)
+	@echo "Linking test_coin_wallet..."
+	@mkdir -p $(BINDIR)
+	$(CC) $(TEST_COIN_WALLET_OBJS) -o $(TEST_COIN_WALLET_TARGET) $(LIBS)
+	@echo "Test build complete: $(TEST_COIN_WALLET_TARGET)"
+
 # Test the Bradley-Terry rating system (src/rating/)
 .PHONY: test_rating
 test_rating: $(TEST_RATING_TARGET)
@@ -1215,6 +1235,7 @@ help:
 	@echo "  test_recall      - Build and run recall mechanic tests"
 	@echo "  test_cash_exchange - Build and run cash exchange tests"
 	@echo "  test_rating      - Build and run Bradley-Terry rating system tests"
+	@echo "  test_coin_wallet - Build and run coin payment selection tests"
 	@echo "  test_gui_config  - Build and run the GUI [gui] INI reader tests"
 	@echo "  test_gui_reveal  - Build and run the GUI combat-reveal queue tests"
 	@echo "  test_gui_discard - Build and run the GUI discard-grid selection tests"

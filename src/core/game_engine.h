@@ -49,6 +49,7 @@ typedef struct
 { struct gamestate state;   // authoritative
   EnginePhase phase;
   PendingDecision pending;
+  uint16_t change_events[NUM_PLAYERS]; // settlements where the bank gave change
 } GameEngine;
 
 // Deals the game (setup_game()) and initializes turn/turn_phase/

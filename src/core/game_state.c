@@ -14,6 +14,8 @@ void setup_game(uint16_t initial_cash, struct gamestate* gstate, GameContext* ct
   gstate->current_player = PLAYER_A;
   gstate->current_cash_balance[PLAYER_A] = initial_cash;
   gstate->current_cash_balance[PLAYER_B] = initial_cash;
+  gstate->wallet[PLAYER_A] = coin_wallet_from_value(initial_cash);
+  gstate->wallet[PLAYER_B] = coin_wallet_from_value(initial_cash);
   gstate->current_energy[PLAYER_A] = INITIAL_ENERGY_DEFAULT;
   gstate->current_energy[PLAYER_B] = INITIAL_ENERGY_DEFAULT;
   gstate->someone_has_zero_energy = false;
@@ -61,7 +63,19 @@ void setup_game(uint16_t initial_cash, struct gamestate* gstate, GameContext* ct
 
 void collect_1_luna(struct gamestate* gstate)
 { gstate->current_cash_balance[gstate->current_player]++;
+  gstate->wallet[gstate->current_player].luna++;
 }
+
+uint8_t settle_coin_payment(struct gamestate* gstate, PlayerID player)
+{ CoinSet* w = &gstate->wallet[player];
+  uint16_t owed = coin_value(w) - gstate->current_cash_balance[player];
+  if(owed == 0)
+    return 0;
+  uint8_t overpay = 0;
+  CoinSet p = coin_select_payment(w, owed, &overpay);
+  coin_apply_payment(w, &p, overpay);
+  return overpay;
+} // settle_coin_payment
 
 void change_current_player(struct gamestate* gstate)
 { gstate->current_player = 1 - gstate->current_player;
