@@ -262,6 +262,11 @@ design; the rating is diagnostic, not a pass/fail bar.
   `pending.kind` is `DECISION_KIND_NONE` while an AI thinks, and the status bar / action bar treat that as game
   over (outcome text + Rematch / Setup... buttons mid-game). Use `view.game_over` instead; part of the M2
   "AI-vs-AI spectating with a delay" item.
+- [x] **Status bar at the bottom of the window** -- DONE 2026-10-20 (`b683011`): turn/phase text, action
+  buttons, seed tag and the log toggle moved from the top edge to the bottom, next to the viewer's own hand, to
+  cut mouse travel to Continue (Jonathan's request). The open log panel's header ("Log" + "x") moved to the
+  panel's bottom to stay level with the bar. Layout only (`gui_layout_compute()`, `draw_log_panel()`);
+  hit-tests read the same rects. Playtested live by Jonathan.
 
 **Order from here (Jonathan, 2026-10-16): champion portraits (once his picks are done) -> draft formats
 (`ideas/10`, roadmap item 6) -> Android.** The rest of this section is optional polish, in no set order.
@@ -493,4 +498,4 @@ stda_auto.c, `cli_game.c` (shared by CLI and TUI), and the interactive menu
 
 ---
 
-*Last Updated: September 2026*
+*Last Updated: October 2026*

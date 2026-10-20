@@ -143,6 +143,9 @@ actionable near-term checkboxes see `doc/oracle_todo.md`.
    panel listed as "still open" further down was finished 2026-10-01. **Open GUI work lives in
    `doc/oracle_todo.md`'s "GUI Mode" section** (authoritative since 2026-10-16; the plan file
    referenced in the older notes below is historical).
+   **Since then (2026-10-19/20)**: Luna/Aureus/Opal coin wallet and per-seat coin piles, a
+   colour-coded energy bar, and the status bar (turn text, buttons, seed, log toggle) moved to the
+   bottom of the window, next to the viewer's hand, to cut mouse travel to Continue.
    **Settled GUI decisions** (from the implementation plan; don't reopen without a reason):
    - Threading: C11 `<threads.h>` for the session thread (`stda_session.c`), not SDL threads --
      possible once Windows/MSYS2 was descoped. TSan doesn't work with glibc `<threads.h>` on this
@@ -476,4 +479,4 @@ strategy framework for pluggable AIs?
 
 ---
 
-*Last Updated: September 2026*
+*Last Updated: October 2026*
