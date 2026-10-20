@@ -1,0 +1,42 @@
+Oracle GUI (bin/oracle-gui) - runtime libraries
+================================================
+
+bin/oracle-gui is a prebuilt binary for Kubuntu 26.04 (x86-64). It needs the
+SDL3 runtime libraries, which are not always installed by default:
+
+  libsdl3-0        SDL3 core (window, input, rendering)
+  libsdl3-ttf0     SDL3_ttf (font rendering)
+  libsdl3-image0   SDL3_image (PNG loading)
+
+Built against: libsdl3 3.4.2, libsdl3-ttf 3.2.2, libsdl3-image 3.4.0.
+The runtime packages are enough; the -dev packages are only needed to
+compile from source.
+
+
+1. Check what is missing
+------------------------
+From this folder:
+
+  ldd bin/oracle-gui | grep "not found"
+
+No output means everything is already installed (skip step 2).
+
+
+2. Install
+----------
+  sudo apt update
+  sudo apt install libsdl3-0 libsdl3-ttf0 libsdl3-image0
+
+On an older Kubuntu release, these packages may not exist or may be too old;
+then the binary won't run and has to be rebuilt from source on that machine
+(make gui-release).
+
+
+3. Run
+------
+  bin/oracle-gui --stda.gui
+
+It works from any directory, as long as bin/ and assets/ stay side by side
+in the same parent folder. The window opens on the logo; New game (or
+Enter) opens the player setup panel, and Start begins the game.
+bin/oracle_config.ini holds the [gui] settings.
