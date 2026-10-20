@@ -27,7 +27,7 @@
 
 typedef struct
 { SDL_FRect energy; // energy bar + its number (gui_energy.c), centred in the gap between the
-  // coin flowers and the status bar (top seat) / window bottom (bottom seat)
+  // coin flowers and the window top (top seat) / status bar (bottom seat)
   SDL_FRect name;   // info row, over (top seat) / under (bottom seat) the hand: player name
   SDL_FRect coins;  // left of the hand, card height: Luna/Aureus/Opal piles, stacked
   SDL_FRect hand;   // bounding row -- gui_layout_card_slot() subdivides it
@@ -39,7 +39,7 @@ typedef struct
 } GuiSeatLayout;
 
 typedef struct
-{ SDL_FRect status_bar;             // board width, top: turn/phase/pending text at
+{ SDL_FRect status_bar;             // board width, bottom: turn/phase/pending text at
   // the left, then (right end) the input buttons and the seed tag
   SDL_FRect buttons;                // inside status_bar, left of seed_tag: input buttons
   // (gui_input.c) when it's the viewer's move, an "opponent is thinking" label
@@ -59,7 +59,7 @@ typedef struct
   bool log_open;         // side panel shown? (the other regions shrink to make room)
   SDL_FRect log_panel;   // full-height right-hand column (zero width when closed)
   SDL_FRect log_toggle;  // close button in the panel header when open, a "Log" tab
-  // in the top-right corner (over the status bar) when closed
+  // in the bottom-right corner (over the status bar) when closed
 } GuiLayout;
 
 // The three rects of a seat's combat presentation: the champion cards, the dice

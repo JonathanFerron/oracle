@@ -342,8 +342,9 @@ static void draw_button_label(SDL_Renderer* r, TTF_Font* font, SDL_FRect rect, c
                 rect.y + (rect.h - (float)th) / 2.0f, GUI_BUTTON_TEXT);
 } // draw_button_label
 
-// Right-hand message log: header (title + close button) over the wrapped
-// log body when open, just a small "Log" tab in the corner when closed.
+// Right-hand message log: the wrapped log body over a header (title + close
+// button) level with the bottom status bar when open, just a small "Log" tab
+// in the bottom-right corner when closed.
 static void draw_log_panel(SDL_Renderer* r, TTF_Font* font, TTF_Font* log_font,
                            const GuiLayout* layout, const GuiLog* log, ui_language_t lang)
 { const char* title = LOCALIZED_STRING_L(lang, "Log", "Journal", "Registro");
@@ -353,14 +354,15 @@ static void draw_log_panel(SDL_Renderer* r, TTF_Font* font, TTF_Font* log_font,
   }
 
   SDL_FRect p = layout->log_panel;
-  SDL_FRect header = { p.x, p.y, p.w, GUI_LOG_HEADER_H };
+  SDL_FRect header = { p.x, p.y + p.h - GUI_LOG_HEADER_H, p.w, GUI_LOG_HEADER_H };
   SDL_SetRenderDrawColor(r, GUI_STATUS_BG.r, GUI_STATUS_BG.g, GUI_STATUS_BG.b, 255);
   SDL_RenderFillRect(r, &header);
   gui_draw_text(r, font, title, p.x + 10.0f,
-                p.y + (GUI_LOG_HEADER_H - (float)TTF_GetFontHeight(font)) / 2.0f, GUI_STATUS_TEXT);
+                header.y + (GUI_LOG_HEADER_H - (float)TTF_GetFontHeight(font)) / 2.0f,
+                GUI_STATUS_TEXT);
   draw_button_label(r, font, layout->log_toggle, "x");
 
-  SDL_FRect body = { p.x, p.y + GUI_LOG_HEADER_H, p.w, p.h - GUI_LOG_HEADER_H };
+  SDL_FRect body = { p.x, p.y, p.w, p.h - GUI_LOG_HEADER_H };
   gui_log_draw(r, log_font ? log_font : font, body, log);
 } // draw_log_panel
 

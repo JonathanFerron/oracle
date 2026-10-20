@@ -7,8 +7,8 @@
 #define GUI_STATUS_BAR_H 40.0f
 #define GUI_INFO_H 30.0f
 #define GUI_MARGIN 12.0f
-#define GUI_TOP_INFO_LIFT 9.0f      // opponent status text sits ~one x-height closer to the top
-#define GUI_BOTTOM_INFO_DROP 14.0f  // own status text sits ~one ascender closer to the bottom edge
+#define GUI_TOP_INFO_LIFT 9.0f      // opponent status text sits ~one x-height closer to the top edge
+#define GUI_BOTTOM_INFO_DROP 14.0f  // own status text sits ~one ascender closer to the status bar
 #define GUI_DICE_ROW_H 56.0f  // n-gon die + base/total text, between hand and combat zone
 #define GUI_COMBAT_CARDS_W (3 * GUI_CARD_WIDTH + 2 * GUI_CARD_GAP) // widest combat row
 #define GUI_BUTTON_W 110.0f
@@ -161,25 +161,28 @@ void gui_layout_compute(float win_w, float win_h, bool log_open, GuiLayout* out)
     log_w = GUI_LOG_MAX_W;
   float board_w = log_open ? win_w - log_w : win_w;
 
+  // Along the window's bottom edge, so the buttons sit close to the viewer's
+  // own hand (less mouse travel to "Continue").
+  float bar_y = win_h - GUI_STATUS_BAR_H;
   out->status_bar = (SDL_FRect)
-  { 0, 0, board_w, GUI_STATUS_BAR_H
+  { 0, bar_y, board_w, GUI_STATUS_BAR_H
   };
 
   // Status bar, right to left: [log tab when closed] seed tag, then the input
   // buttons (or a status label) just left of the seed.
   float right = board_w - (log_open ? 10.0f : GUI_TOGGLE_W + GUI_MARGIN);
   out->seed_tag = (SDL_FRect)
-  { right - GUI_SEED_W, 0, GUI_SEED_W, GUI_STATUS_BAR_H
+  { right - GUI_SEED_W, bar_y, GUI_SEED_W, GUI_STATUS_BAR_H
   };
   float buttons_w = GUI_MAX_BUTTON_SLOTS * (GUI_BUTTON_W + GUI_BUTTON_GAP) - GUI_BUTTON_GAP;
   out->buttons = (SDL_FRect)
-  { out->seed_tag.x - GUI_MARGIN - buttons_w, 0, buttons_w, GUI_STATUS_BAR_H
+  { out->seed_tag.x - GUI_MARGIN - buttons_w, bar_y, buttons_w, GUI_STATUS_BAR_H
   };
 
-  layout_top_seat(board_w, GUI_STATUS_BAR_H + GUI_MARGIN - GUI_TOP_INFO_LIFT, out);
-  layout_bottom_seat(board_w, win_h - GUI_MARGIN + GUI_BOTTOM_INFO_DROP, out);
-  layout_energy(GUI_STATUS_BAR_H, out->seat[1].coins.y, &out->seat[1].energy);
-  layout_energy(out->seat[0].coins.y + out->seat[0].coins.h, win_h, &out->seat[0].energy);
+  layout_top_seat(board_w, GUI_MARGIN - GUI_TOP_INFO_LIFT, out);
+  layout_bottom_seat(board_w, bar_y - GUI_MARGIN + GUI_BOTTOM_INFO_DROP, out);
+  layout_energy(0, out->seat[1].coins.y, &out->seat[1].energy);
+  layout_energy(out->seat[0].coins.y + out->seat[0].coins.h, bar_y, &out->seat[0].energy);
   layout_discards(out);
   layout_tuck_combat(out);
   layout_combat_info(out);
@@ -190,12 +193,13 @@ void gui_layout_compute(float win_w, float win_h, bool log_open, GuiLayout* out)
   // gracefully (toward nothing) on a short one, the same as every other
   // region here.
   out->log_open = log_open;
+  float toggle_y = win_h - GUI_MARGIN / 2 - GUI_TOGGLE_H; // bottom-right, level with the bar
   if(log_open)
   { out->log_panel = (SDL_FRect)
     { board_w, 0, win_w - board_w, win_h
     };
     out->log_toggle = (SDL_FRect)
-    { win_w - GUI_MARGIN / 2 - GUI_TOGGLE_H, GUI_MARGIN / 2, GUI_TOGGLE_H, GUI_TOGGLE_H
+    { win_w - GUI_MARGIN / 2 - GUI_TOGGLE_H, toggle_y, GUI_TOGGLE_H, GUI_TOGGLE_H
     };
   }
   else
@@ -203,7 +207,7 @@ void gui_layout_compute(float win_w, float win_h, bool log_open, GuiLayout* out)
     { win_w, 0, 0, win_h
     };
     out->log_toggle = (SDL_FRect)
-    { win_w - GUI_MARGIN / 2 - GUI_TOGGLE_W, GUI_MARGIN / 2, GUI_TOGGLE_W, GUI_TOGGLE_H
+    { win_w - GUI_MARGIN / 2 - GUI_TOGGLE_W, toggle_y, GUI_TOGGLE_W, GUI_TOGGLE_H
     };
   }
 } // gui_layout_compute
