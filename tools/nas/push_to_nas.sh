@@ -7,7 +7,7 @@
 #   assets/                 -- runtime files only: every font family / weights file the
 #                              source actually references, minus *.md/*.json/*.sh sidecars;
 #                              stale files under assets/ on the NAS are deleted
-#   INSTALL_SDL3.txt, update_from_nas.sh  -- from tools/nas/
+#   INSTALL_SDL3.txt, update_from_nas.sh, oracle-gui-fr.sh  -- from tools/nas/
 # Nothing else in $DEST (ressources/, spreadsheets, makeabackup.sh...) is touched.
 #
 # Usage: tools/nas/push_to_nas.sh [-n] [DEST]     (-n = dry run, show what would change)
@@ -50,5 +50,5 @@ mkdir -p "$DEST/bin"
 echo "== assets/"
 "${RSYNC[@]}" --delete --delete-excluded --prune-empty-dirs "${FILTERS[@]}" assets/ "$DEST/assets/"
 echo "== docs/scripts"
-"${RSYNC[@]}" tools/nas/INSTALL_SDL3.txt tools/nas/update_from_nas.sh "$DEST/"
+"${RSYNC[@]}" tools/nas/INSTALL_SDL3.txt tools/nas/update_from_nas.sh tools/nas/oracle-gui-fr.sh "$DEST/"
 echo "done${DRY:+ (dry run, nothing copied)}."

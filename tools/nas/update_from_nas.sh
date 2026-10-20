@@ -3,7 +3,7 @@
 #
 # Lives in the NAS's simulateur/ folder (published there by tools/nas/push_to_nas.sh)
 # and copies from wherever it is run from, so it works whatever the NAS mount point is.
-# Copies bin/oracle-gui, assets/ (mirrored: stale files deleted), INSTALL_SDL3.txt;
+# Copies bin/oracle-gui, assets/ (mirrored: stale files deleted), INSTALL_SDL3.txt, oracle-gui-fr.sh;
 # bin/oracle_config.ini only if absent, so local [gui] settings are kept.
 #
 # Usage: bash /path/to/simulateur/update_from_nas.sh [-n] [DEST]
@@ -27,7 +27,7 @@ mkdir -p "$DEST/bin"
 "${RSYNC[@]}" "$SRC/bin/oracle-gui" "$DEST/bin/"
 "${RSYNC[@]}" --ignore-existing "$SRC/bin/oracle_config.ini" "$DEST/bin/"
 "${RSYNC[@]}" --delete "$SRC/assets/" "$DEST/assets/"
-"${RSYNC[@]}" "$SRC/INSTALL_SDL3.txt" "$DEST/"
+"${RSYNC[@]}" "$SRC/INSTALL_SDL3.txt" "$SRC/oracle-gui-fr.sh" "$DEST/"
 chmod +x "$DEST/bin/oracle-gui" 2>/dev/null || true
 
 if [[ ${#DRY[@]} -eq 0 ]] && ldd "$DEST/bin/oracle-gui" | grep -q 'not found'; then
