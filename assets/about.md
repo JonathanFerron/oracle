@@ -64,6 +64,9 @@ provenance, corpus composition, measured results).
     `inkscape --export-id=<id> --export-id-only --export-background-opacity=0`.
     Used by `gui_card_face.c`; the cost digit and dice text are drawn over
     `cost_hex` in Fredoka Bold.
+    Also `oracle_logo_icon.png` (**added 2026-10-20**): `logo/oracle_logo.png`
+    downscaled to 256x256 for desktop launchers (not loaded by the game), made with
+    `magick oracle_logo.png -filter Lanczos -resize 256x256 -strip oracle_logo_icon.png`.
   - `fractals/` -- the legacy/fallback card-art toggle, for a "fractales
     champion art" GUI mode (art-style toggle, alternative to the champion
     portraits above). **All 34 designs x 3 colour variants (rouge/horizon
